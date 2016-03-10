@@ -246,7 +246,7 @@ if($logo==null){
 if($logo==null){$logo="ressources/templates/{$_COOKIE["artica-template"]}/i/fond-artica.png";}
 
 
-
+unset($_SESSION["privileges_array"]);
 unset($_SESSION["FORCED_TEMPLATE"]);
 unset($_SESSION["MINIADM"]);
 unset($_SESSION["uid"]);

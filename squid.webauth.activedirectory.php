@@ -14,6 +14,8 @@ if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;ini_set('display_errors', 1
 	if(isset($_POST["hostname"])){popup_save();exit;}
 	if(isset($_GET["popup-ad-groups"])){popup_groups();exit;}
 	if(isset($_POST["groups"])){popup_groups_save();exit;}
+	if(isset($_GET["delete-ad-js"])){delete_ad_js();exit;}
+	if(isset($_POST["deletead"])){delete_ad();exit;}
 table();
 
 
@@ -36,6 +38,48 @@ function js_popup_ad(){
 	echo "YahooWin4('750','$page?popup-ad-tab=yes&t={$_GET["t"]}&md5=$md5&ruleid=$ruleid','$title');";
 	
 }
+
+
+function delete_ad_js(){
+	header("content-type: application/x-javascript");
+	$md5=$_GET["md5"];
+	$t=$_GET["t"];
+	$tt=time();
+	$page=CurrentPageName();
+
+echo "
+var xSave$tt= function (obj) {
+	var results=obj.responseText;
+	if(results.length>3){alert(results);return;}
+	$('#flexRT{$_GET["t"]}').flexReload();
+	
+}
+
+
+function Save$tt(){
+	var XHR = new XHRConnection();
+	XHR.appendData('deletead','$md5');	
+	XHR.appendData('md5','$md5');
+	XHR.sendAndLoad('$page', 'POST',xSave$tt);
+	}
+Save$tt();";	
+	
+
+	
+}
+
+function delete_ad(){
+	$tpl=new templates();
+	$page=CurrentPageName();
+	$q=new mysql_squid_builder();
+	$md5=$_POST["md5"];
+	$sql="DELETE FROM hotspot_activedirectory WHERE zmd5='$md5'";
+	$q->QUERY_SQL($sql);
+	if(!$q->ok){echo $q->mysql_error;return;}
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
+}
+
 
 function tab_ad(){
 	$tpl=new templates();
@@ -196,7 +240,8 @@ function popup_save(){
 	
 	$q->QUERY_SQL("UPDATE `hotspot_activedirectory` SET hostname='$hostname',enabled=$enabled WHERE zmd5='$md5'");
 	if(!$q->ok){echo $q->mysql_error;return;}
-	
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
 }
 
 

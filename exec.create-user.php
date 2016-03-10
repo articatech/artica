@@ -117,7 +117,7 @@ function create_user($filename){
 	$users->givenName=$MAIN["firstname"];
     $users->sn=$MAIN["lastname"];
     $users->group_id=$MAIN["gpid"];
-
+	$users->homeDirectory="/home/{$MAIN["login"]}";
 	      
    
 	      
@@ -148,6 +148,10 @@ if(!$users->add_user()){
 	@unlink($path);
 	return;
 }
+
+@mkdir("$users->homeDirectory");
+@chown("$users->homeDirectory",$users->uid);
+
 
 if($MAIN["ByZarafa"]=="yes"){
 	$terminated=" >/dev/null";

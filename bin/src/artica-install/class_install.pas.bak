@@ -8,7 +8,7 @@ interface
 uses
   Classes, SysUtils,Process,strutils,IniFiles,RegExpr in 'RegExpr.pas',artica_cron,opengoo,
   BaseUnix,unix,global_conf,zsystem,logs,geoip,debian,spamass,openldap,clamav,cyrus,squid,postfix_class,samba,awstats,process_infos,pureftpd,ntpd,spfmilter,
-  mailgraph_daemon, miltergreylist,lighttpd, roundcube,dansguardian,kav4samba,mimedefang,stunnel4,dkimfilter,kav4proxy,bind9,obm,mysql_daemon,p3scan,syslogng,openvpn,cups,
+  mailgraph_daemon, miltergreylist,lighttpd, roundcube,dansguardian,kav4samba,stunnel4,dkimfilter,kav4proxy,bind9,obm,mysql_daemon,p3scan,syslogng,openvpn,cups,
   jcheckmail,dhcp_server,dstat,rsync,smartd,tcpip,policyd_weight,apache_artica,autofs,assp,pdns,gluster,nfsserver,zabbix,hamachi,postfilter, vmwaretools,zarafa_server,monit,wifi,
   emailrelay,mldonkey,backuppc,kav4fs,ocsi,ocsagent,auditd,squidguard_page,dkfilter,squidguard,framework,dkimmilter,dropbox,articapolicy,virtualbox,tftpd,crossroads,articaexecutor,pptpd,
   apt_mirror,cluebringer,apachesrc,sabnzbdplus,fusermount,vnstat,munin,greyhole,iscsitarget,postfwd2,snort,greensql,amanda,yaffas,netatalk,articadb,
@@ -558,7 +558,7 @@ var
    zsamba:tsamba;
    zspf:tspf;
    ccyrus:Tcyrus;
-   zmimedefang:Tmimedefang;
+
    zsquid:Tsquid;
    zstunnel:Tstunnel;
    zdkim:tdkim;
@@ -666,7 +666,7 @@ begin
     zntpd:=tntpd.Create;
     zsamba:=Tsamba.Create;
     zspf:=tspf.Create;
-    zmimedefang:=Tmimedefang.Create(GLOBAL_INI.SYS);
+
     ccyrus:=Tcyrus.Create(GLOBAL_INI.SYS);
     zsquid:=Tsquid.Create;
     zstunnel:=Tstunnel.Create(GLOBAL_INI.SYS);
@@ -871,7 +871,7 @@ begin
             end;
 
           if ParamStr(2)='mimedefang' then begin
-               zmimedefang.MIMEDEFANG_STOP();
+
                exit;
             end;
 
@@ -1690,7 +1690,6 @@ begin
               end;
 
                if ParamStr(2)='mimedefang' then begin
-                 zmimedefang.MIMEDEFANG_STOP();
                  exit();
               end;
 
@@ -1793,7 +1792,7 @@ var
    zsamba:tsamba;
    zspf:tspf;
    ccyrus:Tcyrus;
-   zmimedefang:Tmimedefang;
+
    zsquid:Tsquid;
    zstunnel:Tstunnel;
    zdkim:tdkim;
@@ -1909,7 +1908,7 @@ begin
     zntpd:=tntpd.Create;
     zsamba:=Tsamba.Create;
     zspf:=tspf.Create;
-    zmimedefang:=Tmimedefang.Create(GLOBAL_INI.SYS);
+
     ccyrus:=Tcyrus.Create(GLOBAL_INI.SYS);
     zsquid:=Tsquid.Create;
     zstunnel:=Tstunnel.Create(GLOBAL_INI.SYS);
@@ -2336,7 +2335,7 @@ begin
                    exit();
               end;
                 if ParamStr(2)='mimedefang' then begin
-                   zmimedefang.MIMEDEFANG_START();
+
                    exit();
               end;
 
@@ -2893,12 +2892,7 @@ begin
 
 
 
-              if ParamStr(2)='spamd' then begin
-                 if not NetWorkAvailable then exit();
-                 zSpamass.SPAMASSASSIN_START();
-
-                 exit();
-              end;
+              if ParamStr(2)='spamd' then exit();
 
               if ParamStr(2)='clamd' then begin
                  if not NetWorkAvailable then exit();

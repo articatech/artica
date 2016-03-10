@@ -209,7 +209,7 @@ function certificate(){
 	$master_version=$squid->SQUID_VERSION;
 	$compilefile="ressources/logs/squid.compilation.params";
 	if(!is_file($compilefile)){$sock->getFrameWork("squid.php?compil-params=yes");}
-	$COMPILATION_PARAMS=unserialize(base64_decode(file_get_contents($compilefile)));
+	$COMPILATION_PARAMS=unserialize(base64_decode(@file_get_contents($compilefile)));
 	$EnableRemoteStatisticsAppliance=$sock->GET_INFO("EnableRemoteStatisticsAppliance");
 	if(!is_numeric($EnableRemoteStatisticsAppliance)){$EnableRemoteStatisticsAppliance=0;}	
 	$EnableSquidSSLCRTD=$sock->GET_INFO("EnableSquidSSLCRTD");
@@ -349,7 +349,7 @@ function parameters_main(){
 	$sock=new sockets();
 	$compilefile="ressources/logs/squid.compilation.params";
 	if(!is_file($compilefile)){$sock->getFrameWork("squid.php?compil-params=yes");}
-	$COMPILATION_PARAMS=unserialize(base64_decode(file_get_contents($compilefile)));
+	$COMPILATION_PARAMS=unserialize(base64_decode(@file_get_contents($compilefile)));
 	$EnableRemoteStatisticsAppliance=$sock->GET_INFO("EnableRemoteStatisticsAppliance");
 	if(!is_numeric($EnableRemoteStatisticsAppliance)){$EnableRemoteStatisticsAppliance=0;}	
 	$EnableSquidSSLCRTD=$sock->GET_INFO("EnableSquidSSLCRTD");

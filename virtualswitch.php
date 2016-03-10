@@ -56,12 +56,12 @@ function main_switch_status(){
 	$f[]=DAEMON_STATUS_ROUND("VDHOOK_$switch",$ini,null,0);
 	
 	$install=button("{install_virtual_switch}",
-	"Loadjs('virtualswitch.install.php?switch=$switch')",18);
+	"Loadjs('virtualswitch.install.php?switch=$switch')",30);
 	
-	$html="<table style='width:100%'>
-	<tr><td width=50%>$install</td>
-	</tr>
-	</table>".CompileTr3($f);
+	$html="
+	<div style='font-size:22px' class=explain>{vde_switch_explain}</div>		
+	<center style='margin:50px'>$install</center>
+	".CompileTr2($f);
 	echo $tpl->_ENGINE_parse_body($html);
 	
 }
@@ -177,19 +177,16 @@ function port_tab(){
 	$title=$tpl->javascript_parse_text("$new_virtual_ip");
 	$ID=$ligne["ID"];
 	if(!is_numeric($ID)){$ID=0;}
-	$fontsize=14;
+	$fontsize=20;
 	$array["port-popup"]=$title;
 	
-	if($users->SHOREWALL_INSTALLED){
-		$array["eth.services"]="{firewall_services}";
-		
-	}
 	
-	if($ID>0){
+	
+/*	if($ID>0){
 		$array["port-roles"]="{roles}";
 	}
 	
-	
+*/	
 	
 	while (list ($num, $ligne) = each ($array) ){
 		
@@ -511,13 +508,13 @@ function main_switch(){
 
 	$buttons="
 	buttons : [
-	{name: '<b>$new_virtual_ip$v4</b>', bclass: 'add', onpress : VirtualIPAdd$t},
-	{name: '<b>$apply_network_configuration</b>', bclass: 'Reconf', onpress : BuildNetConf$t},
-	{name: '<b>$virtual_switch</b>', bclass: 'Settings', onpress : MainParams$t},
+	{name: '<strong style=font-size:18px>$new_virtual_ip$v4</strong>', bclass: 'add', onpress : VirtualIPAdd$t},
+	{name: '<strong style=font-size:18px>$apply_network_configuration</strong>', bclass: 'Reconf', onpress : BuildNetConf$t},
+	{name: '<strong style=font-size:18px>$virtual_switch</strong>', bclass: 'Settings', onpress : MainParams$t},
 	
 	],";
 	$html="
-	<div style='font-size:14px' class=explain>$vde_switch_explain</div>
+	
 	<table class='table-$t' style='display: none' id='table-$t' style='width:99%'></table>
 	<script>
 	VirtualIPMem$t='';
@@ -526,16 +523,16 @@ function main_switch(){
 	url: '$page?ports-list=yes&switch=$switch&t=$t',
 	dataType: 'json',
 	colModel : [
-	{display: '&nbsp;', name : 'icon', width : 44, sortable : false, align: 'center'},
-	{display: '$switch_port', name : 'port', width :43, sortable : false, align: 'center'},
-	{display: '$nic', name : 'ID', width :64, sortable : true, align: 'center'},
-	{display: '$tcp_address', name : 'ipaddr', width :106, sortable : true, align: 'left'},
-	{display: '$mac', name : 'mac', width :120, sortable : false, align: 'left'},
-	{display: '$gateway', name : 'gateway', width :106, sortable : true, align: 'left'},
-	{display: '$netmask', name : 'netmask', width : 106, sortable : true, align: 'left'},
-	{display: 'VLAN', name : 'vlan', width : 44, sortable : true, align: 'center'},
-	{display: '&nbsp;', name : 'none3', width : 44, sortable : false, align: 'center'},
-	{display: '&nbsp;', name : 'none2', width : 36, sortable : false, align: 'center'},
+	{display: '&nbsp;', name : 'icon', width : 72, sortable : false, align: 'center'},
+	{display: '<span style=font-size:18px>$switch_port</span>', name : 'port', width :135, sortable : false, align: 'center'},
+	{display: '<span style=font-size:18px>$nic</span>', name : 'ID', width :135, sortable : true, align: 'center'},
+	{display: '<span style=font-size:18px>$tcp_address</span>', name : 'ipaddr', width :169, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$mac</span>', name : 'mac', width :189, sortable : false, align: 'left'},
+	{display: '<span style=font-size:18px>$gateway</span>', name : 'gateway', width :135, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$netmask</span>', name : 'netmask', width : 169, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>VLAN</span>', name : 'vlan', width : 135, sortable : true, align: 'center'},
+	{display: '&nbsp;', name : 'none3', width : 72, sortable : false, align: 'center'},
+	{display: '&nbsp;', name : 'none2', width : 72, sortable : false, align: 'center'},
 		
 	],
 	$buttons
@@ -552,7 +549,7 @@ function main_switch(){
 	rp: 32,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 320,
+	height: 550,
 	singleSelect: true
 	
 	});
@@ -657,26 +654,27 @@ function main_switch_ports(){
 		
 		$edit="<a href=\"javascript:blur();\"
 		OnClick=\"javascript:Loadjs('$MyPage?port-js=yes&port=$port&switch=$switch&t={$_GET["t"]}')\"
-		style='font-size:14px;font-weight:bold;color:$color;text-decoration:underline'>";
+		style='font-size:22px;font-weight:bold;color:$color;text-decoration:underline'>";
 		$plug2tap_text=null;
 		
 		$plug2tap_icon=$explode_port["plug2tap_icon"];
 		if($explode_port["plug2tap_text"]<>null){
-			$plug2tap_text="<br><i style='font-size:11px;font-weight:normal;text-decoration:none'>".$tpl->_ENGINE_parse_body("{$explode_port["plug2tap_text"]}</i>");
+			$plug2tap_text="<br><i style='font-size:18px;font-weight:normal;text-decoration:none'>".$tpl->_ENGINE_parse_body("{$explode_port["plug2tap_text"]}</i>");
 		}
 
 		$data['rows'][] = array(
 		'id' => "virt{$ligne['ID']}",
 			'cell' => array(
-				"<img src='img/$img'>"
-				,"<span style='font-size:14px;color:$color;font-weight:bold'>$edit{$port}</a></span>"
-				,"<span style='font-size:14px;color:$color;font-weight:bold'>$edit$eth_text</a></span>",
-				"<span style='font-size:14px'>{$edit}$ipaddr</a></span>$plug2tap_text$mac",
-				"<span style='font-size:14px;color:$color;font-weight:bold'>$edit{$explode_port["MAC"]}</a></span>",
-				"<span style='font-size:14px'>{$edit}$gateway</a></span>",
-				"<span style='font-size:14px'>{$edit}$netmask</a></span>",
-				"<span style='font-size:14px'>{$edit}$TCP_VLAN</a></span>",
-				"<img src='img/$plug2tap_icon'>",$delete
+				"<center><img src='img/$img'></center>"
+				,"<center style='font-size:22px;color:$color;font-weight:bold'>$edit{$port}</a></center>"
+				,"<span style='font-size:22px;color:$color;font-weight:bold'>$edit$eth_text</a></span>",
+				"<span style='font-size:22px'>{$edit}$ipaddr</a></span>$plug2tap_text$mac",
+				"<span style='font-size:22px;color:$color;font-weight:bold'>$edit{$explode_port["MAC"]}</a></span>",
+				"<span style='font-size:22px'>{$edit}$gateway</a></span>",
+				"<span style='font-size:22px'>{$edit}$netmask</a></span>",
+				"<span style='font-size:22px'>{$edit}$TCP_VLAN</a></span>",
+				"<center><img src='img/$plug2tap_icon'></center>",
+				"<center>$delete</center>"
 				 )
 		);
 	}
@@ -819,8 +817,8 @@ function port_popup(){
 	
 	$MAIN_TITLE=$tpl->_ENGINE_parse_body("{switch_port} $port, {virtual_switch} $switch");
 
-	$styleOfFields="font-size:16px;padding:3px";
-	$vlan_field=Field_array_Hash($vlans,"vlan-$t",$ligne["vlan"],null,null,0,"font-size:16px;padding:3px");
+	$styleOfFields="font-size:22px;padding:3px";
+	$vlan_field=Field_array_Hash($vlans,"vlan-$t",$ligne["vlan"],null,null,0,"font-size:22px;padding:3px");
 	$html="
 		<div id='animate-$t'></div>
 		<div id='virtip'>". Field_hidden("ID","{$_GET["ID"]}").
@@ -828,23 +826,23 @@ function port_popup(){
 		<div style='width:98%' class=form>
 			<table style='width:99%'>
 			<tr>
-				<td class=legend style='font-size:16px'>{netzone}:</td>
-				<td>" . field_text("netzone-$t",$ligne["netzone"],"$styleOfFields;width:190px",false)."</td>
+				<td class=legend style='font-size:22px'>{netzone}:</td>
+				<td>" . field_text("netzone-$t",$ligne["netzone"],"$styleOfFields;width:220px",false)."</td>
 			</tr>
 			<tr>
-				<td class=legend style='font-size:16px'>VLAN:</td>
+				<td class=legend style='font-size:22px'>VLAN:</td>
 				<td>$vlan_field</td>
 			</tr>						
 			<tr>
-				<td class=legend style='font-size:16px'>{tcp_address}:</td>
+				<td class=legend style='font-size:22px'>{tcp_address}:</td>
 				<td>" . field_ipv4("ipaddr-$t",$ligne["ipaddr"],$styleOfFields,false,"CalcCdirVirt$t(0)")."</td>
 			</tr>			
 			<tr>
-				<td class=legend style='font-size:16px'>{netmask}:</td>
+				<td class=legend style='font-size:22px'>{netmask}:</td>
 				<td>" . field_ipv4("netmask-$t",$ligne["netmask"],$styleOfFields,false,"CalcCdirVirt$t(0)")."</td>
 			</tr>
 			<tr>
-			<td class=legend style='font-size:16px'>CDIR:</td>
+			<td class=legend style='font-size:22px'>CDIR:</td>
 				<td style='padding:-1px;margin:-1px'>
 					<table style='width:99%;padding:-1px;margin:-1px'>
 					<tr>
@@ -856,18 +854,18 @@ function port_popup(){
 				</td>
 			</tr>
 			<tr>
-				<td class=legend style='font-size:16px'>{gateway}:</td>
+				<td class=legend style='font-size:22px'>{gateway}:</td>
 				<td>" . field_ipv4("gateway-$t",$ligne["gateway"],$styleOfFields,false)."</td>
 			</tr>
 			<tr>
-				<td class=legend style='font-size:16px'>{metric}:</td>
+				<td class=legend style='font-size:22px'>{metric}:</td>
 				<td>" . field_text("metric-$t",$ligne["metric"],"$styleOfFields;width:90px",false)."</td>
 			</tr>
 	</table>
 	</div>
 
-	<div id='infosVirtual' style='font-size:13px'></div>
-	<div style='text-align:right'><hr>". button($title_button,"Save$t()",18)."</div>
+	<div id='infosVirtual' style='font-size:22px'></div>
+	<div style='text-align:right'><hr>". button($title_button,"Save$t()",30)."</div>
 </div>
 <script>
 var Netid{$t}={$_GET["ID"]};
@@ -927,5 +925,8 @@ function switch_status(){
 	$datas=$sock->getFrameWork("vde.php?switch-main-status=$switch");
 	$ini=new Bs_IniHandler();
 	$ini->loadString($datas);
+	$tpl=new templates();
+
+	
 	echo $tpl->_ENGINE_parse_body(DAEMON_STATUS_ROUND("VDE_$switch",$ini,null,0));
 }

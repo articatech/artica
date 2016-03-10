@@ -70,7 +70,7 @@ amavisd-new sends a bounce by itself (same as Delete Mail and send notification 
 <extension_list>Extensions list</extension_list>
 <filter_behavior>Filter behaviors</filter_behavior>
 <filter_behavior_text>Define here the amavis behavior when it encounter viruses, spams, filters...</filter_behavior_text>
-<filter_extension>file content type checking</filter_extension>
+<filter_extension>File content type checking</filter_extension>
 <filter_extension_text>Bann attached files in mails by file content type</filter_extension_text>
 <FinalBadHeaderDestiny>When bad header found</FinalBadHeaderDestiny>
 <FinalBannedDestiny>When banned ext found</FinalBannedDestiny>

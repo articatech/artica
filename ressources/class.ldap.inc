@@ -127,6 +127,7 @@ class clladp{
 	var $EnableManageUsersTroughActiveDirectory=false;
 	private $SquidPerformance;
 	private $EnableIntelCeleron;
+	private $EnableOpenLDAP=1;
 	
 	function clladp(){
 		$this->ldapFailed=false;
@@ -201,7 +202,12 @@ class clladp{
 			}
 			if(is_file("/etc/artica-postfix/ldap_settings/password")){
 				$this->ldap_password=trim(@file_get_contents("/etc/artica-postfix/ldap_settings/password"));
-			}			
+			}
+
+			if(!is_file("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP")){
+				@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP", 1);
+				@chmod("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP",0755);
+			}
 		
 		
 		if($this->ldap_admin==null){$this->ldap_admin=$_GLOBAL["ldap_admin"];}
@@ -239,9 +245,10 @@ class clladp{
 			$this->EnableIntelCeleron=intval($sock->GET_INFO("EnableIntelCeleron"));
 			if($this->SquidPerformance>2){return;}
 			if($this->EnableIntelCeleron==1){return;}
+			
 		}
 		
-		
+		if($this->EnableOpenLDAP==0){return;}
 		
 		
 		
@@ -274,7 +281,7 @@ class clladp{
 						$error_text=@ldap_err2str($this->ldap_connection);
 						$error= "[$errornumber] `$error_text`";
 						$this->ldapFailed=true;
-						writelogs("Fatal: line ". __LINE__." unable to bind to ldap server ldap://{$this->ldap_host}:{$this->ldap_port} (cn=$this->ldap_admin,$this->suffix) $error $called"
+						writelogs("Fatal: line ". __LINE__." unable to bind to ldap server {$GLOBALS["LDAP_CONNECTION_STRING"]} (cn=$this->ldap_admin,$this->suffix) $error $called"
 						,__CLASS__."/" .__FUNCTION__,__FILE__);	
 						
 				switch (ldap_errno($this->ldap_connection)) {
@@ -325,6 +332,7 @@ class clladp{
 private function ldap_fsock(){
 	if($this->SquidPerformance>2){return;}
 	if($this->EnableIntelCeleron==1){return;}
+	if($this->EnableOpenLDAP==0){return;}
 	if(isset($_SESSION["ASLDATESTED"][date('YmdHi')])){return $_SESSION["ASLDATESTED"][date('YmdHi')];}
 	if($GLOBALS["VERIFLDAPTRUE"]){return true;}
 	
@@ -332,23 +340,7 @@ private function ldap_fsock(){
 		$trace=debug_backtrace();
 		$called=" called by ". basename($trace[1]["file"])." {$trace[1]["function"]}() line {$trace[1]["line"]}";
 		if($GLOBALS["DEBUG"]){writelogs("Fatal: ERROR unable to connect to ldap server in line ". __LINE__." $this->ldap_host, $this->ldap_port $called",__CLASS__."/" .__FUNCTION__,__FILE__);}
-		if($this->ldap_host=="127.0.0.1"){
-			$sock=new sockets();
-			if(!isset($GLOBALS["ASLDAPRESTARTED"])){
-				if(!isset($_SESSION[date('YmdHi')."ASLDAPRESTARTED"])){
-					if(!isset($GLOBALS["cmd.php?ldap-restart=yes"])){
-						$sock->getFrameWork("cmd.php?ldap-restart=yes");
-						$GLOBALS["cmd.php?ldap-restart=yes"]=true;
-					}
-				$GLOBALS["ASLDAPRESTARTED"]=true;
-				$_SESSION[date('YmdHi')."ASLDAPRESTARTED"]=true;
-				}
-			}
-			$_SESSION["ASLDATESTED"][date('YmdHi')]=false;
-			
-			$this->ldapFailed=true;
-			return false;
-		}
+		if($this->ldap_host=="127.0.0.1"){$this->ldapFailed=true;return false;}
 		
 		include_once(dirname(__FILE__)."/local_ldap.php");
 		$ARRAY=unserialize(base64_decode($GLOBALS["MAIN_LOCAL_LDAP_SETTINGS"]));
@@ -411,6 +403,7 @@ private function ChangeToLocalhost(){
 }
 
 private function ldap_fsock_perform($server,$port){
+	if($this->EnableOpenLDAP==0){return;}
 	$fp=@fsockopen($server, $port, $errno, $errstr, 2);
 	if(!$fp){
 		$this->ldap_last_error=$errstr;
@@ -431,11 +424,12 @@ function ldap_escape($str){
 }	
 
 private function ldap_connect_action(){
+	if($this->EnableOpenLDAP==0){return;}
 	
-	
-			
+		
 		if($this->ldap_host=="127.0.0.1"){
 			$LDAP_API="/var/run/slapd/slapd.sock";
+			$GLOBALS["LDAP_CONNECTION_STRING"]=$LDAP_API;
 			$LDAP_API=urlencode($LDAP_API);
 			@ldap_close();
 			$this->ldap_connection=@ldap_connect("ldapi://$LDAP_API",0) ;
@@ -450,7 +444,8 @@ private function ldap_connect_action(){
 			@ldap_close();
 			
 		}
-			
+
+		$GLOBALS["LDAP_CONNECTION_STRING"]="$this->ldap_host:$this->ldap_port";
 		$this->ldap_connection=@ldap_connect($this->ldap_host, $this->ldap_port ) ;
 		if($this->ldap_connection){
 			$GLOBALS["LDAP_EVENTS"][]="[".__LINE__."] $this->ldap_host:$this->ldap_port SUCCESS";
@@ -504,7 +499,7 @@ private function CheckDefaultValues(){
 
 
 public function ldap_perform_connection($ldapport=null){
-	
+		if($this->EnableOpenLDAP==0){return;}
 	
 
 	
@@ -1285,6 +1280,7 @@ function EditRelayDomain($ou,$domain,$ip,$port){
 
 	
 	function Ldap_search($dn,$filter,$attrs,$maxRow=0){
+		if($this->EnableOpenLDAP==0){return;}
 		$this->ldapFailed=false;
 		if($this->EnableManageUsersTroughActiveDirectory){
 			$ldap=new ldapAD();
@@ -2071,12 +2067,19 @@ function Hash_GetALLUsers(){
 	function Hash_Get_ou_from_users($userid,$listeField=0){
 		$this->ldap_perform_connection();
 		$arr=array("cn");
-		
+		$res=array();
+		if($GLOBALS["VERBOSE"]){echo "$this->suffix -> (&(objectclass=posixGroup)(memberUid=$userid))<br>\n";}
 		$sr = @ldap_search($this->ldap_connection,$this->suffix,"(&(objectclass=posixGroup)(memberUid=$userid))",$arr);
 		if ($sr) {
 			$hash=ldap_get_entries($this->ldap_connection,$sr);
 			for($i=0;$i<$hash["count"];$i++){
 				$dn=$hash[$i]["dn"];
+				if($GLOBALS["VERBOSE"]){echo "DN: $dn<br>\n";}
+				if(preg_match('#cn=.*?,ou=groups,ou=(.*?),dc=#',$dn,$reg)){
+					if($listeField==0){$res[$reg[1]]="ou={$reg[1]},$this->suffix";}else{$res[]=$reg[1];}
+					continue;
+				}
+				
 				if(preg_match('#cn=(.+?),ou=#',$dn,$rs)){$cn=$rs[1];}
 				if(preg_match('#ou=users,ou=(.+?),dc#',$dn,$reg)){
 					if($listeField==0){$res[$reg[1]]="ou={$reg[1]},$this->suffix";}else{$res[]=$reg[1];}
@@ -2733,6 +2736,46 @@ function Hash_GetALLUsers(){
 		
 		
 		}
+		
+		
+		function GroupsSearch($pattern,$max=20){
+			$cols=array("cn","description",'gidnumber');
+			$dn="dc=organizations,$this->suffix";
+			
+			
+			$ld =$this->ldap_connection;
+			
+			if($GLOBALS["VERBOSE"]){
+				
+			$sr = ldap_search($ld,$dn,'objectclass=posixGroup',$cols,null,$max);
+			}else{
+				$sr = ldap_search($ld,$dn,'objectclass=posixGroup',$cols,null,$max);
+			}
+			
+			if (!$sr) {
+				if(is_numeric(ldap_errno($this->ldap_connection))){
+					$error=ldap_errno($this->ldap_connection);
+					$errstr=@ldap_err2str($error);
+					if($GLOBALS["VERBOSE"]){echo "Error: $error $errstr<br>\n";}
+					return array();
+				}
+				
+				
+			}
+			$ARRAY=array();
+			$hash=ldap_get_entries($ld,$sr);
+				if(!is_array($hash)){return array();}
+				while (list ($num, $ligne) = each ($hash) ){
+					$GroupName=$ligne["cn"][0];
+					$GroupDN=$ligne["dn"];
+					if($GLOBALS["VERBOSE"]){echo "$GroupDN = $GroupName<br>\n";}
+					$ARRAY[$GroupDN]=$GroupName;
+				}
+			
+			
+			return $ARRAY;
+		}
+		
 
 		function hash_groups($ou,$fieldlist=0){
 			$res=array();
@@ -2804,6 +2847,47 @@ function Hash_GetALLUsers(){
 			}else{return 0;}
 			
 		}
+		
+		
+		function CountDeUsersByGroupDN($DN){
+			
+			$attrs=array('memberUid');
+			$sr =@ldap_read($this->ldap_connection,$DN,"(objectclass=*)",$attrs);
+			
+			if (!$sr) {
+				if(is_numeric(ldap_errno($this->ldap_connection))){
+					$error=ldap_errno($this->ldap_connection);
+					$errstr=@ldap_err2str($error);
+					if($GLOBALS["VERBOSE"]){echo "Error: $error $errstr<br>\n";}
+					return 0;
+				}
+			}
+			
+			
+			$result = ldap_get_entries($this->ldap_connection, $sr);
+			if(!isset($result[0]["memberuid"]["count"])){return 0;}
+			return $result[0]["memberuid"]["count"];
+		}
+		function GidNumberGroupDN($DN){
+				
+			$attrs=array('gidNumber');
+			$sr =@ldap_read($this->ldap_connection,$DN,"(objectclass=*)",$attrs);
+				
+			if (!$sr) {
+				if(is_numeric(ldap_errno($this->ldap_connection))){
+					$error=ldap_errno($this->ldap_connection);
+					$errstr=@ldap_err2str($error);
+					if($GLOBALS["VERBOSE"]){echo "Error: $error $errstr<br>\n";}
+					return 0;
+				}
+			}
+				
+				
+			$result = ldap_get_entries($this->ldap_connection, $sr);
+			if(!isset($result[0]["gidnumber"][0])){return 0;}
+			return $result[0]["gidnumber"][0];
+		}		
+		
 		
 		function UserGetGroups($userid,$reverse=0){
 		if($this->IsKerbAuth()){
@@ -3965,10 +4049,15 @@ function load_mynetworks(){
 			$hash=ldap_get_entries($this->ldap_connection,$sr);	
 			if(isset($hash[0]["mynetworks"])){
 				for($i=0;$i<$hash[0]["mynetworks"]["count"];$i++){
+					if($GLOBALS["VERBOSE"]){echo "load_mynetworks() ->{$hash[0]["mynetworks"][$i]}<br>\n";}
 					if(trim($hash[0]["mynetworks"][$i])==null){continue;}
 						$nets[trim($hash[0]["mynetworks"][$i])]=$hash[0]["mynetworks"][$i];
 					}
 				}
+			}else{
+				if($GLOBALS["VERBOSE"]){echo "load_mynetworks() ->ERROR<br>\n";}
+				
+				
 			}
 			
 		$sock=new sockets();
@@ -3987,7 +4076,7 @@ function load_mynetworks(){
 				$nets[trim($mask)]=trim($mask);
 			}	
 		}
-		
+		if($GLOBALS["VERBOSE"]){echo "load_mynetworks() ->PostfixMynetworks\n";}
 		$tbl=@explode("\n",base64_decode($sock->GET_INFO("PostfixMynetworks")));
 		if(is_array($tbl)){
 			while (list ($i, $mask) = each ($tbl) ){

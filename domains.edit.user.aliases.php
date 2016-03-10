@@ -49,7 +49,7 @@ function table(){
 	
 	$buttons="
 	buttons : [
-	{name: '$new_entry', bclass: 'Add', onpress : NewItem$t},
+	{name: '<strong style=font-size:18px>$new_entry', bclass: 'Add', onpress : NewItem$t},
 	],	";
 	
 	if(!$privilege){$buttons=null;}
@@ -62,9 +62,9 @@ $('#flexRT$t').flexigrid({
 	url: '$page?items=yes&t=$t&userid={$_GET["userid"]}',
 	dataType: 'json',
 	colModel : [	
-		{display: '$aliases', name : 'ID', width :$aliases_field, sortable : true, align: 'left'},
-		{display: 'TEST', name : 'action', width :31, sortable : true, align: 'center'},
-		{display: '&nbsp;', name : 'action', width :31, sortable : true, align: 'center'},
+		{display: '<span style=font-size:22px>$aliases</span>', name : 'ID', width :$aliases_field, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>TEST</span>', name : 'action', width :80, sortable : true, align: 'center'},
+		{display: '&nbsp;', name : 'action', width :80, sortable : true, align: 'center'},
 
 	],
 	$buttons
@@ -76,7 +76,7 @@ $('#flexRT$t').flexigrid({
 	sortname: 'ID',
 	sortorder: 'desc',
 	usepager: true,
-	title: '$title',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
@@ -163,8 +163,8 @@ function items(){
 		'id' => "$id",
 		'cell' => array(	
 			"<code style='font-size:22px;font-weight:bold'>$ligne</code>",
-			$test,
-			$delete,
+			"<center>$test</center>",
+			"<center>$delete</center>",
 			)
 		);
 		$data['total'] = $c;
@@ -181,28 +181,33 @@ function USER_ALIASES_FORM_ADD() {
 	$ldap = new clladp ( );
 	$user = new user ( $userid );
 	$domains = $ldap->hash_get_domains_ou ( $user->ou );
-	$user_domains = Field_array_Hash ( $domains, 'user_domain',null,null,null,0,'font-size:18px;padding:3px' );
+	$default_domain=null;
+	$email=$user->mail;
+	if(preg_match("#.*?@(.+)#", $email,$re)){$default_domain=$re[1];}
 	
-	$form_catech_all = 
+	$user_domains = Field_array_Hash ( $domains, 'user_domain',$default_domain,null,null,0,'font-size:18px;padding:3px' );
+	
+	$form_catech_all = "";
 
 	$form_add = "
-				<div id='$t-div'></div>
-				<div style='width:98%' class=form>
-    			<table style='width:99%;'>
-    				<tr>
-    					<td nowrap colspan=2><strong style='font-size:18px;'>{add_new_alias}:&laquo;{in_the_same_organization}&raquo;</strong></td>
-    				</tr>
-    				<tr>
-    					<td valign='top'>
-	    					<table>
-	    						<tr>
-	    							<td>" . Field_text ( 'aliases', null, 'width:150px;font-size:18px;padding:3px',null,null,null,false,"AddNewAliasesCheckEnter$t(event)" ) . "</td>
-	    							<td width=1%><strong style='font-size:18px;'>@</strong></td>
-	    							<td width=99% align='left'>$user_domains</td>
-	    						</tr>
-	    					</table>
-    					</td>
-    				</tr>
+<div id='$t-div'></div>
+<div style='width:98%' class=form>
+	<table style='width:100%;'>
+    	<tr>
+    		<td nowrap colspan=2>
+    			<strong style='font-size:18px;'>{add_new_alias}:&laquo;{in_the_same_organization}&raquo;</strong></td>
+    	</tr>
+    	<tr>
+	    	<td valign='top'>
+		    	<table>
+		    		<tr style='height:70px'>
+		    			<td style='vertical-align:middle;padding-top:10px'>" . Field_text ( 'aliases', null, 'width:250px;font-size:18px;padding:3px;text-align:right',null,null,null,false,"AddNewAliasesCheckEnter$t(event)" ) . "</td>
+		    			<td style='vertical-align:middle' width=1%><strong style='font-size:18px;'>@</strong></td>
+		    			<td style='vertical-align:middle' width=99% align='left'>$user_domains</td>
+		    		</tr>
+		    	</table>
+	    	</td>
+    	</tr>
    				<tr>
    						<td nowrap colspan=2>&nbsp;</td>
    				</tr>
@@ -221,7 +226,7 @@ function USER_ALIASES_FORM_ADD() {
     			</tr>    				
     				<tr>
     					<td colspan=2 align='right'><hr>
-    					" . button ( "{add}", "AddNewAliases$t('$userid');" ,"26px") . "
+    					" . button ( "{add}", "AddNewAliases$t('$userid');" ,"30px") . "
     						
     						
     					</td>
@@ -230,7 +235,7 @@ function USER_ALIASES_FORM_ADD() {
     			</table>";
 	
 	$html = "
-<div class=explain style='font-size:16px'>{aliases_text}:&nbsp;&laquo;<b>{$user->mail}&raquo;</b></div>
+<div class=explain style='font-size:18px'>{aliases_text}:&nbsp;&laquo;<b>{$user->mail}&raquo;</b></div>
 $form_add
 
 
@@ -243,7 +248,6 @@ $form_add
 	
 	var x_AddNewAliasesUser$t= function (obj) {
 		var results=obj.responseText;
-		document.getElementById('$t-div').innerHTML='';
 		if(results.length>0){alert(results);return;}
 		YahooWin5Hide();
 		$('#flexRT$t').flexReload();
@@ -253,7 +257,6 @@ $form_add
 	function  AddNewAliases$t(){
 		var uid='{$_GET["USER_ALIASES_FORM_ADD"]}';
 		m_userid=uid;
-		AnimateDiv('$t-div');
 		var aliase=document.getElementById('aliases').value;
 		var aliase_domain=document.getElementById('user_domain').value;
 		var fullaliase=document.getElementById('fullaliase').value;

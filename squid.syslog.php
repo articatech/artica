@@ -10,7 +10,7 @@
 	
 	if(isset($_GET["popup"])){popup();exit;}
 	if(isset($_POST["ENABLE"])){save();exit;}
-	js();
+	popup();
 	
 	
 function js(){
@@ -37,28 +37,30 @@ function popup(){
 	<div id='$t' style='width:98%' class=form>
 	<table style='width:99%'>
 	<tr>
-		<td colspan=2>". Paragraphe_switch_img("{activate} Syslog", "{squid_syslog_text}","ENABLE-$t",$array["ENABLE"],null,700,"SquidSyslogAddCheck()")."</td>
+		<td colspan=2>". Paragraphe_switch_img("{activate} Syslog", "{squid_syslog_text}",
+				"ENABLE-$t",$array["ENABLE"],null,1450,"SquidSyslogAddCheck()")."</td>
 		
 	</tr>
 	<tr>
-		<td class=legend style='font-size:22px'>{remote_server} (local6):</td>
-		<td>". Field_text("SERVER-$t",$array["SERVER"],"font-size:22px;width:300px")."</td>
+		<td class=legend style='font-size:26px'>{remote_server} (local6):</td>
+		<td>". Field_text("SERVER-$t",$array["SERVER"],"font-size:26px;width:400px")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:22px'>{use_personalized_event}:</td>
+		<td class=legend style='font-size:26px'>{use_personalized_event}:</td>
 		<td>". Field_checkbox_design("ENABLE_PERSO_EVENT-$t", 1,$array["ENABLE_PERSO_EVENT"],"SquidSyslogAddCheck()")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:22px'>{remove_local_access_events}:</td>
+		<td class=legend style='font-size:26px'>{remove_local_access_events}:</td>
 		<td>". Field_checkbox_design("SquidNoAccessLogs-$t", 1,$SquidNoAccessLogs)."</td>
-	</tr>	
+	</tr>
+	<tr style='height:40px'><td colspan=2>&nbsp;</td></tr>	
 	<tr>
-		<td class=legend style='font-size:22px' colspan=2>{pattern}:</td>
+		<td class=legend style='font-size:26px' colspan=2>{pattern}: {personalized_events}</td>
 	</tr>				
 	<tr>
-		<td class=legend style='font-size:22px' colspan=2>
+		<td class=legend style='font-size:26px' colspan=2>
 				
-		<textarea id='PERSO_EVENT-$t' style='font-size:16px !important;margin-top:10px;margin-bottom:10px;
+		<textarea id='PERSO_EVENT-$t' style='font-size:18px !important;margin-top:10px;margin-bottom:10px;
 		font-family:\"Courier New\",Courier,monospace;padding:3px;border:3px solid #5A5A5A;font-weight:bolder;color:#5A5A5A;
 		width:100%;height:180px;overflow:auto'>{$array["PERSO_EVENT"]}</textarea>		
 				
@@ -66,14 +68,14 @@ function popup(){
 	</tr>				
 				
 	<tr>
-		<td colspan=2 align='right'><hr>". button("{apply}","SaveSyslogSquid$t()",28)."</td>
+		<td colspan=2 align='right'><hr>". button("{apply}","SaveSyslogSquid$t()",40)."</td>
 	</tr>
 	</table>
 	
 	<script>
 		var x_SaveSyslogSquid$t= function (obj) {
 			Loadjs('squid.compile.progress.php');
-			YahooWin2Hide();
+		
 		}
 	
 	

@@ -21,8 +21,11 @@ function build(){
 	$iptables=$unix->find_program("iptables");
 	$sysctl=$unix->find_program("sysctl");				
 	
-	$sql="SELECT * FROM qos_eth WHERE enabled=1";
+	
 	$q=new mysql();
+	if(!$q->TABLE_EXISTS("qos_eth", "artica_backup")){return;}
+	$sql="SELECT * FROM qos_eth WHERE enabled=1";
+	
 	$results=$q->QUERY_SQL($sql,'artica_backup');
 	if(!$q->ok){
 		echo "Starting......: ".date("H:i:s")." Q.O.S Error:\"$q->mysql_error\" checking old commands\n";

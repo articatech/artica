@@ -616,6 +616,12 @@ if($EnableMysqlFeatures==0){
    echo "Starting......: ".date("H:i:s")." Temp Dir.............:$MySqlTmpDir\n";
    echo "Starting......: ".date("H:i:s")." innodb_force_recovery:$innodb_force_recovery\n";
    
+   
+   if(!is_file($pid_file)){@touch($pid_file);}
+   @chown($pid_file, $mysql_user);
+   @chgrp($pid_file, $mysql_user);
+   
+   
    mysql_admin_mysql(1,"Starting MySQL service...", null,__FILE__,__LINE__);
    echo "Starting......: ".date("H:i:s")." Settings permissions..\n";
    @mkdir("/var/run/mysqld",0755,true);
@@ -627,8 +633,14 @@ if($EnableMysqlFeatures==0){
    if(is_file('/var/run/mysqld/mysqld.err')){@unlink('/var/run/mysqld/mysqld.err');}
    if(is_file("/var/run/mysqld/mysqld.pid")){$unix->chown_func($mysql_user,$mysql_user, "/var/run/mysqld/mysqld.pid");}
    @chmod("/var/run/mysqld", 0777);
-   
+   $IntelCeleronMode=null;
 
+  $EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+   
+  ;
+   
+   
+   
    if($MysqlRemoveidbLogs==1){
         shell_exec('/bin/mv /var/lib/mysql/ib_logfile* /tmp/');
        $sock->SET_INFO('MysqlRemoveidbLogs','0');
@@ -642,6 +654,7 @@ if($EnableMysqlFeatures==0){
    $toTouch[]="/var/log/mysql.error";
    $toTouch[]="/var/log/mysql.log";
    $toTouch[]="/var/log/mysql.warn";
+   $toTouch[]="/var/lib/mysql/mysqld.err";
 	
    while (list ($num, $filename) = each ($toTouch) ){
    		if(!is_file($filename)){@file_put_contents($filename, "#\n");}
@@ -668,10 +681,27 @@ if($EnableMysqlFeatures==0){
 	
 	if($SquidPerformance>2){$MEMORY=524288;}
 	if($AsCategoriesAppliance==1){$MEMORY=620288;}
+	if($EnableIntelCeleron==1){$MEMORY=320288;}
 	
 	build_progress(60, "{starting_service} Memory: {$MEMORY}KB");
+	$DEFINED=false;
+	
+	if($MEMORY<524288){
+		$GetStartedValues=GetStartedValues();
+		$DEFINED=true;
+		if($GetStartedValues["--key-buffer-size"]){ $cmd2[]="--key-buffer-size=16K";}
+		if($GetStartedValues["--max-allowed-packet"]){ $cmd2[]="--max-allowed-packet=1M";}
+		if($GetStartedValues["--tmp-table-size"]){ $cmd2[]="--tmp-table-size=4M";}
+		if($GetStartedValues["--table-open-cache"]){ $cmd2[]="--table-open-cache=4";}
+		if($GetStartedValues["--sort-buffer-size"]){ $cmd2[]="--sort-buffer-size=64k";}
+		if($GetStartedValues["--net-buffer-length"]){ $cmd2[]="--net-buffer-length=2K";}
+		if(is_file("/etc/artica-postfix/WORDPRESS_APPLIANCE")){$cmd2[]="--innodb=OFF";}
+		
+	}
+	
 	
 	if($MEMORY<624288){
+		if(!$DEFINED){
 		$GetStartedValues=GetStartedValues();
 		echo "Starting......: ".date("H:i:s")." MySQL Warning memory did not respond to pre-requesites, tuning to lower memory\n";
 		if($GetStartedValues["--key-buffer-size"]){ $cmd2[]="--key-buffer-size=8M";}
@@ -693,7 +723,9 @@ if($EnableMysqlFeatures==0){
 		if($GetStartedValues["--max-connections"]){ $cmd2[]="--max-connections=60";}
 		if(is_file("/etc/artica-postfix/WORDPRESS_APPLIANCE")){$cmd2[]="--innodb=OFF";}
 		
+		
 		echo "Starting......: ".date("H:i:s")." MySQL ". count($cmd2)." forced option(s)\n";
+		}
 	}
 
 

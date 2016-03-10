@@ -15,6 +15,7 @@ include_once(dirname(__FILE__)."/externals/InfluxPHP/ResultsetBuilder.php");
 include_once(dirname(__FILE__)."/externals/InfluxPHP/ResultSeriesObject.php");
 include_once(dirname(__FILE__)."/externals/InfluxPHP/MultipleResultSeriesObject.php");
 include_once(dirname(__FILE__)."/class.sockets.inc");
+include_once(dirname(__FILE__)."/class.postgres.inc");
 
 
 class influx{
@@ -35,9 +36,9 @@ class influx{
 	public function influx(){
 		$this->LoadConfig();
 		if($GLOBALS["VERBOSE"]){echo "DATABASE: proxydb\n";}
-		$this->BD_CONNECT();
-		$this->database="proxydb";
-		$this->CREATE_DATABASE();
+		//$this->BD_CONNECT();
+		//$this->database="proxydb";
+		//$this->CREATE_DATABASE();
 		
 		
 	}
@@ -69,6 +70,17 @@ class influx{
 		 */
 		
 	}
+	
+	public function insert_ufdb_notif($line){
+	
+		if(!is_dir("/home/ufdb/smtp-events")){@mkdir("/home/ufdb/smtp-events",0755,true);}
+		$file="/home/ufdb/smtp-events/ACCESS_LOG";
+		$h = @fopen($file, 'a');
+		@fwrite($h,$line."\n");
+		@fclose($h);
+		
+	
+	}	
 	
 	
 	private function LoadConfig(){
@@ -199,29 +211,34 @@ class influx{
 		
 	}
 	
+	public function DistanceHour($FirstTime,$SecondTime){
+		$data1 = $FirstTime;
+		$data2 = $SecondTime;
+		$difference = ($data2 - $data1);
+		$resultsMinute=intval($difference/60);
+		if($resultsMinute<0){$resultsMinute=1;}
+		$resultsHour=round($resultsMinute/60);
+		return $resultsHour;
+	}
+	
+	
+	
 	public function QUERY_SQL($sql){
 		if($GLOBALS["EnableInfluxDB"]==0){return;}
 		if(strpos($sql, strlen($sql)-1,1)<>";"){$sql=$sql.";";}
 		
 		$trace=debug_backtrace();
+		$this->events_migrate("QUERY $sql: ", __FUNCTION__, __LINE__);
 		while (list ($index, $traces) = each ($trace) ){
 			$file=basename($traces["file"]);
 			$function=$traces["function"];
 			$line=$traces["line"];
-			$this->events("QUERY $sql: ", $function, $line);
-		}
-		
-		
-		
-		if(isset($trace[0])){
-			$file=basename($trace[0]["file"]);
-			$function=$trace[0]["function"];
-			$line=$trace[0]["line"];
+			$this->events_migrate("FROM[{$index}] $file: function: $function line:$line", $function, $line);
 		}
 		
 		$data=$this->GetReadCurl($sql);
 		
-		$json=json_decode($data);
+		$json=@json_decode($data);
 		$c=0;
 		$d=0;
 		if(!isset($json->results[0]->series)){return false;}
@@ -321,6 +338,18 @@ class influx{
 	
 	public function bulk_inject($ARRAY){
 		
+		
+		$this->events_migrate("bulk_inject()",__FILE__,__LINE__);
+		$trace=debug_backtrace();
+			while (list ($index, $traces) = each ($trace) ){
+			$file=basename($traces["file"]);
+			$function=$traces["function"];
+			$line=$traces["line"];
+			$this->events_migrate("FROM[{$index}] $file: function: $function line:$line", $function, $line);
+		}
+		
+		
+		
 		$ch=$this->GetWriteCurl("s");
 		if($GLOBALS["EnableInfluxDB"]==0){return;}
 		curl_setopt_array($ch, array(
@@ -334,6 +363,17 @@ class influx{
 	}
 	
 	public function files_inject($path){
+		
+		
+		$this->events_migrate("files_inject($path)",__FILE__,__LINE__);
+		$trace=debug_backtrace();
+		while (list ($index, $traces) = each ($trace) ){
+			$file=basename($traces["file"]);
+			$function=$traces["function"];
+			$line=$traces["line"];
+			$this->events_migrate("QUERY FROM: ", $function, $line);
+		}
+		
 	
 		$ch=$this->GetWriteCurl("s");
 		if($GLOBALS["EnableInfluxDB"]==0){return;}
@@ -346,11 +386,42 @@ class influx{
 	
 	
 	}
-	
+	public function fieldSelectore(){
+		$BASEDIR="/usr/share/artica-postfix/ressources/interface-cache";
+		$date1=intval(@file_get_contents("$BASEDIR/DATE_START"));
+		$date2=intval(@file_get_contents("$BASEDIR/DATE_END"));
+		$mintime=strtotime("2008-01-01 00:00:00");
+		
+		if($date1<$mintime){
+			$date1=filemtime("/etc/artica-postfix/artica-iso-first-reboot");
+		}
+		
+		if($date2<strtotime(date("Y-m-d H:i:s")." -5 hours")){
+			$date2=time();
+		
+		}
+		
+		
+		$date_start=date("Y-m-d",$date1);
+		$date_end=date("Y-m-d",$date2);
+		return "mindate:$date_start;maxdate:$date_end";
+	}
 	
 	
 	
 	public function insert($table,$ARRAY){
+		
+		
+		$this->events_migrate("insert($table)",__FILE__,__LINE__);
+		$trace=debug_backtrace();
+			while (list ($index, $traces) = each ($trace) ){
+			$file=basename($traces["file"]);
+			$function=$traces["function"];
+			$line=$traces["line"];
+			$this->events_migrate("FROM[{$index}] $file: function: $function line:$line", $function, $line);
+		}
+		
+		
 		
 		$time=null;
 		$precision=null;
@@ -597,6 +668,23 @@ class influx{
 		return $json ? json_decode($response, true) : $response;
 		
 	}	
+	
+	private function events_migrate($text,$function,$line){
+		$date=date("Y-m-d H:i:s");
+		$filename=basename(__FILE__);
+		$common="/var/log/influx.migrate.log";
+		$size=@filesize($common);
+		if($size>100000){@unlink($common);}
+		if(function_exists("getmypid")){$pid=getmypid();}
+	
+		$line="$date [$pid] $filename: [$function/$line] $text\n";
+		if($GLOBALS["VERBOSE"]){echo $line;return;}
+	
+		$h = @fopen($common, 'a');
+		@fwrite($h,$line);
+		@fclose($h);
+			
+	}
 	
 	
 	

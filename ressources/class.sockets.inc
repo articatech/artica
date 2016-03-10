@@ -94,7 +94,8 @@ class sockets{
 		if(!is_file("/etc/artica-postfix/settings/Daemons/AsCategoriesAppliance")){@file_put_contents("/etc/artica-postfix/settings/Daemons/AsCategoriesAppliance", 0);}
 		if(!is_file("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron")){@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron", 0);}
 		$AsCategoriesAppliance=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/AsCategoriesAppliance"));
-		$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+		$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+		if(is_file("/etc/artica-postfix/STATS_APPLIANCE")){$AsCategoriesAppliance=1;}
 		
 		if($EnableIntelCeleron==1){
 			$GLOBALS["DisableUfdbCat"]=1;
@@ -106,6 +107,10 @@ class sockets{
 			$GLOBALS["DisableUfdbCat"]=0;
 			return $GLOBALS["DisableUfdbCat"];
 		}
+		
+		
+		
+		
 		
 		$EnableLocalUfdbCatService=intval($this->GET_INFO("EnableLocalUfdbCatService"));
 		
@@ -225,6 +230,24 @@ class sockets{
 		
 	}
 	
+	public function Bandwidthd_enabled(){
+		$TempMemInstalled=0;
+		if(!is_file("/etc/artica-postfix/settings/Daemons/EnableBandwidthd")){@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableBandwidthd",0);}
+		$EnableBandwidthd=@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableBandwidthd");
+		$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+		if(is_file("/etc/artica-postfix/settings/Daemons/TempMemInstalled")){
+			$TempMemInstalled=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/TempMemInstalled"));
+		}
+		
+		
+		if($EnableIntelCeleron==1){$EnableBandwidthd=0;}
+		if($TempMemInstalled>0){
+			if($TempMemInstalled<624288){$EnableBandwidthd=0;}
+		}
+		return $EnableBandwidthd;
+		
+	}
+	
 	
 	public function EnableUfdbGuardArtica(){
 		
@@ -253,19 +276,38 @@ class sockets{
 		return $EnableUfdbGuard;
 	}
 
-	public function EnableUfdbGuard(){
-		if(isset($GLOBALS["EnableUfdbGuard"])){return intval($GLOBALS["EnableUfdbGuard"]);}
-		$EnableUfdbGuard=intval($this->GET_INFO('EnableUfdbGuard'));
-		$EnableUfdbGuard2=intval($this->GET_INFO('EnableUfdbGuard2'));
+	public function EnableUfdbGuard($aslog=false){
+		if(!$aslog){
+			if(isset($GLOBALS["EnableUfdbGuard"])){return intval($GLOBALS["EnableUfdbGuard"]);}
+		}
+		$SQUIDEnable=1;
+		$EnableUfdbGuard=intval(@file_get_contents('/etc/artica-postfix/settings/Daemons/EnableUfdbGuard'));
+		$EnableUfdbGuard2=intval(@file_get_contents('/etc/artica-postfix/settings/Daemons/EnableUfdbGuard2'));
 		$SquidUrgency=intval($this->GET_INFO("SquidUrgency"));
 		$UseRemoteUfdbguardService=intval($this->GET_INFO("UseRemoteUfdbguardService"));
+		if(is_file("/etc/artica-postfix/settings/Daemons/SQUIDEnable")){
+			$SQUIDEnable=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SQUIDEnable"));
+		}
+		
+		if(is_file("/etc/artica-postfix/settings/Daemons/SquidUFDBUrgency")){
+			$SquidUFDBUrgency=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidUFDBUrgency"));
+			
+		}
+		
+		$isLog[]="UseRemoteUfdbguardService: $UseRemoteUfdbguardService";
+		$isLog[]="EnableUfdbGuard: $EnableUfdbGuard";
+		$isLog[]="EnableUfdbGuard2: $EnableUfdbGuard2";
+		$isLog[]="SquidUrgency: $SquidUrgency";
+		$isLog[]="SQUIDEnable: $SQUIDEnable";
+		$isLog[]="SquidUFDBUrgency: $SquidUFDBUrgency";
+		
 
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: UseRemoteUfdbguardService: $UseRemoteUfdbguardService\n";}
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: EnableUfdbGuard..........: $EnableUfdbGuard\n";}
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: EnableUfdbGuard2.........: $EnableUfdbGuard2\n";}
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: SquidUrgency.............: $SquidUrgency\n";}
 		
-		if($UseRemoteUfdbguardService==1){return true;}
+		if($UseRemoteUfdbguardService==1){return 1;}
 		
 		
 		if($EnableUfdbGuard==0){
@@ -275,11 +317,22 @@ class sockets{
 			}
 		}
 		if($SquidUrgency==1){
+			$isLog[]="* * * * Your Proxy is on Emergency mode ! * * * *";
 			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: * * * * Your Proxy is on Emergency mode ! * * * *\n";}
 			$EnableUfdbGuard=0;
 		}
 		
+		if($SquidUFDBUrgency==1){
+			$isLog[]="* * * * Your Proxy is on Web filtering Emergency mode ! * * * *";
+			$EnableUfdbGuard=0;
+		}
+		
+		if($SQUIDEnable==0){
+			$isLog[]="* * * * Squid is disabled * * * *";
+		}
+		
 		$GLOBALS["EnableUfdbGuard"]=$EnableUfdbGuard;
+		if($aslog){return $isLog;}
 		return intval($EnableUfdbGuard);
 	}
 
@@ -321,7 +374,7 @@ class sockets{
 	
 	public function dnsmasq_enabled(){
 		if(!isset($GLOBALS["CLASS_USERS"])){$GLOBALS["CLASS_USERS"]=new usersMenus();}
-		$EnableLocalDNSMASQ=intval($this->GET_INFO('EnableLocalDNSMASQ'));
+		$EnableLocalDNSMASQ=intval(@file_get_contents('/etc/artica-postfix/settings/Daemons/EnableLocalDNSMASQ'));
 		if($EnableLocalDNSMASQ==1){return 1;}
 		return intval($this->GET_INFO("EnableDNSMASQ"));
 		
@@ -610,13 +663,19 @@ function downloadFile($url,$hostname)  {
 	   	$EnableClamavDaemonForced=$this->GET_INFO("EnableClamavDaemonForced");
 	   	$CicapEnabled=$this->GET_INFO("CicapEnabled");
 	   	$SQUIDEnable=$this->GET_INFO("SQUIDEnable");
+	   	$ClamavMilterEnabled=intval($this->GET_INFO("ClamavMilterEnabled"));
+	   	$MimeDefangClamav=intval($this->GET_INFO("MimeDefangClamav"));
+	   	$MimeDefangEnabled=intval($this->GET_INFO("MimeDefangEnabled"));
 	   	
+	   	if($MimeDefangEnabled==0){$MimeDefangClamav=0;}
 	   	if(!is_numeric($EnableClamavDaemon)){$EnableClamavDaemon=0;}
 	   	if(!is_numeric($EnableClamavDaemonForced)){$EnableClamavDaemonForced=0;}
 	   	if(!is_numeric($SQUIDEnable)){$SQUIDEnable=1;}
 	   	if(!is_numeric($CicapEnabled)){$CicapEnabled=0;}
 	   	if($SQUIDEnable==1){if($CicapEnabled==1){$EnableClamavDaemon=1;}}
+	   	if($ClamavMilterEnabled==1){$EnableClamavDaemon=1;}
 	   	if($EnableClamavDaemonForced==1){$EnableClamavDaemon=1;}
+	   	if($MimeDefangClamav==1){$EnableClamavDaemon=1;}
 	   	return $EnableClamavDaemon;
    }
    
@@ -992,7 +1051,7 @@ function downloadFile($url,$hostname)  {
    	
    function SQUID_IS_EXTERNAL_LDAP(){
    	if(isset($GLOBALS["SQUID_IS_EXTERNAL_LDAP"])){return $GLOBALS["SQUID_IS_EXTERNAL_LDAP"];}
-   	$ArticaSquidParameters=$this->GET_INFO('ArticaSquidParameters');
+   	$ArticaSquidParameters=@file_get_contents('/etc/artica-postfix/settings/Daemons/ArticaSquidParameters');
    	$ini=new Bs_IniHandler();
    	$ini->loadString($ArticaSquidParameters);
    	$LDAP_EXTERNAL_AUTH=intval($ini->_params["NETWORK"]["LDAP_EXTERNAL_AUTH"]);
@@ -1029,7 +1088,16 @@ function downloadFile($url,$hostname)  {
    
    	
    	$trace=debug_backtrace();
-	if(isset($trace[1])){$called=" called by ". basename($trace[1]["file"])." {$trace[1]["function"]}() line {$trace[1]["line"]}";}
+	if(isset($trace[1])){
+		$xfile=null;
+		$xline=null;
+		$xfunction=null;
+		if(isset($trace[1]["file"])){$xfile=$trace[1]["file"];}
+		if(isset($trace[1]["line"])){$xline=$trace[1]["line"];}
+		if(isset($trace[1]["function"])){$xfunction=$trace[1]["function"];}
+		$called=" called by ". basename($xfile)." $xfunction() line {$xline}";
+	
+	}
    	
    		if($key=="SQUIDEnable"){
    			if($value==1){
@@ -1285,6 +1353,9 @@ if (!isset($responses[$code])) {
 }
 
 switch ($code) {
+	case 0: 
+		return false;
+		break;
 	case 200: // OK
 	case 304: // Not modified
 		break;
@@ -1340,7 +1411,7 @@ function GET_MYSQL_ROOT($key){
 	if($key=='root'){ $key='database_admin';}
 	if($key=='password'){ $key='database_password';}
 	 if(is_file('/etc/artica-postfix/settings/Mysql/'.$key)){
-	      $datas=trim(file_get_contents('/etc/artica-postfix/settings/Mysql/'.$key));
+	      $datas=trim(@file_get_contents('/etc/artica-postfix/settings/Mysql/'.$key));
 	   }else{
 	   $ini=new Bs_IniHandler("/etc/artica-postfix/artica-mysql.conf");
 	   $datas=trim($ini->get("MYSQL",$key));

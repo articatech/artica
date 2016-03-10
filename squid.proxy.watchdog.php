@@ -55,7 +55,7 @@ function tabs(){
 	$array["DNS"]="DNS";
 	$array["external-page"]="{external_page}";
 	$array["smtp"]="{smtp_notifications}";
-	$style="style='font-size:18px';";
+	$style="style='font-size:22px';";
 	while (list ($num, $ligne) = each ($array) ){
 		
 		if($num=="bandwidth"){
@@ -98,21 +98,21 @@ function LOAD_PAGE(){
 
 	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:18px'>{if_overloaded}:</td>
-		<td	style='font-size:18px'>". Field_text("LOAD_WARNING",$MonitConfig["LOAD_WARNING"],
-				"font-size:18px;width:90px")."&nbsp;</td>
+		<td class=legend style='font-size:22px'>{if_overloaded}:</td>
+		<td	style='font-size:22px'>". Field_text("LOAD_WARNING",$MonitConfig["LOAD_WARNING"],
+				"font-size:22px;width:90px")."&nbsp;</td>
 		<td width=1%></td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{if_overloaded} (MAX):</td>
-		<td	style='font-size:18px'>". Field_text("LOAD_MAX",$MonitConfig["LOAD_MAX"],
-				"font-size:18px;width:90px")."&nbsp;</td>
+		<td class=legend style='font-size:22px'>{if_overloaded} (MAX):</td>
+		<td	style='font-size:22px'>". Field_text("LOAD_MAX",$MonitConfig["LOAD_MAX"],
+				"font-size:22px;width:90px")."&nbsp;</td>
 		<td width=1%></td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{action}:</td>
-		<td	style='font-size:18px'>". Field_array_Hash($array,"LOAD_MAX_ACTION",$MonitConfig["LOAD_MAX_ACTION"],null,'',0,
-				"font-size:18px")."&nbsp;</td>
+		<td class=legend style='font-size:22px'>{action}:</td>
+		<td	style='font-size:22px'>". Field_array_Hash($array,"LOAD_MAX_ACTION",$MonitConfig["LOAD_MAX_ACTION"],null,'',0,
+				"font-size:22px")."&nbsp;</td>
 		<td width=1%></td>
 	</tr>												
 	<tr>
@@ -175,41 +175,41 @@ function MEMORY_PAGE(){
 	
 	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:18px'>{alert_on_memory}:</td>
-		<td	style='font-size:18px'>". Field_text("MAX_MEM_ALERT",$MonitConfig["MAX_MEM_ALERT"],
-					"font-size:18px;width:90px")."&nbsp;%</td>
+		<td class=legend style='font-size:22px'>{alert_on_memory}:</td>
+		<td	style='font-size:22px'>". Field_text("MAX_MEM_ALERT",$MonitConfig["MAX_MEM_ALERT"],
+					"font-size:22px;width:90px")."&nbsp;%</td>
 		<td width=1%></td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{if_memory_exceed} (MAX):</td>
-		<td	style='font-size:18px'>". Field_text("MAX_MEM_PRC",$MonitConfig["MAX_MEM_PRC"],
-					"font-size:18px;width:90px")."&nbsp;%</td>
+		<td class=legend style='font-size:22px'>{if_memory_exceed} (MAX):</td>
+		<td	style='font-size:22px'>". Field_text("MAX_MEM_PRC",$MonitConfig["MAX_MEM_PRC"],
+					"font-size:22px;width:90px")."&nbsp;%</td>
 		<td width=1%></td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{during}:</td>
-		<td	style='font-size:18px'>". Field_array_Hash($array,"MAX_MEM_MNS",$MonitConfig["MAX_MEM_MNS"],null,'',0,
-					"font-size:18px")."&nbsp;</td>
+		<td class=legend style='font-size:22px'>{during}:</td>
+		<td	style='font-size:22px'>". Field_array_Hash($array,"MAX_MEM_MNS",$MonitConfig["MAX_MEM_MNS"],null,'',0,
+					"font-size:22px")."&nbsp;</td>
 		<td width=1%></td>
 	</tr>							
 	<tr>
-		<td class=legend style='font-size:18px'>{action} {restart_databases}:</td>
-		<td	style='font-size:18px'>". Field_checkbox_design("MAX_MEM_RST_MYSQL", 1,$MonitConfig["MAX_MEM_RST_MYSQL"])."</td>
+		<td class=legend style='font-size:22px'>{action} {restart_databases}:</td>
+		<td	style='font-size:22px'>". Field_checkbox_design("MAX_MEM_RST_MYSQL", 1,$MonitConfig["MAX_MEM_RST_MYSQL"])."</td>
 		<td width=1%></td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{action} {restart_webfiltering_service}:</td>
-		<td	style='font-size:18px'>". Field_checkbox_design("MAX_MEM_RST_UFDB", 1,$MonitConfig["MAX_MEM_RST_UFDB"])."</td>
+		<td class=legend style='font-size:22px'>{action} {restart_webfiltering_service}:</td>
+		<td	style='font-size:22px'>". Field_checkbox_design("MAX_MEM_RST_UFDB", 1,$MonitConfig["MAX_MEM_RST_UFDB"])."</td>
 		<td width=1%></td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{action} {restart_web_services}:</td>
-		<td	style='font-size:18px'>". Field_checkbox_design("MAX_MEM_RST_APACHE", 1,$MonitConfig["MAX_MEM_RST_APACHE"])."</td>
+		<td class=legend style='font-size:22px'>{action} {restart_web_services}:</td>
+		<td	style='font-size:22px'>". Field_checkbox_design("MAX_MEM_RST_APACHE", 1,$MonitConfig["MAX_MEM_RST_APACHE"])."</td>
 		<td width=1%></td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{action} {restart_proxy_service}:</td>
-		<td	style='font-size:18px'>". Field_checkbox_design("MAX_MEM_RST_SQUID", 1,$MonitConfig["MAX_MEM_RST_SQUID"])."</td>
+		<td class=legend style='font-size:22px'>{action} {restart_proxy_service}:</td>
+		<td	style='font-size:22px'>". Field_checkbox_design("MAX_MEM_RST_SQUID", 1,$MonitConfig["MAX_MEM_RST_SQUID"])."</td>
 		<td width=1%></td>
 	</tr>												
 	<tr>
@@ -259,6 +259,15 @@ function defaults_values(){
 function SAVE(){
 	$MonitConfig=defaults_values();
 	$sock=new sockets();
+	
+	if(isset($_POST["MonitSquidMaxCPU"])){
+		$sock->SET_INFO("MonitSquidMaxCPU",$_POST["MonitSquidMaxCPU"]);
+		$sock->SET_INFO("MonitSquidMaxRestartMem",$_POST["MonitSquidMaxRestartMem"]);
+		
+		
+	}
+	 
+	
 	
 	
 	if(isset($_POST["StopMaxTTL"])){
@@ -316,13 +325,13 @@ function SWAP_PAGE(){
 
 	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:18px'>{SWAP_MIN}:</td>
-		<td	style='font-size:18px'>". Field_text("SWAP_MIN",$MonitConfig["SWAP_MIN"],"font-size:18px;width:90px")."&nbsp;%</td>
+		<td class=legend style='font-size:22px'>{SWAP_MIN}:</td>
+		<td	style='font-size:22px'>". Field_text("SWAP_MIN",$MonitConfig["SWAP_MIN"],"font-size:22px;width:90px")."&nbsp;%</td>
 		<td width=1%>". help_icon("{SWAP_MONITOR_EXPLAIN}")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{SWAP_MAX}:</td>
-		<td	style='font-size:18px'>". Field_text("SWAP_MAX",$MonitConfig["SWAP_MAX"],"font-size:18px;width:90px")."&nbsp;%</td>
+		<td class=legend style='font-size:22px'>{SWAP_MAX}:</td>
+		<td	style='font-size:22px'>". Field_text("SWAP_MAX",$MonitConfig["SWAP_MAX"],"font-size:22px;width:90px")."&nbsp;%</td>
 		<td width=1%>". help_icon("{SWAP_MONITOR_EXPLAIN}")."</td>
 	</tr>	
 	<tr>
@@ -387,13 +396,13 @@ function PING_PAGE(){
 
 	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:18px'>{MAX_PING_GATEWAY}:</td>
-		<td	style='font-size:18px'>". Field_text("MAX_PING_GATEWAY",$MonitConfig["MAX_PING_GATEWAY"],"font-size:18px;width:90px")."&nbsp;</td>
+		<td class=legend style='font-size:22px'>{MAX_PING_GATEWAY}:</td>
+		<td	style='font-size:22px'>". Field_text("MAX_PING_GATEWAY",$MonitConfig["MAX_PING_GATEWAY"],"font-size:22px;width:90px")."&nbsp;</td>
 		<td width=1%>". help_icon("{MAX_PING_GATEWAY_EXPLAIN}")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{ipaddr}:</td>
-		<td	style='font-size:18px'>". field_ipv4("PING_GATEWAY",$MonitConfig["PING_GATEWAY"],"font-size:18px;width:90px")."&nbsp;%</td>
+		<td class=legend style='font-size:22px'>{ipaddr}:</td>
+		<td	style='font-size:22px'>". field_ipv4("PING_GATEWAY",$MonitConfig["PING_GATEWAY"],"font-size:22px;width:90px")."&nbsp;%</td>
 		<td width=1%></td>
 	</tr>
 	<tr>
@@ -445,9 +454,9 @@ function DNS_PAGE(){
 
 	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:18px'>{DNSIssuesMAX}:</td>
-		<td	style='font-size:18px'>". Field_text("DNSIssuesMAX",$MonitConfig["DNSIssuesMAX"],
-				"font-size:18px;width:90px")."&nbsp;{minutes}</td>
+		<td class=legend style='font-size:22px'>{DNSIssuesMAX}:</td>
+		<td	style='font-size:22px'>". Field_text("DNSIssuesMAX",$MonitConfig["DNSIssuesMAX"],
+				"font-size:22px;width:90px")."&nbsp;{minutes}</td>
 		<td width=1%></td>
 	</tr>
 	<tr>
@@ -492,27 +501,27 @@ function EXTERNAL_PAGE(){
 
 	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:18px'>{page_to_check}:</td>
-		<td	style='font-size:18px'>". Field_text("ExternalPageToCheck",$MonitConfig["ExternalPageToCheck"],
-					"font-size:18px;width:350px")."&nbsp;</td>
+		<td class=legend style='font-size:22px'>{page_to_check}:</td>
+		<td	style='font-size:22px'>". Field_text("ExternalPageToCheck",$MonitConfig["ExternalPageToCheck"],
+					"font-size:22px;width:350px")."&nbsp;</td>
 		<td width=1%></td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{addr}:</td>
-		<td	style='font-size:18px'>". Field_array_Hash($ALL_IPS_GET_ARRAY,"ExternalPageListen",$MonitConfig["ExternalPageToCheck"],
-					"style:font-size:18px;")."&nbsp;</td>
+		<td class=legend style='font-size:22px'>{addr}:</td>
+		<td	style='font-size:22px'>". Field_array_Hash($ALL_IPS_GET_ARRAY,"ExternalPageListen",$MonitConfig["ExternalPageToCheck"],
+					"style:font-size:22px;")."&nbsp;</td>
 		<td width=1%></td>
 	</tr>							
 	<tr>
-		<td class=legend style='font-size:18px'>{username}:</td>
-		<td	style='font-size:18px'>". Field_text("ExternalPageUsername",$MonitConfig["ExternalPageUsername"],
-					"font-size:18px;width:190px")."&nbsp;</td>
+		<td class=legend style='font-size:22px'>{username}:</td>
+		<td	style='font-size:22px'>". Field_text("ExternalPageUsername",$MonitConfig["ExternalPageUsername"],
+					"font-size:22px;width:190px")."&nbsp;</td>
 		<td width=1%>". help_icon("{ExternalPageUsername_EXPLAIN}")."</td>
 	</tr>	
 	<tr>
-		<td class=legend style='font-size:18px'>{password}:</td>
-		<td	style='font-size:18px'>". Field_password("ExternalPagePassword",$MonitConfig["ExternalPagePassword"],
-					"font-size:18px;width:190px")."&nbsp;</td>
+		<td class=legend style='font-size:22px'>{password}:</td>
+		<td	style='font-size:22px'>". Field_password("ExternalPagePassword",$MonitConfig["ExternalPagePassword"],
+					"font-size:22px;width:190px")."&nbsp;</td>
 		<td width=1%>". help_icon("{ExternalPageUsername_EXPLAIN}")."</td>
 	</tr>										
 	<tr>
@@ -563,33 +572,33 @@ function PERFORMANCE_PAGE(){
 
 	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:18px'>{notify_when_cpu_exceed}:</td>
-		<td	style='font-size:18px'>". Field_text("watchdogCPU",$MonitConfig["watchdogCPU"],
-					"font-size:18px;width:190px")."&nbsp;%</td>
+		<td class=legend style='font-size:22px'>{notify_when_cpu_exceed}:</td>
+		<td	style='font-size:22px'>". Field_text("watchdogCPU",$MonitConfig["watchdogCPU"],
+					"font-size:22px;width:190px")."&nbsp;%</td>
 		<td width=1%></td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{notify_when_memory_exceed}:</td>
-			<td	style='font-size:18px'>". Field_text("watchdogMEM",$MonitConfig["watchdogMEM"],
-			"font-size:18px;width:190px")."&nbsp;MB</td>
+		<td class=legend style='font-size:22px'>{notify_when_memory_exceed}:</td>
+			<td	style='font-size:22px'>". Field_text("watchdogMEM",$MonitConfig["watchdogMEM"],
+			"font-size:22px;width:190px")."&nbsp;MB</td>
 		<td width=1%>". help_icon("{squid_notify_when_memory_exceed}")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{restart_when_memory_exceed}:</td>
-			<td	style='font-size:18px'>". Field_text("watchdogRestart",$MonitConfig["watchdogRestart"],
-			"font-size:18px;width:190px")."&nbsp;% {of_total_memory}</td>
+		<td class=legend style='font-size:22px'>{restart_when_memory_exceed}:</td>
+			<td	style='font-size:22px'>". Field_text("watchdogRestart",$MonitConfig["watchdogRestart"],
+			"font-size:22px;width:190px")."&nbsp;% {of_total_memory}</td>
 		<td width=1%></td>
 	</tr>					
 	<tr>
-		<td class=legend style='font-size:18px'>{MaxSwapPourc}:</td>
-		<td	style='font-size:18px'>". Field_text("MaxSwapPourc",$MonitConfig["MaxSwapPourc"],
-					"font-size:18px;width:190px")."&nbsp;%</td>
+		<td class=legend style='font-size:22px'>{MaxSwapPourc}:</td>
+		<td	style='font-size:22px'>". Field_text("MaxSwapPourc",$MonitConfig["MaxSwapPourc"],
+					"font-size:22px;width:190px")."&nbsp;%</td>
 		<td width=1%>". help_icon("{MaxSwapPourc_explain}")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{MinFreeMem}:</td>
-		<td	style='font-size:18px'>". Field_text("MinFreeMem",$MonitConfig["MinFreeMem"],
-					"font-size:18px;width:190px")."&nbsp;MB</td>
+		<td class=legend style='font-size:22px'>{MinFreeMem}:</td>
+		<td	style='font-size:22px'>". Field_text("MinFreeMem",$MonitConfig["MinFreeMem"],
+					"font-size:22px;width:190px")."&nbsp;MB</td>
 		<td width=1%>". help_icon("{MinFreeMem_squid_explain}")."</td>
 	</tr>							
 	<tr>
@@ -599,27 +608,27 @@ function PERFORMANCE_PAGE(){
 
 				
 	<tr>
-		<td class=legend style='font-size:18px'>{enabled}:</td>
-		<td	style='font-size:18px'>". Field_checkbox_design("TEST_PORT",1,$MonitConfig["TEST_PORT"],"TEST_PORT_CHECK()")."</td>
+		<td class=legend style='font-size:22px'>{enabled}:</td>
+		<td	style='font-size:22px'>". Field_checkbox_design("TEST_PORT",1,$MonitConfig["TEST_PORT"],"TEST_PORT_CHECK()")."</td>
 		<td width=1%></td>
 	</tr>				
 				
 				
 	<tr>
-		<td class=legend style='font-size:18px'>{tests_timeout}:</td>
-		<td	style='font-size:18px'>". Field_text("TEST_PORT_TIMEOUT",$MonitConfig["TEST_PORT_TIMEOUT"],
-					"font-size:18px;width:190px")."&nbsp;{seconds}</td>
+		<td class=legend style='font-size:22px'>{tests_timeout}:</td>
+		<td	style='font-size:22px'>". Field_text("TEST_PORT_TIMEOUT",$MonitConfig["TEST_PORT_TIMEOUT"],
+					"font-size:22px;width:190px")."&nbsp;{seconds}</td>
 		<td width=1%></td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{max_failed_before_action}:</td>
-		<td	style='font-size:18px'>". Field_text("TEST_PORT_MAX",$MonitConfig["TEST_PORT_MAX"],
-					"font-size:18px;width:90px")."&nbsp;{times}</td>
+		<td class=legend style='font-size:22px'>{max_failed_before_action}:</td>
+		<td	style='font-size:22px'>". Field_text("TEST_PORT_MAX",$MonitConfig["TEST_PORT_MAX"],
+					"font-size:22px;width:90px")."&nbsp;{times}</td>
 		<td width=1%></td>
 	</tr>							
 	<tr>
-		<td class=legend style='font-size:18px'>{restart_if_failed}:</td>
-		<td	style='font-size:18px'>". Field_checkbox_design("TEST_PORT_RESTART",1,$MonitConfig["TEST_PORT_RESTART_FAILED"])."&nbsp;</td>
+		<td class=legend style='font-size:22px'>{restart_if_failed}:</td>
+		<td	style='font-size:22px'>". Field_checkbox_design("TEST_PORT_RESTART",1,$MonitConfig["TEST_PORT_RESTART_FAILED"])."&nbsp;</td>
 		<td width=1%></td>
 	</tr>
 <td colspan=3 align='right'><hr>". button("{apply}","Save$t()",36)."</td>
@@ -680,95 +689,121 @@ function SETTINGS_PAGE(){
 	if(!is_numeric($EnableFailover)){$EnableFailover=1;}	
 	$SquidCacheReloadTTL=$sock->GET_INFO("SquidCacheReloadTTL");
 	if(!is_numeric($SquidCacheReloadTTL)){$SquidCacheReloadTTL=10;}
-
+	$MonitSquidMaxRestartMem=intval($sock->GET_INFO("MonitSquidMaxRestartMem"));
+	$MonitSquidMaxCPU=intval($sock->GET_INFO("MonitSquidMaxCPU"));
+	
+	
+	$CPU[0]="{disabled}";
+	for($i=50;$i<101;$i++){
+		$CPU[$i]="{$i}%";
+	}
 	
 	
 	$html="<div style='width:98%' class=form>
 			". Paragraphe_switch_img("{enable_watchdog}", "{enable_watchdog_squid_explain}",
-						"watchdog",$MonitConfig["watchdog"],null,960).
-				Paragraphe_switch_img("{enable} {failover}", "{EnableFailover_explain}",
-						"EnableFailover",$EnableFailover,null,960).
-				Paragraphe_switch_img("{ALLOW_RETURN_1CPU}", "{ALLOW_RETURN_1CPU_EXPLAIN}",
-						"ALLOW_RETURN_1CPU",$MonitConfig["ALLOW_RETURN_1CPU"],null,960).
-				Paragraphe_switch_img("{DisableWebFilteringNetFailed}", "{DisableWebFilteringNetFailed_explain}",
-						"DisableWebFilteringNetFailed",$MonitConfig["DisableWebFilteringNetFailed"],null,960)."								
+			"watchdog",$MonitConfig["watchdog"],null,960)."
+										
 
 	<table style='width:100%'>
-	<tr>
-		<td class=legend style='font-size:18px'>{failover_ttl}:</td>
-		<td	style='font-size:18px'>". Field_text("MinTimeFailOverSwitch",$MonitConfig["MinTimeFailOverSwitch"],
-					"font-size:18px;width:190px")."&nbsp;{minutes}</td>
-		<td width=1%>". help_icon("{failover_ttl_explain}")."</td>
+	<tr><td colspan=2 style='font-size:30px'>{restart_service}</td></tr>
+	<tr>				
+		<td style='font-size:22px;' class=legend>{if_system_cpu_exceed}:</td>
+		<td>". Field_array_Hash($CPU, "MonitSquidMaxCPU",$MonitSquidMaxCPU,"style:font-size:22px")."</td>				
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{max_attempts} (CPU):</td>
-<td	style='font-size:18px'>". Field_text("WEBPROCISSUE",$MonitConfig["WEBPROCISSUE"],
-			"font-size:18px;width:190px")."&nbsp;{errors}</td>
-		<td width=1%></td>
+		<td style='font-size:22px;' class=legend>{if_system_memory_exceed}:</td>
+		<td	style='font-size:22px'>". Field_text("MonitSquidMaxRestartMem",$MonitSquidMaxRestartMem,
+		"font-size:22px;width:190px")."&nbsp;MB</td>
 	</tr>
-<tr><td colspan=3 style='font-size:22px'>{services_timeout}</td></tr>
+	<tr><td colspan=2 style='font-size:30px'><hr></td></tr>		
+	
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{failover}","{EnableFailover_explain}").":</td>
+		<td	style='font-size:22px'>". Field_checkbox_design("EnableFailover",1,$EnableFailover)."</td>
+	</tr>								
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{ALLOW_RETURN_1CPU}","{ALLOW_RETURN_1CPU_EXPLAIN}").":</td>
+		<td	style='font-size:22px'>". Field_checkbox_design("ALLOW_RETURN_1CPU",1,$MonitConfig["ALLOW_RETURN_1CPU"])."</td>
+	</tr>									
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{DisableWebFilteringNetFailed}","{DisableWebFilteringNetFailed_explain}").":</td>
+		<td	style='font-size:22px'>". Field_checkbox_design("DisableWebFilteringNetFailed",1,$MonitConfig["DisableWebFilteringNetFailed"])."</td>
+	</tr>								
+								
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{failover_ttl}","{failover_ttl_explain}").":</td>
+		<td	style='font-size:22px'>". Field_text("MinTimeFailOverSwitch",$MonitConfig["MinTimeFailOverSwitch"],
+		"font-size:22px;width:190px")."&nbsp;{minutes}</td>
+	</tr>
+	<tr>
+		<td class=legend style='font-size:22px'>{max_attempts} (CPU):</td>
+		<td	style='font-size:22px'>". Field_text("WEBPROCISSUE",$MonitConfig["WEBPROCISSUE"],
+		"font-size:22px;width:190px")."&nbsp;{errors}</td>
+		
+	</tr>
+<tr><td colspan=2 style='font-size:30px'><hr></td></tr>	
+<tr><td colspan=2 style='font-size:30px'>{services_timeout}</td></tr>
 					
 					
 	<tr>
-		<td class=legend style='font-size:18px'>{StopMaxTTL}:</td>
-		<td	style='font-size:18px'>". Field_text("StopMaxTTL",$MonitConfig["StopMaxTTL"],
-					"font-size:18px;width:90px")."&nbsp;{seconds}</td>
-		<td width=1%>". help_icon("{StopMaxTTL_explain}")."</td>
+		<td class=legend style='font-size:22px'>". texttooltip("{StopMaxTTL}","{StopMaxTTL_explain}").":</td>
+		<td	style='font-size:22px'>". Field_text("StopMaxTTL",$MonitConfig["StopMaxTTL"],
+		"font-size:22px;width:90px")."&nbsp;{seconds}</td>
+		
 	</tr>	
 		<tr>
-			<td align='right' class=legend style='font-size:18px'>{shutdown_lifetime}</strong>:</td>
-			<td align='left' style='font-size:18px'>" . Field_text("shutdown_lifetime-$t",$squid->shutdown_lifetime,'width:90px;font-size:18px')."&nbsp;{seconds}</td>
-			<td width=1%>" . help_icon('{shutdown_lifetime_text}',true)."</td>
+			<td align='right' class=legend style='font-size:22px'>". texttooltip("{shutdown_lifetime}","{shutdown_lifetime_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px'>" . Field_text("shutdown_lifetime-$t",$squid->shutdown_lifetime,'width:90px;font-size:22px')."&nbsp;{seconds}</td>
 		</tr>
 				
 	<tr>
-		<td class=legend style='font-size:18px'>{minimum_reload_interval}:</td>
-		<td	style='font-size:18px'>". Field_text("SquidCacheReloadTTL",$SquidCacheReloadTTL,
-					"font-size:18px;width:190px")."&nbsp;{minutes}</td>
-		<td width=1%>". help_icon("{SquidCacheReloadTTL_explain}")."</td>
+		<td class=legend style='font-size:22px'>". texttooltip("{minimum_reload_interval}","{SquidCacheReloadTTL_explain}").":</td>
+		<td	style='font-size:22px'>". Field_text("SquidCacheReloadTTL",$SquidCacheReloadTTL,
+		"font-size:22px;width:190px")."&nbsp;{minutes}</td>
+		
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{minimum_reboot_interval}:</td>
-		<td	style='font-size:18px'>". Field_text("REBOOT_INTERVAL",$MonitConfig["REBOOT_INTERVAL"],
-					"font-size:18px;width:190px")."&nbsp;{minutes}</td>
-		<td width=1%>". help_icon("{minimum_reboot_interval_explain}")."</td>
+		<td class=legend style='font-size:22px'>". texttooltip("{minimum_reboot_interval}","{minimum_reboot_interval_explain}").":</td>
+		<td	style='font-size:22px'>". Field_text("REBOOT_INTERVAL",$MonitConfig["REBOOT_INTERVAL"],
+					"font-size:22px;width:190px")."&nbsp;{minutes}</td>
+		
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{SQUID_MAX_RESTART}:</td>
-		<td	style='font-size:18px'>". Field_text("MAX_RESTART",$MonitConfig["MAX_RESTART"],
-					"font-size:18px;width:190px")."&nbsp;</td>
-		<td width=1%>". help_icon("{SQUID_MAX_RESTART_EXPLAIN}")."</td>
+		<td class=legend style='font-size:22px'>". texttooltip("{SQUID_MAX_RESTART}","{SQUID_MAX_RESTART_EXPLAIN}").":</td>
+		<td	style='font-size:22px'>". Field_text("MAX_RESTART",$MonitConfig["MAX_RESTART"],
+					"font-size:22px;width:190px")."&nbsp;</td>
+		
 	</tr>
 				
-				
-	<tr><td colspan=3 style='font-size:24px'>{when_fetching_proxy_informations}</td></tr>
-	<tr><td colspan=3 ><div class=explain style='font-size:16px'>{when_fetching_proxy_informations_explain}</div>		
+	<tr><td colspan=2 style='font-size:30px'><hr></td></tr>				
+	<tr><td colspan=2 style='font-size:28px'>". texttooltip("{when_fetching_proxy_informations}","{when_fetching_proxy_informations_explain}")."</td></tr>
+		
 	<tr>
-		<td class=legend style='font-size:18px'>{tests_timeout}:</td>
-		<td	style='font-size:18px'>". Field_text("MgrInfosMaxTimeOut",$MonitConfig["MgrInfosMaxTimeOut"],
-					"font-size:18px;width:190px")."&nbsp;{seconds}</td>
-		<td width=1%></td>
+		<td class=legend style='font-size:22px'>{tests_timeout}:</td>
+		<td	style='font-size:22px'>". Field_text("MgrInfosMaxTimeOut",$MonitConfig["MgrInfosMaxTimeOut"],
+					"font-size:22px;width:190px")."&nbsp;{seconds}</td>
+		
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{max_failed_before_action}:</td>
-		<td	style='font-size:18px'>". Field_text("MgrInfosMaxFailed",$MonitConfig["MgrInfosMaxFailed"],
-					"font-size:18px;width:90px")."&nbsp;{times}</td>
-		<td width=1%></td>
+		<td class=legend style='font-size:22px'>{max_failed_before_action}:</td>
+		<td	style='font-size:22px'>". Field_text("MgrInfosMaxFailed",$MonitConfig["MgrInfosMaxFailed"],
+					"font-size:22px;width:90px")."&nbsp;{times}</td>
+		
 	</tr>							
 	<tr>
-		<td class=legend style='font-size:18px'>{restart_if_failed}:</td>
-		<td	style='font-size:18px'>". Field_checkbox("MgrInfosRestartFailed",1,$MonitConfig["MgrInfosRestartFailed"])."&nbsp;</td>
-		<td width=1%></td>
+		<td class=legend style='font-size:22px'>{restart_if_failed}:</td>
+		<td	style='font-size:22px'>". Field_checkbox_design("MgrInfosRestartFailed",1,$MonitConfig["MgrInfosRestartFailed"])."&nbsp;</td>
+		
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>{failover_if_failed}:</td>
-		<td	style='font-size:18px'>". Field_checkbox("MgrInfosFaileOverFailed",1,$MonitConfig["MgrInfosFaileOverFailed"])."&nbsp;</td>
-		<td width=1%></td>
+		<td class=legend style='font-size:22px'>{failover_if_failed}:</td>
+		<td	style='font-size:22px'>". Field_checkbox_design("MgrInfosFaileOverFailed",1,$MonitConfig["MgrInfosFaileOverFailed"])."&nbsp;</td>
+		
 	</tr>				
 				
 							
 	<tr>
-<td colspan=3 align='right'><hr>". button("{apply}","Save$t()",36)."</td>
+<td colspan=2 align='right'><hr>". button("{apply}","Save$t()",40)."</td>
 </tr>
 </table>
 	</div>
@@ -777,16 +812,16 @@ function SETTINGS_PAGE(){
 	var results=obj.responseText;
 	UnlockPage();
 	RefreshTab('watchdog_settings_tabs');
+	Loadjs('monit.restart.progress.php');
 	}
 	
 	function Save$t(){
 	var XHR = new XHRConnection();
 	XHR.appendData('SAVEGLOBAL','yes');
 	XHR.appendData('watchdog',document.getElementById('watchdog').value);
-	XHR.appendData('EnableFailover',document.getElementById('EnableFailover').value);
-	XHR.appendData('ALLOW_RETURN_1CPU',document.getElementById('ALLOW_RETURN_1CPU').value);
 	XHR.appendData('WEBPROCISSUE',document.getElementById('WEBPROCISSUE').value);
-	XHR.appendData('DisableWebFilteringNetFailed',document.getElementById('DisableWebFilteringNetFailed').value);
+	XHR.appendData('MonitSquidMaxCPU',document.getElementById('MonitSquidMaxCPU').value);
+	XHR.appendData('MonitSquidMaxRestartMem',document.getElementById('MonitSquidMaxRestartMem').value);
 	XHR.appendData('SquidCacheReloadTTL',document.getElementById('SquidCacheReloadTTL').value);
 	XHR.appendData('REBOOT_INTERVAL',document.getElementById('REBOOT_INTERVAL').value);
 	XHR.appendData('MAX_RESTART',document.getElementById('MAX_RESTART').value);
@@ -794,6 +829,25 @@ function SETTINGS_PAGE(){
 	XHR.appendData('MgrInfosMaxFailed',document.getElementById('MgrInfosMaxFailed').value);
 	XHR.appendData('shutdown_lifetime',document.getElementById('shutdown_lifetime-$t').value);
 	XHR.appendData('StopMaxTTL',document.getElementById('StopMaxTTL').value);
+	
+	
+	if(document.getElementById('DisableWebFilteringNetFailed').checked){
+		XHR.appendData('DisableWebFilteringNetFailed',1);
+	}else{
+		XHR.appendData('DisableWebFilteringNetFailed',0);
+	}
+	if(document.getElementById('ALLOW_RETURN_1CPU').checked){
+		XHR.appendData('ALLOW_RETURN_1CPU',1);
+	}else{
+		XHR.appendData('ALLOW_RETURN_1CPU',0);
+	}	
+	if(document.getElementById('EnableFailover').checked){
+		XHR.appendData('EnableFailover',1);
+	}else{
+		XHR.appendData('EnableFailover',0);
+	}		
+	
+	
 	
 	
 	if(document.getElementById('MgrInfosRestartFailed').checked){ XHR.appendData('MgrInfosRestartFailed',1); }else{ XHR.appendData('MgrInfosRestartFailed',0); }
@@ -841,9 +895,8 @@ function SMTP_PAGE(){
 	
 	$html="<div style='width:98%' class=form>
 			". Paragraphe_switch_img("{smtp_enabled}", "{smtp_enabled_watchdog_explain}",
-						"ENABLED_SQUID_WATCHDOG",$UfdbguardSMTPNotifs["ENABLED_SQUID_WATCHDOG"],null,1390)."
-			". Paragraphe_switch_img("{tls_enabled}", "{tls_enabled_explain}",
-						"tls_enabled",$UfdbguardSMTPNotifs["tls_enabled"],null,1390)."
+			"ENABLED_SQUID_WATCHDOG",$UfdbguardSMTPNotifs["ENABLED_SQUID_WATCHDOG"],null,1390)."
+			
 
 	<table style='width:100%'>
 	<tr>
@@ -856,7 +909,7 @@ function SMTP_PAGE(){
 								
 	<tr>
 		<td class=legend style='font-size:22px'>{smtp_server_name}:</td>
-		<td	style='font-size:18px'>". Field_text("smtp_server_name",$UfdbguardSMTPNotifs["smtp_server_name"],
+		<td	style='font-size:22px'>". Field_text("smtp_server_name",$UfdbguardSMTPNotifs["smtp_server_name"],
 					"font-size:22px;width:500px")."&nbsp;</td>
 		<td width=1%></td>
 	</tr>
@@ -889,7 +942,12 @@ function SMTP_PAGE(){
 		<td	style='font-size:22px'>". Field_password("smtp_auth_passwd",$UfdbguardSMTPNotifs["smtp_auth_passwd"],
 					"font-size:22px;width:500px")."&nbsp;</td>
 		<td width=1%></td>
-	</tr>							
+	</tr>	
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{tls_enabled}","{tls_enabled_explain}").":</td>
+		<td	style='font-size:22px'>". Field_checkbox_design("tls_enabled",1,$UfdbguardSMTPNotifs["tls_enabled"])."</td>
+		<td width=1%></td>
+	</tr>													
 	<tr>
 <td colspan=3 align='right' style='font-size:22px;'><hr>". button("{test_message}","Save$t(true)",36)."&nbsp;|&nbsp;". button("{apply}","Save$t(false)",36)."</td>
 </tr>
@@ -919,7 +977,14 @@ function SMTP_PAGE(){
 	XHR.appendData('smtp_dest',document.getElementById('smtp_dest').value);
 	XHR.appendData('smtp_auth_user',document.getElementById('smtp_auth_user').value);
 	XHR.appendData('smtp_auth_passwd',encodeURIComponent(document.getElementById('smtp_auth_passwd').value));
-	XHR.appendData('tls_enabled',document.getElementById('tls_enabled').value);
+	
+	
+	if(document.getElementById('tls_enabled').checked){
+		XHR.appendData('tls_enabled',1);
+	}else{
+		XHR.appendData('tls_enabled',0);
+	}
+	
 	if(document.getElementById('warning_events').checked){
 		XHR.appendData('warning_events',1);
 	}else{

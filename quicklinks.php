@@ -1748,8 +1748,7 @@ function statkaspersky(){
 	return LocalParagraphe("Kaspersky","kaspersky_av_text","YahooWin(580,'kaspersky.index.php','Kaspersky');","bigkav-48.png");
 }
 function sysinfos(){
-	$GLOBALS["ICON_FAMILY"]="SYSTEM";
-	return Paragraphe("scan-64.png", "{sysinfos}", "{sysinfos_text}","javascript:s_PopUp('phpsysinfo/index.php',1000,600,1);");
+	
 }
 function certificate(){
 	$GLOBALS["ICON_FAMILY"]="SECURITY";
@@ -1838,7 +1837,7 @@ function RefreshMyIp(){
 	$sock=new sockets();
 	$sock->getFrameWork("services.php?refresh-my-ip=yes");
 	$publicip=@file_get_contents("ressources/logs/web/myIP.conf");
-	echo $publicip;
+	echo texttooltip($publicip,"{refresh}","RefreshMyIP()");
 }
 	
 function icon_adduser(){
@@ -1897,16 +1896,99 @@ function quicklinks_postfix_action(){
 			"Loadjs('postfix.smtp-tests.php?ou=master&hostname=master')");
 	
 	
+	$tr[]=paragrapheWin("search-white-64.png", "{history_search}",
+			"GoToPostfixSearchEvents()");
+	
+	
+	$tr[]=paragrapheWin("spam-64-white.png", "{message_analyze}",
+			"GoToSpamAssassinAnalyze()");
+	
+	
+	
+	
 	return $tr;
+}
+
+
+function quicklinks_statistics_postfix_options(){
+	$tpl=new templates();
+	$sock=new sockets();
+	$users=new usersMenus();
+	$MimeDefangEnabled=intval($sock->GET_INFO("MimeDefangEnabled",true));
+	
+	if($users->AsPostfixAdministrator){
+		if($MimeDefangEnabled==0){
+			$tr[]=paragrapheWin("stats-members-white-64.png","{members}","GoToStatsSMTPMembers()");
+		}
+	}
+	
+	$tr[]=paragrapheWin("deny-white-64.png","{refused}","GoToStatsSMTPRefused()");
+	
+	if($MimeDefangEnabled==1){
+		$tr[]=paragrapheWin("stats-requests-64-white.png","{smtp_flow}","GoToStatsSMTPFlow()");
+		$tr[]=paragrapheWin("attachments-64-white.png","{attachments}","GoToStatsAttachs()");
+		
+		
+		
+	}
+	
+	
+	$tr[]=paragrapheWin("list-64-white.png","{reports}","GoToStatsCache()");
+	if($users->AsPostfixAdministrator){
+		$tr[]=paragrapheWin("db-64-white.png","{statistics_engine}","GoToStatsOptions()");
+	}
+	
+	$WizardSavedSettings=unserialize(base64_decode($sock->GET_INFO("WizardSavedSettings")));
+	$LicenseInfos=unserialize(base64_decode($sock->GET_INFO("LicenseInfos")));
+	if($LicenseInfos["COMPANY"]==null){$LicenseInfos["COMPANY"]=$WizardSavedSettings["company_name"];}
+	$productName="Artica";
+	if(is_file(dirname(__FILE__) . "/ressources/templates/{$_COOKIE["artica-template"]}/ProducName.conf")){
+		$productName=@file_get_contents(dirname(__FILE__) . "/ressources/templates/{$_COOKIE["artica-template"]}/ProducName.conf");
+	}
+	
+	$license_type="Community Edition";
+	if($users->CORP_LICENSE){
+		$license_type="Entreprise Edition";
+	}
+	
+	$company=$tpl->javascript_parse_text("{company}");
+	$companytext=$LicenseInfos["COMPANY"];
+	$len=strlen($companytext);
+	if($len>22){
+		$companytext=substr($companytext, 0,19)."...";
+	}
+	
+	$html="
+	<div style='background-image:url(img/statistics-opac-white.png);background-repeat:no-repeat;background-position:43% 20%;'>
+	<div style='font-size:64px;color:white;width:767px'>".$tpl->_ENGINE_parse_body("{messaging_statistics}")."
+		<div style='font-size:15px;text-align:right;border-top:1px solid #FFFFFF;padding-top:5px'>$company: $companytext  &nbsp;|&nbsp; $license_type</div>
+		</div>
+	
+	
+		".CompileTr5_win($tr);
+	
+		$html=$html."</div>";
+	
+	
+	
+	
+		echo $html;
+	
+	
 }
 
 function quicklinks_statistics_options(){
 	$users=new usersMenus();
+	if($users->POSTFIX_INSTALLED){
+		quicklinks_statistics_postfix_options();
+		return;
+	}
 	$tpl=new templates();
 	$sock=new sockets();
 	if(!$users->AsWebStatisticsAdministrator){return;}
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
 	$EnableInfluxDB=intval($sock->GET_INFO("EnableInfluxDB"));
+	$GLOBALS["BASEDIR"]="/usr/share/artica-postfix/ressources/interface-cache";
 	
 	if($EnableInfluxDB==0){$SquidPerformance=3;}
 	
@@ -1920,6 +2002,13 @@ function quicklinks_statistics_options(){
 		$tr[]=paragrapheWin("webfiltering-white-64.png","{webfiltering}","GoToStatisticsByWebFiltering()");
 		$tr[]=paragrapheWin("64-import-white.png","{import_logs2}","LoadStatisticsImport()");
 		$tr[]=paragrapheWin("list-64-white.png","{reports}","GoToStatsCache()");
+		
+		$COUNT_OF_SURICATA=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/COUNT_OF_SURICATA"));
+		if($COUNT_OF_SURICATA>0){
+			$tr[]=paragrapheWin("conntrack-white-64.png","{IDS}","GoToStatsIDS()");
+			
+		}
+			
 	}
 	
 	
@@ -2259,10 +2348,9 @@ function quicklinks_proxy_action(){
 				$f[]=paragrapheWin("ok-white-64.png","{GLOBAL_ACCESS_CENTER}","GotoGlobalBLCenter()");
 				$f[]=paragrapheWin("ok-white-64.png","{whitelist_website}","Loadjs('squid.urlrewriteaccessdeny.php?add-www-js=yes')");
 				$f[]=paragrapheWin("ok-white-64.png","{whitelist_website} (Meta)","Loadjs('squid.whitelist-meta.php')");
-				$f[]=paragrapheWin("ok-white-64.png","{deny_from_cache}","Loadjs('squid.urlrewriteaccessdeny.php?add-nocache-js=yes')");
+				$f[]=paragrapheWin("deny-white-64.png","{blacklist_website}","Loadjs('squid.urlrewriteaccessdeny.php?add-black-js=yes')");
+				$f[]=paragrapheWin("databases-cache-deny-white-64.png","{deny_from_cache}","Loadjs('squid.urlrewriteaccessdeny.php?add-nocache-js=yes')");
 				$f[]=paragrapheWin("ok-white-64.png","{partial_content_list}","Loadjs('squid.urlrewriteaccessdeny.php?add-rangeoffsetlimit-js=yes')");
-				
-				
 				
 				$ldap=new clladp();
 				if($ldap->IsKerbAuth()){
@@ -2328,12 +2416,13 @@ function quicklinks_members(){
 	$ldap=new clladp();
 	$sock=new sockets();
 	$EnableIntelCeleron=intval($sock->GET_INFO("EnableIntelCeleron"));
+	$IsKerbAuth=$ldap->IsKerbAuth();
 	
 	$sock=new sockets();
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
 	
 	if($SquidPerformance<3){
-		if($ldap->IsKerbAuth()==0){
+		if($IsKerbAuth==0){
 			$tr[]=paragrapheWin("user-add-white-64.png","{new_member}","Loadjs('create-user.php')");
 		}
 	}
@@ -2357,6 +2446,12 @@ function quicklinks_members(){
 					"GotoMemberMyComp()");
 		}
 	}
+	
+	
+	
+	$tr[]=paragrapheWin("users-search-white-64.png","{groups}: $search",
+	"GotoGroupsSearch();");
+		
 	
 	
 	if($users->SQUID_INSTALLED){

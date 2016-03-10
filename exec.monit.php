@@ -173,9 +173,7 @@ function start($aspid=false){
 	build_progress_restart("{starting_service} {failed}",110);
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Failed\n";}
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} $cmd\n";}
-	while (list ($index, $line) = each ($results) ){
-		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} $line\n";}
-	}
+	
 		
 }
 
@@ -272,7 +270,7 @@ function build(){
 	$MySQLSyslogType=$sock->GET_INFO("MySQLSyslogType");
 	if(!is_numeric($MySQLSyslogType)){$MySQLSyslogType=1;}
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
-	$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+	$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 	$python=$unix->find_program("python");
 	$nice=$unix->EXEC_NICE();
 	$ps=$unix->find_program("ps");
@@ -281,6 +279,7 @@ function build(){
 	$echo=$unix->find_program("echo");
 	$date=$unix->find_program("date");
 	$mkdir=$unix->find_program("mkdir");
+	$php5=$unix->LOCATE_PHP5_BIN();
 	
 	
 	$ZarafaDedicateMySQLServer=$sock->GET_INFO("ZarafaDedicateMySQLServer");
@@ -355,7 +354,11 @@ function build(){
 	$MonitReportLoadVG15mnCycles=intval($sock->GET_INFO("MonitReportLoadVG15mnCycles"));
 	
 	if($MonitReportLoadVG15mnCycles==0){$MonitReportLoadVG15mnCycles=60;}
-	
+	$MonitMemPurgeCache=intval($sock->GET_INFO("MonitMemPurgeCache"));
+	$MonitMemPurgeCacheCycles=intval($sock->GET_INFO("MonitMemPurgeCacheCycles"));
+	if($MonitMemPurgeCache==0){$MonitMemPurgeCache=70;}
+	if($MonitMemPurgeCacheCycles==0){$MonitMemPurgeCacheCycles=5;}
+	if($MonitMemUsageCycles==0){$MonitMemUsageCycles=5;}
 
 	if($MonitCPUUsageCycles==0){$MonitCPUUsageCycles=15;}
 	
@@ -373,7 +376,7 @@ function build(){
 
 	
 	build_progress_restart("{reconfiguring}",24);
-	$php5=$unix->LOCATE_PHP5_BIN();
+	
 	$rmbin=$unix->find_program("rm");
 	$echo=$unix->find_program("echo");
 	$SQUIDEnable=$sock->GET_INFO("SQUIDEnable");
@@ -421,18 +424,25 @@ function build(){
 	
 		$TSCR=array();
 		
-		if($MonitReportLoadVG1mn>0){$TSCR[]="\tif loadavg (1min) > $MonitReportLoadVG1mn for $MonitReportLoadVG1mnCycles cycles then exec \"/bin/artica-system-alert.sh LOAD_1\"";}
-		if($MonitReportLoadVG5mn>0){$TSCR[]="\tif loadavg (5min) > $MonitReportLoadVG5mn for $MonitReportLoadVG5mnCycles cycles then exec \"/bin/artica-system-alert.sh LOAD_5\"";}
-		if($MonitReportLoadVG15mn>0){$TSCR[]="\tif loadavg (15min) > $MonitReportLoadVG15mn for $MonitReportLoadVG15mnCycles cycles then exec \"/bin/artica-system-alert.sh LOAD_15\"";}
+		if($MonitReportLoadVG1mn>0){$TSCR[]="\tif loadavg (1min) > $MonitReportLoadVG1mn for $MonitReportLoadVG1mnCycles cycles then exec \"/bin/artica-system-alert.sh LOAD_1 $MonitReportLoadVG1mn\"";}
+		if($MonitReportLoadVG5mn>0){$TSCR[]="\tif loadavg (5min) > $MonitReportLoadVG5mn for $MonitReportLoadVG5mnCycles cycles then exec \"/bin/artica-system-alert.sh LOAD_5 $MonitReportLoadVG5mn\"";}
+		if($MonitReportLoadVG15mn>0){$TSCR[]="\tif loadavg (15min) > $MonitReportLoadVG15mn for $MonitReportLoadVG15mnCycles cycles then exec \"/bin/artica-system-alert.sh LOAD_15 $MonitReportLoadVG15mn\"";}
 		
 		if($MonitCPUUsage>0){
-			$TSCR[]="\tif cpu usage(system) > {$MonitCPUUsage}% for $MonitCPUUsageCycles cycles then exec \"/bin/artica-system-alert.sh CPU_SYSTEM\"";
-			$TSCR[]="\tif cpu usage(user) > {$MonitCPUUsage}% for $MonitCPUUsageCycles cycles then exec \"/bin/artica-system-alert.sh CPU_USER\"";
-			$TSCR[]="\tif cpu usage(wait) > {$MonitCPUUsage}% for $MonitCPUUsageCycles cycles then exec \"/bin/artica-system-alert.sh CPU_WAIT\"";
+			if($MonitCPUUsage<75){$MonitCPUUsage=75;}
+			$TSCR[]="\tif cpu usage(system) > {$MonitCPUUsage}% for $MonitCPUUsageCycles cycles then exec \"/bin/artica-system-alert.sh CPU_SYSTEM $MonitCPUUsage\"";
+			$TSCR[]="\tif cpu usage(user) > {$MonitCPUUsage}% for $MonitCPUUsageCycles cycles then exec \"/bin/artica-system-alert.sh CPU_USER $MonitCPUUsage\"";
+			$TSCR[]="\tif cpu usage(wait) > {$MonitCPUUsage}% for $MonitCPUUsageCycles cycles then exec \"/bin/artica-system-alert.sh CPU_WAIT $MonitCPUUsage\"";
 			
 		}
 		if($MonitMemUsage>0){
-			$TSCR[]="\tif memory > {$MonitMemUsage}% for $MonitMemUsageCycles cycles then exec \"/bin/artica-system-alert.sh MEM\"";
+			if($MonitMemUsage<75){$MonitMemUsage=75;}
+			$TSCR[]="\tif memory > {$MonitMemUsage}% for $MonitMemUsageCycles cycles then exec \"/bin/artica-system-alert.sh MEM $MonitMemUsage\"";
+		}
+		
+		if($MonitMemPurgeCache>5){
+			@chmod("/usr/share/artica-postfix/exec.kernel.purge.cache.php",0755);
+			$TSCR[]="\tif memory > {$MonitMemPurgeCache}% for $MonitMemPurgeCacheCycles cycles then exec \"/usr/share/artica-postfix/exec.kernel.purge.cache.php\"";
 		}
 		
 		if(count($TSCR)>1){
@@ -447,6 +457,11 @@ function build(){
 		$SCRIPT[]="$mkdir -p \"\$DIR\"";
 		$SCRIPT[]="$echo \$CURRENT >\$DIR/time.txt";
 		$SCRIPT[]="$echo \$1 >\$DIR/why.txt";
+		$SCRIPT[]="$echo \$2 >\$DIR/why2.txt";
+		$iotop=$unix->find_program("iotop");
+		if(is_file($iotop)){
+			$SCRIPT[]="$iotop -o -a -b -q -t -n 20  >\$DIR/iotop.txt || true";
+		}
 		$SCRIPT[]="$nice $python /usr/share/artica-postfix/bin/ps_mem.py >\$DIR/psmem.txt 2>&1";
 		$SCRIPT[]="$ps --no-heading -eo user,pid,pcpu,args|$sort -grbk 3|$head -50 >\$DIR/TOP50-CPU.txt 2>&1";
 		$SCRIPT[]="$ps --no-heading -eo user,pid,pmem,args|$sort -grbk 3|$head -50 >\$DIR/TOP50-MEM.txt 2>&1";
@@ -491,7 +506,7 @@ function build(){
 	@file_put_contents("/etc/monit/monitrc", @implode("\n", $f));
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} /etc/monit/monitrc done...\n";}
 	$AA[]="#!/bin/sh";
-	$AA[]="$echo \"\" >/var/log/artica-postfix/squid-logger-start.log";
+	$AA[]="$echo \"#\" >/var/log/artica-postfix/squid-logger-start.log";
 	$AA[]="";
 	@file_put_contents("/bin/squid-logger-start.sh", @implode("\n", $AA));
 	@chmod("/bin/squid-logger-start.sh",0755);
@@ -500,11 +515,13 @@ function build(){
 	
 	$AA=array();
 	$AA[]="#!/bin/sh";
-	$AA[]="$echo \"\" >/var/log/php.log";
+	$AA[]="$echo \"#\" >/var/log/php.log";
 	$AA[]="";
 	@file_put_contents("/bin/clean-phplog.sh", @implode("\n", $AA));
 	@chmod("/bin/clean-phplog.sh",0755);
 	$AA=array();
+	
+	
 	$monit=new monit();
 	$monit->save();
 	$INITD_PATH=$unix->SLAPD_INITD_PATH();
@@ -553,17 +570,24 @@ function build(){
 	
 	if(is_file("/etc/artica-postfix/STATS_APPLIANCE")){$EnableInflux=1;}
 	build_progress_restart("{reconfiguring}",29);
+	@unlink("/etc/monit/conf.d/APP_INFLUXDB.monitrc");
+	@unlink("/etc/monit/conf.d/APP_POSTGRES.monitrc");
+	if(is_file("/usr/local/ArticaStats/bin/postgres")){
 	if($EnableInflux==1){
-		$f[]="check process APP_INFLUXDB with pidfile /var/run/influxdb.pid";
-		$f[]="\tstart program = \"/etc/init.d/influx-db start --monit\"";
-		$f[]="\tstop program = \"/etc/init.d/influx-db stop --monit\"";
+		$InfluxRestartMem=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/InfluxRestartMem"));
+		$f[]="check process APP_POSTGRES with pidfile /home/ArticaStatsDB/postmaster.pid";
+		$f[]="\tstart program = \"/etc/init.d/artica-postgres start --monit\"";
+		$f[]="\tstop program = \"/etc/init.d/artica-postgres --monit\"";
 		$f[]="\tif 5 restarts within 5 cycles then timeout";
+		if($InfluxRestartMem>50){
+			$f[]="\tif totalmem > {$InfluxRestartMem} MB for 5 cycles then restart";
+		}
 		$f[]="";
 		if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} monitoring Artica Status...\n";}
-		@file_put_contents("/etc/monit/conf.d/APP_INFLUXDB.monitrc", @implode("\n", $f));
+		@file_put_contents("/etc/monit/conf.d/APP_POSTGRES.monitrc", @implode("\n", $f));
 		//********************************************************************************************************************
-	}else{
-		@unlink("/etc/monit/conf.d/APP_INFLUXDB.monitrc");
+		}
+		
 	}
 	
 	$f=array();
@@ -605,15 +629,67 @@ function build(){
 			}
 	}
 // ********************************************************************************************************************
+	$f=array();
+	build_progress_restart("{reconfiguring} Proftpd",31);
+	@unlink("/etc/monit/conf.d/APP_PROFTPD.monitrc");
+	$proftpd=$unix->find_program("proftpd");
+	
+	if(is_file($proftpd)){
+		$enabled=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableProFTPD"));
+		if($enabled==1){
+			$f[]="check process APP_PROFTPD with pidfile /var/run/proftpd.pid";
+			$f[]="\tstart program = \"/etc/init.d/proftpd start --monit\"";
+			$f[]="\tstop program = \"/etc/init.d/proftpd stop --monit\"";
+			$f[]="\tif 5 restarts within 5 cycles then timeout";
+			$f[]="";
+			if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} monitoring DnsMASQ...\n";}
+			@file_put_contents("/etc/monit/conf.d/APP_PROFTPD.monitrc", @implode("\n", $f));
+		}
+	}
+	// ********************************************************************************************************************
+	
+	
+	$f=array();
+	build_progress_restart("{reconfiguring} Bandwidthd",31);
+	@unlink("/etc/monit/conf.d/APP_BANDWIDTHD.monitrc");
+	if(is_file("/usr/bandwidthd/bandwidthd")){	
+		$enabled=$sock->Bandwidthd_enabled();
+		if($enabled==1){
+			$f[]="check process APP_BANDWIDTHD with pidfile /var/run/bandwidthd.pid";
+			$f[]="\tstart program = \"/etc/init.d/bandwidthd start --monit\"";
+			$f[]="\tstop program = \"/etc/init.d/bandwidthd stop --monit\"";
+			$f[]="\tif 5 restarts within 5 cycles then timeout";
+			$f[]="";
+			if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} monitoring DnsMASQ...\n";}
+			@file_put_contents("/etc/monit/conf.d/APP_BANDWIDTHD.monitrc", @implode("\n", $f));
+		}
 		
+	}
+	// ********************************************************************************************************************	
+	$f=array();
 	build_progress_restart("{reconfiguring} rsyslog",32);
 	$rsyslogd=$unix->find_program("rsyslogd");
 	@unlink("/etc/monit/conf.d/APP_RSYSLOG.monitrc");
-	$f=array();
 	if(is_file($rsyslogd)){
+		
+		$SCRIPT=array();
+		$SCRIPT[]="#!/bin/sh";
+		$SCRIPT[]="$php5 /usr/share/artica-postfix/exec.watchdog.rsyslogd.php --start";
+		$SCRIPT[]="";
+		@file_put_contents("/bin/artica-rsyslog-start.sh", @implode("\n", $SCRIPT));
+		@chmod("/bin/artica-rsyslog-start.sh",0755);
+		$SCRIPT=array();
+		$SCRIPT[]="#!/bin/sh";
+		$SCRIPT[]="$php5 /usr/share/artica-postfix/exec.watchdog.rsyslogd.php --stop";
+		$SCRIPT[]="";
+		@file_put_contents("/bin/artica-rsyslog-stop.sh", @implode("\n", $SCRIPT));
+		@chmod("/bin/artica-rsyslog-stop.sh",0755);
+		$SCRIPT=array();		
+		
+		
 		$f[]="check process APP_RSYSLOG with pidfile /var/run/rsyslogd.pid";
-		$f[]="\tstart program = \"/usr/share/artica-postfix/exec.watchdog.rsyslogd.php --start\"";
-		$f[]="\tstop program = \"/usr/share/artica-postfix/exec.watchdog.rsyslogd.php --stop\"";
+		$f[]="\tstart program = \"/bin/artica-rsyslog-start.sh\"";
+		$f[]="\tstop program = \"/bin/artica-rsyslog-stop.sh\"";
 		$f[]="\tif 5 restarts within 5 cycles then timeout";
 		$f[]="";
 		if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} monitoring rsyslogd...\n";}
@@ -621,13 +697,118 @@ function build(){
 	}
 	
 	
+	// ********************************************************************************************************************
+	
+	build_progress_restart("{reconfiguring} Squid-tail",32);
+	
+	$APP_ARTICA_SQUID_TAIL=$unix->SQUID_TAIL_ENABLED();
+	@unlink("/etc/monit/conf.d/APP_ARTICA_SQUID_TAIL.monitrc");
+	if($APP_ARTICA_SQUID_TAIL==1){
+		$f=array();
+		$f[]="check process APP_ARTICA_SQUID_TAIL with pidfile /etc/artica-postfix/pids/exec.logfile_daemon.php.pid";
+		$f[]="\tstart program = \"/etc/init.d/squid-tail start\"";
+		$f[]="\tstop program = \"/etc/init.d/squid-tail stop\"";
+		$f[]="\tif cpu usage > 95% for 5 cycles then restart";
+		$f[]="\tif totalmem > 550.0 MB for 5 cycles then restart";
+		$f[]="\tif 5 restarts within 5 cycles then timeout";
+		$f[]="";
+		if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} monitoring squid-tail...\n";}
+		@file_put_contents("/etc/monit/conf.d/APP_ARTICA_SQUID_TAIL.monitrc", @implode("\n", $f));
+	}
+	
 // ********************************************************************************************************************	
+	
+	build_progress_restart("{reconfiguring} Squid-Proxy",32);
+	
+	
 
+	
+	$APP_SQUID=$unix->SQUID_ENABLED();
+	@unlink("/etc/monit/conf.d/APP_SQUID.monitrc");
+	if($APP_SQUID==1){
+		$MonitConfig=unserialize(base64_decode(@file_get_contents("/etc/artica-postfix/settings/SquidWatchdogMonitConfig")));
+		if(!isset($MonitConfig["watchdog"])){$MonitConfig["watchdog"]=1;}
+		if(!is_numeric($MonitConfig["watchdog"])){$MonitConfig["watchdog"]=1;}
+		
+		$f=array();
+		if($MonitConfig["watchdog"]==1){
+			$MonitSquidMaxRestartMem=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/MonitSquidMaxRestartMem"));
+			$MonitSquidMaxCPU=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/MonitSquidMaxCPU"));
+			
+			$f[]="check process APP_SQUID with pidfile /var/run/squid/squid.pid";
+			$f[]="\tstart program = \"/etc/init.d/squid start --monit\"";
+			$f[]="\tstop program = \"/etc/init.d/squid stop --monit\"";
+			if($MonitSquidMaxCPU>0){
+				$f[]="\tif cpu usage > {$MonitSquidMaxCPU}% for 5 cycles then restart";
+			}
+			if($MonitSquidMaxRestartMem>0){
+				$f[]="\tif totalmem > {$MonitSquidMaxRestartMem}.0 MB for 5 cycles then restart";
+			}
+			$f[]="\tif 5 restarts within 5 cycles then timeout";
+			$f[]="";
+			if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} monitoring squid...\n";}
+			@file_put_contents("/etc/monit/conf.d/APP_SQUID.monitrc", @implode("\n", $f));
+		}
+	}
+	
+	// ********************************************************************************************************************
+		
+	
+	
+	build_progress_restart("{reconfiguring} OpenLDAP",32);
+	$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
+	$SLAPD_PID_FILE=$unix->SLAPD_PID_PATH();
+	@unlink("/etc/monit/conf.d/APP_SLAPD.monitrc");
+	if($EnableOpenLDAP==1){
+		if($EnableIntelCeleron==0){
+			$f=array();
+			$f[]="check process APP_SLAPD with pidfile $SLAPD_PID_FILE";
+			$f[]="\tstart program = \"/etc/init.d/slapd start --force --monit\"";
+			$f[]="\tstop program = \"/etc/init.d/slapd stop --force\"";
+			$f[]="\tif cpu usage > 95% for 5 cycles then restart";
+			$f[]="\tif totalmem > 550.0 MB for 5 cycles then restart";
+			$f[]="\tif failed unixsocket /var/run/slapd/slapd.sock then restart";
+			$f[]="\tif 5 restarts within 5 cycles then timeout";
+			$f[]="";
+			if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} monitoring slapd...\n";}
+			@file_put_contents("/etc/monit/conf.d/APP_SLAPD.monitrc", @implode("\n", $f));
+		}
+	}
+// ********************************************************************************************************************
+	$f=array();
+	build_progress_restart("{reconfiguring} Suricata",32);
+	$EnableSuricata=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableSuricata"));
+	@unlink("/etc/monit/conf.d/APP_SURICATA.monitrc");
+	@unlink("/etc/monit/conf.d/APP_SURICATA_TAIL.monitrc");
+	$suricata=$unix->find_program("suricata");
+	if(is_file($suricata)){
+		if($EnableSuricata==1){
+			$f[]="check process APP_SURICATA with pidfile /var/run/suricata/suricata.pid";
+			$f[]="\tstart program = \"/etc/init.d/suricata start --monit\"";
+			$f[]="\tstop program = \"/etc/init.d/suricata stop --monit\"";
+			$f[]="\tif cpu usage > 95% for 5 cycles then restart";
+			$f[]="\tif 5 restarts within 5 cycles then timeout";
+			$f[]="";
+			if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} monitoring Suricata...\n";}
+			@file_put_contents("/etc/monit/conf.d/APP_SURICATA.monitrc", @implode("\n", $f));
+			
+			$f=array();
+			$f[]="check process APP_SURICATA_TAIL with pidfile /etc/artica-postfix/exec.suricata-tail.php.pid";
+			$f[]="\tstart program = \"/etc/init.d/suricata-tail start --monit\"";
+			$f[]="\tstop program = \"/etc/init.d/suricata-tail stop --monit\"";
+			$f[]="\tif 5 restarts within 5 cycles then timeout";
+			$f[]="";
+			if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} monitoring Suricata tail...\n";}
+			@file_put_contents("/etc/monit/conf.d/APP_SURICATA_TAIL.monitrc", @implode("\n", $f));
+		}
+	}
+// ********************************************************************************************************************	
+	$f=array();
 	build_progress_restart("{reconfiguring}",32);
 	$winbind=$unix->find_program("winbindd");
+	if(is_file("/etc/monit/conf.d/winbindd.monitrc")){@unlink("/etc/monit/conf.d/winbindd.monitrc");}
 	@unlink("/etc/monit/conf.d/winbind.monitrc");
 	$EnableKerbAuth=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableKerbAuth"));
-	$f=array();
 	if(is_file($winbind)){
 		if($EnableKerbAuth==1){
 			$f[]="check process winbindd with pidfile /var/run/samba/winbindd.pid";

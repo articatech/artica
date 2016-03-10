@@ -160,7 +160,7 @@ class netagent{
 		if($GLOBALS["VERBOSE"]){echo "56% UFDBCLIENT_LOGS\n";}
 		$curlparms["UFDBCLIENT_LOGS"]=$this->ufdbclientlog();
 		if($GLOBALS["VERBOSE"]){echo "57% SQUIDVER\n";}
-		$curlparms["SQUIDVER"]=$GLOBALS["CLASS_SOCKET"]->getFrameWork("squid.php?full-version=yes");
+		$curlparms["SQUIDVER"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidVersion");
 		$curlparms["ARCH"]=$this->Architecture();
 		$curlparms["ISARTICA"]=1;
 		$curlparms["ArticaHttpsPort"]=$ArticaHttpsPort;

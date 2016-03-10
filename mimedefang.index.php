@@ -344,11 +344,7 @@ function main_config_antispam(){
 		}	
 	
 	
-	if($users->SPAMASS_MILTER_INSTALLED){
-		if($users->SpamAssMilterEnabled==1){$spamass=false;}
-	}else{
-		$spamass=false;
-	}
+
 	
 	
 	

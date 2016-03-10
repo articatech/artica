@@ -297,7 +297,7 @@ $f[]="#cleaning,dangerous_material,downloads,chat,passwords,drugs,dynamic,financ
 $f[]="#finance/banking,finance/insurance,finance/moneylending,finance/realestate,finance/other,";
 $f[]="#forums,socialnet,jobsearch,jobtraining,learning,humanitarian,associations,gamble,hacking,warez,";
 $f[]="#hobby/cooking,hobby/fishing,hobby/arts,hobby/other,isp,webmail,liste_bu,mobile-phone,marketingware,";
-$f[]="#webradio,audio-video,webtv,music,movies,blog,news,press,society,books,manga,dictionaries,phishing,";
+$f[]="#webradio,audio-video,youtube,webtv,music,movies,blog,news,press,society,books,manga,dictionaries,phishing,";
 $f[]="#redirector,proxy,paytosurf,reaffected,tricheur,webphone,weapons,";
 $f[]="#games,hobby/pets,animals,horses,filehosting,photo,pictureslib,imagehosting,religion,sect,";
 $f[]="#genealogy,recreation/wellness,recreation/travel,recreation/nightout,governments,";
@@ -848,11 +848,18 @@ background-color: white;
 ";	
 
 	$AsCategoriesAppliance=intval($savedsettings["AsCategoriesAppliance"]);
+	$AsHapProxyAppliance=intval($savedsettings["AsHapProxyAppliance"]);
+	
 	
 	$AsMetaServer=intval($savedsettings["AsMetaServer"]);
 	$WizardWebFilteringLevel=$sock->GET_INFO("WizardWebFilteringLevel");
 	
 	if($AsCategoriesAppliance==1){
+		echo "<script>LoadAjax('setup-content','$page?setup-3=yes&savedsettings=$savedsettings_encoded');</script>";
+		return;
+	}
+	
+	if($AsHapProxyAppliance==1){
 		echo "<script>LoadAjax('setup-content','$page?setup-3=yes&savedsettings=$savedsettings_encoded');</script>";
 		return;
 	}
@@ -973,7 +980,7 @@ margin-top:15px;
 padding:3px;
 text-align:left;
 font-weight:normal;
-font-size: 18px;
+font-size: 16px;
 margin-bottom: 20px;
 padding: 8px 35px 8px 14px;
 text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
@@ -984,6 +991,8 @@ border-radius:5px 5px 5px 5px;
 background-color: white;
 ";
 	
+	$button_size=28;
+	
 	$explain_http_proxy_connected=$tpl->_ENGINE_parse_body("{explain_http_proxy_connected}");
 	$explain_http_proxy_connected=str_ireplace("active directory", "<strong>Active Directory/Open LDAP</strong>", $explain_http_proxy_connected);
 
@@ -993,7 +1002,7 @@ background-color: white;
 
 	
 	
-	$html[]="<center style='margin:30px;width:85%;padding:20px' class=form >".button("{webproxy_service} {or} {transparent_mode}", "ConnectedProxy()",36)."
+	$html[]="<center style='margin:30px;width:85%;padding:20px' class=form >".button("{webproxy_service} {or} {transparent_mode}", "ConnectedProxy()",$button_size)."
 			<div style='$text_info_style'>
 				$explain_http_proxy_connected
 			</div>
@@ -1003,16 +1012,23 @@ background-color: white;
 
 	
 	
-	$html[]="<center style='margin:30px;width:85%;padding:20px' class=form >".button("{categories_appliance}", "CategoriesAppliance()",36)."
+	$html[]="<center style='margin:30px;width:85%;padding:20px' class=form >".button("{categories_appliance}", "CategoriesAppliance()",$button_size)."
 			<div style='$text_info_style'>
 				{explain_categories_appliance}		
 			</div>
 			</center>";
 	
 	
+	$html[]="<center style='margin:30px;width:85%;padding:20px' class=form >".button("{LOAD_BALACING_SERVICE}", "LoadBalanceProxy()",$button_size)."
+	<div style='$text_info_style'>
+	{LOAD_BALACING_SERVICE_EXPLAIN}
+	</div>
+	</center>";
+	
+	
 	if($users->NGINX_INSTALLED){
 		$html[]="
-		<center style='margin:30px;width:85%;padding:20px' class=form >".button("{reverse_proxy_service}", "ReverseProxy()",36)."
+		<center style='margin:30px;width:85%;padding:20px' class=form >".button("{reverse_proxy_service}", "ReverseProxy()",$button_size)."
 			<div style='$text_info_style'>
 			{explain_reverse_proxy}
 			</div>
@@ -1022,7 +1038,7 @@ background-color: white;
 	}
 
 	$html[]="
-		<center style='margin:30px;width:85%;padding:20px' class=form >".button("{artica_meta_server}", "MetaServer()",36)."
+		<center style='margin:30px;width:85%;padding:20px' class=form >".button("{artica_meta_server}", "MetaServer()",$button_size)."
 			<div style='$text_info_style'>
 			{artica_meta_server_explain}
 			</div>
@@ -1049,7 +1065,21 @@ var xchoose= function (obj) {
 function ReverseProxy(){
 	var XHR = new XHRConnection();
 	XHR.appendData('CHOOSE',1);
+	XHR.appendData('AsHapProxyAppliance','0');
 	XHR.appendData('AsReverseProxyAppliance','1');
+	XHR.appendData('AsCategoriesAppliance','0');
+	XHR.appendData('AsTransparentProxy','0');
+	XHR.appendData('AsMetaServer','0');
+	XHR.appendData('savedsettings','{$_GET["savedsettings"]}');
+	LockPage();
+	XHR.sendAndLoad('$page', 'POST',xchoose);
+}
+
+function LoadBalanceProxy(){
+	var XHR = new XHRConnection();
+	XHR.appendData('CHOOSE',1);
+	XHR.appendData('AsHapProxyAppliance','1');
+	XHR.appendData('AsReverseProxyAppliance','0');
 	XHR.appendData('AsCategoriesAppliance','0');
 	XHR.appendData('AsTransparentProxy','0');
 	XHR.appendData('AsMetaServer','0');
@@ -1061,6 +1091,7 @@ function ReverseProxy(){
 function CategoriesAppliance(){
 	var XHR = new XHRConnection();
 	XHR.appendData('CHOOSE',1);
+		XHR.appendData('AsHapProxyAppliance','0');
 	XHR.appendData('AsCategoriesAppliance','1');
 	XHR.appendData('AsReverseProxyAppliance','0');
 	XHR.appendData('AsTransparentProxy','0');
@@ -1073,6 +1104,7 @@ function CategoriesAppliance(){
 function ConnectedProxy(){
 	var XHR = new XHRConnection();
 	XHR.appendData('CHOOSE',1);
+	XHR.appendData('AsHapProxyAppliance','0');
 	XHR.appendData('AsReverseProxyAppliance','0');
 	XHR.appendData('AsCategoriesAppliance','0');
 	XHR.appendData('AsTransparentProxy','0');
@@ -1085,6 +1117,7 @@ function ConnectedProxy(){
 function TransparentProxy(){
 	var XHR = new XHRConnection();
 	XHR.appendData('CHOOSE',1);
+	XHR.appendData('AsHapProxyAppliance','0');
 	XHR.appendData('AsCategoriesAppliance','0');
 	XHR.appendData('AsReverseProxyAppliance','0');
 	XHR.appendData('AsTransparentProxy','1');
@@ -1096,6 +1129,7 @@ function TransparentProxy(){
 function MetaServer(){
 	var XHR = new XHRConnection();
 	XHR.appendData('CHOOSE',1);
+	XHR.appendData('AsHapProxyAppliance','0');
 	XHR.appendData('AsCategoriesAppliance','0');
 	XHR.appendData('AsReverseProxyAppliance','0');
 	XHR.appendData('AsTransparentProxy','0');
@@ -1131,7 +1165,7 @@ function setup_active_directory(){
 		$setupWebFILTER=1;
 	}
 	
-	
+	$AsHapProxyAppliance=intval($savedsettings["AsHapProxyAppliance"]);
 	$AsCategoriesAppliance=intval($savedsettings["AsCategoriesAppliance"]);
 	$transparent_proxy=intval($savedsettings["AsTransparentProxy"]);
 	$AsReverseProxyAppliance=intval($savedsettings["AsReverseProxyAppliance"]);
@@ -1142,7 +1176,10 @@ function setup_active_directory(){
 		AsCategoriesAppliance();
 		return;
 	}
-	
+	if($AsHapProxyAppliance==1){
+		echo "<script>LoadAjax('setup-content','$page?setup-features=yes&savedsettings=$savedsettings_encoded');</script>";
+		return;
+	}	
 	
 	if($AsMetaServer==1){
 		echo "<script>LoadAjax('setup-content','$page?setup-features=yes&savedsettings=$savedsettings_encoded');</script>";
@@ -2395,6 +2432,8 @@ function setup_4(){
 	$AsCategoriesAppliance=intval($savedsettings["AsCategoriesAppliance"]);
 	$AsReverseProxyAppliance=intval($savedsettings["AsReverseProxyAppliance"]);
 	$AsMetaServer=intval($savedsettings["AsMetaServer"]);
+	$AsHapProxyAppliance=intval($savedsettings["AsHapProxyAppliance"]);
+	if($AsHapProxyAppliance==1){$miniadm_form=null;$size_form="1205px";}
 	if($AsCategoriesAppliance==1){$miniadm_form=null;$size_form="1205px";}
 	if($AsReverseProxyAppliance==1){$miniadm_form=null;$size_form="1205px";}
 	if($AsMetaServer==1){$miniadm_form=null;$meta_client_form=null;$size_form="1205px";}

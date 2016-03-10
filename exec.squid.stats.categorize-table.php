@@ -381,7 +381,7 @@ function last_days(){
 	@file_put_contents($pidfile,$mypid);
 	@file_put_contents($timefile, time());
 	
-	$q->QUERY_SQL("DELETE FROM catztemp WHERE `category`=''");
+
 	
 	$current_table=date("Ymd")."_hour";
 	$t=time();
@@ -391,7 +391,7 @@ function last_days(){
 	$results=$q->QUERY_SQL($sql);
 	$num=mysql_num_rows($results);
 	if($num==0){return;}
-	$q->QUERY_SQL("TRUNCATE TABLE `catztemp`");
+	
 	
 	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
 		$current_table=$ligne["suffix"]."_hour";

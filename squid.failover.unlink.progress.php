@@ -31,6 +31,7 @@ function suffix(){
 	$reconfigure=null;
 	$onlySquid=null;
 	$ApplyConfToo=null;
+	if(isset($_GET["force"])){return "&force=yes";}
 	return null;
 	
 }
@@ -70,7 +71,7 @@ function buildjs(){
 	$array=unserialize(@file_get_contents($GLOBALS["CACHEFILE"]));
 	$prc=intval($array["POURC"]);
 	$title=$tpl->javascript_parse_text($array["TEXT"]);
-	
+	$suffix=suffix();
 	
 	
 	$md5file=trim(md5_file($GLOBALS["LOGSFILES"]));
@@ -84,7 +85,7 @@ if ($prc==0){
 	// PRC = $prc ; md5file=$md5file
 	function Start$time(){
 			if(!RTMMailOpen()){return;}
-			Loadjs('$page?build-js=yes&t=$t&md5file={$_GET["md5file"]}');
+			Loadjs('$page?build-js=yes&t=$t&md5file={$_GET["md5file"]}$suffix');
 	}
 	setTimeout(\"Start$time()\",1000);";
 	
@@ -102,7 +103,7 @@ if($md5file<>$_GET["md5file"]){
 		if (res.length>3){
 			document.getElementById('text-$t').value=res;
 		}		
-		Loadjs('$page?build-js=yes&t=$t&md5file=$md5file');
+		Loadjs('$page?build-js=yes&t=$t&md5file=$md5file$suffix');
 	}		
 	
 	function Start$time(){
@@ -143,6 +144,7 @@ if($prc==100){
 		RTMMailHide();
 		YahooWin6Hide();
 		RefreshTab('main_failover_tabs');
+		CacheOff();
 		}
 	setTimeout(\"Start$time()\",1000);
 	";	
@@ -154,7 +156,7 @@ function Start$time(){
 		if(!RTMMailOpen()){return;}
 		document.getElementById('title-$t').innerHTML='$title';
 		$('#progress-$t').progressbar({ value: $prc });
-		Loadjs('$page?build-js=yes&t=$t&md5file={$_GET["md5file"]}');
+		Loadjs('$page?build-js=yes&t=$t&md5file={$_GET["md5file"]}$suffix');
 	}
 	setTimeout(\"Start$time()\",1500);
 ";
@@ -164,8 +166,8 @@ function Launch(){
 	$sock=new sockets();
 	
 	
-	
-	$cmd="squid.php?failover-progress-unlink=yes";
+	$suffix=suffix();
+	$cmd="squid.php?failover-progress-unlink=yes$suffix";
 	if($GLOBALS["VERBOSE"]){echo "<H1>RUN $cmd</H1>";}
 	writelogs("launch $cmd",__FUNCTION__,__FILE__,__LINE__);
 	$sock->getFrameWork($cmd);
@@ -178,20 +180,20 @@ function popup(){
 	Launch();
 	$text=$tpl->_ENGINE_parse_body("{failover}:{unlink}");
 	$t=time();
-	
+	$suffix=suffix();
 	
 $html="
 <center id='title-$t' style='font-size:18px;margin-bottom:20px'>$text</center>
 <div id='progress-$t' style='height:50px'></div>
 <p>&nbsp;</p>
 <textarea style='margin-top:5px;font-family:Courier New;
-font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 overflow:auto;font-size:11px' id='text-$t'></textarea>
 	
 <script>
 function Step1$t(){
 	$('#progress-$t').progressbar({ value: 1 });
-	Loadjs('$page?build-js=yes&t=$t&md5file=0');
+	Loadjs('$page?build-js=yes&t=$t&md5file=0$suffix');
 }
 $('#progress-$t').progressbar({ value: 1 });
 setTimeout(\"Step1$t()\",1000);

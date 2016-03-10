@@ -70,7 +70,7 @@ function route_add_popup(){
 	$tpl=new templates();
 	$t=time();
 	$html="
-	<div class=explain>{routes_explain}</div>
+	<div class=explain style='font-size:18px'>{routes_explain}</div>
 	<div style='font-size:98%' class=form>
 	<table style='width:99%'>
 	 <tr>
@@ -140,8 +140,8 @@ function routes(){
 	$delete=$tpl->javascript_parse_text("{delete}");
 	$additional_routes=$tpl->javascript_parse_text("{additional_routes}");
 	$reconstruct_vlans=$tpl->javascript_parse_text("{OPENVPN_APPLY_CONFIG}");
-	$bts[]="{name: '$add', bclass: 'add', onpress : RouteAdd$t},";
-	$bts[]="{name: '$reconstruct_vlans', bclass: 'Reload', onpress : Build$t},";
+	$bts[]="{name: '<strong style=font-size:18px>$add</strong>', bclass: 'add', onpress : RouteAdd$t},";
+	$bts[]="{name: '<strong style=font-size:18px>$reconstruct_vlans</strong>', bclass: 'Reload', onpress : Build$t},";
 	
 	
 	
@@ -162,8 +162,8 @@ $(document).ready(function(){
 		url: '$page?search=yes&t=$t',
 		dataType: 'json',
 		colModel : [
-			{display: '$ipaddr', name : 'org', width : 300, sortable : true, align: 'left'},
-			{display: '$netmask', name : 'org0', width : 300, sortable : true, align: 'left'},
+			{display: '<span style=font-size:18px>$ipaddr</span>', name : 'org', width : 300, sortable : true, align: 'left'},
+			{display: '<span style=font-size:18px>$netmask</span>', name : 'org0', width : 300, sortable : true, align: 'left'},
 			{display: '&nbsp;', name : 'none2', width : 70, sortable : false, align: 'center'},
 		],$buttons
 		searchitems : [
@@ -172,7 +172,7 @@ $(document).ready(function(){
 		sortname: 'ID',
 		sortorder: 'desc',
 		usepager: true,
-		title: '<span style=font-size:22px>$additional_routes</span>',
+		title: '<span style=font-size:30px>$additional_routes</span>',
 		useRp: true,
 		rp: 25,
 		showTableToggleBtn: false,
@@ -188,7 +188,7 @@ function RouteAdd$t(){
 }
 
 function Build$t(){
-	Loadjs('index.openvpn.apply.progress.php');
+	Loadjs('index.openvpn.enable.progress.php');
 }
 
 var xOpenVPNRoutesDelete$t=function (obj) {
@@ -270,7 +270,7 @@ function routes_list(){
 					
 						"<span style='font-size:22px;font-weight:normal'>{$num}</div>",
 						"<span style='font-size:22px;font-weight:normal'>{$ligne}</div>",
-						$delete
+						"<center>$delete</center>"
 				)
 		);
 	}

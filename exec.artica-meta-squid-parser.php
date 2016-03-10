@@ -27,6 +27,12 @@ $GLOBALS["LogFileDeamonLogDir"]=@file_get_contents("/etc/artica-postfix/settings
 if($GLOBALS["LogFileDeamonLogDir"]==null){$GLOBALS["LogFileDeamonLogDir"]="/home/artica/squid/realtime-events";}
 $GLOBALS["LogFileDeamonMaxInstances"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/LogFileDeamonMaxInstances"));
 if($GLOBALS["LogFileDeamonMaxInstances"]==0){$GLOBALS["LogFileDeamonMaxInstances"]=3;}
+
+if(is_file("/usr/local/ArticaStats/bin/postgres")){
+	$GLOBALS["LogFileDeamonLogDir"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/LogFileDeamonLogPostGresDir");
+	if($GLOBALS["LogFileDeamonLogDir"]==null){$GLOBALS["LogFileDeamonLogDir"]="/home/artica/squid-postgres/realtime-events";}
+}
+
 $GLOBALS["CLASS_UNIX"]=new unix();
 
 if($argv[1]=="--daily"){daily_to_monthly($argv[2]);exit;}

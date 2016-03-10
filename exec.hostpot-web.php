@@ -23,17 +23,26 @@ include_once(dirname(__FILE__).'/ressources/class.apache.certificate.php');
 	if($argv[1]=="--start"){$GLOBALS["OUTPUT"]=true;apache_start();die();}
 	if($argv[1]=="--restart"){$GLOBALS["OUTPUT"]=true;restart();die();}
 	if($argv[1]=="--build"){$GLOBALS["OUTPUT"]=true;apache_config();die();}
+	if($argv[1]=="--test-port"){$GLOBALS["OUTPUT"]=true;TESTS_PORT();die();}
+	
 	
 	
 function build_progress_reconfigure($text,$pourc){
 	$array["POURC"]=$pourc;
 	$array["TEXT"]=$text;
 	echo "[$pourc]: $text\n";
+	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/hostpot.reconfigure.web.progress", serialize($array));
+	@chmod("/usr/share/artica-postfix/ressources/logs/web/hostpot.reconfigure.web.progress",0777);
+}
+function build_progress_reconfigure2($text,$pourc){
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	echo "[$pourc]: $text\n";
 	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/hostpot.reconfigure.progress", serialize($array));
 	@chmod("/usr/share/artica-postfix/ressources/logs/web/hostpot.reconfigure.progress",0777);
-	
-	}
-
+	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/hostpot.reconfigure.web.progress", serialize($array));
+	@chmod("/usr/share/artica-postfix/ressources/logs/web/hostpot.reconfigure.web.progress",0777);
+}
 function restart($nopid=false){
 	$unix=new unix();
 	$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
@@ -54,7 +63,36 @@ function restart($nopid=false){
 	build_progress_reconfigure("{starting_service} {webserver}",80);
 	apache_start(true);	
 	build_progress_reconfigure("{starting_service} {webserver} {done}",85);
+	build_progress_reconfigure2("{starting_service} {webserver} {done}",100);
+	
 }	
+
+
+function TESTS_PORT(){
+	$unix=new unix();
+	$sock=new sockets();
+	$ArticaHotSpotEmergency=intval($sock->GET_INFO("ArticaHotSpotEmergency"));
+	$ArticaHotSpotPort=$sock->GET_INFO("ArticaHotSpotPort");
+	$ArticaSSLHotSpotPort=$sock->GET_INFO("ArticaSSLHotSpotPort");
+	$ArticaSplashHotSpotPort=$sock->GET_INFO("ArticaSplashHotSpotPort");
+	$ArticaSplashHotSpotPortSSL=$sock->GET_INFO("ArticaSplashHotSpotPortSSL");
+	if(!is_numeric($ArticaHotSpotPort)){$ArticaHotSpotPort=0;}
+	if(!is_numeric($ArticaSplashHotSpotPort)){$ArticaSplashHotSpotPort=16080;}
+	if(!is_numeric($ArticaSplashHotSpotPortSSL)){$ArticaSplashHotSpotPortSSL=16443;}
+	$HotSpotGatewayAddr=$sock->GET_INFO("HotSpotGatewayAddr");
+	$HotSpotGatewayAddr_org=$HotSpotGatewayAddr;
+	
+	$HotSpotGatewayAddrZ=explode(".",$HotSpotGatewayAddr);
+	$HotSpotGatewayAddrz[3]=rand(1, 254);
+	$HotSpotGatewayAddr=@implode(".", $HotSpotGatewayAddrz);
+	
+	$uri="http://$HotSpotGatewayAddr_org:$ArticaSplashHotSpotPort/hotspot.php?wifi-login=yes&gw_address=$HotSpotGatewayAddr&gw_port=$ArticaHotSpotPort&gw_id=123456&ip='+ipaddr+'&mac=00:0c:29:49:c4:fd&url=". urlencode('http://microsoft.com');
+	
+	$curlbin=$unix->find_program("curl");
+	system("$curlbin --verbose --interface 10.28.0.2 \"http://www.ibm.com\"");
+	//system("$curlbin --verbose --interface $HotSpotGatewayAddr_org \"$uri\"");
+	
+}
 
 function apache_stop(){
 	
@@ -197,7 +235,7 @@ function apache_start(){
 	
 	$pid=apache_pid();
 	
-	$EnableArticaHotSpot=$sock->GET_INFO("EnableArticaHotSpot");
+	$EnableArticaHotSpot=intval($sock->GET_INFO("EnableArticaHotSpot"));
 	$SquidHotSpotPort=$sock->GET_INFO("SquidHotSpotPort");
 	$ArticaHotSpotPort=$sock->GET_INFO("ArticaHotSpotPort");
 	$ArticaSSLHotSpotPort=$sock->GET_INFO("ArticaSSLHotSpotPort");
@@ -206,6 +244,7 @@ function apache_start(){
 	if(!is_numeric($ArticaHotSpotPort)){$ArticaHotSpotPort=0;}
 	if(!is_numeric($ArticaSplashHotSpotPort)){$ArticaSplashHotSpotPort=16080;}
 	if(!is_numeric($ArticaSplashHotSpotPortSSL)){$ArticaSplashHotSpotPortSSL=16443;}
+	
 	
 	if($unix->process_exists($pid)){
 		$timepid=$unix->PROCCESS_TIME_MIN($pid);
@@ -224,11 +263,14 @@ function apache_start(){
 	$nohup=$unix->find_program("nohup");
 	$php5=$unix->LOCATE_PHP5_BIN();
 	$apache2ctl=$unix->LOCATE_APACHE_BIN_PATH();
-	
+	$rm=$unix->find_program("rm");
 	
 	
 	apache_config();
-		
+	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} removing caches and sessions\n";}
+	shell_exec("$rm -rf /home/artica/hotspot/caches/*");
+	shell_exec("$rm -rf /home/artica/hotspot/sessions/*");
+	
 	$cmd="$apache2ctl -f /etc/artica-postfix/hotspot-httpd.conf -k start";
 	shell_exec($cmd);
 	
@@ -260,14 +302,42 @@ function apache_config(){
 	$sock=new sockets();
 	$unix=new unix();
 	$EnablePHPFPM=0;
-	@mkdir("/var/run/apache2",0755,true);
-	@mkdir("/var/run/artica-apache",0755,true);
 	$APACHE_SRC_ACCOUNT=$unix->APACHE_SRC_ACCOUNT();
 	$APACHE_SRC_GROUP=$unix->APACHE_SRC_GROUP();
 	if(preg_match("#APACHE_RUN_GROUP#", $APACHE_SRC_GROUP)){$APACHE_SRC_GROUP="www-data";}
+	$LogFilePath="/var/log/artica-wifidog/access.log";
+	$directories[]="/var/run/apache2";
+	$directories[]="/var/run/artica-apache";
+	$directories[]="/var/log/artica-wifidog";
+	$directories[]="/home/artica/hotspot/sessions";
+	$directories[]="/home/artica/hotspot/caches";
+	
+	while (list ($index, $maindir) = each ($directories) ){
+		@mkdir($maindir,0755,true);
+		@chown($maindir,$APACHE_SRC_ACCOUNT);
+		@chgrp($maindir,$APACHE_SRC_GROUP);
+		
+	}
+	
+
+	$ErrorLog=dirname($LogFilePath)."/error.log";
+	if(!is_file($LogFilePath)){@touch($LogFilePath);}
+	@chown($LogFilePath,$APACHE_SRC_ACCOUNT);
+	@chgrp($LogFilePath,$APACHE_SRC_GROUP);
+	
+	
+	if(!is_file($ErrorLog)){@touch($ErrorLog);}
+	@chown($ErrorLog,$APACHE_SRC_ACCOUNT);
+	@chgrp($ErrorLog,$APACHE_SRC_GROUP);
+	
+	
 	$APACHE_MODULES_PATH=$unix->APACHE_MODULES_PATH();
 
-	
+	$HotSpotMaxClients=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/HotSpotMaxClients"));
+	$HotSpotStartServers=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/HotSpotStartServers"));
+	$HotSpotForceDDOSDisable=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/HotSpotForceDDOSDisable"));
+	if($HotSpotMaxClients==0){$HotSpotMaxClients=20;}
+	if($HotSpotStartServers==0){$HotSpotStartServers=5;}
 	$EnableArticaHotSpot=$sock->GET_INFO("EnableArticaHotSpot");
 	$SquidHotSpotPort=$sock->GET_INFO("SquidHotSpotPort");
 	$ArticaHotSpotPort=$sock->GET_INFO("ArticaHotSpotPort");
@@ -279,6 +349,19 @@ function apache_config(){
 	if(!is_numeric($ArticaSplashHotSpotPortSSL)){$ArticaSplashHotSpotPortSSL=16443;}
 	$ArticaHotSpotInterface=$sock->GET_INFO("ArticaHotSpotInterface");
 	$HospotHTTPServerName=trim($sock->GET_INFO("HospotHTTPServerName"));
+	$HotSpotErrorRedirect=$sock->GET_INFO("HotSpotErrorRedirect");
+	if($HotSpotErrorRedirect==null){$HotSpotErrorRedirect="http://www.msftncsi.com";}
+	
+	$Params=unserialize($sock->GET_INFO("HotSpotEvasive"));
+	$ApacheEvasiveInstalled=intval($sock->GET_INFO("ApacheEvasiveInstalled"));
+	
+	if(!is_numeric($Params["DOSEnable"])){$Params["DOSEnable"]=1;}
+	if(!is_numeric($Params["DOSHashTableSize"])){$Params["DOSHashTableSize"]=1024;}
+	if(!is_numeric($Params["DOSPageCount"])){$Params["DOSPageCount"]=3;}
+	if(!is_numeric($Params["DOSSiteCount"])){$Params["DOSSiteCount"]=20;}
+	if(!is_numeric($Params["DOSPageInterval"])){$Params["DOSPageInterval"]=1;}
+	if(!is_numeric($Params["DOSSiteInterval"])){$Params["DOSSiteInterval"]=10;}
+	if(!is_numeric($Params["DOSBlockingPeriod"])){$Params["DOSBlockingPeriod"]=5;}
 	
 	
 	$unix=new unix();
@@ -315,9 +398,10 @@ function apache_config(){
 		$unix->CreateUnixUser($APACHE_SRC_ACCOUNT,$APACHE_SRC_GROUP,"Apache username");
 	}
 	
-	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} Run as $APACHE_SRC_ACCOUNT:$APACHE_SRC_GROUP\n";}
-	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} HTTP Port: $ArticaSplashHotSpotPort SSL Port: $ArticaSplashHotSpotPortSSL\n";}
-	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} PHP-FPM: $EnablePHPFPM\n";}
+	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} Run as....: $APACHE_SRC_ACCOUNT:$APACHE_SRC_GROUP\n";}
+	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} HTTP Port.: $ArticaSplashHotSpotPort SSL Port: $ArticaSplashHotSpotPortSSL\n";}
+	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} PHP-FPM...: $EnablePHPFPM\n";}
+	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} MaxClients: $HotSpotMaxClients\n";}
 	
 	$f[]="Group $APACHE_SRC_GROUP";
 	$f[]="User $APACHE_SRC_ACCOUNT";
@@ -330,12 +414,12 @@ function apache_config(){
 	$f[]="SSLSessionCacheTimeout  300";
 	$f[]="SSLSessionCacheTimeout  300";	
 	$f[]="DocumentRoot /usr/share/artica-postfix";
-	$f[]="DirectoryIndex hotspot.php index.html";
-	$f[]="ErrorDocument 400 /hotspot.php";
-	$f[]="ErrorDocument 401 /hotspot.php";
-	$f[]="ErrorDocument 403 /hotspot.php";
-	$f[]="ErrorDocument 404 /hotspot.php";
-	$f[]="ErrorDocument 500 /hotspot.php";
+	$f[]="DirectoryIndex hotspot.html";
+	$f[]="ErrorDocument 400 /hotspot.html";
+	$f[]="ErrorDocument 401 /hotspot.html";
+	$f[]="ErrorDocument 403 /hotspot.html";
+	$f[]="ErrorDocument 404 /hotspot.html";
+	$f[]="ErrorDocument 500 /hotspot.html";
 	
 	$NameVirtualHost=$ipaddr;
 	if($HospotHTTPServerName<>null){$NameVirtualHost=$HospotHTTPServerName;}
@@ -347,10 +431,33 @@ function apache_config(){
 	$f[]="NameVirtualHost $NameVirtualHost:$ArticaSplashHotSpotPortSSL";
 	$f[]="Listen $NameVirtualHost:$ArticaSplashHotSpotPort";
 	$f[]="Listen $NameVirtualHost:$ArticaSplashHotSpotPortSSL";
+	
+	$ddos_config=null;
+	if($HotSpotForceDDOSDisable==1){$Params["DOSEnable"]=0;}
+if($Params["DOSEnable"]==1){	
+	//$ddos[]="<IfModule mod_evasive20.c>";
+	$ddos[]="\tDOSHashTableSize {$Params["DOSHashTableSize"]}";
+	$ddos[]="\tDOSPageCount {$Params["DOSPageCount"]}";
+	$ddos[]="\tDOSSiteCount {$Params["DOSSiteCount"]}";
+	$ddos[]="\tDOSPageInterval {$Params["DOSPageInterval"]}";
+	$ddos[]="\tDOSSiteInterval {$Params["DOSSiteInterval"]}";
+	$ddos[]="\tDOSBlockingPeriod {$Params["DOSBlockingPeriod"]}";
+	$ddos[]="\tDOSLogDir  \"/var/log/artica-wifidog\"";
+	$ddos[]="\tDOSSystemCommand \"/bin/echo `date '+%F %T'` HOTSPOT  %s >> /var/log/artica-wifidog/dos_evasive_attacks.log\"";
+	$ddos_config=@implode("\n", $ddos);
+	//$ddos[]="</IfModule>";
+}
 
 $f[]="<VirtualHost $NameVirtualHost:$ArticaSplashHotSpotPort>";
 $f[]="\tServerName $NameVirtualHost";
 $f[]="\tDocumentRoot /usr/share/artica-postfix";
+$f[]="$ddos_config";
+$f[]="\tErrorDocument 400 /hotspot.html";
+$f[]="\tErrorDocument 401 /hotspot.html";
+$f[]="\tErrorDocument 403 /hotspot.html";
+$f[]="\tErrorDocument 404 /hotspot.html";
+$f[]="\tErrorDocument 500 /hotspot.html";
+$f[]="\tFallbackResource /hotspot.html";
 $f[]="</VirtualHost>";
 
 
@@ -379,26 +486,15 @@ if($ArticaSplashHotSpotCertificate<>null){
 	$f[]="\tSSLVerifyClient none";
 	$f[]="\tServerSignature Off";	
 
-	
+	$f[]="$ddos_config";
+	$f[]="\tErrorDocument 400 /hotspot.html";
+	$f[]="\tErrorDocument 401 /hotspot.html";
+	$f[]="\tErrorDocument 403 /hotspot.html";
+	$f[]="\tErrorDocument 404 /hotspot.html";
+	$f[]="\tErrorDocument 500 /hotspot.html";
+	$f[]="\tFallbackResource /hotspot.html";
 	
 $f[]="</VirtualHost>";
-	
-
-	
-	$f[]="<IfModule mpm_prefork_module>";
-	$f[]="</IfModule>";
-	$f[]="<IfModule mpm_worker_module>";
-	$f[]="\tMinSpareThreads      25";
-	$f[]="\tMaxSpareThreads      75 ";
-	$f[]="\tThreadLimit          64";
-	$f[]="\tThreadsPerChild      25";
-	$f[]="</IfModule>";
-	$f[]="<IfModule mpm_event_module>";
-	$f[]="\tMinSpareThreads      25";
-	$f[]="\tMaxSpareThreads      75 ";
-	$f[]="\tThreadLimit          64";
-	$f[]="\tThreadsPerChild      25";
-	$f[]="</IfModule>";
 	$f[]="AccessFileName .htaccess";
 	$f[]="<Files ~ \"^\.ht\">";
 	$f[]="\tOrder allow,deny";
@@ -411,21 +507,28 @@ $f[]="</VirtualHost>";
 	$f[]="Group				   $APACHE_SRC_GROUP";
 	$f[]="Timeout              300";
 	$f[]="KeepAlive            Off";
-	$f[]="KeepAliveTimeout     15";
-	$f[]="StartServers         1";
-	$f[]="MaxClients           50";
-	$f[]="MinSpareServers      2";
-	$f[]="MaxSpareServers      5";
-	$f[]="MaxRequestsPerChild  5000";
+	$f[]="KeepAliveTimeout     3";
+	
+	if($HotSpotStartServers>=$HotSpotMaxClients){$HotSpotMaxClients=$HotSpotMaxClients+$HotSpotStartServers;}
+	if($HotSpotMaxClients>1024){$HotSpotMaxClients=1024;}
+	
+	$ServerLimit=$HotSpotMaxClients+100;
+	if($ServerLimit>2000){$ServerLimit=2000;}
+	
+	
+	$f[]="StartServers         $HotSpotStartServers";
+	$f[]="MaxClients           $HotSpotMaxClients";
+	$f[]="ServerLimit		   $ServerLimit";
+	
+	$MinSpareServers=$HotSpotStartServers+5;
+	$MaxSpareServers=$MinSpareServers+1;
+	
+	$f[]="MinSpareServers      $MinSpareServers";
+	$f[]="MaxSpareServers      $MaxSpareServers";
+	$f[]="MaxRequestsPerChild  800";
 	$f[]="MaxKeepAliveRequests 100";
 	$f[]="ServerName ".$unix->hostname_g();
-	@mkdir("/home/artica/hotspot/sessions",0755,true);
-	@chown("/home/artica/hotspot/sessions",$APACHE_SRC_ACCOUNT);
-	@chgrp("/home/artica/hotspot/sessions",$APACHE_SRC_GROUP);
-	
-	if(!is_file("/var/log/artica-wifidog.log")){@touch("/var/log/artica-wifidog.log");}
-	@chown("/var/log/artica-wifidog.log",$APACHE_SRC_ACCOUNT);
-	@chgrp("/var/log/artica-wifidog.log",$APACHE_SRC_GROUP);
+
 	
 
 	
@@ -452,7 +555,7 @@ $f[]="</VirtualHost>";
 
 	
 	$f[]="AddType application/x-httpd-php .php";
-	$f[]="php_value error_log \"/var/log/artica-wifidog.log\"";
+	$f[]="php_value error_log \"/var/log/artica-wifidog/access.log\"";
 	$f[]="php_value session.save_path \"/home/artica/hotspot/sessions\"";
 	
 	
@@ -561,24 +664,39 @@ $f[]="</VirtualHost>";
 	$f[]="\tAddOutputFilter INCLUDES .shtml";
 	$f[]="</IfModule>";
 
-	$f[]="Alias /index.php /usr/share/artica-postfix/hotspot.php";
-	$f[]="Alias /index.html /usr/share/artica-postfix/hotspot.php";
+	$f[]="Alias /index.php /hotspot.html";
+	$f[]="Alias /index.html /hotspot.html";
+	$f[]="Alias /Microsoft-Server-ActiveSync /hotspot-none.html";
 	
 	$f[]="<Directory \"/usr/share/artica-postfix\">";
 	$f[]="\tDirectorySlash On";
 	$f[]="\tDirectoryIndex hostpot.php";
+
+	
 	$f[]="\t\t<Files \"hostpot.php\">";
 	$f[]="\t\t\tOrder allow,deny";
 	$f[]="\t\t\tallow from all";
 	$f[]="\t\t</Files>";
+	$f[]="\t\t<Files \"hostpot.html\">";
+	$f[]="\t\t\tOrder allow,deny";
+	$f[]="\t\t\tallow from all";
+	$f[]="\t\t</Files>";	
 	
-	$f[]="\tErrorDocument 400 /hotspot.php";
-	$f[]="\tErrorDocument 401 /hotspot.php";
-	$f[]="\tErrorDocument 403 /hotspot.php";
-	$f[]="\tErrorDocument 404 /hotspot.php";
-	$f[]="\tErrorDocument 500 /hotspot.php";
+
+	$f[]="\t\t<FilesMatch \"!(hostpot)\.(html|php)$\">";
+	$f[]="\t\t\tOrder allow,deny";
+	$f[]="\t\t\tdeny from all";
+	$f[]="\t\t</FilesMatch>";
+	
+	
+	$f[]="\tErrorDocument 400 /hotspot.html";
+	$f[]="\tErrorDocument 401 /hotspot.html";
+	$f[]="\tErrorDocument 403 /hotspot.html";
+	$f[]="\tErrorDocument 404 /hotspot.html";
+	$f[]="\tErrorDocument 500 /hotspot.html";
+	$f[]="\tFallbackResource /hotspot.html";
 	$f[]="\tOptions -Indexes";
-	$f[]=ParseArticaDirectory();
+	
 	
 	$f[]="\tSSLOptions +StdEnvVars";
 	$f[]="\tAllowOverride All";
@@ -607,9 +725,9 @@ $f[]="</VirtualHost>";
 	
 	
 	$f[]="Loglevel debug";
-	$f[]="ErrorLog /var/log/lighttpd/apache-hotspot-error.log";
+	$f[]="ErrorLog $ErrorLog";
 	$f[]="LogFormat \"%h %l %u %t \\\"%r\\\" %<s %b\" common";
-	$f[]="CustomLog /var/log/lighttpd/apache-hotspot-access.log common";
+	$f[]="CustomLog $LogFilePath common";
 	
 	if($EnableArticaApachePHPFPM==0){$array["php5_module"]="libphp5.so";}
 	
@@ -628,6 +746,7 @@ $f[]="</VirtualHost>";
 	$array["headers_module"]="mod_headers.so";
 	$array["ldap_module"]="mod_ldap.so";
 	
+	if($Params["DOSEnable"]==1){$array["evasive20_module"]="mod_evasive20.so";}
 	if($EnableArticaApachePHPFPM==1){$array["fastcgi_module"]="mod_fastcgi.so";}
 	
 	if(is_dir("/etc/apache2")){
@@ -656,11 +775,32 @@ $f[]="</VirtualHost>";
 	
 	}
 	
-	
-	@file_put_contents("/etc/artica-postfix/hotspot-httpd.conf", @implode("\n", $f));
+	build_error_page();
+	@file_put_contents("/etc/artica-postfix/hotspot-httpd.conf", @implode("\n", $f)."\n");
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} /etc/artica-postfix/hotspot-httpd.conf done\n";}
 	
 	
+}
+
+function build_error_page(){
+	$sock=new sockets();
+	$HotSpotErrorRedirect=$sock->GET_INFO("HotSpotErrorRedirect");
+	if($HotSpotErrorRedirect==null){$HotSpotErrorRedirect="http://www.msftncsi.com";}
+
+
+	$f[]="<html>";
+	$f[]="<head>";
+	$f[]="<META http-equiv=\"refresh\" content=\"1; URL=$HotSpotErrorRedirect\">";
+	$f[]="</head>";
+	$f[]="<body style='font-size:40px;text-align:center;margin:80px'>";
+	$f[]="Redirecting to $HotSpotErrorRedirect";
+	$f[]="</body></html>";
+
+	@file_put_contents(dirname(__FILE__)."/hotspot.html" ,@implode("", $f));
+	@chmod(dirname(__FILE__)."/hotspot.html", 0755);
+
+
+
 }
 
 function FrmToSyslog($text){
@@ -731,13 +871,10 @@ $unix=new unix();
 	}
 		
 	
-	unset($array["hotspot.php"]);
-	while (list ($num, $file) = each ($array) ){
-		$f[]="\t\t<Files \"$num\">";
-		$f[]="\t\t\tOrder allow,deny";
-		$f[]="\t\t\tDeny from all";
-		$f[]="\t\t</Files>";
-	}
+	$f[]="\t\t<Files \".*\">";
+	$f[]="\t\t\tDeny from all";
+	$f[]="\t\t</Files>";
+	
 	
 
 	

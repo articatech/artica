@@ -14,7 +14,6 @@ if(isset($_GET["account-identity"])){account_identity();exit;}
 $sock=new sockets();
 $ActAsSMTPGatewayStatistics=$sock->GET_INFO("ActAsSMTPGatewayStatistics");
 if(!is_numeric($ActAsSMTPGatewayStatistics)){$ActAsSMTPGatewayStatistics=0;}
-
 $page=CurrentPageName();
 $users=new usersMenus();
 $postfixadded=false;
@@ -51,9 +50,17 @@ if($AsCategoriesAppliance==1){$SQUIDEnable=0;}
 $AsMetaServer=intval($sock->GET_INFO("AsMetaServer"));
 if($AsMetaServer==1){$sock->SET_INFO("EnableArticaMetaServer",1);}
 $EnableIntelCeleron=intval($sock->GET_INFO("EnableIntelCeleron"));
-
+$EnableHaProxy=intval($sock->GET_INFO("EnableHaProxy"));
+$FreeWebLeftMenu=intval($sock->GET_INFO("FreeWebLeftMenu"));
+$WordPressTopMenu=intval($sock->GET_INFO("WordPressTopMenu"));
+$ProFTPDLeftMenu=intval($sock->GET_INFO("ProFTPDLeftMenu"));
+$QosTopMenu=intval($sock->GET_INFO("QosTopMenu"));
+$WordPressInstalled=intval($sock->GET_INFO("WordPressInstalled"));
+if($users->WORDPRESS_APPLIANCE){$WordPressInstalled=1;}
+$MimeDefangEnabled=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/MimeDefangEnabled"));
+$MESSAGING_ADMIN=false;
 $AS_STATS=false;
-
+$tr[]="<!-- L.".__LINE__." -->";
 $action=false;
 if($users->SQUID_INSTALLED){
 	$AsSquid=true;
@@ -63,18 +70,53 @@ if($users->SQUID_INSTALLED){
 	$EnableIntelCeleron=0;
 }
 
-if($EnableIntelCeleron==1){$AS_STATS=false;}
+
+
+
+if($EnableIntelCeleron==1){
+	$FreeWebLeftMenu=0;
+	$AS_STATS=false;
+}
 
 if($users->STATS_APPLIANCE){
 	$AS_STATS=true;
 	$users->SQUID_INSTALLED=false;
+	$AsCategoriesAppliance=1;
 }
+
+
+
+
+$tr[]="<!-- L.".__LINE__." -->";
+
+if($users->AsWebMaster){
+	
+	if($FreeWebLeftMenu==1){
+		$tr[]=BuildIcons("free-web-white-32.png","free-web-white-32.png","{webservers}","GotToFreeWeb();");
+	}
+	
+	$tr[]="<!-- AsWebMaster OK  WordPressInstalled=$WordPressInstalled-->";
+	if($WordPressInstalled==1){
+		if($WordPressTopMenu==1){
+			$tr[]=BuildIcons("wp-32.png","wp-32.png","Wordpress","GotoWordPress()");
+		}
+	}
+	
+	if($ProFTPDLeftMenu==1){
+		$tr[]=BuildIcons("proxy-white-32.png","proxy-white-32.png","{APP_PROFTPD}","GotoVSFTPD();");
+	}
+}
+
+
 
 
 
 if(!$users->AsWebStatisticsAdministrator){$AS_STATS=false;}
 $NGINX_ADDED=false;
 $EVENTS_ADDED=false;
+
+//-------------------------------------------------- SQUID ----------------------------------------
+
 if($SQUIDEnable==1){
 	if($users->SQUID_INSTALLED){
 		$AsSquid=true;
@@ -110,12 +152,17 @@ if($SQUIDEnable==1){
 		}
 	}
 }
+
+
 if(!$NGINX_ADDED){
 	if($EnableNginx==1){
 		if($users->NGINX_INSTALLED){
 			if($users->AsWebMaster){
 				$tr[]=BuildIcons("proxy-white-32.png","proxy-white-32.png","Reverse Proxy","GotoReverseProxy();");
 				$NGINX_ADDED=true;
+				if(!$EVENTS_ADDED){
+					$tr[]=BuildIcons("eye-32-w.png","eye-32-w.png","{events}","GotoMainLogs()");
+				}
 			}
 				
 		}
@@ -149,9 +196,22 @@ if($SQUIDEnable==0){
 
 if($users->POSTFIX_INSTALLED){
 	$postfixadded=true;
-	$tr[]=BuildIcons("messaging-service-32.png","messaging-server-white-32.png","{messaging}","GoToMessaging();");
-	$tr[]=BuildIcons("eye-32-w.png","eye-32-w.png","{events}","GotoPostfixMainLogs()");
-	//$tr[]=BuildIcons("mail-secu-32.png","mail-secu-32.png","{security}","MessagesTopshowMessageDisplay('quicklinks_postfix_secu');");
+	if($users->AsPostfixAdministrator){
+		$MESSAGING_ADMIN=true;
+		$tr[]=BuildIcons("messaging-service-32.png","messaging-server-white-32.png","{messaging}","GoToMessaging();");
+		$tr[]=BuildIcons("eye-32-w.png","eye-32-w.png","{events}","GotoPostfixMainLogs()");
+		$tr[]=BuildIcons("statistics-32-white.png","statistics-32-white.png","{statistics}","MessagesTopshowMessageDisplay('quicklinks_statistics_options');");
+	}
+	
+	if(!$MESSAGING_ADMIN){
+		if(VerifyRights_smtp_org()){
+			$tr[]=BuildIcons("messaging-service-32.png","messaging-server-white-32.png","{messaging}","GoToMessagingOU('{$_GET["ou"]}');");
+			if($MimeDefangEnabled==1){
+				$tr[]=BuildIcons("eye-32-w.png","eye-32-w.png","{events}","GotoSMTPTransactions()");
+			}
+			$tr[]=BuildIcons("statistics-32-white.png","statistics-32-white.png","{statistics}","MessagesTopshowMessageDisplay('quicklinks_statistics_options');");
+		}
+	}
 }
 
 
@@ -189,11 +249,11 @@ if($users->AsArticaMetaAdmin){
 	}
 }
 
-
+$FIREWALL_INSTALLED=intval($sock->getFrameWork("firehol.php?is-installed=yes"));
 if($users->AsSystemAdministrator){
 	$EnableArticaHotSpot=intval($sock->GET_INFO("EnableArticaHotSpot"));
 	if($EnableArticaHotSpot==0){
-		if(intval($sock->getFrameWork("firehol.php?is-installed=yes"))==1){
+		if($FIREWALL_INSTALLED==1){
 			$FireHolConfigured=intval($sock->GET_INFO("FireHolConfigured"));
 			if($FireHolConfigured==1){
 				$tr[]=BuildIcons("firewall-32-white.png","firewall-32-white.png","FireWall","GotoFirewall()");
@@ -201,7 +261,25 @@ if($users->AsSystemAdministrator){
 		}
 	}
 }
-				
+
+if($QosTopMenu==1){
+	if($users->AsSystemAdministrator){
+		if($FIREWALL_INSTALLED==1){
+			$tr[]=BuildIcons("firewall-32-white.png","firewall-32-white.png","{Q.O.S}","GotoQOS()");
+			
+		}
+	}
+	
+}
+$tr[]="<!-- L.".__LINE__." -->";				
+
+if($users->AsSquidAdministrator){
+	if($users->HAPROXY_INSTALLED){
+		if($EnableHaProxy==1){
+			$tr[]=BuildIcons("load-balance-white-32.png","load-balance-white-32.png","{load_balancing}","GotToHAPROXY()");
+		}
+	}
+}
 
 
 if(!$AsSquid){
@@ -211,26 +289,13 @@ if(!$AsSquid){
 		}
 		
 	}
-	
-	if($users->AsSystemAdministrator){
-		if($users->HAPROXY_INSTALLED){
-			$tr[]=BuildIcons("load-balance-white-32.png","load-balance-white-32.png","{load_balancing}","AnimateDiv('BodyContent');Loadjs('haproxy.php');");
-		}
-	}
-	
-	if($users->AsWebMaster){
-		if($users->WORDPRESS_APPLIANCE){
-			$tr[]=BuildIcons("wp-32.png","wp-32.png","Wordpress","LoadAjax('BodyContent','wordpress.php');");
-		}else{
-			if($users->WORDPRESS_INSTALLED){
-				$tr[]=BuildIcons("wp-32.png","wp-32.png","Wordpress","LoadAjax('BodyContent','wordpress.php');");
-			}
-		}
-	}
-
 }
+	
 
 
+
+
+$tr[]="<!-- L.".__LINE__." -->";
 if($_SESSION["uid"]<>null){
 	if($users->AsAnAdministratorGeneric){
 		$ldap=new clladp();
@@ -238,7 +303,10 @@ if($_SESSION["uid"]<>null){
 			$tr[]=BuildIcons("windows-white-32.png","windows-white-32.png","AD {members}","GotoMembersSearch()");
 		}else{
 			if($EnableIntelCeleron==0){
-				$tr[]=BuildIcons("users-white-32.png","users-white-32.png","{local_members}","GotoMembersSearch()");
+				$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
+				if($EnableOpenLDAP==1){
+					$tr[]=BuildIcons("users-white-32.png","users-white-32.png","{local_members}","GotoMembersSearch()");
+				}
 			}
 		}
 		
@@ -517,4 +585,11 @@ function account_identity(){
 	echo $html;
 	
 	
+}
+
+function VerifyRights_smtp_org(){
+	$usersmenus=new usersMenus();
+	if($usersmenus->AsOrgPostfixAdministrator){$_GET["ou"]=$_SESSION["ou"];return true;}
+	if($usersmenus->AsMessagingOrg){$_GET["ou"]=$_SESSION["ou"];return true;}
+	if(!$usersmenus->AllowChangeDomains){$_GET["ou"]=$_SESSION["ou"];return true;}
 }

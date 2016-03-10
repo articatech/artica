@@ -43,7 +43,7 @@ public
     function  STATUS():string;
     procedure WRITE_CONFIG();
     procedure RELOAD();
-    procedure WritePhpConfig();
+
 
 END;
 
@@ -230,8 +230,6 @@ if SYS.PROCESS_EXIST(pid) then begin
 end;
     logs.DebugLogs('tocsi.START():: -> WRITE_APACHE_CONFIG() ');
     WRITE_APACHE_CONFIG();
-    logs.DebugLogs('tocsi.START():: -> WritePhpConfig() ');
-    WritePhpConfig();
     logs.DebugLogs('tocsi.START():: Write configs done..');
     logs.DebugLogs('tocsi.START():: exec() -> '+apachebinary_path+' -f /etc/artica-postfix/apache-ocsweb.conf');
 
@@ -299,7 +297,7 @@ end;
 
 WRITE_APACHE_CONFIG();
 if UseFusionInventoryAgents=0 then WRITE_APACHE_CONFIG_DOWNLOAD();
-WritePhpConfig();
+
 
  pid:=PID_NUM();
 if not SYS.PROCESS_EXIST(pid) then begin
@@ -1035,21 +1033,7 @@ begin
 end;
 
 //##############################################################################
-procedure tocsi.WritePhpConfig();
-var
-   lighttpd:Tlighttpd;
-begin
-if not FileExists('/usr/local/apache-groupware/php5/lib/php.ini') then begin
-   logs.Debuglogs('OCS web Engine unable to stat /usr/local/apache-groupware/php5/lib/php.ini');
 
-end;
-forcedirectories('/usr/local/apache-groupware/php5/sessions');
-logs.OutputCmd('/bin/chmod 755 /usr/local/apache-groupware/php5/sessions');
-logs.OutputCmd('/bin/chown -R www-data:www-data /usr/local/apache-groupware/php5/sessions');
-lighttpd:=Tlighttpd.Create(SYS);
-lighttpd.LIGHTTPD_ADD_INCLUDE_PATH();
-end;
-//##############################################################################
 
 
 end.

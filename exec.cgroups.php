@@ -332,6 +332,7 @@ function start(){
 	
 	$sock=new sockets();
 	$cgroupsEnabled=$sock->GET_INFO("cgroupsEnabled");
+	$cgroupsServiceEnabled=$sock->GET_INFO("cgroupsServiceEnabled");
 	if(!is_numeric($cgroupsEnabled)){$cgroupsEnabled=0;}
 	if($sock->EnableIntelCeleron==1){$cgroupsEnabled=1;}
 	if($cgroupsEnabled==0){echo "Starting......: ".date("H:i:s")." cgroups: cgroups is disabled\n";stop();cgred_stop(true);return;}
@@ -368,7 +369,7 @@ function start(){
 	}else{
 	 echo "Starting......: ".date("H:i:s")." cgroups: No rules...\n";	
 	}
-	
+	$c=0;
 	if(count($GLOBALS["PROCESSES"])>0){
 		echo "Starting......: ".date("H:i:s")." cgroups checking processes\n";
 		while (list ($process, $groupname) = each ($GLOBALS["PROCESSES"])){
@@ -457,6 +458,8 @@ function cgred_start(){
 	$cgrulesengd=$GLOBALS["CLASS_UNIX"]->find_program("cgrulesengd");
 	$sock=new sockets();
 	$cgroupsEnabled=$sock->GET_INFO("cgroupsEnabled");
+	$cgroupsServiceEnabled=$sock->GET_INFO("cgroupsServiceEnabled");
+	
 	if(!is_numeric($cgroupsEnabled)){$cgroupsEnabled=0;}
 	
 	if($cgroupsEnabled==0){
@@ -508,7 +511,10 @@ function cgred_start(){
 					@mkdir("/cgroups/$structure/$group",0755,true);
 				}
 			}
-		}	
+		}
+
+		
+	if($cgroupsServiceEnabled==0){echo "Starting......: ".date("H:i:s")." cgroups: cgroups is disabled\n";stop();cgred_stop(true);return;}
 	if(is_file("/var/log/cgrulesend.log")){@unlink("/var/log/cgrulesend.log");}
 	if(is_file("/var/log/cgrulesengd.log")){@unlink("/var/log/cgrulesengd.log");}
 	$cmdline="$cgrulesengd  -f /etc/cgrules.conf --logfile=/var/log/cgrulesengd.log";

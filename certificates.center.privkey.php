@@ -94,11 +94,13 @@ function page(){
 		</center>
 		</div>
 	
-		<script>
-		var xSave$tt= function (obj) {
-		var results=obj.responseText;
-		if(results.length>3){alert(results);return;};
-	}
+<script>
+var xSave$tt= function (obj) {
+	var results=obj.responseText;
+	if(results.length>3){alert(results);return;};
+	$('#TABLE_CERTIFICATE_CENTER_MAIN').flexReload();
+	VerifyCertificate$tt();
+}
 	
 function Save$tt(CommonName,md5){
 	var XHR = new XHRConnection();
@@ -170,6 +172,13 @@ function certificate_info_privkey_popup(){
 		if($ligne["UsePrivKeyCrt"]==0){
 			$certField="SquidCert";
 			$keyfield="Squidkey";
+		}
+		
+		
+		if($ligne[$certField]==null){
+			$tpl=new templates();
+			echo "<p class='text-error' style='font-size:14px'>". $tpl->_ENGINE_parse_body("{failed}...{no_certificate}")."</p>";
+			return;
 		}
 		
 		

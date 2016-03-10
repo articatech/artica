@@ -44,12 +44,45 @@ function build_progress($text,$pourc){
 function GRAB_DATAS($ligne,$md5){
 	$GLOBALS["zMD5"]=$md5;
 	$params=unserialize($ligne["params"]);
+	$params["TO"]=intval($params["TO"]);$params["FROM"]=abs(intval($params["FROM"]));
+	
+	while (list ($A, $P) = each ($params) ){
+		echo "Params $A......: $P\n";
+		
+	}
+	
+	
+	echo "Date To......: {$params["TO"]}\n";
+	
+	
 	$influx=new influx();
+	$mintime=strtotime("2008-01-01 00:00:00");
+	$params["TO"]=intval($params["TO"]);
+	$params["FROM"]=abs(intval($params["FROM"]));
+	
+	echo "Date From....: {$params["FROM"]} <> $mintime\n";
+	if($params["FROM"]<$mintime){
+		echo "Date From....: {$params["FROM"]} < $mintime !!!\n";
+		$params["FROM"]=strtotime(date("Y-m-d 00:00:00"));}
+	$params["TO"]=intval($params["TO"]);if($params["TO"]<$mintime){$params["TO"]=time();}
+	
+	echo "Date From....: {$params["FROM"]}\n";
 	$from=InfluxQueryFromUTC($params["FROM"]);
+	
+	
 	$to=InfluxQueryFromUTC($params["TO"]);
 	$interval=$params["INTERVAL"];
+
 	$USER_FIELD=$params["USER"];
-	$md5_table=md5(__FUNCTION__."."."$from$to");
+	echo "LIMIT........: $mintime\n";
+	echo "Date From....: {$params["FROM"]}/$from/".date("Y-m-d H:i:s",$from)."\n";
+	echo "Date To......: {$params["TO"]}/$to/".date("Y-m-d H:i:s",$to)."\n";
+	echo "USER_FIELD...: $USER_FIELD\n";
+	$SSEARCH=null;
+	
+	
+	
+	
 	$searchsites=trim($params["searchsites"]);
 	$searchuser=trim($params["searchuser"]);
 	$categories=trim($params["categories"]);
@@ -60,9 +93,10 @@ function GRAB_DATAS($ligne,$md5){
 	
 	
 	if($searchuser<>null){
-		$searchuser_sql=str_replace("*", ".*", $searchuser);
+		$searchuser_sql=str_replace(".", "\.", $searchuser);
+		$searchuser_sql=str_replace("*", ".*", $searchuser_sql);
 		if($searchuser_sql<>null){
-			$searchuser_sql=" AND $USER_FIELD =~ /$searchuser_sql/";
+			$SSEARCH=" ($USER_FIELD ~* '$searchuser_sql') AND ";
 		}
 	}	
 	
@@ -79,131 +113,94 @@ function GRAB_DATAS($ligne,$md5){
 	
 
 	if($searchuser<>null){ 
-		$whereuser=" AND ($USER_FIELD = '$searchuser') ";
+		$searchuser=str_replace(".", "\.", $searchuser);
+		$searchuser=str_replace("*", ".*", $searchuser);
+		$SSEARCH=" (client ~* '$searchuser') AND ";
 	}
 	
 	$q=new mysql_squid_builder();
 	
 	
-	$Z[]="SELECT RQS,rulename,category,hostname,website,client FROM webfilter";
-	$Z[]="WHERE (time >'".date("Y-m-d H:i:s",$from)."' and time < '".date("Y-m-d H:i:s",$to)."')$whereuser";
+	$TimeGroup="date_trunc('hour', zdate)";
+	$distance=$influx->DistanceHour($from,$to);
+	echo "Distance: {$distance} hours\n";
 	
+	
+	$sql="CREATE TABLE IF NOT EXISTS \"{$md5}report\" (zDate timestamp,
+	website VARCHAR(128),
+	category VARCHAR(64),
+	rulename VARCHAR(128),
+	hostname VARCHAR(128),
+	client VARCHAR(128),
+	rqs BIGINT)";
+	
+	$q=new postgres_sql();
+	
+	$q->QUERY_SQL($sql);
+	if(!$q->ok){
+	echo "***************\n$q->mysql_error\n***************\n";
+	return false;
+	}
+	
+	$q->QUERY_SQL("create index zdate{$md5}report on \"{$md5}report\"(zdate);");
+	$q->QUERY_SQL("create index website{$md5}report on \"{$md5}report\"(website);");
+	$q->QUERY_SQL("create index hostname{$md5}report on \"{$md5}report\"(hostname);");
+	$q->QUERY_SQL("create index client{$md5}report on \"{$md5}report\"(client);");
+	
+	
+	
+	$q->QUERY_SQL("TRUNCATE TABLE \"{$md5}report\"");
+	
+
+	
+	$Z[]="SELECT SUM(RQS) AS RQS,$TimeGroup as zdate,rulename,category,hostname,website,client FROM webfilter";
+	$Z[]="WHERE $SSEARCH(zdate >='".date("Y-m-d H:i:s",$from)."'";
+	$Z[]="and zdate <= '".date("Y-m-d H:i:s",$to)."')";
+	$Z[]="GROUP BY $TimeGroup,rulename,category,hostname,website,client";
+	
+
+
 		
 	$sql=@implode(" ", $Z);
 	echo "$sql\n";
 	build_progress("{step} {waiting_data}: BigData engine, (websites) {please_wait}",6);
+	$sql="INSERT INTO \"{$md5}report\" (rqs,zdate,rulename,category,hostname,website,client) $sql";
 	
-	$main=$influx->QUERY_SQL($sql);
-	$GLOBALS["CSV1"][]=array("date","rulename","website","category","client","uid");
-	foreach ($main as $row) {
-		
-		$time=InfluxToTime($row->time);
-		$rulename=$row->rulename;
-		$category=$row->category;
-		$uid=$row->hostname;
-		$website=$row->website;
-		$client=$row->client;
-		$HOURLY=date("Y-m-d H:00:00",$time);
-		$MDKey=md5("$rulename$category$uid$website$client");
-
-		$TIME_TEXT=date("Y-m-d H:i:s",$time);
-		
-		$GLOBALS["CSV1"][]=array($TIME_TEXT,$rulename,$website,$category,$client,$uid);
-		
-		if(!isset($MAIN_ARRAY[$HOURLY][$MDKey])){
-			$MAIN_ARRAY[$HOURLY][$MDKey]["RULENAME"]=$rulename;
-			$MAIN_ARRAY[$HOURLY][$MDKey]["WEBSITE"]=$website;
-			$MAIN_ARRAY[$HOURLY][$MDKey]["CATEGORY"]=$category;
-			$MAIN_ARRAY[$HOURLY][$MDKey]["CLIENT"]=$client;
-			$MAIN_ARRAY[$HOURLY][$MDKey]["UID"]=$uid;
-			$MAIN_ARRAY[$HOURLY][$MDKey]["RQS"]=1;
-			
-			
-		}else{
-			$MAIN_ARRAY[$HOURLY][$MDKey]["RQS"]=$MAIN_ARRAY[$HOURLY][$MDKey]["RQS"]+1;
-			
-		}
-	}
 	
-	if(count($MAIN_ARRAY)==0){
-		echo "MAIN_ARRAY is null....\n";
+	
+	$postgres=new postgres_sql();
+	$results=$postgres->QUERY_SQL($sql);
+	if(!$postgres->ok){
+		echo $postgres->mysql_error."\n";
 		return false;
 	}
 	
-	echo "MAIN_ARRAY (1) = ".count($MAIN_ARRAY)."\n";
+	$ligne=pg_fetch_assoc($q->QUERY_SQL("SELECT COUNT(*) as tcount FROM \"{$md5}report\""));
 	
-	build_progress("{step} {insert_data}: MySQL engine, {please_wait}",8);
-	$f=array();
-	
-	
-	
-	$sql="CREATE TABLE IF NOT EXISTS `{$md5}user` (
-	`RULENAME` VARCHAR(128),
-	`WEBSITE` VARCHAR(128),
-	`CATEGORY` VARCHAR(90),
-	`CLIENT` VARCHAR(128),
-	`UID` VARCHAR(90),
-	`zDate` DATETIME,
-	`hits` INT UNSIGNED NOT NULL DEFAULT 1,
-	KEY `RULENAME`(`RULENAME`),
-	KEY `WEBSITE`(`WEBSITE`),
-	KEY `CATEGORY`(`CATEGORY`),
-	KEY `CLIENT`(`CLIENT`),
-	KEY `UID`(`UID`),
-	KEY `zDate`(`zDate`),
-	KEY `hits`(`hits`)
-	)  ENGINE = MYISAM;";
-	$q=new mysql_squid_builder();
-	
-	
-	
-	$q->QUERY_SQL($sql);
 	if(!$q->ok){
-		echo $q->mysql_error;
-		REMOVE_TABLES($md5);
+		echo "***************\nERROR $q->mysql_error\n***************\n";
+		$q->QUERY_SQL("DROP TABLE \"{$md5}report\"");
 		return false;
 	}
-	$c=0;
-
-	while (list ($TIME, $SUBARRAY) = each ($MAIN_ARRAY) ){
-			while (list ($MDKey, $array) = each ($SUBARRAY) ){		
-				$RULENAME=$array["RULENAME"];
-				$HITS=$array["RQS"];
-				$WEBSITE=$array["WEBSITE"];
-				$CATEGORY=$array["CATEGORY"];
-				$CLIENT=$array["CLIENT"];
-				$UID=$array["UID"];
-				$zDate=$TIME;
-				$c++;
-				
-				$f[]="('$RULENAME','$WEBSITE','$CATEGORY','$CLIENT','$UID','$zDate','$HITS')";
-			
-				if(count($f)>500){
-					$q->QUERY_SQL("INSERT IGNORE INTO `{$md5}user` (RULENAME,WEBSITE,CATEGORY,CLIENT,UID,zDate,hits) VALUES ".@implode(",", $f));
-					if(!$q->ok){echo $q->mysql_error;REMOVE_TABLES($md5);return false;}
-				$f=array();
-			}
+	
+	
+	$c=$ligne["tcount"];
+	if($c==0){
+		echo "No data....\n";
+		$q->QUERY_SQL("DROP TABLE \"{$md5}report\"");
+			return false;
 		}
-	}
 	
-	if(count($f)>0){
-		$q->QUERY_SQL("INSERT IGNORE INTO `{$md5}user`(RULENAME,WEBSITE,CATEGORY,CLIENT,UID,zDate,hits) VALUES ".@implode(",", $f));
-		$f=array();
-		
-	}
 	
-	echo "$c items inserted to MySQL\n";
 	
-
+	
+	echo "$c items inserted to PostgreSQL\n";
+	$MAIN_ARRAY=array();
 	return true;
-}
-
-function REMOVE_TABLES($md5){
-	$q=new mysql_squid_builder();
-	$q->QUERY_SQL("DROP TABLE `{$md5}sites`");
-	$q->QUERY_SQL("DROP TABLE `{$md5}users`");
 	
 }
+
+
 
 
 function BUILD_REPORT($md5){
@@ -215,6 +212,10 @@ function BUILD_REPORT($md5){
 	
 	$params=unserialize($ligne["params"]);
 	$influx=new influx();
+	$mintime=strtotime("2008-01-01 00:00:00");$params["TO"]=intval($params["TO"]);$params["FROM"]=abs(intval($params["FROM"]));
+	if($params["FROM"]<$mintime){$params["FROM"]=strtotime(date("Y-m-d 00:00:00"));}
+	$params["TO"]=intval($params["TO"]);if($params["TO"]<$mintime){$params["TO"]=time();}
+	$influx=new influx();
 	$from=InfluxQueryFromUTC($params["FROM"]);
 	$to=InfluxQueryFromUTC($params["TO"]);
 	$interval=$params["INTERVAL"];
@@ -225,68 +226,24 @@ function BUILD_REPORT($md5){
 		return;
 	}
 	
-	$q=new mysql_squid_builder();
-	$per["10m"]="DATE_FORMAT(zDate,'%m-%d %Hh') as tdate";
-	$per["1h"]="DATE_FORMAT(zDate,'%m-%d %Hh') as tdate";
-	$per["1d"]="DATE_FORMAT(zDate,'%m-%d') as tdate";
-	$per["1w"]="DATE_FORMAT(zDate,'%U') as tdate";
-	$per["30d"]="DATE_FORMAT(zDate,'%m') as tdate";
-	$datformat=$per[$interval];
-	$md5_table="`{$md5}user`";
-//----------------------------------------------------------------------------------------------------------	
-	
-	$sql="SELECT SUM(hits) as hits,UID,CLIENT FROM $md5_table GROUP BY UID,CLIENT ORDER by hits DESC LIMIT 0,15";
-	$results=$q->QUERY_SQL($sql);
-	build_progress("{parsing_data} (2)",15);
-	$c=0;
-	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
-		$c++;
-		$MAIN["GRAPH1"][$ligne["UID"]."/".$ligne["CLIENT"]]=$ligne["hits"];
-	}
-	build_progress("$c {rows}",30);
-//----------------------------------------------------------------------------------------------------------
-	$sql="SELECT SUM(hits) as hits,CATEGORY FROM $md5_table GROUP BY CATEGORY ORDER by hits DESC LIMIT 0,15";
-	$results=$q->QUERY_SQL($sql);
-	build_progress("{parsing_data} (2)",15);
-	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
-		$MAIN["GRAPH2"][$ligne["CATEGORY"]]=$ligne["hits"];
-	}
-		
-//----------------------------------------------------------------------------------------------------------
-	$sql="SELECT SUM(hits) as hits,RULENAME FROM $md5_table GROUP BY RULENAME ORDER by hits DESC LIMIT 0,15";
-	$results=$q->QUERY_SQL($sql);
-	build_progress("{parsing_data} (2)",15);
-	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
-		$MAIN["GRAPH3"][$ligne["RULENAME"]]=$ligne["hits"];
-	}	
-//----------------------------------------------------------------------------------------------------------	
-	$sql="SELECT SUM(hits) as hits,WEBSITE FROM $md5_table GROUP BY WEBSITE ORDER by hits DESC LIMIT 0,15";
-	$results=$q->QUERY_SQL($sql);
-	build_progress("{parsing_data} (2)",15);
-	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
-		$MAIN["GRAPH4"][$ligne["WEBSITE"]]=$ligne["hits"];
-	}
-//----------------------------------------------------------------------------------------------------------	
 
-	$MAIN["csv"]=$GLOBALS["CSV1"];	
-	
-	
-	echo "MD5:{$GLOBALS["zMD5"]}\n";
-	
-	REMOVE_TABLES($GLOBALS["zMD5"]);
-	$encoded_data=base64_encode(serialize($MAIN));
-	$datasize=strlen($encoded_data);
-	echo "Saving ".strlen($encoded_data)." bytes...\n";
-	
-	
-	$q->QUERY_SQL("UPDATE reports_cache SET `builded`=1,`values`='$encoded_data',`values_size`='$datasize' WHERE `zmd5`='{$GLOBALS["zMD5"]}'");
+	$q=new postgres_sql();
+	$q->QUERY_SQL("COPY (SELECT * from \"{$md5}report\") To '/tmp/{$md5}report.csv' with CSV HEADER;");
+	$values_size=@filesize("/tmp/{$md5}report.csv");
+	$values=mysql_escape_string2(@file_get_contents("/tmp/{$md5}report.csv"));
+	echo "MD5:{$GLOBALS["zMD5"]} {$values_size}Bytes ". FormatBytes($values_size/1024)."\n";
+	$q=new mysql_squid_builder();
+	$q->QUERY_SQL("UPDATE reports_cache SET `builded`=1,`values`='$values',`values_size`='$values_size' WHERE `zmd5`='{$GLOBALS["zMD5"]}'");
 	
 	if(!$q->ok){
 		echo $q->mysql_error."\n";
-		build_progress("MySQL {failed}",110);
+		build_progress("reports_cache: PostGreSQL {failed}",110);
 		return;
 	}
 	
 	build_progress("{success}",100);
+	
+	
+	
 
 }

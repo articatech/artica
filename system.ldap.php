@@ -303,7 +303,7 @@ function tabs(){
 	
 	//$array["backup"]='{backup}';
 	
-	$tabsize="style='font-size:18px'";
+	$tabsize="style='font-size:26px'";
 	
 	while (list ($num, $ligne) = each ($array) ){
 		if($num=="client"){
@@ -384,6 +384,11 @@ function LDAP_CONFIG_SAVE(){
 	if(isset($_POST["EnableRemoteAddressBook"])){$sock->SET_INFO("EnableRemoteAddressBook",$_POST["EnableRemoteAddressBook"]);}
 	if(isset($_POST["LockLdapConfig"])){$sock->SET_INFO("LockLdapConfig",$_POST["LockLdapConfig"]);}
 	if(isset($_POST["RestartLDAPEach"])){$sock->SET_INFO("RestartLDAPEach",$_POST["RestartLDAPEach"]);}
+	if(isset($_POST["EnableOpenLDAP"])){$sock->SET_INFO("EnableOpenLDAP",$_POST["EnableOpenLDAP"]);}
+	if(isset($_POST["RestartOpenLDAP"])){$sock->SET_INFO("RestartOpenLDAP",$_POST["RestartOpenLDAP"]);}
+	
+	
+	
 	
 	if(isset($_POST["cachesize"])){
 		if($_POST["set_cachesize"]>3999){
@@ -426,7 +431,8 @@ function LDAP_CONFIG(){
 	$nets["all"]="{all}";
 	$return=Paragraphe32("troubleshoot","troubleshoot_explain","Loadjs('index.troubleshoot.php');","48-troubleshoots.png",180);
 	$superuser=Paragraphe32("account","accounts_text","Loadjs('artica.settings.php?js=yes&func-AccountsInterface=yes')","superuser-48.png",180);
-
+	$EnableOpenLDAP=intval($sock->GET_INFO("EnableOpenLDAP"));
+	$RestartOpenLDAP=intval($sock->GET_INFO("RestartOpenLDAP"));
 	$loglevel_hash=array(
 			0=>"{none}",
 			256=>"{basic}",
@@ -460,9 +466,13 @@ function LDAP_CONFIG(){
 	$restart_field=Field_array_Hash($CACHE_AGES,"RestartLDAPEach",$RestartLDAPEach,"style:font-size:22px;padding:3px");
 	
 	
-	$LockLdapConfig=Paragraphe_switch_img("{LockLdapConfig}", "{LockLdapConfig_explain}","LockLdapConfig",$LockLdapConfig,null,790);
-	$allowanonymouslogin=Paragraphe_switch_img("{allowanonymouslogin}", "{allowanonymouslogin_explain}","LdapAllowAnonymous",$sock->GET_INFO('LdapAllowAnonymous'),null,790);
-	$EnableRemoteAddressBook=Paragraphe_switch_img("{remote_addressbook_text}", "{remote_addressbook_text_explain}","EnableRemoteAddressBook",$sock->GET_INFO('EnableRemoteAddressBook'),null,790);
+	
+	$EnableOpenLDAP=Paragraphe_switch_img("{EnableOpenLDAP}", "{EnableOpenLDAP_explain}","EnableOpenLDAP",$EnableOpenLDAP,null,980);
+	$RestartOpenLDAP=Paragraphe_switch_img("{restart_openldap_periodically}", "{restart_openldap_periodically_explain}","RestartOpenLDAP",$RestartOpenLDAP,null,980);
+	
+	$LockLdapConfig=Paragraphe_switch_img("{LockLdapConfig}", "{LockLdapConfig_explain}","LockLdapConfig",$LockLdapConfig,null,980);
+	$allowanonymouslogin=Paragraphe_switch_img("{allowanonymouslogin}", "{allowanonymouslogin_explain}","LdapAllowAnonymous",$sock->GET_INFO('LdapAllowAnonymous'),null,980);
+	$EnableRemoteAddressBook=Paragraphe_switch_img("{remote_addressbook_text}", "{remote_addressbook_text_explain}","EnableRemoteAddressBook",$sock->GET_INFO('EnableRemoteAddressBook'),null,980);
 	
 	$LdapdbSize=$sock->getFrameWork('cmd.php?LdapdbSize=yes');
 	if(preg_match('#(.+?)\s+#',$LdapdbSize,$re)){
@@ -483,6 +493,14 @@ function LDAP_CONFIG(){
 		style='font-size:22px;text-decoration:underline;font-weight:bold'>$ldap->suffix</a></div>
 		<div id='ParseFormLDAPNET'>
 		<table style='width:99%'>
+		<tr>
+			<td colspan=2>$EnableOpenLDAP</td>
+		</tr>	
+		<tr>
+			<td colspan=2>$RestartOpenLDAP</td>
+		</tr>
+		
+		
 		<tr>
 			<td colspan=2>$LockLdapConfig</td>
 		</tr>
@@ -533,6 +551,9 @@ var xSave$t= function (obj) {
 
 function Save$t(){
 	var XHR = new XHRConnection();
+	
+	XHR.appendData('RestartOpenLDAP',document.getElementById('RestartOpenLDAP').value);
+	XHR.appendData('EnableOpenLDAP',document.getElementById('EnableOpenLDAP').value);
 	XHR.appendData('EnableRemoteAddressBook',document.getElementById('EnableRemoteAddressBook').value);
 	XHR.appendData('LdapAllowAnonymous',document.getElementById('LdapAllowAnonymous').value);
 	XHR.appendData('LockLdapConfig',document.getElementById('LockLdapConfig').value);
@@ -614,7 +635,7 @@ function openldap_status(){
 	$page=CurrentPageName();	
 	$datas=$sock->getFrameWork("services.php?openldap-status=yes");
 	$ini->loadString(base64_decode($datas));
-	$status=DAEMON_STATUS_ROUND("LDAP",$ini,null,0);
+	$status=DAEMON_STATUS_ROUND("LDAP",$ini,null,0)."<center style='margin:30px'>".button("{restart_openldap_service}","Loadjs('system.ldap.progress.php')",16)."</center>";
 	echo $tpl->_ENGINE_parse_body($status);	
 	
 }

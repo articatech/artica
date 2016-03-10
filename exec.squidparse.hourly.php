@@ -1,6 +1,6 @@
 #!/usr/bin/php -q
 <?php
-$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 if($EnableIntelCeleron==1){die("EnableIntelCeleron==1\n");}
 ini_set('memory_limit','1000M');
 include_once(dirname(__FILE__)."/ressources/class.squid.familysites.inc");
@@ -16,6 +16,13 @@ include_once(dirname(__FILE__).'/framework/frame.class.inc');
 include_once(dirname(__FILE__).'/framework/class.settings.inc');
 $GLOBALS["LogFileDeamonLogDir"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/LogFileDeamonLogDir");
 if($GLOBALS["LogFileDeamonLogDir"]==null){$GLOBALS["LogFileDeamonLogDir"]="/home/artica/squid/realtime-events";}
+
+if(is_file("/usr/local/ArticaStats/bin/postgres")){
+	$GLOBALS["LogFileDeamonLogDir"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/LogFileDeamonLogPostGresDir");
+	if($GLOBALS["LogFileDeamonLogDir"]==null){$GLOBALS["LogFileDeamonLogDir"]="/home/artica/squid-postgres/realtime-events";}
+}
+
+
 if(preg_match("#--verbose#",implode(" ",$argv))){
 		echo "VERBOSED....\n";
 		$GLOBALS["VERBOSE"]=true;$GLOBALS["TRACE_INFLUX"]=true;
@@ -46,7 +53,7 @@ function scan(){
 	$time=$unix->file_time_min($pidtime);
 	if(!$GLOBALS["VERBOSE"]){
 		if($time<5){
-			events("{$time}mn, require at lease 5mn");
+			events("{$time}mn, require minimal 5mn");
 			return;
 		}
 	}
@@ -69,6 +76,12 @@ function scan(){
 	NO_CACHED_BACKUP();
 	
 	events("Running ACCESS_LOG_HOURLY_BACKUP()");
+	
+	if(is_file("/home/artica/squid/realtime-events/ACCESS_LOG")){
+		ACCESS_LOG_HOURLY_BACKUP("/home/artica/squid/realtime-events/ACCESS_LOG");
+	}
+	
+	
 	ACCESS_LOG_HOURLY_BACKUP();
 	
 	events("Running UFDB_LOG_HOURLY_BACKUP()");
@@ -106,7 +119,14 @@ function  CLEAN_MYSQL(){
 	
 	while (list ($dev, $TABLE) = each ($TABLES) ){
 		if(!$q->TABLE_EXISTS($TABLE)){continue;}
+		
+		if($TABLE=="dashboard_historyusers"){
+			$q->QUERY_SQL("DELETE FROM `$TABLE` WHERE `zDate` < $SUB");
+			continue;
+		}
 		$q->QUERY_SQL("DELETE FROM `$TABLE` WHERE `TIME` < $SUB");
+		
+		
 		
 	}
 
@@ -143,10 +163,15 @@ function events($text=null){
 	
 	
 	}
+	
+	$array_load=sys_getloadavg();
+	$internal_load=$array_load[0];
+	
 	$logFile="/var/log/artica-parse.hourly.log";
+	$mem=round(((memory_get_usage()/1024)/1000),2);
 	
 	$suffix=date("Y-m-d H:i:s")." [".basename(__FILE__)."/$function/$line]:";
-	if($GLOBALS["VERBOSE"]){echo "$suffix $text\n";}
+	if($GLOBALS["VERBOSE"]){echo "$suffix $text memory {$mem}MB (system load $internal_load)\n";}
 	
 	if (is_file($logFile)) {
 		$size=filesize($logFile);
@@ -211,12 +236,22 @@ function FAILED_INJECT($faildir,$backupdir){
 		
 		if($unix->file_time_min("$faildir/$basename")>240){
 			$unix->compress("$faildir/$basename", "$backupdir/".basename($faildir)."-$basename.gz");
+			events("FAILED TO INJECT $faildir/$basename TIMEOUT save it to : $backupdir");
 			@unlink("$faildir/$basename");
 			continue;
 		}
 		
-		if(!$q->files_inject("$faildir/$basename")){events("FAILED TO INJECT $faildir/$basename");continue;}
-		echo __FUNCTION__." SUCCESS TO INJECT $faildir/$basename\n";
+		$size=@filesize("$faildir/$basename");
+		if($size==0){
+			@unlink("$faildir/$basename");
+			continue;
+		}
+		
+		if(!$q->files_inject("$faildir/$basename")){
+			events("FAILED TO INJECT $faildir/$basename (aborting) {$size}bytes");
+			continue;
+		}
+		events("SUCCESS TO INJECT $faildir/$basename");
 		@copy("$faildir/$basename","$backupdir/$basename");
 		@unlink("$faildir/$basename");
 	
@@ -339,35 +374,46 @@ function MAIN_SIZE($workfile){
 function MAIN_SIZE_DUMP($MEM){
 	if(count($MEM)==0){return true;}
 	$q=new influx();
-
+	$AS_POSTGRES=false;
+	$suffix="influx";
+	if(is_file("/usr/local/ArticaStats/bin/postgres")){ $AS_POSTGRES=true; $suffix="postgres";}
+	$q=new postgres_sql();
+	
+	$backupdir="{$GLOBALS["LogFileDeamonLogDir"]}/mainsize-backup";
+	$faildir="{$GLOBALS["LogFileDeamonLogDir"]}/mainsize-failed";
+	@mkdir($faildir,0755,true);
+	$backupfile="$backupdir/".time().".$suffix.log";
+	$failedPath="$faildir/".time().".$suffix.log";
+	
 	while (list ($KEYMD5, $subarray) = each ($MEM)){
-		$zArray["time"]=$subarray["TIME"];
-		$zArray["fields"]["SIZE"]=intval($subarray["SIZE"]);
-		$zArray["fields"]["ZDATE"]=$subarray["ZDATE"];
-		$zArray["tags"]["proxyname"]=$subarray["PROXYNAME"];
-		$line=$q->prepare("MAIN_SIZE", $zArray);
-		if($GLOBALS["VERBOSE"]){echo "$line\n"; }
-		$FINAL[]=$line;
+		$zDate=date("Y-m-d H:i:s",$subarray["ZDATE"]);
+		$FINAL[]="('$zDate','{$subarray["SIZE"]}','{$subarray["PROXYNAME"]}')";
+		
+		if(count($FINAL)>500){
+			$sql="INSERT INTO MAIN_SIZE (zDate,SIZE,PROXYNAME) VALUES ".@implode(",", $FINAL);
+			
+			$q->QUERY_SQL($sql);
+			if(!$q->ok){
+				events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
+				@file_put_contents($failedPath, @implode("\n", $sql));
+				return false;
+			}
+		}
 			
 	}
 
 
 	if(count($FINAL)>0){
-		$backupdir="{$GLOBALS["LogFileDeamonLogDir"]}/mainsize-backup";
-		$faildir="{$GLOBALS["LogFileDeamonLogDir"]}/mainsize-failed";
-		@mkdir($faildir,0755,true);
-		$backupfile="$backupdir/".time().".influx.log";
-		$failedPath="$faildir/".time().".influx.log";
-		if(!$q->bulk_inject($FINAL)){
-			events("INJECTION FAILED: backup to $failedPath");
-			@file_put_contents($failedPath, @implode("\n", $FINAL));
+		$sql="INSERT INTO MAIN_SIZE (zDate,SIZE,PROXYNAME) VALUES ".@implode(",", $FINAL);
+			
+		$q->QUERY_SQL($sql);
+		if(!$q->ok){
+			events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
+			@file_put_contents($failedPath, @implode("\n", $sql));
 			return false;
 		}
-		events("INJECTION SUCCESS: backup to $backupfile");
-		@file_put_contents($backupfile, @implode("\n", $FINAL));
-		$FINAL=array();
-
 	}
+
 	return true;
 }
 
@@ -397,6 +443,10 @@ function ROTATE_DIR($backupdir){
 	$unix=new unix();
 	$cat=$unix->find_program("cat");
 	$files=$unix->DirFiles($backupdir);
+	$suffix="influx";
+	if(is_file("/usr/local/ArticaStats/bin/postgres")){ $suffix="postgres";}
+	
+	
 	$today=date("Y-m-d");
 	while (list ($basename, $subarray) = each ($files)){
 		
@@ -411,7 +461,7 @@ function ROTATE_DIR($backupdir){
 		}
 		
 		
-		if(!preg_match("#^([0-9]+)\.influx\.log$#", $basename,$re)){
+		if(!preg_match("#^([0-9]+)\.$suffix\.log$#", $basename,$re)){
 			echo "$basename no match...\n";
 			continue;
 		}
@@ -704,12 +754,24 @@ function NO_CACHED_DUMP_SQL($MEM){
 function CACHED_DUMP($MEM){
 	if(count($MEM)==0){return true;}
 	$q=new influx();
+	$AS_POSTGRES=false;
+	$suffix="influx";
+	if(is_file("/usr/local/ArticaStats/bin/postgres")){ $AS_POSTGRES=true; $suffix="postgres";}
 	
 	while (list ($KEYMD5, $subarray) = each ($MEM)){
 		$zArray["time"]=$subarray["TIME"];
 		$zArray["fields"]["SIZE"]=intval($subarray["SIZE"]);
 		$zArray["fields"]["ZDATE"]=$subarray["ZDATE"];
 		$zArray["tags"]["proxyname"]=$subarray["PROXYNAME"];
+		
+		$zDate=date("Y-m-d H:i:s",$subarray["ZDATE"]);
+		
+		if($AS_POSTGRES){
+			$FINAL[]="('$zDate','{$zArray["fields"]["SIZE"]}','{$subarray["PROXYNAME"]}')";
+			continue;
+		}
+		
+		
 		$line=$q->prepare("CACHED", $zArray);
 		if($GLOBALS["VERBOSE"]){echo "$line\n"; }
 		$FINAL[]=$line;
@@ -721,12 +783,27 @@ function CACHED_DUMP($MEM){
 		$backupdir="{$GLOBALS["LogFileDeamonLogDir"]}/cached-backup";
 		$faildir="{$GLOBALS["LogFileDeamonLogDir"]}/cached-failed";
 		@mkdir($faildir,0755,true);
-		$backupfile="$backupdir/".time().".influx.log";
-		$failedPath="$faildir/".time().".influx.log";
-		if(!$q->bulk_inject($FINAL)){
-			events("INJECTION Failed: backup to $failedPath");
-			@file_put_contents($failedPath, @implode("\n", $FINAL));
-			return false;
+		$backupfile="$backupdir/".time().".$suffix.log";
+		$failedPath="$faildir/".time().".$suffix.log";
+		
+		if($AS_POSTGRES){
+			$sql="INSERT INTO CACHED (zDate,SIZE,PROXYNAME) VALUES ".@implode(",", $FINAL);
+			$q=new postgres_sql();
+			$q->QUERY_SQL($sql);
+			if(!$q->ok){
+				events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
+				@file_put_contents($failedPath, @implode("\n", $sql));
+				return false;
+			}
+		}
+		
+		
+		if(!$AS_POSTGRES){
+			if(!$q->bulk_inject($FINAL)){
+				events("INJECTION Failed: backup to $failedPath");
+				@file_put_contents($failedPath, @implode("\n", $FINAL));
+				return false;
+			}
 		}
 		events("INJECTION Success: backup to $backupfile");
 		@file_put_contents($backupfile, @implode("\n", $FINAL));
@@ -738,12 +815,24 @@ function CACHED_DUMP($MEM){
 function NO_CACHED_DUMP($MEM){
 	if(count($MEM)==0){return true;}
 	$q=new influx();
+	$AS_POSTGRES=false;
+	$suffix="influx";
+	if(is_file("/usr/local/ArticaStats/bin/postgres")){ $AS_POSTGRES=true; $suffix="postgres";}
 	
 	while (list ($KEYMD5, $subarray) = each ($MEM)){
 		$zArray["time"]=$subarray["TIME"];
 		$zArray["fields"]["SIZE"]=intval($subarray["SIZE"]);
 		$zArray["fields"]["ZDATE"]=$subarray["ZDATE"];
 		$zArray["tags"]["proxyname"]=$subarray["PROXYNAME"];
+		
+		$zDate=date("Y-m-d H:i:s",$subarray["ZDATE"]);
+		
+		if($AS_POSTGRES){
+			$FINAL[]="('$zDate','{$zArray["fields"]["SIZE"]}','{$subarray["PROXYNAME"]}')";
+			continue;
+		}
+		
+		
 		$line=$q->prepare("NO_CACHED", $zArray);
 		if($GLOBALS["VERBOSE"]){echo "$line\n"; }
 		$FINAL[]=$line;
@@ -755,12 +844,29 @@ function NO_CACHED_DUMP($MEM){
 		$backupdir="{$GLOBALS["LogFileDeamonLogDir"]}/no-cached-backup";
 		$faildir="{$GLOBALS["LogFileDeamonLogDir"]}/no-cached-failed";
 		@mkdir($faildir,0755,true);
-		$backupfile="$backupdir/".time().".influx.log";
-		$failedPath="$faildir/".time().".influx.log";
-		if(!$q->bulk_inject($FINAL)){
-			events("INJECTION Failed: backup to $failedPath");
-			@file_put_contents($failedPath, @implode("\n", $FINAL));
-			return false;
+		$backupfile="$backupdir/".time().".$suffix.log";
+		$failedPath="$faildir/".time().".$suffix.log";
+		
+		
+		if($AS_POSTGRES){
+			$sql="INSERT INTO NO_CACHED (zDate,SIZE,PROXYNAME) VALUES ".@implode(",", $FINAL);
+			$q=new postgres_sql();
+			$q->QUERY_SQL($sql);
+			if(!$q->ok){
+				events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
+				@file_put_contents($failedPath, @implode("\n", $sql));
+				return false;
+			}
+		}
+		
+		
+		
+		if(!$AS_POSTGRES){
+			if(!$q->bulk_inject($FINAL)){
+				events("INJECTION Failed: backup to $failedPath");
+				@file_put_contents($failedPath, @implode("\n", $FINAL));
+				return false;
+			}
 		}
 		events("INJECTION Success: backup to $backupfile");
 		@file_put_contents($backupfile, @implode("\n", $FINAL));
@@ -783,10 +889,8 @@ function ACCESS_LOG_HOURLY_BACKUP($sourcefile=null){
 	events("Scanning $sourcefile");
 	
 	
-	if(!is_file($sourcefile)){
-		events("$sourcefile no such file");
-	}
-	
+	if(!is_file($sourcefile)){events("$sourcefile no such file");return;}
+
 	if(is_file($sourcefile)){
 		$workfile=$Workpath."/".time().".log";
 		if(is_file($workfile)){return;}
@@ -801,6 +905,12 @@ function ACCESS_LOG_HOURLY_BACKUP($sourcefile=null){
 	while (list ($basename, $subarray) = each ($files)){
 		events("Scanning $Workpath/$basename");
 		ACCESS_LOG_HOURLY("$Workpath/$basename");
+	}
+	
+	$files=$unix->DirFiles("{{$GLOBALS["LogFileDeamonLogDir"]}}/access-work");
+	while (list ($basename, $subarray) = each ($files)){
+		events("Scanning {$GLOBALS["LogFileDeamonLogDir"]}/access-work/$basename");
+		ACCESS_LOG_HOURLY("{$GLOBALS["LogFileDeamonLogDir"]}/access-work/$basename");
 	}
 }
 
@@ -1186,6 +1296,11 @@ function MSSQL_DUMP($MEM){
 function REQUESTS_DUMP($MEM){
 if(count($MEM)==0){return true;}
 $q=new influx();
+$AS_POSTGRES=false;
+$suffix="influx";
+if(is_file("/usr/local/ArticaStats/bin/postgres")){ $AS_POSTGRES=true; $suffix="postgres";}
+
+
 while (list ($KEYMD5, $subarray) = each ($MEM)){
 	if(isset($subarray["RQS"])){continue;}
 	$FAM=$subarray["FAM"];
@@ -1193,6 +1308,15 @@ while (list ($KEYMD5, $subarray) = each ($MEM)){
 	if(intval($RQS)==0){continue;}
 	$PROXYNAME=$subarray["PROXYNAME"];
 	$SIZE=intval($subarray["SIZE"]);
+	
+	$zDate=date("Y-m-d H:i:s",$subarray["ZDATE"]);
+	
+	if($AS_POSTGRES){
+		$FINAL[]="('$zDate','{$RQS}','{$subarray["PROXYNAME"]}')";
+		continue;
+	}
+	
+	
 	$zArray["precision"]="s";
 	$zArray["time"]=$subarray["TIME"];
 	$zArray["fields"]["ZDATE"]=$subarray["ZDATE"];
@@ -1205,13 +1329,27 @@ while (list ($KEYMD5, $subarray) = each ($MEM)){
 if(count($FINAL)>0){
 	$backupdir="{$GLOBALS["LogFileDeamonLogDir"]}/requests-backup";
 	$failedPath="{$GLOBALS["LogFileDeamonLogDir"]}/requests-failed";
-	@mkdir($faildir,0755,true);
-	$backupfile="$backupdir/".time().".influx.log";
-	$failedPath="$failedPath/".time().".influx.log";
-	if(!$q->bulk_inject($FINAL)){
-		events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
-		@file_put_contents($failedPath, @implode("\n", $FINAL));
-		return false;
+	@mkdir($failedPath,0755,true);
+	$backupfile="$backupdir/".time().".$suffix.log";
+	$failedPath="$failedPath/".time().".$suffix.log";
+	
+	if($AS_POSTGRES){
+		$sql="INSERT INTO proxy_requests (zDate,RQS,PROXYNAME) VALUES ".@implode(",", $FINAL);
+		$q=new postgres_sql();
+		$q->QUERY_SQL($sql);
+		if(!$q->ok){
+			events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
+			@file_put_contents($failedPath, @implode("\n", $sql));
+			return false;
+		}
+	}	
+	
+	if(!$AS_POSTGRES){
+		if(!$q->bulk_inject($FINAL)){
+			events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
+			@file_put_contents($failedPath, @implode("\n", $FINAL));
+			return false;
+		}
 	}
 
 	events("INJECTION Success: backup to $backupfile");
@@ -1226,6 +1364,11 @@ return true;
 function WEBSITES_DUMP($MEM){
 	if(count($MEM)==0){return true;}
 	$q=new influx();
+	$AS_POSTGRES=false;
+	$suffix="influx";
+	if(is_file("/usr/local/ArticaStats/bin/postgres")){ $AS_POSTGRES=true; $suffix="postgres";}
+	
+	
 	while (list ($KEYMD5, $subarray) = each ($MEM)){
 		$FAM=$subarray["FAM"];
 		$RQS=$subarray["RQS"];
@@ -1239,6 +1382,16 @@ function WEBSITES_DUMP($MEM){
 		$zArray["fields"]["RQS"]=$RQS;
 		$zArray["tags"]["proxyname"]=$PROXYNAME;
 		$zArray["fields"]["SIZE"]=$SIZE;
+		
+		
+		$zDate=date("Y-m-d H:i:s",$subarray["ZDATE"]);
+		
+		
+		if($AS_POSTGRES){
+			$FINAL[]="('$zDate','$FAM','$RQS','$SIZE','$PROXYNAME')";
+			continue;
+		}
+		
 		$line=$q->prepare("websites", $zArray);
 		$FINAL[]=$line;
 	}
@@ -1247,12 +1400,26 @@ function WEBSITES_DUMP($MEM){
 		$backupdir="{$GLOBALS["LogFileDeamonLogDir"]}/websites-backup";
 		$failedPath="{$GLOBALS["LogFileDeamonLogDir"]}/websites-failed";
 		@mkdir($failedPath,0755,true);
-		$backupfile="$backupdir/".time().".influx.log";
-		$failedPath="$failedPath/".time().".influx.log";
-		if(!$q->bulk_inject($FINAL)){
-			events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
-			@file_put_contents($failedPath, @implode("\n", $FINAL));
-			return false;
+		$backupfile="$backupdir/".time().".$suffix.log";
+		$failedPath="$failedPath/".time().".$suffix.log";
+		
+		if($AS_POSTGRES){
+			$sql="INSERT INTO websites (zDate,FAMILYSITE,RQS,SIZE,PROXYNAME) VALUES ".@implode(",", $FINAL);
+			$q=new postgres_sql();
+			$q->QUERY_SQL($sql);
+			if(!$q->ok){
+				events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
+				@file_put_contents($failedPath, @implode("\n", $sql));
+				return false;
+			}
+		}
+		
+		if(!$AS_POSTGRES){
+			if(!$q->bulk_inject($FINAL)){
+				events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
+				@file_put_contents($failedPath, @implode("\n", $FINAL));
+				return false;
+			}
 		}
 	
 		events("INJECTION Success: backup to $backupfile");
@@ -1268,7 +1435,10 @@ function WEBSITES_DUMP($MEM){
 function ACCESS_LOG_HOURLY_DUMP($MEM){
 	if(count($MEM)==0){return true;}
 	$q=new influx();
-	
+	$AS_POSTGRES=false;
+	$suffix="influx";
+	if(is_file("/usr/local/ArticaStats/bin/postgres")){ $AS_POSTGRES=true; $suffix="postgres";}
+	$IPClass=new IP();
 	while (list ($KEYMD5, $subarray) = each ($MEM)){
 		$CATEGORY=$subarray["CATEGORY"];
 		$USERID=$subarray["USERID"];
@@ -1279,9 +1449,22 @@ function ACCESS_LOG_HOURLY_DUMP($MEM){
 		$FAM=$subarray["FAM"];
 		$RQS=$subarray["RQS"];
 		$PROXYNAME=$subarray["PROXYNAME"];
-		
 		if($MAC==null){$MAC="00:00:00:00:00:00";}
+		
+		if(!$IPClass->isValid($IPADDR)){continue;}
+		if(!$IPClass->IsvalidMAC($MAC)){$MAC="00:00:00:00:00:00";}
 		if($USERID==null){$USERID="none";}
+		
+		
+		if(strlen($FAM)>128){$FAM=substr(0, 127,$FAM);}
+		if(strlen($SITE)>128){$SITE=substr(0, 127,$SITE);}
+		if(strlen($PROXYNAME)>128){$PROXYNAME=substr(0, 127,$PROXYNAME);}
+				
+		if($AS_POSTGRES){
+			$zDate=date("Y-m-d H:i:s",$subarray["ZDATE"]);
+			$FINAL[]="('$zDate','$MAC','$IPADDR','$CATEGORY','$FAM','$USERID','$SIZE','$RQS','$FAM','$PROXYNAME')";
+			continue;
+		}
 		
 		$zArray["precision"]="s";
 		$zArray["time"]=$subarray["TIME"];
@@ -1297,6 +1480,7 @@ function ACCESS_LOG_HOURLY_DUMP($MEM){
 		$zArray["tags"]["proxyname"]=$PROXYNAME;
 		$line=$q->prepare("access_log", $zArray);
 		
+		
 		$FINAL[]=$line;
 			
 	}
@@ -1307,12 +1491,26 @@ function ACCESS_LOG_HOURLY_DUMP($MEM){
 		$failedPath="{$GLOBALS["LogFileDeamonLogDir"]}/access-failed";
 		@mkdir($failedPath,0755,true);
 		@mkdir($backupdir,0755,true);
-		$backupfile="{$GLOBALS["LogFileDeamonLogDir"]}/access-backup/".time().".influx.log";
-		$failedPath="{$GLOBALS["LogFileDeamonLogDir"]}/access-failed/".time().".influx.log";
-		if(!$q->bulk_inject($FINAL)){
-			events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
-			@file_put_contents($failedPath, @implode("\n", $FINAL));
-			return false;
+		$backupfile="{$GLOBALS["LogFileDeamonLogDir"]}/access-backup/".time().".$suffix.log";
+		$failedPath="{$GLOBALS["LogFileDeamonLogDir"]}/access-failed/".time().".$suffix.log";
+		
+		if($AS_POSTGRES){
+			$sql="INSERT INTO access_log (zDate,MAC,IPADDR,CATEGORY,SITENAME,USERID,SIZE,RQS,familysite,PROXYNAME) VALUES ".@implode(",", $FINAL);
+			$q=new postgres_sql();
+			$q->QUERY_SQL($sql);
+			if(!$q->ok){
+				events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
+				@file_put_contents($failedPath, @implode("\n", $sql));
+				return false;
+			}
+		}
+		
+		if(!$AS_POSTGRES){
+			if(!$q->bulk_inject($FINAL)){
+				events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
+				@file_put_contents($failedPath, @implode("\n", $FINAL));
+				return false;
+			}
 		}
 		
 		events("INJECTION Success: backup to $backupfile");
@@ -1489,6 +1687,7 @@ function VOLUME_LOG_HOURLY_MYSQL_DUMP($MSSQLFAM){
 
 
 function VOLUME_LOG_HOURLY_DUMP($MEM){
+	return;
 	$FINAL=array();
 	$q=new influx();
 	
@@ -1564,7 +1763,7 @@ function UFDB_LOG_HOURLY_BACKUP(){
 	$files=$unix->DirFiles($Workpath);
 
 	while (list ($basename, $subarray) = each ($files)){
-		events("Scanning $Workpath/$basename");
+		events("WEBFILTERING Scanning $Workpath/$basename");
 		UFDB_LOG_HOURLY_SCAN("$Workpath/$basename");
 	}
 }
@@ -1648,11 +1847,38 @@ function UFDB_LOG_HOURLY_SCAN($workfile){
 }
 function UFDB_LOG_HOURLY_DUMP($MEM){
 	
+	$AS_POSTGRES=false;
+	$suffix="influx";
+	if(is_file("/usr/local/ArticaStats/bin/postgres")){ $AS_POSTGRES=true; $suffix="postgres";}
+	
 	events("Dumping ".count($MEM)." entries");
 	$q=new influx();
+	
+	$PROXYNAME=$GLOBALS["MYHOSTNAME_PROXY"];
+	$prefix_sql="(zDate,website,category,rulename,public_ip,blocktype,why,hostname,client,PROXYNAME,rqs)";
 	while (list ($KEYMD5, $subarray) = each ($MEM)){
 		
 	
+
+		
+		$website=$subarray["website"];
+		$category=$subarray["category"];
+		$rulename=$subarray["rulename"];
+		$public_ip=$subarray["public_ip"];
+		$blocktype=$subarray["blocktype"];
+		$why=$subarray["why"];
+		$hostname=$subarray["hostname"];
+		$client=$subarray["client"];
+		$zDate=date("Y-m-d H:i:s",$subarray["ZDATE"]);
+		$RQS=$subarray["RQS"];
+		
+		
+		
+		if($AS_POSTGRES){
+			$FINAL[]="('$zDate','$website','$category','$rulename','$public_ip','$blocktype','$why','$hostname','$client','$PROXYNAME','$RQS')";
+			continue;
+		}
+		
 		$array["precision"]="s";
 		$array["time"]=$subarray["TIME"];
 		$array["tags"]["uid"]=$subarray["uid"];;
@@ -1666,6 +1892,7 @@ function UFDB_LOG_HOURLY_DUMP($MEM){
 		$array["tags"]["hostname"]=$subarray["hostname"];;
 		$array["tags"]["website"]=$subarray["website"];;
 		$array["tags"]["client"]=$subarray["client"];;
+
 		$line=$q->prepare("webfilter", $array);
 		if($GLOBALS["VERBOSE"]){echo "$line\n"; }
 		$FINAL[]=$line;
@@ -1677,15 +1904,29 @@ function UFDB_LOG_HOURLY_DUMP($MEM){
 		$faildir="{$GLOBALS["LogFileDeamonLogDir"]}/webfilter-failed";
 		@mkdir($faildir,0755,true);
 		@mkdir($backupdir,0755,true);
-		$backupfile="$backupdir/".time().".influx.log";
-		$failedPath="$faildir/".time().".influx.log";
-		if(!$q->bulk_inject($FINAL)){
-			events("INJECTION Failed: backup to $failedPath ($q->curl_error)");
-			@file_put_contents($failedPath, @implode("\n", $FINAL));
-			return false;
+		$backupfile="$backupdir/".time().".$suffix.log";
+		$failedPath="$faildir/".time().".$suffix.log";
+		
+		if($AS_POSTGRES){
+			$sql="INSERT INTO webfilter $prefix_sql VALUES ".@implode(",", $FINAL);
+			$q=new postgres_sql();
+			$q->QUERY_SQL($sql);
+			if(!$q->ok){
+				events("WEBFILTERING INJECTION Failed: backup to $failedPath ($q->mysql_error)");
+				@file_put_contents($failedPath, @implode("\n", $sql));
+				return false;
+			}
+		}
+		
+		if(!$AS_POSTGRES){
+			if(!$q->bulk_inject($FINAL)){
+				events("WEBFILTERING INJECTION Failed: backup to $failedPath ($q->curl_error)");
+				@file_put_contents($failedPath, @implode("\n", $FINAL));
+				return false;
+			}
 		}
 	
-		events("INJECTION Success: backup to $backupfile");
+		events("WEBFILTERING INJECTION Success: backup to $backupfile");
 		@file_put_contents($backupfile, @implode("\n", $FINAL));
 		$FINAL=array();
 	

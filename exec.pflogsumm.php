@@ -8,7 +8,8 @@ $GLOBALS["VERBOSE"]=false;
 $GLOBALS["RELOAD"]=false;
 $GLOBALS["REPLIC_CONF"]=false;
 $GLOBALS["NO_RELOAD"]=false;
-$GLOBALS["BASEDIR"]="/usr/share/artica-postfix/ressources/interface-cache";
+$GLOBALS["BASEDIR"]="/usr/share/artica-postfix/ressources/smtp-cache";
+@mkdir($GLOBALS["BASEDIR"],0755,true);
 $GLOBALS["pidStampReload"]="/etc/artica-postfix/pids/".basename(__FILE__).".Stamp.reload.time";
 if(preg_match("#--verbose#",implode(" ",$argv))){$GLOBALS["VERBOSE"]=true;$GLOBALS["OUTPUT"]=true;
 $GLOBALS["debug"]=true;
@@ -59,14 +60,21 @@ function run(){
 				return;
 			}
 		}}
-
+		
+		
+	$tmpfileSource=$unix->FILE_TEMP();	
+	$year=date("Y");
+	@copy("/var/log/mail.log", $tmpfileSource);
+	
+	
+	
 	$binary="/usr/share/artica-postfix/bin/pflogsumm.pl";	
 	@chmod("$binary",0755);
-	
-	system("$binary -d today /var/log/mail.log >$tmpfile");
+	system("$binary -d today $tmpfileSource >$tmpfile");
+	@unlink($tmpfileSource);
 	ParseReport($tmpfile);
 	@unlink($tmpfile);
-	stats_total();
+	stats_total(true);
 	
 	
 }
@@ -194,10 +202,10 @@ function ParseReport($filepath){
 	$q->QUERY_SQL("TRUNCATE TABLE dashboard_smtpdeliver","artica_events");
 	if(!$q->ok){echo $q->mysql_error."\n";}
 	
-	
-	$q->QUERY_SQL("INSERT IGNORE INTO dashboard_smtpdeliver (DOMAIN,RQS,SIZE) VALUES ".@implode(",", $TR),"artica_events");
-	if(!$q->ok){echo $q->mysql_error."\n";}
-	
+	if(count($TR)>0){
+		$q->QUERY_SQL("INSERT IGNORE INTO dashboard_smtpdeliver (DOMAIN,RQS,SIZE) VALUES ".@implode(",", $TR),"artica_events");
+		if(!$q->ok){echo $q->mysql_error."\n";}
+	}
 	reset($f);
 	$TR=array();
 	$MAIN=array();
@@ -225,9 +233,11 @@ function ParseReport($filepath){
 	$q->QUERY_SQL("TRUNCATE TABLE dashboard_smtpsenders","artica_events");
 	if(!$q->ok){echo $q->mysql_error."\n";}
 	
-	
-	$q->QUERY_SQL("INSERT IGNORE INTO dashboard_smtpsenders (email,RQS) VALUES ".@implode(",", $TR),"artica_events");
-	if(!$q->ok){echo $q->mysql_error."\n";}	
+	if(count($TR)>0){
+		$q->QUERY_SQL("INSERT IGNORE INTO dashboard_smtpsenders (email,RQS) VALUES ".
+			@implode(",", $TR),"artica_events");
+		if(!$q->ok){echo $q->mysql_error."\n";}	
+	}
 	
 	
 	
@@ -258,9 +268,11 @@ function ParseReport($filepath){
 		$q->QUERY_SQL("TRUNCATE TABLE dashboard_smtprecipients","artica_events");
 	if(!$q->ok){echo $q->mysql_error."\n";}
 	
-	
-		$q->QUERY_SQL("INSERT IGNORE INTO dashboard_smtprecipients (email,RQS) VALUES ".@implode(",", $TR),"artica_events");
-	if(!$q->ok){echo $q->mysql_error."\n";}	
+	if(count($TR)>0){
+		$q->QUERY_SQL("INSERT IGNORE INTO dashboard_smtprecipients (email,RQS) VALUES ".
+				@implode(",", $TR),"artica_events");
+		if(!$q->ok){echo $q->mysql_error."\n";}
+	}	
 	
 	reset($f);
 	$TR=array();
@@ -302,24 +314,124 @@ if(!$q->ok){echo $q->mysql_error."\n";}
 $q->QUERY_SQL("TRUNCATE TABLE dashboard_smtprejects","artica_events");
 if(!$q->ok){echo $q->mysql_error."\n";}
 
-
-$q->QUERY_SQL("INSERT IGNORE INTO dashboard_smtprejects (rule,RQS) VALUES ".@implode(",", $TR),"artica_events");
-if(!$q->ok){echo $q->mysql_error."\n";}
+if(count($TR)>0){
+	$q->QUERY_SQL("INSERT IGNORE INTO dashboard_smtprejects (rule,RQS) VALUES ".
+		@implode(",", $TR),"artica_events");
+	if(!$q->ok){echo $q->mysql_error."\n";}
+}
 }
 
-function stats_total(){
+function stats_total($nopid=false){
 	
-	$q=new mysql();
-	$sql="SELECT COUNT(*) as tcount FROM (SELECT SUM(GREY) as GREY, SUM(BLACK) AS BLACK, SUM(CNX) as CNX,CDIR FROM smtpcdir_day GROUP BY CDIR) as t;";
-	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_events"));
+	$TimeFile="/etc/artica-postfix/pids/exec.pflogsumm.php.stats_total.time";
+	$pidfile="/etc/artica-postfix/pids/exec.pflogsumm.php.stats_total.pid";
+	$unix=new unix();
+	
+	
+	if(!$nopid){
+		if(system_is_overloaded(basename(__FILE__))){
+			die();
+		}
+		$pid=$unix->get_pid_from_file($pidfile);
+		if($unix->process_exists($pid,basename(__FILE__))){
+			$timepid=$unix->PROCCESS_TIME_MIN($pid);
+			if($GLOBALS["VERBOSE"]){echo "$pid already executed since {$timepid}Mn\n";}
+			if(!$GLOBALS["FORCE"]){
+				if($timepid<14){return;}
+				$kill=$unix->find_program("kill");
+				unix_system_kill_force($pid);
+			}
+		}
+	
+		@file_put_contents($pidfile, getmypid());
+		if(!$GLOBALS["FORCE"]){
+			if(!$GLOBALS["VERBOSE"]){
+				$time=$unix->file_time_min($TimeFile);
+				if($time<5){
+					echo "Current {$time}Mn, require at least 5mn\n";
+					return;
+				}
+			}
+		}
+	}
+	
+	
+	
+	include_once(dirname(__FILE__)."/ressources/class.postgres.inc");
+	$q=new postgres_sql();
+	$q->SMTP_TABLES();
+	
+	
+	$sql="SELECT COUNT(*) as tcount FROM (SELECT SUM(grey) as grey, SUM(black) AS black, SUM(cnx) as cnx,cdir FROM smtpcdir_day GROUP BY cdir) as t;";
+	$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+	if(!$q->ok){echo $q->mysql_error."\n";}
 	$SUM_CDIR=$ligne["tcount"];
 	
-	$sql="SELECT COUNT(*) as tcount FROM (SELECT SUM(GREY) as GREY, SUM(BLACK) AS BLACK, SUM(CNX) as CNX,domain FROM smtpstats_day GROUP BY domain) as t;";
-	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_events"));
+	
+	$sql="SELECT COUNT(*) as tcount FROM smtprefused";
+	$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+	if(!$q->ok){echo $q->mysql_error."\n";}
+	$SMTP_REFUSED=$ligne["tcount"];
+	if($GLOBALS["VERBOSE"]){echo "{$GLOBALS["BASEDIR"]}/SMTP_REFUSED ->$SMTP_REFUSED\n";}
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/SMTP_REFUSED", $SMTP_REFUSED);
+	
+	
+	$sql="SELECT COUNT(*) as tcount FROM (SELECT SUM(grey) as grey, SUM(black) AS black, SUM(cnx) as cnx,domain FROM smtpstats_day GROUP BY domain) as t;";
+	$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+	if(!$q->ok){echo $q->mysql_error."\n";}
 	$SUM_DOMAINS=$ligne["tcount"];
 		
+	if($GLOBALS["VERBOSE"]){echo "{$GLOBALS["BASEDIR"]}/SMTP_SUM_CDIR ->$SUM_CDIR\n";}
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/SMTP_SUM_CDIR", $SUM_CDIR);
+	
+	if($GLOBALS["VERBOSE"]){echo "{$GLOBALS["BASEDIR"]}/SMTP_SUM_DOMAINS ->$SUM_DOMAINS\n";}
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/SMTP_SUM_DOMAINS", $SUM_DOMAINS);
+	
+	
+	
+	$sql="SELECT COUNT(*) as tcount,SUM(size) as size FROM smtpstats";
+	$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+	if(!$q->ok){echo $q->mysql_error."\n";}
+	$SUM_TRANSCATS=$ligne["tcount"];
+	$SUM_SIZE=$ligne["size"];
+	if($GLOBALS["VERBOSE"]){echo "{$GLOBALS["BASEDIR"]}/SUM_TRANSCATS ->$SUM_TRANSCATS\n";}
+	if($GLOBALS["VERBOSE"]){echo "{$GLOBALS["BASEDIR"]}/SUM_TRANSCATS_SIZE ->$SUM_SIZE\n";}
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/SUM_TRANSCATS", $SUM_TRANSCATS);
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/SUM_TRANSCATS_SIZE", $SUM_SIZE);
+	
+	$sql="SELECT COUNT(*) as tcount FROM smtprefused";
+	$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+	if(!$q->ok){echo $q->mysql_error."\n";}
+	$SUM_REFUSED=$ligne["tcount"];
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/SMTP_SUM_REFUSED", $SUM_REFUSED);
+	
+	
+	$sql="SELECT COUNT(*) as tcount, SUM(size) as size FROM backupmsg";
+	$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+	if(!$q->ok){echo $q->mysql_error."\n";}
+	$SUM_BACK=$ligne["tcount"];
+	$SUM_BACKSIZE=$ligne["size"];
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/SMTP_SUM_BACK", $SUM_BACK);
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/SMTP_SUM_BACKSIZE", $SUM_BACKSIZE);
+	
+	$sql="SELECT COUNT(*) as tcount, SUM(size) as size FROM quarmsg";
+	$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+	if(!$q->ok){echo $q->mysql_error."\n";}
+	$SUM_BACK=$ligne["tcount"];
+	$SUM_BACKSIZE=$ligne["size"];
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/SMTP_SUM_QUAR", $SUM_BACK);
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/SMTP_SUM_QUARSIZE", $SUM_BACKSIZE);
+	
+	$sql="SELECT COUNT(*) as tcount, SUM(size) as size FROM attachstats";
+	$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+	if(!$q->ok){echo $q->mysql_error."\n";}
+	$SUM_BACK=$ligne["tcount"];
+	$SUM_BACKSIZE=$ligne["size"];
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/SMTP_SUM_ATTACH", $SUM_BACK);
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/SMTP_SUM_ATTACHSIZE", $SUM_BACKSIZE);
+	
+	
+	
 	
 }
 

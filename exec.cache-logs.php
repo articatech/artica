@@ -115,6 +115,29 @@ function Parseline($buffer){
 	if(preg_match("#kid[0-9]+\| .*?\/[0-9]+ exists#", $buffer)){return;}
 	
 	
+	
+if(preg_match("#WARNING: ParanoidBlocker.*?exited#", $buffer)){
+	
+	$file="/etc/artica-postfix/pids/WARNING.ParanoidBlocker.exited";
+	$timefile=file_time_min($file);
+	if($timefile>2){
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/ParanoidBlockerEmergency", 1);
+		squid_admin_mysql(0,"[Paranoid]: Paranoid mode issue, turn to Paranoid mode Emergency [action=Emergency]",$buffer,__FILE__,__LINE__);
+		shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} /usr/share/artica-postfix/exec.squid.php --build --force >/dev/null 2>&1 &");
+		@unlink($file);
+		@file_put_contents($file, time());
+	}
+	
+}	
+	
+if(preg_match("#ERROR: failed to start essential eCAP service: ecap:.*?clamav\?#",$buffer,$re)){
+	squid_admin_mysql(0,"[eCAP]: Clamav link issue, turn to eCAP Clamav Emergency [action=Emergency]",$buffer,__FILE__,__LINE__);
+	@file_put_contents("/etc/artica-postfix/settings/Daemons/eCAPClamavEmergency", 1);
+	shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} /usr/share/artica-postfix/exec.squid.ecap.php --progress --force >/dev/null 2>&1 &");
+	return;
+}
+	
+	
 //*******************************************************************************************************************	
 if(preg_match("#WARNING: DNS lookup for '(.+?)' failed#",$buffer,$re)){
 	$dns=$re[1];
@@ -203,6 +226,9 @@ if(preg_match("#logfileHandleWrite: daemon:: error writing#i", $buffer,$re)){
 	$file="/etc/artica-postfix/pids/logfileHandleWrite.daemon.error.writing";
 	$timefile=file_time_min($file);
 	if($timefile>5){
+		@mkdir("/var/log/squid",0755,true);
+		@chown("/var/log/squid","squid");
+		@chgrp("/var/log/squid", "squid");
 		squid_admin_mysql(0,"FATAL! logfileHandleWrite [action=Logs Emergency]","Artica detect this error\n$buffer\nthe Logs Emergency will be turned on\n",__FILE__,__LINE__);
 		@file_put_contents("/etc/artica-postfix/settings/Daemons/LogsWarninStop", 1);
 		shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} /usr/share/artica-postfix/exec.squid.php --build --force >/dev/null 2>&1 &");
@@ -211,7 +237,40 @@ if(preg_match("#logfileHandleWrite: daemon:: error writing#i", $buffer,$re)){
 	}
 	return;
 }	
-//*******************************************************************************************************************	
+//*******************************************************************************************************************
+if(preg_match("#logfileOpen:.*?stdio:.*?\.log: couldn.*?t open#", $buffer,$re)){
+	$file="/etc/artica-postfix/pids/logfileHandleWrite.daemon.error.writing";
+	$timefile=file_time_min($file);
+	if($timefile>5){
+		@mkdir("/var/log/squid",0755,true);
+		@chown("/var/log/squid","squid");
+		@chgrp("/var/log/squid", "squid");
+		squid_admin_mysql(0,"FATAL! logfileOpen [action=Logs Emergency]","Artica detect this error\n$buffer\nthe Logs Emergency will be turned on\n",__FILE__,__LINE__);
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/LogsWarninStop", 1);
+		shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} /usr/share/artica-postfix/exec.squid.php --build --force >/dev/null 2>&1 &");
+		@unlink($file);
+		@file_put_contents($file, time());
+	}
+	return;
+}
+//*******************************************************************************************************************
+
+if(preg_match("#comm_open: socket failure.*?Too many open files#", $buffer,$re)){
+	$file="/etc/artica-postfix/pids/comm_open.Too.many.open.files";
+	$timefile=file_time_min($file);
+	if($timefile>5){
+		squid_admin_mysql(0,"FATAL! file descriptors issue [action=change-config]","Artica detect this error\n$buffer\nFile descriptors will be increased ( see others logs )\n",__FILE__,__LINE__);
+		shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} /usr/share/artica-postfix/exec.squid.filedescriptors.php >/dev/null 2>&1 &");
+		@unlink($file);
+		@file_put_contents($file, time());
+	}
+	return;
+}
+//*******************************************************************************************************************
+
+
+
+
 if(preg_match("#ipcacheParse: No Address records in response to '(.*?)'#", $buffer,$re)){
 	$EnableDNSMASQ=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableDNSMASQ"));
 	if($EnableDNSMASQ==0){
@@ -441,12 +500,25 @@ if(preg_match("#FATAL: Too many queued ntlmauthenticator requests#",$buffer,$re)
 	$file="/etc/artica-postfix/pids/Too.many.queued.ntlmauthenticator.requests";
 	$timefile=file_time_min($file);
 	if($timefile>5){
-		squid_admin_mysql(0,"NTLM: FATAL Too few ntlmauthenticator defined! [action=Active Directory Emergency]",$buffer,__FILE__,__LINE__);
-		shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} /usr/share/artica-postfix/exec.kerbauth.watchdog.php --enable >/dev/null 2>&1 &");
+		squid_admin_mysql(0,"NTLM: FATAL Too few ntlmauthenticator defined! [action=Reload]",$buffer,__FILE__,__LINE__);
+		shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["SQUIDBIN"]} -k reconfigure");
 	}
 
 }
-//*******************************************************************************************************************	
+//*******************************************************************************************************************
+
+if(preg_match("#FATAL: The basicauthenticator helpers are crashing too rapidly, need help#", $buffer,$re)){
+	$file="/etc/artica-postfix/pids/basicauthenticator.helpers.crashing";
+	$timefile=file_time_min($file);
+	if($timefile>5){
+		squid_admin_mysql(0,"NTLM/Basic: FATAL basicauthenticator crashed [action=Emergency]",$buffer,__FILE__,__LINE__);
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/BasicAuthenticatorEmergency", 1);
+		shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} /usr/share/artica-postfix/exec.squid.php --build --force >/dev/null 2>&1 &");
+		@unlink($file);
+		@file_put_contents($file, time());
+	}
+}
+//*******************************************************************************************************************
 if(preg_match("#comm_udp_sendto: FD 13,.*?family=2.*?([0-9\.]+):53.*?Invalid argument#", $buffer,$re)){
 	$file="/etc/artica-postfix/pids/comm_udp_sendto.FD13.53.Invalid.argument";
 	$timefile=file_time_min($file);
@@ -506,14 +578,24 @@ if(preg_match("#FATAL: The\s+(.*?)\s+helpers are crashing too rapidly, need help
 	
 	if($re[1]=="redirector"){
 		squid_admin_mysql(0,"Webfiltering client issue! [action=emergency!]",
-		"The proxy claims about an Webfiltering that crashing, Artica pass your proxy service into Web filtering emergency mode!\n$buffer",__FILE__,__LINE__);
+		"The proxy claims about crashing Webilter client, Artica pass your proxy service into Web filtering emergency mode!\n$buffer",__FILE__,__LINE__);
 		@file_put_contents("/etc/artica-postfix/settings/Daemons/SquidUFDBUrgency", 1);
 		shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} /usr/share/artica-postfix/exec.squid.php --build --force >/dev/null 2>&1 &");
 		return;
 	}
 	
+	if(strtolower($re[1])=="mactouid"){
+		squid_admin_mysql(0,"MacToUid client issue! [action=emergency!]",
+		"The proxy claims about crashing MAC-TO-UID client, Artica pass your proxy service into Mac-to-uid emergency mode!\n$buffer",__FILE__,__LINE__);
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/MacToUidUrgency", 1);
+		shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} /usr/share/artica-postfix/exec.squid.php --build --force >/dev/null 2>&1 &");
+		return;
+		
+	}
 	
-	squid_admin_mysql(0,"Helper: [{$re[1]}] issue! [action=emergency!]",
+	
+	
+	squid_admin_mysql(0,"Helper: Generic [{$re[1]}] issue! [action=emergency!]",
 	"The proxy claims about an helper that crashing, Artica pass your proxy service into emergency mode!\n$buffer"
 	,__FILE__,__LINE__);
 	@file_put_contents("/etc/artica-postfix/settings/Daemons/SquidUrgency", 1);
@@ -681,17 +763,7 @@ if(preg_match("#FATAL: Unable to open HTTPS Socket#",$buffer,$re)){
 	}
 	return;	
 }
-//*******************************************************************************************************************
-if(preg_match("#FATAL: The basicauthenticator helpers are crashing too rapidly, need help#",$buffer,$re)){
-	if(TimeStampTTL(__LINE__,2)){
-		$text[]=$buffer;
-		$f=explode("\n",@file_get_contents("/etc/squid3/squid.conf"));
-		while (list ($num, $line) = each ($f)){if(preg_match("#auth_param basic program#", $line)){ $text[]="basicauthenticator: $line"; }	}
-		squid_admin_mysql(0,"basicauthenticator extension is crashing",@implode("\n", $text),__FILE__,__LINE__);
-	}
-	return;	
-}	
-//*******************************************************************************************************************	
+
 if(preg_match("#ERROR: URL-rewrite produces invalid request:#",$buffer,$re)){
 	squid_admin_mysql(0,"Redirector Web filter miss-configured","$buffer\n",__FILE__,__LINE__);
 	return;	
@@ -814,6 +886,15 @@ if(preg_match("#squidaio_queue_request: WARNING - Queue congestion#i", $buffer))
 		return;
 	}
 	
+	if(preg_match("#commBind:\s+Cannot bind socket FD\s+[0-9]+\s+to\s+\[::1\]#",$buffer,$re)){
+		if(TimeStampTTL(__LINE__,1)){
+			events("127.0.0.1 issue",__LINE__);
+			squid_admin_mysql(1,"IPV6 Loopback interface issue - {$re[1]} [action=notify]","$buffer");
+		}	
+		return;
+	}
+
+	
 // *******************************************************************************************************************	
 	if(preg_match("#commBind:\s+Cannot bind socket FD\s+[0-9]+\s+to.*?(::1|127\.0\.0\.1)\]:.*?Cannot assign requested address#",$buffer,$re)){
 		if(TimeStampTTL(__LINE__,1)){
@@ -821,8 +902,8 @@ if(preg_match("#squidaio_queue_request: WARNING - Queue congestion#i", $buffer))
 			squid_admin_mysql(0,"Loopback interface issue - {$re[1]}","$buffer\nArtica will reconfigure loopback");
 			shell_exec("{$GLOBALS["IFCONFIG"]} lo 127.0.0.1 netmask 255.255.255.0 up >/dev/null 2>&1");
 			shell_exec("/etc/init.d/squid reload {$GLOBALS["SCRIPT_SUFFIX"]}");
-			return;
-		}			
+		}
+		return;
 	}
 // *******************************************************************************************************************	
 	if(preg_match("#Uninitialized SSL certificate database directory:\s+(.+?)\.#",$buffer,$re)){

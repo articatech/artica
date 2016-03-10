@@ -413,7 +413,6 @@ function search(){
 
 	
 	
-	
 	$data['rows'] = array();
 	$CurrentPage=CurrentPageName();
 	

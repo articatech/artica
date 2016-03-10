@@ -47,7 +47,7 @@ include_once(dirname(__FILE__) ."/framework/class.unix.inc");
   	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("[Q] initialised...");}
   }
   
-  if($argv[1]=="--mactohotspot"){$GLOBALS["EnableArticaHotSpot"]=1;}
+  
   
   
   
@@ -115,16 +115,7 @@ while (!feof(STDIN)) {
  		continue;
  	} 	
  	
- 	if($GLOBALS["EnableArticaHotSpot"]==1){
- 		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("ASK: {$array["MAC"]} = ?");}
- 		$uid=GetMacToUidHotSpot($array["MAC"],$array["IPADDR"]);
- 		if($uid<>null){
- 			fwrite(STDOUT, "OK user=$uid\n");
- 			continue;
- 		}
- 		fwrite(STDOUT, "OK\n");
- 		continue;
- 	}	
+	
  	
   	if(CheckQuota($array)){fwrite(STDOUT, "OK\n");}else{WLOG("ERR \"Out of quota\"");fwrite(STDOUT, "ERR message=\"Out Of Quota\"\n");}
  }
@@ -180,37 +171,7 @@ function SetMacToUidHotSpot_MEM($MAC,$IPADDR,$MD5Key,$UID){
 }
 
 
-function GetMacToUidHotSpot($MAC,$IPADDR){
-	
-	
-	
-	
-	$MD5Key=md5("$MAC$IPADDR");
-	
-	$uid=GetMacToUidHotSpot_MEM($MAC,$IPADDR,$MD5Key);
-	if($uid<>null){return null;}
-	if($MAC=="00:00:00:00:00:00"){$MAC=null;}
-	if($IPADDR=="127.0.0.1"){$IPADDR=null;}
-	
-	if($MAC<>null){
-		if(!isset($GLOBALS["CLASS_SQUID_MYSQL"])){$GLOBALS["CLASS_SQUID_MYSQL"]=new mysql_squid_builder();}
-		$sql="SELECT uid FROM hotspot_sessions WHERE MAC='$MAC'";
-		$ligne=mysql_fetch_array($GLOBALS["CLASS_SQUID_MYSQL"]->QUERY_SQL($sql));
-		if($ligne["uid"]<>null){
-			return SetMacToUidHotSpot_MEM($MAC,$IPADDR,$MD5Key,$ligne["uid"]);
-		}
-	}
-	
-	if($IPADDR<>null){
-		if(!isset($GLOBALS["CLASS_SQUID_MYSQL"])){$GLOBALS["CLASS_SQUID_MYSQL"]=new mysql_squid_builder();}
-		$sql="SELECT uid FROM hotspot_sessions WHERE ipaddr='$IPADDR'";
-		$ligne=mysql_fetch_array($GLOBALS["CLASS_SQUID_MYSQL"]->QUERY_SQL($sql));
-		if($ligne["uid"]<>null){
-			return SetMacToUidHotSpot_MEM($MAC,$IPADDR,$MD5Key,$ligne["uid"]);
-		}
-	}
-	return null;
-}
+
 
 function parseURL($url){
 	$uri=null;

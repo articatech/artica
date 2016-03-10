@@ -39,6 +39,17 @@ if($unix->process_exists($pid)){
 	die(0);
 }
 
+$local=$unix->find_program("locale-gen");
+if(is_file($local)){
+	$pid=$unix->PIDOF($local);
+	if($unix->process_exists($pid)){
+		echo "Aborting generating locales, a process with pid $pid already running\n";
+		die();
+	}
+}
+
+
+
 @file_put_contents($pidfile, getmypid());
 @file_put_contents("/etc/artica-postfix/LOCAL_GEN_EXECUTED", time());
 

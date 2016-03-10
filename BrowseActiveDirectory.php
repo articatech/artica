@@ -598,7 +598,7 @@ function users_list(){
 	$data['total'] = count($Array);
 	$data['rows'] = array();	
 	$members=$tpl->_ENGINE_parse_body("{members}");
-	
+	$c=0;
 	while (list ($dn, $GPARR) = each ($Array) ){
 		$dnEnc=base64_encode($dn);
 		$GroupxSourceName=$GPARR[0];
@@ -644,6 +644,7 @@ function users_list(){
 			}
 			$substr=substr($GroupxSourceName, strlen($GroupxSourceName)-1,1);
 			if($substr=="$"){
+				if($_GET["OnlyUsers"]==1){continue;}
 				$GPARR[0]=str_replace("$", "", $GPARR[0]);
 				$icon="computer-32.png";
 				$image=imgsimple($icon);
@@ -656,10 +657,10 @@ function users_list(){
 		}
 		
 		
+		if($GPARR[0]==null){continue;}
 		
 		
-
-		
+		$c++;
 		
 		$md5=md5($dn);
 		$data['rows'][] = array(
@@ -671,7 +672,7 @@ function users_list(){
 			);		
 	}
 	
-	
+	$data['total'] = $c;
 	echo json_encode($data);	
 }
 ?>

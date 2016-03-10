@@ -15,6 +15,7 @@ class squid_external_ldap_builder{
 	private $ldap_group_attribute;
 	private $ldap_filter_search_group;
 	private $ldap_filter_group_attribute;
+	private $BasicAuthenticatorEmergency=0;
 	public $MyStandPort;
 	
 	function squid_external_ldap_builder(){
@@ -57,6 +58,7 @@ class squid_external_ldap_builder{
 		if(!is_numeric($this->EXTERNAL_LDAP_AUTH_PARAMS["external_acl_startup"])){$this->EXTERNAL_LDAP_AUTH_PARAMS["external_acl_startup"]=3;}
 		if(!is_numeric($this->EXTERNAL_LDAP_AUTH_PARAMS["external_acl_idle"])){$this->EXTERNAL_LDAP_AUTH_PARAMS["external_acl_idle"]=1;}
 		if(!is_numeric($this->EXTERNAL_LDAP_AUTH_PARAMS["external_acl_cache"])){$this->EXTERNAL_LDAP_AUTH_PARAMS["external_acl_cache"]=360;}
+		$this->BasicAuthenticatorEmergency=intval($sock->GET_INFO("BasicAuthenticatorEmergency"));
 		
 	}	
 	
@@ -79,7 +81,10 @@ class squid_external_ldap_builder{
 	}
 	
 	public function Build(){
-		
+		if($this->BasicAuthenticatorEmergency==1){
+			$conf[]= "#--------- LDAP AUTH settings ( ".__CLASS__."/ EMERGENCY !!!!!\n";
+			return @implode("\n", $f);
+		}
 		$ldap_host=$this->EXTERNAL_LDAP_AUTH_PARAMS["ldap_server"];
 		$ldap_port=$this->EXTERNAL_LDAP_AUTH_PARAMS["ldap_port"];
 		$ldap_password=$this->EXTERNAL_LDAP_AUTH_PARAMS["ldap_password"];

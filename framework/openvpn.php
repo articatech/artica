@@ -101,129 +101,22 @@ function vpn_client_running(){
 
 
 function BuildWindowsClient(){
-	if(isset($_GET["site-id"])){$site_id=$_GET["site-id"];}
-	if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;}
-	$commonname=$_GET["build-vpn-user"];
-	$basepath=$_GET["basepath"];
+	$uid=$_GET["build-vpn-user"];
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/web/openvpn.client.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/openvpn.client.log";
+	
+	@unlink($GLOBALS["CACHEFILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);
+	@chmod($GLOBALS["LOGSFILES"],0777);
 	$unix=new unix();
-	@mkdir($basepath,0755,true);
-	$workingDir="/etc/artica-postfix/openvpn/$commonname";
-	@mkdir($workingDir);
-	if(!is_file('/usr/bin/zip')){
-		echo "<articadatascgi>ERROR: unable to stat \"zip\", please advise your Administrator</articadatascgi>";
-		exit;
-	}
-	
-	if(!is_file("/etc/artica-postfix/settings/Daemons/$commonname.ovpn")){
-		echo "<articadatascgi>ERROR: unable to stat \"$commonname.ovpn\", please advise your Administrator</articadatascgi>";
-		exit;
-	}
-	
-	
-	$filesize=filesize("/etc/artica-postfix/settings/Daemons/$commonname.ovpn");
-	if($filesize==0){
-		echo "<articadatascgi>ERROR: corrupted \"$commonname.ovpn\" 0 bytes, please advise your Administrator</articadatascgi>";
-		exit;
-	}	
-	
-	
-	
-	
-	
-	echo "<articadatascgi>";
-	echo "$commonname.ovpn: ". filesize("/etc/artica-postfix/settings/Daemons/$commonname.ovpn")." bytes length\n";
-	
-	
-	$password=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/OpenVpnPasswordCert"));
-	if($password==null){$password="MyKey";}
-	
-	$zipfile=$basepath."/ressources/logs/$commonname.zip";
-	@mkdir("$basepath/ressources/logs",0755,true);
-	
-	if(!ChangeCommonName($commonname)){exit;}
-	if(is_file($zipfile)){@unlink($zipfile);}
-	
-	$config_path="/etc/artica-postfix/openvpn/openssl.cnf";
-	//if(is_file("/etc/artica-postfix/ssl.certificate.conf")){$config_path="/etc/artica-postfix/ssl.certificate.conf";}
-	
-       
-    chdir('/etc/artica-postfix/openvpn');
-    $filetemp=$unix->FILE_TEMP();
-    shell_exec("source ./vars");   
-    copy("/etc/artica-postfix/openvpn/keys/openvpn-ca.crt","$workingDir/$commonname-ca.crt");
-    copy("/etc/artica-postfix/settings/Daemons/$commonname.ovpn","$workingDir/$commonname.ovpn"); 
-    @unlink("/etc/artica-postfix/openvpn/$commonname.ovpn");
-    @unlink("/etc/artica-postfix/openvpn/keys/index.txt");
-    shell_exec("/bin/touch /etc/artica-postfix/openvpn/keys/index.txt");
-    
-    if($GLOBALS["VERBOSE"]){
-    	echo "keyout: $workingDir/$commonname.key\n";
-    	echo "Keyfile: /etc/artica-postfix/openvpn/keys/openvpn-ca.key\n";
-    	echo "/etc/artica-postfix/openvpn/keys/openvpn-ca.crt\n";
-    	echo "config: $config_path\n";
-    	echo "$workingDir/$commonname.csr\n";
-    	
-    }
-    
-    $cmd="echo 01 > /etc/artica-postfix/openvpn/keys/serial";
-    $CMDLOGS[]=$cmd;
-	shell_exec("$cmd");       
-	echo @file_get_contents($filetemp);
-    
-    $cmd="openssl req -batch -days 3650 -nodes -new -newkey rsa:1024 -keyout \"$workingDir/$commonname.key\" -out \"$workingDir/$commonname.csr\" -config \"$config_path\"";   
-    $cmd="openssl req -nodes -new -keyout \"$workingDir/$commonname.key\" -out \"$workingDir/$commonname.csr\" -batch -config $config_path";
-    
-    
-    
-    if($GLOBALS["VERBOSE"]){echo "$cmd\n";}else{echo substr($cmd,0,60)."...\n";}
-    $CMDLOGS[]=$cmd;
-	exec("$cmd 2>&1",$results);
-	while (list ($num, $ligne) = each ($results) ){echo $ligne."\n";$CMDLOGS[]=$ligne;}
-	       
-	
-	
-	$server_ca="/etc/artica-postfix/openvpn/keys/openvpn-ca.key";
-	//$server_ca="/etc/artica-postfix/openvpn/keys/vpn-server.key";
-	$servercert="/etc/artica-postfix/openvpn/keys/openvpn-ca.crt";
-	//$servercert="/etc/artica-postfix/openvpn/keys/vpn-server.crt";
-	
-	
-	$cmd="openssl ca -batch -days 3650 -out \"$workingDir/$commonname.crt\" -in \"$workingDir/$commonname.csr\" -md sha1 -config \"$config_path\"";
-	$cmd="openssl ca -keyfile $server_ca -cert $servercert";
-	$cmd=$cmd." -out \"$workingDir/$commonname.crt\" -in \"$workingDir/$commonname.csr\" -batch -config $config_path  -passin pass:$password";
-	
-	if($GLOBALS["VERBOSE"]){echo "$cmd\n";}else{echo substr($cmd,0,60)."...\n";}
-	$CMDLOGS[]=$cmd;$results=array();
-	exec("$cmd 2>&1",$results);
-	while (list ($num, $ligne) = each ($results) ){echo $ligne."\n";$CMDLOGS[]=$ligne;}
-	   
-	echo @file_get_contents($filetemp);
-	  $mycurrentdir=getcwd();
-	  chdir($workingDir);
-      @file_put_contents("$workingDir/password",$password);
-	  
-	  $cmd="/usr/bin/zip $zipfile";
-      
-      $cmd=$cmd. " $commonname.crt $commonname.csr $commonname.key $commonname.ovpn $commonname-ca.crt password >$filetemp 2>&1";;
-	  if($GLOBALS["VERBOSE"]){echo "$cmd\n";}else{echo substr($cmd,0,60)."...\n";}
-	  $CMDLOGS[]=$cmd;
-      shell_exec($cmd);
-      chdir($mycurrentdir);
-      echo @file_get_contents($filetemp);
-      
-   @chmod($zipfile,0755);
-   @unlink($filetemp);
-   @unlink("$workingDir/$commonname-ca.crt");
-   @unlink("$workingDir/$commonname.crt");
-   @unlink("$workingDir/$commonname.csr");
-   @unlink("$workingDir/$commonname.key");
-   @unlink("$workingDir/$commonname.ovpn");
-   @unlink("$workingDir/password");		
-    echo "----------------------------------\n";
-    echo "{success} !!!\n";
-    echo "----------------------------------\n";
-	echo "</articadatascgi>";
-	@file_put_contents("/root/openss.cmds", @implode("\n", $CMDLOGS));
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.openvpn.build-client.php \"$uid\" >{$GLOBALS["LOGSFILES"]} 2>&1 &";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
 }
 
 

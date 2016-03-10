@@ -3,7 +3,7 @@ function ftp_proxy(){
 	$files=$GLOBALS["CLASS_UNIX"]->DirFiles('/etc/init.d',"ftp-proxy-[0-9]+");
 	while (list ($basename, $value) = each ($files) ){
 		
-		if(!preg_match("ftp-proxy-([0-9]+)", $basename)){continue;}
+		if(!preg_match("#ftp-proxy-([0-9]+)#", $basename,$re)){continue;}
 		$ID=$re[1];
 		ftp_proxy_instance($ID);
 	}

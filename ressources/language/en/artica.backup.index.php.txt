@@ -1,5 +1,5 @@
 <about>All informations are stored in 2 databases used by Artica.[br]
-LDAP is used for all settings and accounts. Mysql is used for events and product related that use Mysql.[br]
+LDAP is used for all settings and accounts. MySQL is used for events and product related that use MySQL.[br]
 Artica should backup these settings in order to restore them if this server crash</about>
 <add_folder>Add a new folder</add_folder>
 <add_has_backup>Add this disk has a backup storage disk</add_has_backup>

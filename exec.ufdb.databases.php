@@ -10,6 +10,11 @@ include_once(dirname(__FILE__).'/framework/class.settings.inc');
 include_once(dirname(__FILE__).'/ressources/class.os.system.inc');
 include_once(dirname(__FILE__).'/ressources/class.compile.ufdbguard.inc');
 
+if(system_is_overloaded(basename(__FILE__))){
+	echo "Overloaded\n";
+	die();
+}
+
 if(preg_match("#schedule-id=([0-9]+)#",implode(" ",$argv),$re)){$GLOBALS["SCHEDULE_ID"]=$re[1];}
 if(preg_match("#--verbose#",implode(" ",$argv))){$GLOBALS["VERBOSE"]=true;$GLOBALS["OUTPUT"]=true;$GLOBALS["debug"]=true;ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);}
 if(preg_match("#--output#",implode(" ",$argv))){$GLOBALS["OUTPUT"]=true;}
@@ -42,6 +47,10 @@ function xstart(){
 		echo "Already executed\n";
 		return;
 	}
+	
+	
+
+	
 	
 	if(!$GLOBALS["FORCE"]){
 		if($unix->file_time_min($pidTime)<30){return;}

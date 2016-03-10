@@ -66,7 +66,7 @@ function manu(){
 	if($ArchStruct=="32"){$ArchStruct="i386";}
 	if($ArchStruct=="64"){$ArchStruct="x64";}
 	
-	$realsquidversion=$sock->getFrameWork("squid.php?full-version=yes");
+	$realsquidversion=@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidVersion");
 	
 	
 	$html="

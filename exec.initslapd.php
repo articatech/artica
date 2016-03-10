@@ -1,3 +1,4 @@
+#!/usr/bin/php
 <?php
 if(is_file("/usr/bin/cgclassify")){if(is_dir("/cgroups/blkio/php")){shell_exec("/usr/bin/cgclassify -g cpu,cpuset,blkio:php ".getmypid());}}
 if(is_file("/etc/artica-postfix/FROM_ISO")){$GLOBALS["PHP5_BIN_PATH"]="/usr/bin/php5";}
@@ -78,9 +79,19 @@ if($argv[1]=="--squid-stream"){squidstream();squidstream_scheduler();exit;}
 if($argv[1]=="--zipproxy"){zipproxy();exit;}
 if($argv[1]=="--squid-db"){$GLOBALS["OUTPUT"]=true;squid_db();exit;}
 if($argv[1]=="--iredmail"){$GLOBALS["OUTPUT"]=true;iredmail();exit;}
+if($argv[1]=="--suricata"){$GLOBALS["OUTPUT"]=true;suricata();exit;}
+if($argv[1]=="--barnyard2"){$GLOBALS["OUTPUT"]=true;barnyard2();exit;}
+if($argv[1]=="--bandwidthd"){$GLOBALS["OUTPUT"]=true;bandwidthd();exit;}
+if($argv[1]=="--proftpd"){$GLOBALS["OUTPUT"]=true;proftpd();exit;}
+if($argv[1]=="--clamav-milter"){$GLOBALS["OUTPUT"]=true;clamav_milter();exit;}
+if($argv[1]=="--privoxy"){$GLOBALS["OUTPUT"]=true;privoxy();exit;}
+if($argv[1]=="--valvuad"){$GLOBALS["OUTPUT"]=true;valvuad();exit;}
+
+
+
 
 if($argv[1]=="--squid-stats-central"){$GLOBALS["OUTPUT"]=true;squid_stats_central();exit;}
-if($argv[1]=="--wifidog"){$GLOBALS["OUTPUT"]=true;wifidog();exit;}
+if($argv[1]=="--wifidog"){$GLOBALS["OUTPUT"]=true;wifidog();hotspot_tail();exit;}
 if($argv[1]=="--kav4proxy"){$GLOBALS["OUTPUT"]=true;kav4proxy();exit;}
 if($argv[1]=="--l7filter"){$GLOBALS["OUTPUT"]=true;l7filter();exit;}
 
@@ -88,7 +99,7 @@ if($argv[1]=="--ufdbcat"){$GLOBALS["OUTPUT"]=true;ufdbcat();exit;}
 if($argv[1]=="--syncthing"){$GLOBALS["OUTPUT"]=true;syncthing();exit;}
 if($argv[1]=="--hypercache-web"){$GLOBALS["OUTPUT"]=true;hypercache_http();exit;}
 if($argv[1]=="--not-shutdown"){$GLOBALS["OUTPUT"]=true;not_shutdown();exit;}
-if($argv[1]=="--influx"){$GLOBALS["OUTPUT"]=true;influx();exit;}
+if($argv[1]=="--postgres"){$GLOBALS["OUTPUT"]=true;postgres();exit;}
 if($argv[1]=="--squid-tail"){$GLOBALS["OUTPUT"]=true;squid_tail();exit;}
 if($argv[1]=="--hypercache-tail"){$GLOBALS["OUTPUT"]=true;hypercache_tail();exit;}
 if($argv[1]=="--ldap-client"){$GLOBALS["OUTPUT"]=true;ldap_client();exit;}
@@ -96,8 +107,8 @@ if($argv[1]=="--policyd-weight"){$GLOBALS["OUTPUT"]=true;policyd_weight();exit;}
 if($argv[1]=="--transmission-daemon"){$GLOBALS["OUTPUT"]=true;transmission_daemon();exit;}
 if($argv[1]=="--milter-regex"){$GLOBALS["OUTPUT"]=true;milter_regex();exit;}
 if($argv[1]=="--milter-spamass"){$GLOBALS["OUTPUT"]=true;spamassin_milter();spamassassin();exit;}
-
-
+if($argv[1]=="--apache-tail"){$GLOBALS["OUTPUT"]=true;apache_tail();exit;}
+if($argv[1]=="--openvpn-server"){$GLOBALS["OUTPUT"]=true;openvpn_server();exit;}
 
 
 $unix=new unix();
@@ -130,13 +141,13 @@ $unix=new unix();
 
 @file_put_contents($PID_FILE, getmypid());
 $GLOBALS["OUTPUT"]=true;
-$functions=array("artica_syslog","milter_regex","spamassin_milter","fail2Ban","spamassassin","transmission_daemon","squid_stats_central","squid","hypercache_tail","squid_cache_log","vsftpd","squid_tail","wifidog","irqbalance","artica_firewall","artica_postfix","artica_openssh","artica_web_hotspot","artica_fw_hotspot",
+$functions=array("artica_syslog","milter_regex","spamassin_milter","suricata","bandwidthd","barnyard2","fail2Ban","spamassassin","transmission_daemon","squid_stats_central","squid","hypercache_tail","squid_cache_log","vsftpd","squid_tail","hotspot_tail","wifidog","irqbalance","artica_firewall","artica_postfix","artica_openssh","artica_web_hotspot","artica_fw_hotspot",
 		"haproxy","specialreboot","buildscript","artica_status","mysqlInit","remove_nested_services","netdiscover",
 "conntrackd","process1","monit","dnsmasq_init_debian","nscd_init_debian","wsgate_init_debian","amavis","ufdbcat","buildscriptLoopDisk","buildscriptFreeRadius","pdns_recursor","l7filter",
 "ifup","ftpproxy","failover","framework","webservices","ufdbguard","ufdbguard_client","phppfm","kav4proxy",
-		"apache","artica_webconsole","memcached","nginx","dhcpd","cicap","vnstat","arpd","haarp","saslauthd","rsyslogd_init","CleanUbuntu","UpstartJob","squidguard_http","debian_mirror","artica_categories","cntlm","cntlm_parent","postfix","ufdb_tail","auth_tail","roundcube_http","spawnfcgi","fetchmail","squidnat","squidstream","squidstream_scheduler","pdns","snmpd","stunnel","iscsitarget","vde_switch","rdpproxy","winbind",
-"clamav_daemon","shorewall_db","squid_db","zipproxy","rsyslogd_init","clamav_freshclam","influx","ntopng","redis_server","cyrus_imapd",
-		"iredmail","artica_iso","syncthing","hypercache_http","not_shutdown","cgconfig","cgredconfig","clamdscan","policyd_weight");	
+		"apache","artica_webconsole","memcached","nginx","clamav_milter","dhcpd","cicap","vnstat","arpd","haarp","saslauthd","rsyslogd_init","CleanUbuntu","UpstartJob","squidguard_http","debian_mirror","artica_categories","cntlm","cntlm_parent","postfix","ufdb_tail","auth_tail","roundcube_http","spawnfcgi","fetchmail","squidnat","squidstream","squidstream_scheduler","pdns","snmpd","stunnel","iscsitarget","vde_switch","rdpproxy","winbind",
+"clamav_daemon","shorewall_db","squid_db","zipproxy","privoxy","rsyslogd_init","clamav_freshclam","postgres","ntopng","redis_server","cyrus_imapd",
+		"iredmail","artica_iso","syncthing","getty","proftpd","openvpn_server","hypercache_http","apache_tail","not_shutdown","cgconfig","cgredconfig","clamdscan","policyd_weight");	
 
 $countDeFunc=count($functions);
 $c=0;
@@ -208,6 +219,10 @@ function restart_ldap_progress($text,$pourc){
 	$array["POURC"]=$pourc;
 	$array["TEXT"]=$text;
 	echo "[$pourc]: $text\n";
+	
+	$trace=debug_backtrace();
+	$array["TRACE"]=$trace;
+	
 	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/openldap.progress", serialize($array));
 	@chmod("/usr/share/artica-postfix/ressources/logs/web/openldap.progress",0755);
 
@@ -217,15 +232,34 @@ function restart_ldap(){
 	$unix=new unix();
 	$MYPID_FILE="/etc/artica-postfix/pids/restart_ldap.pid";
 	$pid=$unix->get_pid_from_file($MYPID_FILE);
-	if($unix->process_exists($pid,basename(__FILE__))){
-		restart_ldap_progress("{failed}",110);
-		echo "slapd: [INFO] Artica task already running pid $pid\n";
-		die();
+	
+	if(!is_file("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP")){
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP", 1);
+		@chmod("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP",0755);
 	}
 	
 	
+	$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
 	
+	if($unix->process_exists($pid,basename(__FILE__))){
+		echo "slapd: [INFO] Artica task already running pid $pid\n";
+		restart_ldap_progress("{failed}  [".__LINE__."]",110);
+		die();
+	}
 	
+	$pids=$unix->PIDOF_PATTERN_ALL(basename(__FILE__).".*?--restart",true);
+	if(count($pids)>0){
+		while (list ($i, $line) = each ($pids)){
+			echo "slapd: [INFO] Artica task already executed PID:$i... aborting\n";
+		}
+		restart_ldap_progress("{failed}",110);
+		die();
+	}
+	
+	if($GLOBALS["MONIT"]){
+		squid_admin_mysql(0, "Monit (Watchdog) Ask to restart OpenLDAP service...", null,__FILE__,__LINE__);
+		system_admin_mysql(0, "Monit (Watchdog) Ask to restart OpenLDAP service...", null,__FILE__,__LINE__);
+	}
 	
 	if(!$GLOBALS["FORCE"]){
 		$lastexecution=$unix->file_time_min($MYPID_FILE);
@@ -239,14 +273,27 @@ function restart_ldap(){
 	
 	@unlink($MYPID_FILE);
 	
+	
+	restart_ldap_progress("{build_init_script}",5);
+	$INITD_PATH=$unix->SLAPD_INITD_PATH();
+	echo "Script: $INITD_PATH\n";
+	buildscript();
+	if(!is_file($INITD_PATH)){
+		restart_ldap_progress("{build_init_script} {failed}",110);
+		return;
+	}
+	
 	@file_put_contents($MYPID_FILE, getmypid());
 	$unix->ToSyslog("Restarting the OpenLDAP daemon by `{$GLOBALS["BY_FRAMEWORK"]}`",false,basename(__FILE__));
 	restart_ldap_progress("{stopping_service}",10);
 	
 	stop_ldap(true);
-	
-	restart_ldap_progress("{starting_service}",40);
-	start_ldap(true);
+	if($EnableOpenLDAP==1){
+		$php=$unix->LOCATE_PHP5_BIN();
+		shell_exec("/etc/init.d/monit restart");
+		restart_ldap_progress("{starting_service}",40);
+		start_ldap(true);
+	}
 }
 
 
@@ -368,10 +415,16 @@ function start_ldap($aspid=false){
 		$EnableIntelCeleron=intval($sock->GET_INFO("EnableIntelCeleron"));
 		if($EnableIntelCeleron==1){
 			echo "slapd: [INFO] Server is set in Celeron support aborting\n";
+			restart_ldap_progress("{success}",100);
 			return;
 		}
 	}
-	
+	$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
+	if($EnableOpenLDAP==0){
+		echo "slapd: [INFO] Server disabled ( see EnableOpenLDAP )\n";
+		restart_ldap_progress("{success}",100);
+		return true;
+	}
 	
 	$slapd=$unix->find_program("slapd");
 	$SLAPD_PID_FILE=$unix->SLAPD_PID_PATH();
@@ -562,7 +615,7 @@ function start_ldap($aspid=false){
 		sleep(1);
 				
 	}
-	restart_ldap_progress("{failed}",110);
+	restart_ldap_progress("{failed} [".__LINE__."]",110);
 	echo "slapd: [ERR ] Failed to start the service with `$cdmline`\n";
 	
 }
@@ -834,75 +887,24 @@ function not_shutdown(){
 
 function vsftpd(){
 	$unix=new unix();
-	$php=$unix->LOCATE_PHP5_BIN();
 	$INITD_PATH="/etc/init.d/vsftpd";
+	if(!is_file($INITD_PATH)){return;}
 	$php5script="exec.vsftpd.php";
 	$daemonbinLog="Very Secure FTP Dameon";
-
-
-
-	$f[]="#!/bin/sh";
-	$f[]="### BEGIN INIT INFO";
-	$f[]="# Provides:         ".basename($INITD_PATH);
-	$f[]="# Required-Start:    \$local_fs \$syslog";
-	$f[]="# Required-Stop:     \$local_fs \$syslog";
-	$f[]="# Should-Start:";
-	$f[]="# Should-Stop:";
-	$f[]="# Default-Start:     2 3 4 5";
-	$f[]="# Default-Stop:      0 1 6";
-	$f[]="# Short-Description: $daemonbinLog";
-	$f[]="# chkconfig: - 80 75";
-	$f[]="# description: $daemonbinLog";
-	$f[]="### END INIT INFO";
-
-	$f[]="case \"\$1\" in";
-	$f[]=" start)";
-	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
-	$f[]="    ;;";
-	$f[]="";
-	$f[]="  stop)";
-	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
-	$f[]="    ;;";
-	$f[]="";
-	$f[]=" restart)";
-	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
-	
-	$f[]="    ;;";
-	$f[]="";
-	$f[]=" reconfigure)";
-	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
-	$f[]="    ;;";
-	$f[]="";
-	$f[]=" reload)";
-	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
-	
-	$f[]="    ;;";
-	$f[]="";
-	$f[]="  *)";
-	$f[]="    echo \"Usage: \$0 {start|stop|restart|reconfigure|reload} (+ '--verbose' for more infos)\"";
-	$f[]="    exit 1";
-	$f[]="    ;;";
-	$f[]="esac";
-	$f[]="exit 0\n";
-
-
-	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
-	@unlink($INITD_PATH);
-	@file_put_contents($INITD_PATH, @implode("\n", $f));
-	@chmod($INITD_PATH,0755);
+	system("$INITD_PATH stop");
 
 	if(is_file('/usr/sbin/update-rc.d')){
-		shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+		shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." remove >/dev/null 2>&1");
 	}
-
+		
 	if(is_file('/sbin/chkconfig')){
-		shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
-		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --del " .basename($INITD_PATH)." >/dev/null 2>&1");
 	}
-
-
-
+	@unlink($INITD_PATH);
+		
+	
 }
+
 
 
 
@@ -3821,6 +3823,71 @@ function postfix_logger(){
 	}
 
 }
+function hotspot_tail(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/hotspot-tail";
+	$php5script="exec.init-tail-hotspot.php";
+	$daemonbinLog="HotSpot Tail daemon";
+	if(!is_file("/usr/share/artica-postfix/$php5script")){return;}
+
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:         hotspot-tail";
+	$f[]="# Required-Start:    \$local_fs \$syslog \$squid";
+	$f[]="# Required-Stop:     \$local_fs \$syslog \$squid";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reconfigure)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reload)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  *)";
+	$f[]="    echo \"Usage: \$0 {start|stop|restart|reconfigure|reload} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+
+
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	@chmod($INITD_PATH,0755);
+
+	if(is_file('/usr/sbin/update-rc.d')){
+		shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+	}
+
+	if(is_file('/sbin/chkconfig')){
+		shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}
+}
 
 function hypercache_tail(){
 	$unix=new unix();
@@ -3833,6 +3900,148 @@ function hypercache_tail(){
 	$f[]="#!/bin/sh";
 	$f[]="### BEGIN INIT INFO";
 	$f[]="# Provides:         hypercache-tail";
+	$f[]="# Required-Start:    \$local_fs \$syslog \$squid";
+	$f[]="# Required-Stop:     \$local_fs \$syslog \$squid";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+	$f[]=" bash -c \"ulimit -n 65535 -c unlimited\"";
+	$f[]=" bash -c \"ulimit -n 65535 -c unlimited\"";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]=" bash -c \"ulimit -n 65535 -c unlimited\"";
+	$f[]=" bash -c \"ulimit -n 65535 -c unlimited\"";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reconfigure)";
+	$f[]=" bash -c \"ulimit -n 65535 -c unlimited\"";
+	$f[]=" bash -c \"ulimit -n 65535 -c unlimited\"";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reload)";
+	$f[]=" bash -c \"ulimit -n 65535 -c unlimited\"";
+	$f[]=" bash -c \"ulimit -n 65535 -c unlimited\"";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  *)";
+	$f[]="    echo \"Usage: \$0 {start|stop|restart|reconfigure|reload} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+
+
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	@chmod($INITD_PATH,0755);
+
+	if(is_file('/usr/sbin/update-rc.d')){
+		shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+	}
+
+	if(is_file('/sbin/chkconfig')){
+		shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}
+}
+function suricata_tail(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/suricata-tail";
+	$php5script="exec.init-tail-suricata.php";
+	$daemonbinLog="Suricata Tail daemon";
+	if(!is_file("/usr/share/artica-postfix/$php5script")){return;}
+
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:         suricata-tail";
+	$f[]="# Required-Start:    \$local_fs \$syslog \$suricata";
+	$f[]="# Required-Stop:     \$local_fs \$syslog \$suricata";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reconfigure)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reload)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  *)";
+	$f[]="    echo \"Usage: \$0 {start|stop|restart|reconfigure|reload} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+
+
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	@chmod($INITD_PATH,0755);
+
+	if(is_file('/usr/sbin/update-rc.d')){
+		shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+	}
+
+	if(is_file('/sbin/chkconfig')){
+		shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}
+}
+
+
+
+
+function apache_tail(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/apache-tail";
+	$php5script="exec.init-tail-apache.php";
+	$daemonbinLog="Apache Tail daemon";
+	if(!is_file("/usr/share/artica-postfix/$php5script")){return;}
+
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:         apache-tail";
 	$f[]="# Required-Start:    \$local_fs \$syslog \$squid";
 	$f[]="# Required-Stop:     \$local_fs \$syslog \$squid";
 	$f[]="# Should-Start:";
@@ -4567,6 +4776,237 @@ function clamav_daemon(){
 	$f[]="    $php /usr/share/artica-postfix/$php5script --reload-log \$2 \$3";
 	$f[]="    ;;";		
 	
+	$f[]="";
+	$f[]="  *)";
+	$f[]="    echo \"Usage: $INITD_PATH {start|stop|restart|force-reload|reload-log|reload-database|status} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+
+
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	@chmod($INITD_PATH,0755);
+
+	if(is_file('/usr/sbin/update-rc.d')){
+		shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+	}
+
+	if(is_file('/sbin/chkconfig')){
+		shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}
+
+}
+
+function valvuad(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/valvuad";
+	$php5script="exec.valvuad.php";
+	$daemonbinLog="Valvuad daemon";
+	
+	
+	
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:        privoxy";
+	$f[]="# Required-Start:    \$local_fs \$syslog";
+	$f[]="# Required-Stop:     \$local_fs \$syslog";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+	
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reconfigure)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --build \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" build)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --build \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" force-reload)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --force-reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" reload-database)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload-database \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" reload-log)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload-log \$2 \$3";
+	$f[]="    ;;";
+	
+	$f[]="";
+	$f[]="  *)";
+	$f[]="    echo \"Usage: $INITD_PATH {start|stop|restart|force-reload|reload-log|reload-database|status} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+	
+	
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	@chmod($INITD_PATH,0755);
+	
+	if(is_file('/usr/sbin/update-rc.d')){
+	shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+	}
+	
+	if(is_file('/sbin/chkconfig')){
+			shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}	
+	
+}
+
+function privoxy(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/privoxy";
+	$php5script="exec.privoxy.php";
+	$daemonbinLog="AdsBlocker daemon";
+
+
+
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:        privoxy";
+	$f[]="# Required-Start:    \$local_fs \$syslog";
+	$f[]="# Required-Stop:     \$local_fs \$syslog";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reconfigure)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --build \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" build)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --build \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" force-reload)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --force-reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" reload-database)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload-database \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" reload-log)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload-log \$2 \$3";
+	$f[]="    ;;";
+
+	$f[]="";
+	$f[]="  *)";
+	$f[]="    echo \"Usage: $INITD_PATH {start|stop|restart|force-reload|reload-log|reload-database|status} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+
+
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	@chmod($INITD_PATH,0755);
+
+	if(is_file('/usr/sbin/update-rc.d')){
+		shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+	}
+
+	if(is_file('/sbin/chkconfig')){
+		shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}
+
+}
+
+function clamav_milter(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/clamav-milter";
+	$php5script="exec.clamav-milter.php";
+	$daemonbinLog="Clam Milter daemon";
+
+
+
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:        clamav-daemon";
+	$f[]="# Required-Start:    \$local_fs \$syslog";
+	$f[]="# Required-Stop:     \$local_fs \$syslog";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reconfigure)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --build \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" build)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --build \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" force-reload)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --force-reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" reload-database)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload-database \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" reload-log)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload-log \$2 \$3";
+	$f[]="    ;;";
+
 	$f[]="";
 	$f[]="  *)";
 	$f[]="    echo \"Usage: $INITD_PATH {start|stop|restart|force-reload|reload-log|reload-database|status} (+ '--verbose' for more infos)\"";
@@ -5471,56 +5911,25 @@ function memcached(){
 }
 
 function mailarchive_perl(){
-$unix=new unix();
-$php=$unix->LOCATE_PHP5_BIN();
-$f[]="#!/bin/sh";
-$f[]="### BEGIN INIT INFO";
-$f[]="# Provides:          mailarchive-perl";
-$f[]="# Required-Start:    \$local_fs \$remote_fs \$syslog \$named \$network \$time";
-$f[]="# Required-Stop:     \$local_fs \$remote_fs \$syslog \$named \$network";
-$f[]="# Should-Start:";
-$f[]="# Should-Stop:";
-$f[]="# Default-Start:     2 3 4 5";
-$f[]="# Default-Stop:      0 1 6";
-$f[]="# Short-Description: mailarchive-perl";
-$f[]="# chkconfig: 2345 11 89";
-$f[]="# description: mailarchive-perl";
-$f[]="### END INIT INFO";
-$f[]="case \"\$1\" in";
-$f[]=" start)";
-$f[]="    $php /usr/share/artica-postfix/exec.mailarchiver.php --start \$2 \$3";
-$f[]="    ;;";
-$f[]="";
-$f[]="  stop)";
-$f[]="    $php /usr/share/artica-postfix/exec.mailarchiver.php --stop \$2 \$3";
-$f[]="    ;;";
-$f[]="";
-$f[]=" restart)";
-$f[]="    $php /usr/share/artica-postfix/exec.mailarchiver.php --stop \$2 \$3";
-$f[]="    $php /usr/share/artica-postfix/exec.mailarchiver.php --start \$2 \$3";
-$f[]="    ;;";
-$f[]="";
-$f[]="  *)";
-$f[]="    echo \"Usage: \$0 {start|stop|restart} (+ '--verbose' for more infos)\"";
-$f[]="    exit 1";
-$f[]="    ;;";
-$f[]="esac";
-$f[]="exit 0\n";
+
 
 $INITD_PATH="/etc/init.d/mailarchive-perl";
-echo "mailarchive-perl: [INFO] Writing $INITD_PATH with new config\n";
-@unlink($INITD_PATH);@file_put_contents($INITD_PATH, @implode("\n", $f));
+if(!is_file($INITD_PATH)){return;}
+
+echo "mailarchive-perl: [INFO] DELETE $INITD_PATH\n";
+
 
 @chmod($INITD_PATH,0755);
 
 if(is_file('/usr/sbin/update-rc.d')){
-shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." remove >/dev/null 2>&1");
 }
 
 if(is_file('/sbin/chkconfig')){
-		shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
-		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --del " .basename($INITD_PATH)." >/dev/null 2>&1");
 	}
+	
+	@unlink($INITD_PATH);	
 
 }
 function opendkim(){
@@ -6528,14 +6937,79 @@ function restart_artica_webservices(){
 	
 }
 
-function influx(){
-	include_once(dirname(__FILE__)."/ressources/class.influxdb-service.inc");
+function postgres(){
 	$unix=new unix();
 	$sock=new sockets();
 	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/artica-postgres";
+	$php5script="exec.postgres.php";
+	$daemonbinLog="PostGres Statistics Database";
 	
-	influx_db_service();
-	echo "Influx: [INFO] Writing /etc/init.d/influx-db with new config\n";
+	
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:         artica-postgres";
+	$f[]="# Required-Start:    \$local_fs \$syslog";
+	$f[]="# Required-Stop:     \$local_fs \$syslog";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+	
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+	$f[]="	  export LC_CTYPE=en_US.UTF-8";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]=" reload)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]="	  export LC_CTYPE=en_US.UTF-8";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart2)";
+	$f[]="	  export LC_CTYPE=en_US.UTF-8";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    /etc/init.d/artica-status restart --force \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";	
+	$f[]="  *)";
+	$f[]="    echo \"Usage: \$0 {start|stop|restart|reload} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+	
+	
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	
+	
+	@chmod($INITD_PATH,0755);
+	
+	if(is_file('/usr/sbin/update-rc.d')){
+	shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+		
+	}
+	
+	if(is_file('/sbin/chkconfig')){
+			shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}
 }
 
 
@@ -7420,7 +7894,8 @@ function policyd_weight(){
 	$f[]="if [ ! -f \"/etc/artica-postfix/settings/Daemons/PolicydWeightConfig\" ]; then";
 	$f[]="\t$php /usr/share/artica-postfix/exec.postfix.maincf.php --policyd-reconfigure";
 	$f[]="fi";
-
+	$f[]="	/bin/rm -rf /var/run/policyd-weight >/dev/null 2>&1 || true";
+	$f[]="	/bin/rm -rf /tmp/.policyd-weight >/dev/null 2>&1 || true";
 	$f[]="	mkdir -p /var/run/policyd-weight >/dev/null 2>&1 || true";
 	$f[]="	mkdir -p /tmp/.policyd-weight >/dev/null 2>&1 || true";
 	$f[]="	/bin/chown postfix:postfix /var/run/policyd-weight >/dev/null 2>&1 || true";
@@ -7470,6 +7945,8 @@ function policyd_weight(){
 	$f[]="	log_daemon_msg \"Restarting \$DESC configuration (incl. cache)\" \"\$NAME\"";
 	$f[]="	mkdir -p /var/run/policyd-weight >/dev/null 2>&1 || true";
 	$f[]="	mkdir -p /tmp/.policyd-weight >/dev/null 2>&1 || true";
+	$f[]="	/bin/rm -rf /var/run/policyd-weight/* >/dev/null 2>&1 || true";
+	$f[]="	/bin/rm -rf /tmp/.policyd-weight/* >/dev/null 2>&1 || true";
 	$f[]="	/bin/chown postfix:postfix /var/run/policyd-weight >/dev/null 2>&1 || true";
 	$f[]="	/bin/chmod 770 /var/run/policyd-weight >/dev/null 2>&1 || true";
 	$f[]="	/bin/chown postfix:postfix /tmp/.policyd-weight >/dev/null 2>&1 || true";
@@ -7818,6 +8295,11 @@ function milter_regex(){
 function spamassin_milter(){
 	include_once(dirname(__FILE__)."/ressources/class.spamassassin.inc");
 	$spam=new spamassassin();
+	$users=new usersMenus();
+
+	spamassassin();
+	
+	
 	$R=null;
 	
 	if(intval($spam->main_array["block_with_required_score"])>0){
@@ -7892,7 +8374,7 @@ function spamassin_milter(){
 	$f[]="DESC=\"Sendmail milter plugin for SpamAssassin\"";
 	$f[]="";
 	$f[]="DEFAULT=/etc/default/spamass-milter";
-	$f[]="OPTIONS=\"{$R}-u postfix -i ".@implode(",", $ARR)." -- --socket=/var/run/spamassassin/spamd.sock\"";
+	$f[]="OPTIONS=\"{$R}-u postfix -i ".@implode(",", $ARR)." -- --socket /var/run/spamassassin/spamd.sock --config $users->spamassassin_conf_path\"";
 	$f[]="RUNAS=\"postfix\"";
 	$f[]="CHUID=\"\"";
 	$f[]="SOCKETMODE=\"0660\"";
@@ -7910,12 +8392,16 @@ function spamassin_milter(){
 	$f[]="if [ ! -f \"/etc/artica-postfix/settings/Daemons/SpamAssBlockWithRequiredScore\" ]; then";
 	$f[]="\techo 5 >/etc/artica-postfix/settings/Daemons/SpamAssBlockWithRequiredScore || true";
 	$f[]="fi";	
+	$f[]="if [ ! -f \"/etc/artica-postfix/settings/Daemons/SpamassassinDelegation\" ]; then";
+	$f[]="\techo 0 >/etc/artica-postfix/settings/Daemons/SpamassassinDelegation || true";
+	$f[]="fi";	
+	
 	
 	
 	
 	$f[]="SpamAssMilterEnabled=`cat /etc/artica-postfix/settings/Daemons/SpamAssMilterEnabled`";
 	$f[]="EnableAmavisDaemon=`cat /etc/artica-postfix/settings/Daemons/EnableAmavisDaemon`";
-	
+	$f[]="SpamassassinDelegation=`cat /etc/artica-postfix/settings/Daemons/SpamassassinDelegation`";
 	$f[]="";
 	
 	$f[]="";
@@ -7930,6 +8416,7 @@ function spamassin_milter(){
 	$f[]="	echo \"WARNING: \$NAME Not enabled ( see SpamAssMilterEnabled )\";";
 	$f[]="\texit 0";
 	$f[]="fi";
+	
 	
 	$f[]="    # Because the default socket is in the same location as the";
 	$f[]="    # pidfile, we create them in this order.";
@@ -8038,8 +8525,12 @@ function spamassassin(){
 	
 	$unix=new unix();
 	$php5=$unix->LOCATE_PHP5_BIN();
+	$sql_config=null;
+	$SpamassassinDelegation=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SpamassassinDelegation"));
+	if($SpamassassinDelegation==1){$sql_config=" --sql-config";}
 	
-	
+	$DAEMON="/usr/sbin/spamd";
+	if(is_file("/usr/local/bin/spamd")){$DAEMON="/usr/local/bin/spamd";}
 	
 	$f[]="#! /bin/sh";
 	$f[]="";
@@ -8059,7 +8550,7 @@ function spamassassin(){
 	$f[]="# Based on skeleton by Miquel van Smoorenburg and Ian Murdock";
 	$f[]="";
 	$f[]="PATH=/sbin:/bin:/usr/sbin:/usr/bin";
-	$f[]="DAEMON=/usr/sbin/spamd";
+	$f[]="DAEMON=$DAEMON";
 	$f[]="NAME=spamd";
 	$f[]="SNAME=spamassassin";
 	$f[]="DESC=\"SpamAssassin Mail Filter Daemon\"";
@@ -8070,6 +8561,15 @@ function spamassassin(){
 	$f[]="# Apparently people have trouble if this isn't explicitly set...";
 	$f[]="";
 	$f[]="# Defaults - don't touch, edit /etc/default/spamassassin";
+	
+	
+	$f[]="if [ ! -f \$DAEMON ]; then";
+	$f[]="\tDAEMON=/usr/local/bin/spamd";
+	$f[]="fi";
+	
+	
+	
+	
 	$f[]="ENABLED=1";
 	$f[]="if [ ! -f \"/etc/artica-postfix/settings/Daemons/SpamAssMilterEnabled\" ]; then";
 	$f[]="\techo 0 >/etc/artica-postfix/settings/Daemons/SpamAssMilterEnabled || true";
@@ -8096,7 +8596,7 @@ function spamassassin(){
 	$f[]="fi";	
 	
 	
-	$f[]="OPTIONS=\"--siteconfigpath=/etc/spamassassin --create-prefs --nouser-config --username=postfix --groupname=postfix --max-children 10 --socketowner=postfix --socketpath=/var/run/spamassassin/spamd.sock --socketmode=0750\"";
+	$f[]="OPTIONS=\"--siteconfigpath=/etc/spamassassin --create-prefs{$sql_config} --nouser-config --username=postfix --groupname=postfix --max-children 10 --socketowner=postfix --socketpath=/var/run/spamassassin/spamd.sock --socketmode=0750\"";
 	$f[]="NICE=";
 	$f[]="";
 	$f[]=". /lib/lsb/init-functions";
@@ -8115,7 +8615,7 @@ function spamassassin(){
 	$f[]="";
 	$f[]="case \"\$1\" in";
 	$f[]="  start)";
-	$f[]="	echo -n \"Starting \$DESC: \"";
+	$f[]="	echo -n \"Starting \$DAEMON \$DESC: \"";
 	$f[]="	mkdir /var/run/spamassassin >/dev/null 2>&1 || true";
 	$f[]="	mkdir /var/lib/spamassassin >/dev/null 2>&1 || true";	
 	$f[]="	mkdir /etc/spamassassin >/dev/null 2>&1 || true";
@@ -8129,7 +8629,7 @@ function spamassassin(){
 	$f[]="	;;";
 	$f[]="";
 	$f[]="  stop)";
-	$f[]="	echo -n \"Stopping \$DESC: \"";
+	$f[]="	echo -n \"Stopping \$DAEMON \$DESC: \"";
 	$f[]="	start-stop-daemon --stop --pidfile \$PIDFILE --exec \$XNAME --oknodo";
 	$f[]="	echo \"\$NAME.\"";
 	$f[]="	;;";
@@ -8143,7 +8643,7 @@ function spamassassin(){
 	$f[]="	;;";
 	$f[]="";
 	$f[]="  restart)";
-	$f[]="	echo -n \"Restarting \$DESC: \"";
+	$f[]="	echo -n \"Restarting \$DESC with options \$DAEMON -- \$OPTIONS \$DOPTIONS: \"";
 	$f[]="	mkdir /var/run/spamassassin >/dev/null 2>&1 || true";
 	$f[]="	mkdir /var/lib/spamassassin >/dev/null 2>&1 || true";
 	$f[]="	mkdir /etc/spamassassin >/dev/null 2>&1 || true";
@@ -8183,4 +8683,533 @@ function spamassassin(){
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: spamassassin daemon success...\n";}
 	
 }
+function getty(){
 
+	$f[]="# /etc/inittab: init(8) configuration.";
+	$f[]="# Override by Artica on ". date("Y-m-d H:i:s");
+	$f[]="# \$Id: inittab,v 1.91 2002/01/25 13:35:21 miquels Exp \$";
+	$f[]="";
+	$f[]="# The default runlevel.";
+	$f[]="id:2:initdefault:";
+	$f[]="";
+	$f[]="# Boot-time system configuration/initialization script.";
+	$f[]="# This is run first except when booting in emergency (-b) mode.";
+	$f[]="si::sysinit:/etc/init.d/rcS";
+	$f[]="";
+	$f[]="# What to do in single-user mode.";
+	$f[]="~~:S:wait:/sbin/sulogin";
+	$f[]="";
+	$f[]="# /etc/init.d executes the S and K scripts upon change";
+	$f[]="# of runlevel.";
+	$f[]="#";
+	$f[]="# Runlevel 0 is halt.";
+	$f[]="# Runlevel 1 is single-user.";
+	$f[]="# Runlevels 2-5 are multi-user.";
+	$f[]="# Runlevel 6 is reboot.";
+	$f[]="";
+	$f[]="l0:0:wait:/etc/init.d/rc 0";
+	$f[]="l1:1:wait:/etc/init.d/rc 1";
+	$f[]="l2:2:wait:/etc/init.d/rc 2";
+	$f[]="l3:3:wait:/etc/init.d/rc 3";
+	$f[]="l4:4:wait:/etc/init.d/rc 4";
+	$f[]="l5:5:wait:/etc/init.d/rc 5";
+	$f[]="l6:6:wait:/etc/init.d/rc 6";
+	$f[]="# Normally not reached, but fallthrough in case of emergency.";
+	$f[]="z6:6:respawn:/sbin/sulogin";
+	$f[]="";
+	$f[]="# What to do when CTRL-ALT-DEL is pressed.";
+	$f[]="ca:12345:ctrlaltdel:/sbin/shutdown -t1 -a -r now";
+	$f[]="";
+	$f[]="# Action on special keypress (ALT-UpArrow).";
+	$f[]="#kb::kbrequest:/bin/echo \"Keyboard Request--edit /etc/inittab to let this work.\"";
+	$f[]="";
+	$f[]="# What to do when the power fails/returns.";
+	$f[]="pf::powerwait:/etc/init.d/powerfail start";
+	$f[]="pn::powerfailnow:/etc/init.d/powerfail now";
+	$f[]="po::powerokwait:/etc/init.d/powerfail stop";
+	$f[]="";
+	$f[]="# /sbin/getty invocations for the runlevels.";
+	$f[]="#";
+	$f[]="# The \"id\" field MUST be the same as the last";
+	$f[]="# characters of the device (after \"tty\").";
+	$f[]="#";
+	$f[]="# Format:";
+	$f[]="#  <id>:<runlevels>:<action>:<process>";
+	$f[]="#";
+	$f[]="# Note that on most Debian systems tty7 is used by the X Window System,";
+	$f[]="# so if you want to add more getty's go ahead but skip tty7 if you run X.";
+	$f[]="#";
+	if(is_file("/usr/bin/dialog")){
+		$f[]="1:2345:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/logon.sh 38400 tty1";
+		$f[]="2:23:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/logon.sh 38400 tty2";
+		$f[]="3:23:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/logon.sh 38400 tty3";
+		$f[]="4:23:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/logon.sh 38400 tty4";
+		$f[]="5:23:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/logon.sh 38400 tty5";
+		$f[]="6:23:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/logon.sh 38400 tty6";
+	}else{
+		
+		if(is_file("/usr/share/artica-postfix/bin/artica-logon")){
+			$f[]="1:2345:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/bin/artica-logon 38400 tty1";
+			$f[]="2:23:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/bin/artica-logon 38400 tty2";
+			$f[]="3:23:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/bin/artica-logon 38400 tty3";
+			$f[]="4:23:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/bin/artica-logon 38400 tty4";
+			$f[]="5:23:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/bin/artica-logon 38400 tty5";
+			$f[]="6:23:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/bin/artica-logon 38400 tty6";
+		}else{
+			$f[]="1:2345:respawn:/sbin/getty 38400 tty1";
+			$f[]="2:23:respawn:/sbin/getty 38400 tty2";
+			$f[]="3:23:respawn:/sbin/getty 38400 tty3";
+			$f[]="4:23:respawn:/sbin/getty 38400 tty4";
+			$f[]="5:23:respawn:/sbin/getty 38400 tty5";
+			$f[]="6:23:respawn:/sbin/getty 38400 tty6";
+		}
+	}
+	$f[]="";
+	$f[]="# Example how to put a getty on a serial line (for a terminal)";
+	$f[]="#";
+	$f[]="#T0:23:respawn:/sbin/getty -L ttyS0 9600 vt100";
+	$f[]="#T1:23:respawn:/sbin/getty -L ttyS1 9600 vt100";
+	$f[]="";
+	$f[]="# Example how to put a getty on a modem line.";
+	$f[]="#";
+	$f[]="#T3:23:respawn:/sbin/mgetty -x0 -s 57600 ttyS3";
+	
+	@file_put_contents("/etc/inittab", @implode("\n", $f)."\n");
+}
+
+function suricata(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/suricata";
+	$php5script="exec.suricata.php";
+	$daemonbinLog="Suricata IDS";
+	$daemonbin=$unix->find_program("suricata");
+
+
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:         suricata";
+	$f[]="# Required-Start:    \$local_fs \$syslog";
+	$f[]="# Required-Stop:     \$local_fs \$syslog";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+	
+	$f[]="";
+	$f[]=". /lib/lsb/init-functions";
+	$f[]="";
+	
+	$f[]="if [ ! -f \"$daemonbin\" ]; then";
+	$f[]="\tlog_failure_msg \"$daemonbinLog is not installed, aborting\"";
+	$f[]="\texit 0";
+	$f[]="fi";
+	
+	$f[]="";
+	$f[]="if [ ! -f \"/etc/artica-postfix/settings/Daemons/EnableSuricata\" ]; then";
+	$f[]="\techo 0 >/etc/artica-postfix/settings/Daemons/EnableSuricata || true";
+	$f[]="fi";
+	$f[]="";
+	$f[]="EnableSuricata=`cat /etc/artica-postfix/settings/Daemons/EnableSuricata`";
+	
+	$f[]="if [ \$EnableSuricata != 1 ]; then";
+	$f[]="\tlog_failure_msg \"\$NAME disabled, Not enabled ( see EnableSuricata )\"";
+	$f[]="\texit 0";
+	$f[]="fi";
+	
+	
+	
+	$f[]="";
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reconfigure)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reload)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  *)";
+	$f[]="    echo \"Usage: \$0 {start|stop|restart|reconfigure|reload} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+
+
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	@chmod($INITD_PATH,0755);
+
+	if(is_file('/usr/sbin/update-rc.d')){
+		shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+	}
+
+	if(is_file('/sbin/chkconfig')){
+		shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}
+	
+	suricata_tail();
+	
+}
+function barnyard2(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/barnyard";
+	$php5script="exec.barnyard.php";
+	$daemonbinLog="Barnyard2 IDS";
+	$daemonbin=$unix->find_program("barnyard2");
+
+
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:         barnyard";
+	$f[]="# Required-Start:    \$local_fs \$syslog";
+	$f[]="# Required-Stop:     \$local_fs \$syslog";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+	
+	$f[]="";
+	$f[]=". /lib/lsb/init-functions";
+	$f[]="";
+	
+	$f[]="if [ ! -f \"$daemonbin\" ]; then";
+	$f[]="\tlog_failure_msg \"$daemonbinLog is not installed, aborting\"";
+	$f[]="\texit 0";
+	$f[]="fi";
+	
+	$f[]="";
+	$f[]="if [ ! -f \"/etc/artica-postfix/settings/Daemons/EnableSuricata\" ]; then";
+	$f[]="\techo 0 >/etc/artica-postfix/settings/Daemons/EnableSuricata || true";
+	$f[]="fi";
+	$f[]="";
+	$f[]="EnableSuricata=`cat /etc/artica-postfix/settings/Daemons/EnableSuricata`";
+	
+	$f[]="if [ \$EnableSuricata != 1 ]; then";
+	$f[]="\tlog_failure_msg \"\$NAME disabled, Not enabled ( see EnableSuricata )\"";
+	$f[]="\texit 0";
+	$f[]="fi";
+
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reconfigure)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reload)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  *)";
+	$f[]="    echo \"Usage: \$0 {start|stop|restart|reconfigure|reload} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+
+
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	@chmod($INITD_PATH,0755);
+
+	if(is_file('/usr/sbin/update-rc.d')){
+		shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+	}
+
+	if(is_file('/sbin/chkconfig')){
+		shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}
+	
+}
+function bandwidthd(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/bandwidthd";
+	$php5script="exec.bandwithd.php";
+	$daemonbinLog="Bandwidthd Daemon";
+	
+
+
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:         bandwidthd";
+	$f[]="# Required-Start:    \$local_fs \$syslog";
+	$f[]="# Required-Stop:     \$local_fs \$syslog";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+
+	$f[]="";
+	$f[]=". /lib/lsb/init-functions";
+	$f[]="";
+
+
+	
+
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reconfigure)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reload)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  *)";
+	$f[]="    echo \"Usage: \$0 {start|stop|restart|reconfigure|reload} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+
+
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	@chmod($INITD_PATH,0755);
+
+	if(is_file('/usr/sbin/update-rc.d')){
+		shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+	}
+
+	if(is_file('/sbin/chkconfig')){
+		shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}
+
+}
+
+function openvpn_server(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/openvpn-server";
+	$php5script="exec.openvpn.service.php";
+	$daemonbinLog="OpenVPN server";
+	
+	
+	
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:         openvpn-server";
+	$f[]="# Required-Start:    \$local_fs \$syslog";
+	$f[]="# Required-Stop:     \$local_fs \$syslog";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+	
+	$f[]="";
+	$f[]=". /lib/lsb/init-functions";
+	$f[]="";
+	
+	$f[]="";
+	$f[]="if [ ! -f \"/etc/artica-postfix/settings/Daemons/EnableOPenVPNServerMode\" ]; then";
+	$f[]="\techo 0 >/etc/artica-postfix/settings/Daemons/EnableOPenVPNServerMode || true";
+	$f[]="fi";
+	$f[]="";
+	
+	
+	$f[]="if [ ! -f \"/etc/openvpn/cmdline.conf\" ]; then";
+	$f[]="\tlog_failure_msg \"\$NAME disabled, /etc/openvpn/cmdline.conf no such file\"";
+	$f[]="\texit 0";
+	$f[]="fi";
+	$f[]="";
+	$f[]="EnableOPenVPNServerMode=`cat /etc/artica-postfix/settings/Daemons/EnableOPenVPNServerMode`";
+	$f[]="if [ \$EnableOPenVPNServerMode != 1 ]; then";
+	$f[]="\tlog_failure_msg \"\$NAME disabled, Not enabled ( see EnableOPenVPNServerMode )\"";
+	$f[]="\texit 0";
+	$f[]="fi";
+	
+	$f[]="";
+	
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reconfigure)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reload)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  *)";
+	$f[]="    echo \"Usage: \$0 {start|stop|restart|reconfigure|reload} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+	
+	
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	@chmod($INITD_PATH,0755);
+	
+	if(is_file('/usr/sbin/update-rc.d')){
+	shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+	}
+	
+	if(is_file('/sbin/chkconfig')){
+			shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}
+	
+}
+
+function proftpd(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/proftpd";
+	$php5script="exec.proftpd.php";
+	$daemonbinLog="ProFTPD service";
+	
+	
+	
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:         ".basename($INITD_PATH);
+	$f[]="# Required-Start:    \$local_fs \$syslog";
+	$f[]="# Required-Stop:     \$local_fs \$syslog";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+	
+	$f[]="";
+	$f[]=". /lib/lsb/init-functions";
+	$f[]="";
+	
+	$f[]="";
+	$f[]="if [ ! -f \"/etc/artica-postfix/settings/Daemons/EnableProFTPD\" ]; then";
+	$f[]="\techo 0 >/etc/artica-postfix/settings/Daemons/EnableProFTPD || true";
+	$f[]="fi";
+	$f[]="";
+	
+	$f[]="";
+	$f[]="EnableProFTPD=`cat /etc/artica-postfix/settings/Daemons/EnableProFTPD`";
+	$f[]="if [ \$EnableProFTPD != 1 ]; then";
+	$f[]="\tlog_failure_msg \"$daemonbinLog disabled, Not enabled ( see EnableProFTPD )\"";
+	$f[]="\texit 0";
+	$f[]="fi";
+	
+	$f[]="";
+	
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reconfigure)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reload)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  *)";
+	$f[]="    echo \"Usage: \$0 {start|stop|restart|reconfigure|reload} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+	
+	
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	@chmod($INITD_PATH,0755);
+	
+	if(is_file('/usr/sbin/update-rc.d')){
+	shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+	}
+	
+	if(is_file('/sbin/chkconfig')){
+			shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}
+	
+
+
+}

@@ -63,6 +63,9 @@ function popup(){
 	if(!is_numeric($EnableRemoteStatisticsAppliance)){$EnableRemoteStatisticsAppliance=0;}
 	if($users->WEBSTATS_APPLIANCE){$EnableWebProxyStatsAppliance=1;}		
 	$DisableSquidSNMPAll=intval($sock->GET_INFO("DisableSquidSNMPAll"));
+	$EnableProxyInSNMPD=intval($sock->GET_INFO("EnableProxyInSNMPD"));
+	
+	
 	
 	$SquidSNMPPort=intval($sock->GET_INFO("SquidSNMPPort"));
 	$SquidSNMPComunity=$sock->GET_INFO("SquidSNMPComunity");
@@ -83,11 +86,11 @@ function popup(){
 	
 	
 	$html="
-	<div id='$t'></div>
-	<table style='width:99%' class=form>
-			<tr>
-			<td colspan=2 style='font-size:30px'><strong>{monitor_proxy_service} (SNMP)</strong>
-			<p>&nbsp;</p>
+	<div id='$t' style='width:98%' class=form>
+	<table style='width:100%' >
+		<tr>
+			<td colspan=2 style='font-size:30px'>
+			". Paragraphe_switch_img("{monitor_proxy_service} (SNMP)", "{monitor_proxy_service_snmpd_explain}","EnableProxyInSNMPD",$EnableProxyInSNMPD,null,1140)."
 			</td>
 			
 		</tr>
@@ -119,7 +122,7 @@ function popup(){
 		<td align='right' colspan=2><hr>". button("{apply}", "SaveSNMP$t()","40px")."</td>
 	</tr>
 	</table>
-	
+	</div>
 	<script>
 	var x_SaveSNMP$t=function (obj) {
 		var tempvalue=obj.responseText;
@@ -137,9 +140,24 @@ function popup(){
 		if(document.getElementById('DisableSquidSNMPAll').checked){DisableSquidSNMPAll=1;}
 		XHR.appendData('enable_snmp',enable_snmp);
 		XHR.appendData('DisableSquidSNMPAll',DisableSquidSNMPAll);		
-		XHR.appendData('snmp_community',document.getElementById('snmp_community').value);
+		XHR.appendData('snmp_community',encodeURIComponent(document.getElementById('snmp_community').value));
 		XHR.appendData('snmp_port',document.getElementById('snmp_port').value);
 		XHR.appendData('snmp_access_ip',document.getElementById('snmp_access_ip').value);
+		XHR.appendData('EnableProxyInSNMPD',document.getElementById('EnableProxyInSNMPD').value);
+		
+		if(document.getElementById('EnableSNMPD')){
+			XHR.appendData('EnableSNMPD',document.getElementById('EnableSNMPD').value);
+		}
+		
+		if(document.getElementById('SNMPDCommunity')){
+			XHR.appendData('SNMPDCommunity',encodeURIComponent(document.getElementById('SNMPDCommunity').value));
+		}
+		
+		if(document.getElementById('SNMPDNetwork')){
+			XHR.appendData('SNMPDNetwork',document.getElementById('SNMPDNetwork').value);
+		}
+		
+		
 		XHR.sendAndLoad('$page', 'POST',x_SaveSNMP$t);	
 		
 	}	
@@ -164,8 +182,23 @@ function popup(){
 function enable_snmp(){
 	$sock=new sockets();
 	$squid=new squidbee();
+	$sock=new sockets();
+	if(isset($_POST["SNMPDCommunity"])){
+		$_POST["SNMPDCommunity"]=url_decode_special_tool($_POST["SNMPDCommunity"]);
+		$sock->SET_INFO("SNMPDCommunity", $_POST["SNMPDCommunity"]);
+	}
+	
+	if(isset($_POST["EnableSNMPD"])){
+		$sock->SET_INFO("EnableSNMPD", $_POST["EnableSNMPD"]);
+	}
+	if(isset($_POST["SNMPDNetwork"])){
+		$sock->SET_INFO("SNMPDNetwork", $_POST["SNMPDNetwork"]);
+	}
+	
+	
+	
 	$squid->snmp_enable=$_POST["enable_snmp"];
-	$squid->snmp_community=$_POST["snmp_community"];
+	$squid->snmp_community=url_decode_special_tool($_POST["snmp_community"]);
 	$squid->snmp_port=$_POST["snmp_port"];
 	$squid->snmp_access_ip=$_POST["snmp_access_ip"];
 	$sock->SET_INFO("DisableSquidSNMPAll", $_POST["DisableSquidSNMPAll"]);

@@ -228,7 +228,6 @@ class settings_inc {
 	public $CLAMAV_INSTALLED=false;
 	public $CLAMD_INSTALLED=false;
 	public $CLAMSCAN_INSTALLED=false;
-	public $CLAMAV_SOCKET="";
 	public $ClamavMilterEnabled=0;
 	public $CLAMAV_MILTER_SOCKET;
 	public $CLAMAV_MILTER_INSTALLED=false;
@@ -301,7 +300,7 @@ class settings_inc {
 	public $C_ICAP_DNSBL=false;
 	public $MILTERGREYLIST_SOCKET="";
 	public $OPENVPN_INSTALLED=false;
-	public $spamassassin_conf_path="";
+	public $spamassassin_conf_path="/etc/spamassassin/local.cf";
 	public $EnableNonEncryptedLdapSession=1;
 	public $SMARTMONTOOLS_INSTALLED=false;
 	public $XAPIAN_PHP_INSTALLED=false;
@@ -434,7 +433,6 @@ class settings_inc {
 	public $AS_VPS_CLIENT=false;
 	public $AS_DEBIAN_FAMILY=false;
 	public $VLAN_INSTALLED=false;
-	public $disks_inodes="";
 	public $LOSETUP_INSTALLED=false;
 	public $SNORT_INSTALLED=false;
 	public $APP_EYEOS_INSTALLED=false;
@@ -464,7 +462,6 @@ class settings_inc {
 	public $APACHE_APPLIANCE=false;
 	public $APACHE_MOD_SUEXEC=false;
 	public $APACHE_MOD_FCGID=false;	
-	public $CGROUPS_INSTALLED=false;
 	public $APACHE_MOD_LOGSSQL=false;
 	public $LOAD_BALANCE_APPLIANCE=false;
 	public $ARPD_INSTALLED=false;
@@ -570,7 +567,7 @@ class settings_inc {
 			$this->roundcube_installed=$_GLOBAL["roundcube_installed"];
 			$this->ChangeAutoInterface=$_GLOBAL["ChangeAutoInterface"];
 			$this->aveserver_pattern_date=$_GLOBAL["aveserver_pattern_date"];
-			$this->disks_inodes=trim($_GLOBAL["disks_inodes"]);
+			
 			if(isset($_GLOBAL["NGINX_INSTALLED"])){$this->NGINX_INSTALLED=$_GLOBAL["NGINX_INSTALLED"];;}
 			if(isset($_GLOBAL["POSTFIX_STATUS"])){$this->POSTIFX_STATUS=$_GLOBAL["POSTFIX_STATUS"];}
 			if(isset($_GLOBAL["KAS_STATUS"])){$this->KAS_STATUS=$_GLOBAL["KAS_STATUS"];}
@@ -587,6 +584,8 @@ class settings_inc {
 			if(isset($_GLOBAL["ARTICA_POLICY_STATUS"])){$this->ARTICA_POLICY_STATUS=$_GLOBAL["ARTICA_POLICY_STATUS"];;}
 			if(isset($_GLOBAL["ARTICA_VERSION"])){$this->ARTICA_VERSION=$_GLOBAL["ARTICA_VERSION"];;}
 			if(isset($_GLOBAL["hotwayd_installed"])){$this->hotwayd_installed=$_GLOBAL["hotwayd_installed"];;}
+			
+			
 			if(isset($_GLOBAL["POSTFIX_INSTALLED"])){$this->POSTFIX_INSTALLED=$_GLOBAL["POSTFIX_INSTALLED"];;}
 			if(isset($_GLOBAL["EMAILRELAY_STATUS"])){$this->EMAILRELAY_STATUS=$_GLOBAL["EMAILRELAY_STATUS"];;}
 			if(isset($_GLOBAL["EMAILRELAY_INSTALLED"])){$this->EMAILRELAY_INSTALLED=$_GLOBAL["EMAILRELAY_INSTALLED"];;}
@@ -661,7 +660,7 @@ class settings_inc {
 			if(isset($_GLOBAL["MAILFROMD_SOCKET"])){$this->MAILFROMD_SOCKET=$_GLOBAL["MAILFROMD_SOCKET"];}
 			if(isset($_GLOBAL["CLAMAV_INSTALLED"])){$this->CLAMAV_INSTALLED=$_GLOBAL["CLAMAV_INSTALLED"];}
 			if(isset($_GLOBAL["CLAMSCAN_INSTALLED"])){$this->CLAMSCAN_INSTALLED=$_GLOBAL["CLAMSCAN_INSTALLED"];}
-			if(isset($_GLOBAL["CLAMAV_SOCKET"])){$this->CLAMAV_SOCKET=$_GLOBAL["CLAMAV_SOCKET"];}
+			
 			if(isset($_GLOBAL["CLAMAV_MILTER_SOCKET"])){$this->CLAMAV_MILTER_SOCKET=$_GLOBAL["CLAMAV_MILTER_SOCKET"];}
 			if(isset($_GLOBAL["CLAMAV_MILTER_INSTALLED"])){$this->CLAMAV_MILTER_INSTALLED=$_GLOBAL["CLAMAV_MILTER_INSTALLED"];}
 			if(isset($_GLOBAL["SPAMASS_MILTER_INSTALLED"])){$this->SPAMASS_MILTER_INSTALLED=$_GLOBAL["SPAMASS_MILTER_INSTALLED"];}
@@ -733,7 +732,6 @@ class settings_inc {
 			$this->p3scan_installed=$_GLOBAL["p3scan_installed"];
 			$this->syslogng_installed=$_GLOBAL["syslogng_installed"];
 			$this->AsDebianSystem=$_GLOBAL["AsDebianSystem"];
-			$this->disks_size=$_GLOBAL["disks_size"];
 			if(trim($this->hostname)==null){$this->hostname=$this->fqdn;}
 			$this->cpumhz=$_GLOBAL["cpumhz"];
 			$this->preload_installed=$_GLOBAL["preload_installed"];
@@ -817,7 +815,7 @@ class settings_inc {
 			$this->NFS_SERVER_INSTALLED=$_GLOBAL["NFS_SERVER_INTSALLED"];
 			$this->LVM_INSTALLED=$_GLOBAL["LVM_INSTALLED"];
 			$this->MYSQL_NDB_MGMD_INSTALLED=$_GLOBAL["MYSQL_NDB_MGMD_INSTALLED"];
-			if(isset($_GLOBAL["POLICYD_WEIGHT_PORT"])){$this->POLICYD_WEIGHT_PORT=$_GLOBAL["POLICYD_WEIGHT_PORT"];}
+			
 			$this->winexe_installed=$_GLOBAL["winexe_installed"];
 			$this->OCSI_INSTALLED=$_GLOBAL["OCSI_INSTALLED"];
 			if(isset($_GLOBAL["ASSP_INSTALLED"])){$this->ASSP_INSTALLED=$_GLOBAL["ASSP_INSTALLED"];}
@@ -973,7 +971,7 @@ class settings_inc {
 			$this->APACHE_APPLIANCE=$_GLOBAL["APACHE_APPLIANCE"];
 			$this->APACHE_MOD_SUEXEC=$_GLOBAL["APACHE_MOD_SUEXEC"];
 			$this->APACHE_MOD_FCGID=$_GLOBAL["APACHE_MOD_FCGID"];		
-			$this->CGROUPS_INSTALLED=$_GLOBAL["CGROUPS_INSTALLED"];
+			
 			$this->APP_KHSE_INSTALLED=$_GLOBAL["APP_KHSE_INSTALLED"];
 			
 			if(isset($_GLOBAL["deduplication_installed"])){$this->deduplication_installed=$_GLOBAL["deduplication_installed"];}
@@ -985,6 +983,10 @@ class settings_inc {
 			if($ArticaMetaEnabled==null){$sock->SET_INFO("ArticaMetaEnabled","0");}
 			if($ArticaMetaEnabled==1){$this->ARTICA_META_ENABLED=true;}
 			if($this->PROXYTINY_APPLIANCE){$this->SQUID_APPLIANCE=true;}
+			
+			
+			if(intval($sock->GET_INFO("HaProxyInstalled"))==1){$this->HAPROXY_INSTALLED=true;}else{$this->HAPROXY_INSTALLED=false;}
+			
 			
 			$pear=explode(";",$_GLOBAL["PEAR_PACKAGES"]);
 			if(is_array($pear)){

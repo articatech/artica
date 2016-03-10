@@ -18,12 +18,14 @@ include_once(dirname(__FILE__).'/ressources/class.ccurl.inc');
 include_once(dirname(__FILE__).'/framework/class.unix.inc');
 include_once(dirname(__FILE__).'/framework/frame.class.inc');
 include_once(dirname(__FILE__).'/ressources/class.squidguard.inc');
-
+include_once(dirname(__FILE__)."/ressources/class.squid.hypercache.inc");
+include_once(dirname(__FILE__)."/ressources/class.squid.checks.inc");
 
 if($argv[1]=="--checklic"){HyperCache_create_license();exit;}
 if($argv[1]=="--wizard"){$GLOBALS["NOPROGRESS"]=true;}
 if($argv[1]=="--urgency"){disable_urgency();exit;}
 if($argv[1]=="--free"){echo ifHyperCacheFreeInsquid()."\n";die();}
+if($argv[1]=="--rules"){echo rules();die();}
 
 build_sequence();
 
@@ -61,7 +63,7 @@ function ifHyperCacheInsquid(){
 	
 	while (list ($num, $line) = each ($f)){
 		$line=trim($line);
-		if(preg_match("#store_id_program.*?hypercache-plugin", $line)){
+		if(preg_match("#include.*?StoreID\.conf", $line)){
 			return true;
 		}
 		
@@ -71,8 +73,8 @@ function ifHyperCacheInsquid(){
 	
 }
 function ifHyperCacheFreeInsquid(){
-
-	$f=explode("/n",@file_get_contents("/etc/squid3/squid.conf"));
+	if(!ifHyperCacheInsquid()){return false;}
+	$f=explode("/n",@file_get_contents("/etc/squid3/StoreID.conf"));
 
 	while (list ($num, $line) = each ($f)){
 		$line=trim($line);
@@ -97,7 +99,44 @@ function build_sequence_plugin(){
 			return;
 		}
 	}
-		build_progress(100,"{reconfigure_proxy_service} {success}");
+	
+	$HyperCacheSquid=new HyperCacheSquid();
+	$HyperCacheSquid->build();
+	
+	
+	$squid_checks=new squid_checks();
+	if(!$squid_checks->squid_parse()){
+		build_progress("{reconfigure_proxy_service} {failed}",110);
+		return;
+	}
+	
+	$squidbin=$unix->LOCATE_SQUID_BIN();
+	system("$squidbin -k reconfigure");
+	
+	build_progress(100,"{reconfigure_proxy_service} {success}");
+}
+
+
+function rules(){
+	$unix=new unix();
+	include_once(dirname(__FILE__)."/ressources/class.squid.hypercache.inc");
+	
+	build_progress(20,"{reconfigure_proxy_service}");
+	$hyper=new HyperCacheSquid();
+	$hyper->build();
+	
+	$squid_checks=new squid_checks();
+	if(!$squid_checks->squid_parse()){
+		build_progress("{reconfigure_proxy_service} {failed}",110);
+		return;
+	}
+	
+	build_progress(80,"{reconfigure_proxy_service} {success}");
+	$squidbin=$unix->LOCATE_SQUID_BIN();
+	build_progress(90,"{reloading}");
+	system("$squidbin -f /etc/squid3/squid.conf -k reconfigure");
+	build_progress(100,"{reconfigure_proxy_service} {success}");
+	
 }
 
 function build_sequence(){
@@ -154,6 +193,18 @@ function build_sequence(){
 		system("/etc/artica-postfix/artica-status restart --force");
 	}
 	
+	$HyperCacheSquid=new HyperCacheSquid();
+	$HyperCacheSquid->build();
+	
+	$squid_checks=new squid_checks();
+	if(!$squid_checks->squid_parse()){
+		build_progress("{reconfigure_proxy_service} {failed}",110);
+		return;
+	}
+	
+	$squidbin=$unix->LOCATE_SQUID_BIN();
+	system("$squidbin -k reconfigure");
+	
 	build_progress(100,"{verify_proxy_configuration} {success}");
 	
 }
@@ -198,6 +249,14 @@ function HyperCache(){
 	build_progress(12,"{analyze}...");
 	if(preg_match("#\{(.*?)\}#is", $curl->data,$re)){
 		$array=json_decode("{{$re[1]}}");
+		
+		if($array->edate < strtotime("2010-01-01 00:00:00")){
+			build_progress(110,"{protocol} {failed} on edate:{$array->edate} ". date("Y-m-d H:i:s",$array->edate));
+			return false;
+		}
+
+		
+		
 		echo "expired: {$array->expired} -> $array->edate\n";
 		$FULL["expired"]=$array->expired;
 		$FULL["edate"]=$array->edate;
@@ -269,7 +328,7 @@ function HyperCache_create_license(){
 	$curl->parms["artid"]=$uuid;
 	if(!$curl->get()){echo "HyperCache:: Check license failed\n"; return false;}
 	
-	echo $curl->data."\n";
+	echo "License status type:[$curl->data]\n";
 	if(intval(trim($curl->data))==1){return true;}
 	if(stripos($curl->data, "The Activation Code is not valid")>0){return false;}
 	if(stripos($curl->data, "The Activation Code is already activated")>0){return true;}
@@ -282,7 +341,7 @@ function HyperCache_create_license(){
 
 function verify_proxy_configuration(){
 	$sock=new sockets();
-	$f=explode("\n",@file_get_contents("/etc/squid3/squid.conf"));
+	$f=explode("\n",@file_get_contents("/etc/squid3/StoreID.conf"));
 	$HyperCacheStoreIDLicense=trim(strtoupper($sock->GET_INFO("HyperCacheStoreIDLicense")));
 	$HyperCacheStoreID=intval($sock->GET_INFO("HyperCacheStoreID"));
 	

@@ -56,6 +56,9 @@ function popup(){
 function saveInterfaces(){
 	$sock=new sockets();
 	$sock->SET_INFO("InterfaceFonts", stripslashes($_POST["InterfaceFonts"]));
+	$sock->SET_INFO("ForceDefaultGreenColor", $_POST["ForceDefaultGreenColor"]);
+	$sock->SET_INFO("ForceDefaultTopBarrColor", $_POST["ForceDefaultTopBarrColor"]);
+	$sock->SET_INFO("ForceDefaultButtonColor", $_POST["ForceDefaultButtonColor"]);
 	
 }
 
@@ -231,6 +234,17 @@ function cron_index(){
 	$DisableSpecialCharacters=$sock->GET_INFO("DisableSpecialCharacters");
 	if(!is_numeric($EnableWebPageDebugging)){$EnableWebPageDebugging=0;}
 	
+	$ForceDefaultGreenColor=$sock->GET_INFO("ForceDefaultGreenColor");
+	$ForceDefaultTopBarrColor=$sock->GET_INFO("ForceDefaultTopBarrColor");
+	$ForceDefaultButtonColor=$sock->GET_INFO("ForceDefaultButtonColor");
+	
+	
+	if($ForceDefaultGreenColor==null){$ForceDefaultGreenColor="005447";}
+	if($ForceDefaultTopBarrColor==null){$ForceDefaultTopBarrColor="005447";}
+	if($ForceDefaultButtonColor==null){$ForceDefaultButtonColor="5CB85C";}
+	
+	
+	
 	if(!is_numeric($DenyMiniWebFromStandardPort)){$DenyMiniWebFromStandardPort=0;}
 	if(!is_numeric($DisableSpecialCharacters)){$DisableSpecialCharacters=0;}
 	
@@ -260,7 +274,7 @@ function cron_index(){
 	}
 	$t=time();
 	$html="
-	<div class=explain style='font-size:18px'>{frontend_disables_options_explain}</div>
+	<div style='font-size:26px'>{frontend_disables_options_explain}</div>
 	<div id='articaschedulesdiv'></div>
 	<div id='$t'></div>
 	<div style='width:98%' class=form>	
@@ -269,6 +283,21 @@ function cron_index(){
 		<td class=legend style='font-size:22px'>font:</td>
 		<td valign='top'>".Field_text("InterfaceFonts",$InterfaceFonts,"font-size:22px;width:99%")."</tD>
 	</tr>
+	<tr>
+		<td class=legend style='font-size:22px'>{background_color}:</td>
+		<td valign='top'>".Field_ColorPicker("ForceDefaultGreenColor",$ForceDefaultGreenColor,"font-size:22px;width:200px")."</tD>
+	</tr>
+
+				
+	<tr>
+		<td class=legend style='font-size:22px'>{top_barr_color}:</td>
+		<td valign='top'>".Field_ColorPicker("ForceDefaultTopBarrColor",$ForceDefaultTopBarrColor,"font-size:22px;width:200px")."</tD>
+	</tr>				
+	<tr>
+		<td class=legend style='font-size:22px'>{button_color}:</td>
+		<td valign='top'>".Field_ColorPicker("ForceDefaultButtonColor",$ForceDefaultButtonColor,"font-size:22px;width:200px")."</tD>
+	</tr>				
+				
 	<tr>			
 	<td colspan=2 align='right'>
 			<hr>". button("{apply}","SaveArticaIndexPage2()",28)."
@@ -406,7 +435,9 @@ $jgrowl_no_kas_update
 	function SaveArticaIndexPage2(){
 		var XHR = new XHRConnection();
 		XHR.appendData('InterfaceFonts',document.getElementById('InterfaceFonts').value);
-		AnimateDiv('$t');
+		XHR.appendData('ForceDefaultButtonColor',document.getElementById('ForceDefaultButtonColor').value);
+		XHR.appendData('ForceDefaultGreenColor',document.getElementById('ForceDefaultGreenColor').value);
+		XHR.appendData('ForceDefaultTopBarrColor',document.getElementById('ForceDefaultTopBarrColor').value);
 		XHR.sendAndLoad('$page', 'POST',x_SaveArticaIndexPage2);
 		
 	}

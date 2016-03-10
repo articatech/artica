@@ -2,9 +2,11 @@
 	if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;
 	ini_set('html_errors',1);
 	ini_set('display_errors', 1);
-	ini_set('error_reporting', E_ALL);}
-	if($GLOBALS["VERBOSE"]){echo "- > VERBOSE -> TRUE\n";
+	ini_set('error_reporting', E_ALL);
 	}
+	
+	
+	if($GLOBALS["VERBOSE"]){echo "- > VERBOSE -> TRUE\n";$GLOBALS["DEBUG_PRIVS"]=true;}
 	include_once('ressources/class.templates.inc');
 	include_once('ressources/class.ldap.inc');
 	include_once('ressources/class.users.menus.inc');
@@ -17,9 +19,9 @@
 	
 	
 	if(!VerifyRights()){
-		if($GLOBALS["VERBOSE"]){echo "- > VerifyRights -> FALSE\n";}
+		if($GLOBALS["VERBOSE"]){echo "VerifyRights -> FALSE<br>\n";}
 		$tpl=new templates();
-		echo "alert('". $tpl->javascript_parse_text("{ERROR_NO_PRIVS}")."');";
+		echo "alert('". $tpl->javascript_parse_text("{ERROR_NO_PRIVS}")." : rights');";
 		die();exit();
 	}
 	
@@ -67,10 +69,17 @@
 	
 	
 function VerifyRights(){
+	if($GLOBALS["VERBOSE"]){
+		$GLOBALS["DEBUG_PRIVS"]=true;
+	}
+	
 	$usersmenus=new usersMenus();
-	if($_SESSION["AllowChangeDomains"]){return true;}
+	if($usersmenus->AllowChangeDomains){return true;}
+	if($usersmenus->AsOrgAdmin){return true;}
+	if($GLOBALS["VERBOSE"]){echo "AllowChangeDomains FALSE<br>\n";}
 	if($usersmenus->AsMessagingOrg){return true;}
-	if(!$usersmenus->AllowChangeDomains){return false;}
+	if($usersmenus->AllowChangeDomains){return true;}
+	return false;
 }
 	
 function round_robin_js(){
@@ -629,23 +638,23 @@ function remote_domain_js(){
 	if(!is_numeric($_GET["t"])){$_GET["t"]=0;}
 	$index=base64_encode($_GET["index"]);
 	$html="
-		function remote_domain_popup(){
-			YahooWin(650,'$page?remote-domain-popup=yes&add=yes&ou=$ou&index=$index&t={$_GET["t"]}','$title :: {$_GET["index"]}',true);	
-		}
+function remote_domain_popup(){
+	YahooWin(890,'$page?remote-domain-popup=yes&add=yes&ou=$ou&index=$index&t={$_GET["t"]}','$title :: {$_GET["index"]}',true);	
+}
 		
 		
-		function refresh_remote_domain_popup(){
-			LoadAjax('remote_domain_popup','$page?remote-domain-form=yes&add=yes&ou=$ou&index=$index');
-		}
+function refresh_remote_domain_popup(){
+	LoadAjax('remote_domain_popup','$page?remote-domain-form=yes&add=yes&ou=$ou&index=$index');
+}
 		
-		var x_AddRelayDomain= function (obj) {
-			var tempvalue=obj.responseText;
-			if(tempvalue.length>3){alert(tempvalue)};
-			var t={$_GET["t"]};
-			if(t>0){ $('#flexRT{$_GET["t"]}').flexReload(); }
-			YahooWinHide();
-			if(IsFunctionExists('FlexReloadRemoteDomainList')){FlexReloadRemoteDomainList();}
-		}
+var x_AddRelayDomain= function (obj) {
+	var tempvalue=obj.responseText;
+	if(tempvalue.length>3){alert(tempvalue)};
+	var t={$_GET["t"]};
+	if(t>0){ $('#flexRT{$_GET["t"]}').flexReload(); }
+	YahooWinHide();
+	if(IsFunctionExists('FlexReloadRemoteDomainList')){FlexReloadRemoteDomainList();}
+}
 	
 function AddRelayDomain(){
 	var XHR = new XHRConnection();
@@ -693,24 +702,30 @@ function remote_domain_popup(){
 }
 
 function remote_domain_form(){
-$_GET["index"]=base64_decode($_GET["index"]);	
-$ldap=new clladp();	
-$HashDomains=$ldap->Hash_relay_domains($_GET["ou"]);
-$tools=new DomainsTools();
-$arr=$tools->transport_maps_explode($HashDomains[$_GET["index"]]);
-$page=CurrentPageName();
-$autoalias=new AutoAliases($_GET["ou"]);
-$users=new usersMenus();
-$users->LoadModulesEnabled();
+	$_GET["index"]=base64_decode($_GET["index"]);
 
-$num=$_GET["index"];
-if(strlen($autoalias->DomainsArray[$num])>0){
-	$alias="yes";
-}
-$button_as_settings=Paragraphe('64-buldo.png','{Anti-spam}','{antispam_text}',"javascript:Loadjs('domains.amavis.php?domain=$num');");
-if(!$users->AMAVIS_INSTALLED){$button_as_settings=null;}
-if($users->EnableAmavisDaemon<>1){$button_as_settings=null;}
-if(!$users->AllowChangeAntiSpamSettings){$button_as_settings=null;}
+	$ou=$_GET["ou"];
+	if(is_base64_encoded($ou)){
+		$ou=base64_decode($ou);
+	}
+	
+	$ldap=new clladp();	
+	$HashDomains=$ldap->Hash_relay_domains($_GET["ou"]);
+	$tools=new DomainsTools();
+	$arr=$tools->transport_maps_explode($HashDomains[$_GET["index"]]);
+	$page=CurrentPageName();
+	$autoalias=new AutoAliases($_GET["ou"]);
+	$users=new usersMenus();
+	$users->LoadModulesEnabled();
+
+	$num=$_GET["index"];
+	if(strlen($autoalias->DomainsArray[$num])>0){
+		$alias="yes";
+	}
+	$button_as_settings=Paragraphe('64-buldo.png','{Anti-spam}','{antispam_text}',"javascript:Loadjs('domains.amavis.php?domain=$num');");
+	if(!$users->AMAVIS_INSTALLED){$button_as_settings=null;}
+	if($users->EnableAmavisDaemon<>1){$button_as_settings=null;}
+	if(!$users->AllowChangeAntiSpamSettings){$button_as_settings=null;}
 
 
 
@@ -719,22 +734,24 @@ if($_GET["index"]<>"new domain"){
 	$dn="cn=@$num,cn=relay_recipient_maps,ou={$_GET["ou"]},dc=organizations,$ldap->suffix";
 	$trusted_smtp_domain=0;
 	if($ldap->ExistsDN($dn)){$trusted_smtp_domain=1;}
-	$edit_button="<hr>". button("{apply}","EditRelayDomain('$num')","22px");
+	$edit_button="<hr>". button("{apply}","EditRelayDomain('$num')","30px");
 	
-	$trusted=Paragraphe_switch_img("{trusted_smtp_domain}","{trusted_smtp_domain_text}","trusted_smtp_domain",$trusted_smtp_domain,"{enable_disable}",220);
+	$trusted=Paragraphe_switch_img("{trusted_smtp_domain}","{trusted_smtp_domain_text}","trusted_smtp_domain",$trusted_smtp_domain,"{enable_disable}",810);
 	$roundrobin=Paragraphe('64-computer-alias.png','{roundrobin}','{roundrobin_text}',"javascript:Loadjs('$page?round-robin=yes&ou={$_GET["ou"]}&domain=$num');");
 	$form="
-	<table style='width:99%' class=form>
+	<div style='width:98%' class=form>
+	<div style='font-size:30px'>{organization}:$ou</div>
+	<table style='width:100%'>
 		<tr>
 			<td><strong style='font-size:18px;color:black'>{domain_name}:</strong></td>
 			<td align='right'><strong style='font-size:18px;color:black'>{$_GET["index"]}</strong></td>
 		</tr>
 		<tr>							
 			<td nowrap><strong style='font-size:18px;color:black'>{target_computer_name}:&nbsp;</strong></td>
-			<td align='right'>". Field_text("{$num}_IP",$arr[1],'width:256px;padding:10px;font-size:16px') ."</td>
+			<td align='right'>". Field_text("{$num}_IP",$arr[1],'width:99%;padding:10px;font-size:18px') ."</td>
 		</tr>
 			<td align='right' colspan=2><strong style='font-size:18px;color:black'>{port}:&nbsp;". 
-				Field_text("{$num}_PORT",$arr[2],'width:50px;padding:3px;font-size:16px').
+				Field_text("{$num}_PORT",$arr[2],'width:110px;padding:3px;font-size:18px').
 				"&nbsp;" . Field_yesno_checkbox_img("{$num}_MX",$arr[3],'{mx_look}')."&nbsp;".
 				Field_yesno_checkbox_img("{$num}_autoaliases",$alias,'<b>{autoaliases}</b><br>{autoaliases_text}')."
 			</td>
@@ -743,37 +760,40 @@ if($_GET["index"]<>"new domain"){
 		<tr>
 			<td align='right' colspan=2>$edit_button</td>
 		</tr>
-	</table>";
+	</table>
+	</div>";
 	
 	
 }else{
 
 	$button_as_settings=null;
 	$form="
-	<table style='width:99%' class=form>
+	<div style='width:98%' class=form>
+			<div style='font-size:30px'>{organization}:$ou</div>
+	<table style='width:100%'>
 		<tr>
 			<td class=legend><strong style='font-size:18px;color:black'>{domain_name}:</strong></td>
-			<td align='right'>". Field_text('AddNewRelayDomainName',null,'width:256px;padding:10px;font-size:16px') ."</td>
+			<td align='right'>". Field_text('AddNewRelayDomainName',null,'width:98%;padding:10px;font-size:18px') ."</td>
 		</tr>
 		<tr>					
 			<td nowrap class=legend><strong style='font-size:18px;color:black'>{target_computer_name}:&nbsp;</strong></td>
-			<td align='right'>". Field_text('AddNewRelayDomainIP',null,'width:256px;padding:10px;font-size:16px') ."</td>
+			<td align='right'>". Field_text('AddNewRelayDomainIP',null,'width:98%;padding:10px;font-size:18px') ."</td>
 		</tr>
 			<td align='right' colspan=2><strong style='font-size:18px;color:black'>{port}:&nbsp;". 
-				Field_text('AddNewRelayDomainPort','25','width:50px;padding:3px;font-size:16px') .
+				Field_text('AddNewRelayDomainPort','25','width:120px;padding:3px;font-size:18px') .
 				"&nbsp;" . Field_yesno_checkbox_img('MX','no','{mx_look}')."
 			</td>
 		</tr>
 		<tr>
 			<td colspan=2 align='right'><div style='float:right'>". 
 				Paragraphe_switch_img("{trusted_smtp_domain}","{trusted_smtp_domain_text}",
-				"trusted_smtp_domain",1,"{enable_disable}",520)."</div></td>
+				"trusted_smtp_domain",1,"{enable_disable}",810)."</div></td>
 		</tr>		
 		<tr>
 			<td align='right' colspan=2>
 			<hr>". button("{add}","AddRelayDomain()","22px")."</td>
 		</tr>
-	</table>";
+	</table></div>";
 
 }
 
@@ -1419,7 +1439,7 @@ function AddNewInternetDomain(){
 			
 
 	
-ChockServices();
+
 	
 	
 }
@@ -1443,7 +1463,7 @@ function DeleteInternetDomain(){
 
 	$jb=new ejabberd($domain);
 	$jb->Delete();
-	ChockServices();
+	
 	
 	
 }
@@ -1487,7 +1507,6 @@ function AddNewRelayDomain(){
 	if(!$ldap->UseLdap){
 		$sqlite=new lib_sqlite();
 		$sqlite->AddRelayDomain($ou,$domain_name,$relayIP,$relayPort,$mx);
-		if($sqlite->ok){ChockServices();}
 		return;
 	}
 	
@@ -1556,16 +1575,12 @@ if($relayIP<>null){
 	$ldap->ldap_add($dn,$upd);			
 	}
 	
-	ChockServices();
+	
 	
 
 			
 }
 
-function ChockServices(){
-
-		
-}
 
 
 
@@ -1652,7 +1667,7 @@ function DeleteRelayDomainName(){
 	$domain_name=$_GET["DeleteRelayDomainName"];
 	$ldap=new clladp();
 	$ldap->DeleteRemoteDomain($domain_name,$ou);
-	ChockServices();
+	
 
 }
 ?>	

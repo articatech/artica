@@ -3,6 +3,7 @@
 $GLOBALS["PROGRESS_FILE"]="/usr/share/artica-postfix/ressources/logs/influxdb.install.progress";
 $GLOBALS["LOG_FILE"]="/usr/share/artica-postfix/ressources/logs/web/influxdb.install.progress.txt";
 
+
 if(isset($_GET["verbose"])){
 	ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);
 	ini_set('error_append_string',null);
@@ -24,7 +25,7 @@ function js(){
 	header("content-type: application/x-javascript");
 	$tpl=new templates();
 	$page=CurrentPageName();
-	$title=$tpl->javascript_parse_text("{install_influxdb}");
+	$title=$tpl->javascript_parse_text("{install_postgres}");
 	if(isset($_GET["migration"])){$addon="&migration=yes";}
 	echo "
 	YahooWinBrowseHide();		
@@ -120,6 +121,7 @@ function Start$time(){
 	if( document.getElementById('influxdb08654648-upgrade')){
 		GoToIndex();
 	}
+	CacheOff();
 }
 setTimeout(\"Start$time()\",1000);
 	";	
@@ -153,17 +155,17 @@ function popup(){
 	$restart=null;
 	$addon=null;
 	if(isset($_GET["migration"])){$addon="&migration=yes";}
-	$sock->getFrameWork("influx.php?install=yes$addon");
+	$sock->getFrameWork("postgres.php?installv1=yes$addon");
 	$t=$_GET["t"];
 	if(!is_numeric($t)){$t=time();}
-	$text=$tpl->_ENGINE_parse_body("{install_influxdb}...");
+	$text=$tpl->_ENGINE_parse_body("{install_postgres}...");
 	
 $html="
 <center id='title-$t' style='font-size:18px;margin-bottom:20px'>$text</center>
 <div id='progress-$t' style='height:50px'></div>
 <p>&nbsp;</p>
 <textarea style='margin-top:5px;font-family:Courier New;
-font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 overflow:auto;font-size:11px' id='text-$t'></textarea>
 	
 <script>

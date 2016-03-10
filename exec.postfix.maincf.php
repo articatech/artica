@@ -75,10 +75,19 @@ echo "Starting......: ".date("H:i:s")." Postfix bin postconf...: {$GLOBALS["post
 
 if($argv[1]=='--loadbalance'){haproxy_compliance();ReloadPostfix(true);die();}
 if($argv[1]=='--ScanLibexec'){ScanLibexec();die();}
+if($argv[1]=='--smtpd-recipient-restrictions'){smtpd_recipient_restrictions();ReloadPostfixSimple(true);die();}
+
 
 
 if($argv[1]=='--smtpd-client-restrictions'){
 	smtpd_client_restrictions_progress("{starting}",5);
+	
+	smtpd_client_restrictions_progress("{building_rules}",15);
+	$php=$unix->LOCATE_PHP5_BIN();
+	system("$php /usr/share/artica-postfix/exec.postfix.acls.php");
+	smtpd_client_restrictions_progress("Headers rules",15);
+	headers_check(1,1);
+	
 	if(smtpd_client_restrictions()){
 		smtpd_client_restrictions_progress("{smtpd_recipient_restrictions}",50);
 		smtpd_recipient_restrictions();
@@ -91,7 +100,7 @@ if($argv[1]=='--smtpd-client-restrictions'){
 
 
 
-if($argv[1]=='--networks'){mynetworks();MailBoxTransport();ReloadPostfix(true);HashTables();die();}
+if($argv[1]=='--networks'){build_mynetworks();die();}
 if($argv[1]=='--headers-check'){headers_check();die();}
 if($argv[1]=='--headers-checks'){headers_check();die();}
 if($argv[1]=='--assp'){ASSP_LOCALDOMAINS();die();}
@@ -166,6 +175,25 @@ function build_progress_othervalues($text,$pourc){
 	@file_put_contents($cachefile, serialize($array));
 	@chmod($cachefile,0755);
 }
+
+
+function build_mynetworks(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	build_progress_othervalues("{starting} {networks}...",15);
+	mynetworks();
+	build_progress_othervalues("{starting} Mailbox transport...",20);
+	MailBoxTransport();
+	build_progress_othervalues("{starting} {domains} & {transport}...",25);
+	system("$php /usr/share/artica-postfix/exec.postfix.transport.php --pourc=30 --progress-file={$GLOBALS["CACHEFILE"]} --");
+	build_progress_othervalues("{reloading}",98);
+	ReloadPostfix(true);
+	build_progress_othervalues("{done}",100);
+	
+}
+
+
+
 function mime_header_checks_progress(){
 	
 	build_progress_mime_header("{starting} Mime Header",15);
@@ -197,14 +225,15 @@ function OthersValues_start(){
 function milters(){
 	$sock=new sockets();
 	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
 	milters_progress("{starting} {filtering_modules}",15);
-	
 	milters_progress("{starting} {smtpd_client_restrictions}",20);
 	
 	smtpd_client_restrictions();
 	
-	milters_progress("{checking} {APP_AMAVIS}",25);
+	milters_progress("{checking} Anti-Spam",25);
 	amavis_internal();
+	shell_exec("$php /usr/share/artica-postfix/exec.spamassassin.php");
 	milters_progress("{checking} {milters_plugins}",30);
 	smtpd_milters();
 	milters_progress("{checking} MASTER CF",40);
@@ -509,35 +538,74 @@ function SetSASLMech(){
 	
 }
 
+function SetSSL(){
+	$sock=new sockets();
+	$unix=new unix();
+	$main=new main_cf();
+	
+	if($main->main_array["smtpd_tls_session_cache_timeout"]==null){$main->main_array["smtpd_tls_session_cache_timeout"]='3600s';}
+	$PostfixEnableMasterCfSSL=intval($sock->GET_INFO("PostfixEnableMasterCfSSL"));
+	$smtpd_tls_security_level=$sock->GET_INFO("smtpd_tls_security_level");
+	$cert=new postfix_certificate($PostFixMasterCertificate);
+	echo "Starting......: ".date("H:i:s")." Certificate $PostFixMasterCertificate\n";
+	if($smtpd_tls_security_level==null){$smtpd_tls_security_level="may";}
+	
+	$cert->build();
+	$unix->chown_func("postfix","postfix","/etc/ssl/certs/postfix/*");
+	
+	if($PostfixEnableMasterCfSSL==1){
+		postconf("smtpd_tls_security_level" ,$smtpd_tls_security_level);
+		postconf("smtpd_tls_session_cache_timeout" ,$main->main_array["smtpd_tls_session_cache_timeout"]);
+		postconf("smtpd_tls_session_cache_database" ,"btree:/var/lib/postfix/smtpd_tls_cache");
+		postconf("smtpd_use_tls" ,"yes");
+		
+	}else{	
+		postconf("smtpd_use_tls","no");
+		postconf("smtpd_tls_security_level" ,"none");
+		postconf("smtpd_tls_key_file",null);
+		postconf("smtpd_tls_cert_file",null);
+		postconf("smtpd_tls_CAfile",null);
+	}
+	
+	
+}
+
+
 function SetSALS(){
 	$unix=new unix();
-	if(!isset($GLOBALS["CLASS_SOCKET"])){$GLOBALS["CLASS_SOCKET"]=new sockets();$sock=$GLOBALS["CLASS_SOCKET"];}else{$sock=$GLOBALS["CLASS_SOCKET"];}
+	$sock=new sockets();
+	if(!isset($GLOBALS["CLASS_SOCKET"])){$GLOBALS["CLASS_SOCKET"]=new sockets();
+	$sock=$GLOBALS["CLASS_SOCKET"];}else{$sock=$GLOBALS["CLASS_SOCKET"];}
 	$PostFixSmtpSaslEnable=$sock->GET_INFO("PostFixSmtpSaslEnable");
 	$PostFixMasterCertificate=$sock->GET_INFO("PostFixMasterCertificate");
-	$main=new main_cf();
-	if($main->main_array["smtpd_tls_session_cache_timeout"]==null){$main->main_array["smtpd_tls_session_cache_timeout"]='3600s';}
+	$PostfixEnableMasterCfSSL=intval($sock->GET_INFO("PostfixEnableMasterCfSSL"));
+	$smtpd_tls_auth_only=intval($sock->GET_INFO("smtpd_tls_auth_only"));
+	$smtpd_sasl_path=$sock->GET_INFO("smtpd_sasl_path");
+	SetSSL();
+	
 	if($PostFixSmtpSaslEnable==1){
 		@mkdir("/var/lib/postfix",0755,true);
 		chown("/var/lib/postfix","postfix");
 		chgrp("/var/lib/postfix", "postfix");
 		echo "Starting......: ".date("H:i:s")." SASL authentication is enabled\n";
-		echo "Starting......: ".date("H:i:s")." Certificate $PostFixMasterCertificate\n";
-		$sock=new sockets();
-		$cert=new postfix_certificate($PostFixMasterCertificate);
-		$smtpd_sasl_path=$sock->GET_INFO("smtpd_sasl_path");
+		
+		if($PostfixEnableMasterCfSSL==1){
+			if($smtpd_tls_auth_only==1){
+				postconf("smtpd_tls_auth_only" ,"yes");
+			}else{
+				postconf("smtpd_tls_auth_only" ,"no");
+			}
+			
+		}
+
 		if($smtpd_sasl_path==null){$smtpd_sasl_path="smtpd";}
 		$cmd["smtpd_sasl_auth_enable"]="yes";
-		$cmd["smtpd_use_tls"]="yes";
 		$cmd["smtpd_sasl_path"]="smtpd";
 		$cmd["smtpd_sasl_authenticated_header"]="yes";
-		$cmd["smtpd_tls_session_cache_database"]="btree:/var/lib/postfix/smtpd_tls_cache";
-		$cert->build();
 		$cmd["smtpd_delay_reject"]="yes";
 		$cmd["cyrus_sasl_config_path"]="/etc/postfix/sasl";
-		$cmd["smtpd_tls_session_cache_timeout"]=$main->main_array["smtpd_tls_session_cache_timeout"];
 		echo "Starting......: ".date("H:i:s")." SASL authentication running ". count($cmd)." commands\n";
 		
-		$unix->chown_func("postfix","postfix","/etc/ssl/certs/postfix/*");
 		
 		while (list ($num, $ligne) = each ($cmd) ){
 			postconf($num,$ligne);
@@ -548,9 +616,8 @@ function SetSALS(){
 		echo "Starting......: ".date("H:i:s")." SASL authentication is disabled\n";
 		postconf("smtpd_sasl_auth_enable","no");
 		postconf("smtpd_sasl_authenticated_header","no");
-		postconf("smtpd_use_tls","no");
 		postconf("smtpd_tls_auth_only" ,"no");
-		postconf("smtpd_tls_security_level" ,"none");
+		
 
 	}
 	
@@ -741,23 +808,36 @@ function remove_virtual_mailbox_base(){
 	
 }
 
-function headers_check($noreload=0){
+function headers_check($noreload=0,$nowhiteblack=0){
 	$unix=new unix();
+	$headersFiles=array();
 	$main=new maincf_multi("master","master");
 	echo "Starting......: ".date("H:i:s")." Loading header_checks()\n";
 	$headers=$main->header_checks();
 	$headers=str_replace("header_checks =","",$headers); 
 	
+	if(is_file("/etc/postfix/blacklist.headers.cf")){
+		$headersFiles[]="regexp:/etc/postfix/blacklist.headers.cf";
+	}
+	
 	if($headers<>null){
-		postconf("header_checks",$headers);
+		$headersFiles[]=$headers;
+	}
+	
+
+		
+	if(count($headersFiles)>0){
+		postconf("header_checks",@implode(", ", $headersFiles));
 	}else{
 		postconf("header_checks",null);
 	}
 	
 	
-	$nohup=$unix->find_program("nohup");
-	echo "Starting......: ".date("H:i:s")." Running exec.white-black-central.php\n";
-	system("$nohup ".LOCATE_PHP5_BIN2()." /usr/share/artica-postfix/exec.white-black-central.php >/dev/null 2>&1 &" );
+	if($nowhiteblack==0){
+		$nohup=$unix->find_program("nohup");
+		echo "Starting......: ".date("H:i:s")." Running exec.white-black-central.php\n";
+		system("$nohup ".LOCATE_PHP5_BIN2()." /usr/share/artica-postfix/exec.white-black-central.php >/dev/null 2>&1 &" );
+	}
 	if($noreload==0){
 		echo "Starting......: ".date("H:i:s")." Reloading Postfix...\n";
 		ReloadPostfix(true);
@@ -777,19 +857,30 @@ function RestartPostix(){
 	if(is_file($postfix)){shell_exec("$postfix stop >/dev/null 2>&1");}
 	if(is_file($postfix)){shell_exec("$postfix start >/dev/null 2>&1");}
 }
+
+function ReloadPostfixSimple(){
+	$unix=new unix();
+	$postfix=$unix->find_program("postfix");
+	if(is_file($postfix)){shell_exec("$postfix reload >/dev/null 2>&1");return;}
+}
+
 function ReloadPostfix($nohastables=false){
 	$ldap=new clladp();
-	$domains=$ldap->Hash_domains_table();
+	
 	$unix=new unix();
 	$php5=$unix->LOCATE_PHP5_BIN();
 	$myOrigin=null;
 	$dom=array();
-	if(count($domains)>0){while (list ($num, $ligne) = each ($domains) ){$dom[]=$num;}$myOrigin=$dom[0];}
+	
+	
+	$myOrigin=$unix->hostname_g();
+	
 	
 	if($myOrigin==null){
-		if(!isset($GLOBALS["CLASS_USERS_MENUS"])){$user=new usersMenus();}else{$user=$GLOBALS["CLASS_USERS_MENUS"];}
-		$myOrigin=$user->hostname;
+		$domains=$ldap->Hash_domains_table();
+		if(count($domains)>0){while (list ($num, $ligne) = each ($domains) ){$dom[]=$num;}$myOrigin=$dom[0];}
 	}
+	
 	
 	if($myOrigin==null){$myOrigin="localhost.localdomain";}
 	$postfix=$unix->find_program("postfix");
@@ -1071,13 +1162,22 @@ function smtpd_client_restrictions(){
 	$hashToDelete[]="reject_rbl_client=sbl.spamhaus.org";
 	$hashToDelete[]="reject_rbl_client=sbl.spamhaus.org";
 	$hashToDelete[]="permit_sasl_authenticated";
-	$hashToDelete[]="check_client_access hash:/etc/postfix/amavis_internal";	
+	$hashToDelete[]="check_client_access hash:/etc/postfix/amavis_internal";
+	$hashToDelete[]="check_client_access cidr:/etc/postfix/acls.cdir.cf";
+	$hashToDelete[]="check_client_access hash:/etc/postfix/blacklist.domains.cf";
+	$hashToDelete[]="check_recipient_access hash:/etc/postfix/check_recipient_access_ou";
 	
 	while (list ($num, $ligne) = each ($hashToDelete) ){
 		if(isset($newHash[$ligne])){unset($newHash[$ligne]);}
 	}
 
+	if(is_file("/etc/postfix/acls.cdir.cf")){
+		$newHash["check_client_access cidr:/etc/postfix/acls.cdir.cf"]="check_client_access cidr:/etc/postfix/acls.cdir.cf";
+	}
 	
+	if(is_file("/etc/postfix/blacklist.domains.cf.db")){
+		$newHash["check_client_access hash:/etc/postfix/blacklist.domains.cf"]="check_client_access hash:/etc/postfix/blacklist.domains.cf";
+	}
 	
 	if($GLOBALS["VERBOSE"]){
 		echo "Starting......: ".date("H:i:s")." smtpd_client_restrictions: origin:".@implode(",",$newHash)."\n";
@@ -1128,7 +1228,7 @@ function smtpd_client_restrictions(){
 	}
 	
 	
-
+	$smtpd_client_restrictions[]="check_recipient_access hash:/etc/postfix/check_recipient_access_ou";
 	
 	
 	if(!is_file("/etc/artica-postfix/settings/Daemons/reject_unknown_client_hostname")){
@@ -1154,6 +1254,7 @@ function smtpd_client_restrictions(){
 	smtpd_client_restrictions_progress("{construct_settings}",15);
 
 	$main_dnsbl=$main->main_dnsbl();
+	$main_rhsbl=$main->main_rhsbl();
 	
 	if($EnablePostfixAntispamPack==1){
 		echo "Starting......: ".date("H:i:s")." smtpd_client_restrictions:Anti-spam Pack is enabled\n";
@@ -1187,6 +1288,18 @@ function smtpd_client_restrictions(){
 	
 	
 	echo "Starting......: ".date("H:i:s")." smtpd_client_restrictions:". count($main_dnsbl)." DNSBL Services\n";
+	if(count($main_dnsbl)>0){
+		while (list ($num, $ligne) = each ($main_dnsbl) ){
+			$smtpd_client_restrictions[]="reject_rbl_client $num";
+		}
+	}
+	if(count($main_rhsbl)>0){
+		while (list ($num, $ligne) = each ($main_dnsbl) ){
+			$smtpd_client_restrictions[]="reject_rhsbl_client $num";
+		}
+		
+	}
+	
 	
 
 	
@@ -1281,19 +1394,27 @@ function smtpd_recipient_restrictions(){
 	if(!isset($GLOBALS["CLASS_USERS_MENUS"])){$users=new usersMenus();$GLOBALS["CLASS_USERS_MENUS"]=$users;}else{$users=$GLOBALS["CLASS_USERS_MENUS"];}
 	if(!isset($GLOBALS["CLASS_SOCKET"])){$GLOBALS["CLASS_SOCKET"]=new sockets();$sock=$GLOBALS["CLASS_SOCKET"];}else{$sock=$GLOBALS["CLASS_SOCKET"];}
 	$newHash=array();
+	include_once(dirname(__FILE__)."/ressources/class.postfix.check_recipient_access.inc");
 	$EnableCluebringer=$sock->GET_INFO("EnableCluebringer");
 	$EnablePostfixAntispamPack=$sock->GET_INFO("EnablePostfixAntispamPack");
 	$EnableArticaPolicyFilter=$sock->GET_INFO("EnableArticaPolicyFilter");
+	$EnablePolicydWeight=intval($sock->GET_INFO('EnablePolicydWeight'));
 	$EnableArticaPolicyFilter=0;
 	if($GLOBALS["DEBUG"]){echo "EnableCluebringer=$EnableCluebringer\n";}
 	$EnableAmavisInMasterCF=$sock->GET_INFO('EnableAmavisInMasterCF');
 	$EnableAmavisDaemon=$sock->GET_INFO('EnableAmavisDaemon');	
 	$TrustMyNetwork=$sock->GET_INFO("TrustMyNetwork");
+	$ValvuladEnabled=intval($sock->GET_INFO("ValvuladEnabled"));
+	
+	$POLICYD_WEIGHT_PORT=12525;
+	
+	
 	$main=new maincf_multi("master");
 	if(!is_numeric($TrustMyNetwork)){$TrustMyNetwork=1;}
 	exec("{$GLOBALS["postconf"]} -h smtpd_recipient_restrictions",$datas);
 	$tbl=explode(",",implode(" ",$datas));
 	$permit_mynetworks_remove=false;
+	smtpd_client_restrictions_progress("{smtpd_recipient_restrictions}",51);
 
 	if(is_array($tbl)){
 		while (list ($num, $ligne) = each ($tbl) ){
@@ -1303,6 +1424,9 @@ function smtpd_recipient_restrictions(){
 		}
 	}
 	
+	
+	
+	unset($newHash["permit_dnswl_client list.dnswl.org"]);
 	unset($newHash["check_client_access hash:/etc/postfix/amavis_internal"]);
 	unset($newHash["check_recipient_access hash:/etc/postfix/relay_domains_restricted"]);
 	unset($newHash["permit"]);
@@ -1315,7 +1439,16 @@ function smtpd_recipient_restrictions(){
 	unset($newHash["check_policy_service inet:127.0.0.1:54423"]);
 	unset($newHash["check_policy_service inet:127.0.0.1:13331"]);
 	unset($newHash["check_policy_service inet:127.0.0.1:7777"]);
+	unset($newHash["check_policy_service inet:127.0.0.1:3579"]);
+	unset($newHash["check_client_access hash:/etc/postfix/wbl_connections"]);
+	unset($newHash["check_recipient_access hash:/etc/postfix/wbl_connections"]);
+	unset($newHash["check_client_access cidr:/etc/postfix/check_client_access.cidr"]);
+	unset($newHash["check_client_access hash:/etc/postfix/check_client_access"]);
+	unset($newHash["check_policy_service inet:127.0.0.1:$POLICYD_WEIGHT_PORT"]);
 	
+	
+	
+	smtpd_client_restrictions_progress("{smtpd_recipient_restrictions}",52);
 	
 	if(is_array($newHash)){	
 		while (list ($num, $ligne) = each ($newHash) ){
@@ -1333,14 +1466,11 @@ function smtpd_recipient_restrictions(){
 		}
 	}
 	
-	if($GLOBALS["DEBUG"]){echo "CLUEBRINGER_INSTALLED=$users->CLUEBRINGER_INSTALLED\n";}
-	
-	if($users->CLUEBRINGER_INSTALLED){
-		if($EnableCluebringer==1){$smtpd_recipient_restrictions[]="check_policy_service inet:127.0.0.1:13331";}
-	}
+
+
 	
 
-					
+	smtpd_client_restrictions_progress("{smtpd_recipient_restrictions}",53);					
 	postconf("smtpd_restriction_classes","artica_restrict_relay_domains");
 	postconf("artica_restrict_relay_domains","reject_unverified_recipient");
 	$MynetworksInISPMode=$sock->GET_INFO("MynetworksInISPMode");
@@ -1355,20 +1485,47 @@ function smtpd_recipient_restrictions(){
 	}
 	$smtpd_recipient_restrictions[]="permit_mynetworks";
 	$smtpd_recipient_restrictions[]="permit_sasl_authenticated";
+	
+	
+	echo "Starting......: ".date("H:i:s")." Postfix class check_recipient_access_ou()...\n";
+	smtpd_client_restrictions_progress("{organizations}",54);
+	$check_recipient_access_ou=new check_recipient_access_ou();
+	$check_recipient_access_ou->build();
+	
+	$smtpd_recipient_restrictions[]="check_recipient_access hash:/etc/postfix/check_recipient_access_ou";
+	$smtpd_recipient_restrictions[]="check_client_access cidr:/etc/postfix/check_client_access.cidr";
+	$smtpd_recipient_restrictions[]="check_client_access hash:/etc/postfix/check_client_access";
 	$smtpd_recipient_restrictions[]="check_recipient_access hash:/etc/postfix/relay_domains_restricted";
 	$smtpd_recipient_restrictions[]="check_recipient_access hash:/etc/postfix/amavis_bypass_rcpt";
 	$smtpd_recipient_restrictions[]="permit_auth_destination";
+	
+	if($ValvuladEnabled==1){
+		$smtpd_recipient_restrictions[]="check_policy_service inet:127.0.0.1:3579";
+		
+	}
+	
+
+	if($EnablePolicydWeight==1){
+		$smtpd_recipient_restrictions[]="check_client_access hash:/etc/postfix/wbl_connections";
+		$smtpd_recipient_restrictions[]="check_recipient_access hash:/etc/postfix/wbl_connections";
+		$smtpd_recipient_restrictions[]="check_policy_service inet:127.0.0.1:$POLICYD_WEIGHT_PORT";
+	}
+	
+	smtpd_client_restrictions_progress("{smtpd_recipient_restrictions}",54);
 	$smtpd_recipient_restrictions[]="permit_dnswl_client list.dnswl.org";
 	
+	
+	smtpd_client_restrictions_progress("{smtpd_recipient_restrictions}",55);
 	amavis_bypass_byrecipients();
 	
+	smtpd_client_restrictions_progress("{smtpd_recipient_restrictions}",56);
 	restrict_relay_domains();
 	
 	
 	postconf("auth_relay",null);
 	
 	
-	
+	smtpd_client_restrictions_progress("{smtpd_recipient_restrictions}",57);
 
 		
 		
@@ -1383,7 +1540,7 @@ function smtpd_recipient_restrictions(){
 		echo "Starting......: ".date("H:i:s")." Reject Forged mails disabled\n"; 			
 	}
 	
-
+	smtpd_client_restrictions_progress("{smtpd_recipient_restrictions}",58);
 	$main_rhsbl=$main->main_rhsbl();
 	
 	
@@ -1399,7 +1556,7 @@ function smtpd_recipient_restrictions(){
 	
 	
 
-	
+	smtpd_client_restrictions_progress("{smtpd_recipient_restrictions}",59);
 	$smtpd_recipient_restrictions[]="reject_unauth_destination";
 	$smtpd_recipient_restrictions[]="permit";
 
@@ -1428,15 +1585,18 @@ function smtpd_recipient_restrictions(){
 	
 	
 	unset($smtpd_recipient_restrictions);
-	while (list ($num, $ligne) = each ($smtpd_recipient_restrictions_cleaned) ){$smtpd_recipient_restrictions[]=trim($ligne);}
+	while (list ($num, $ligne) = each ($smtpd_recipient_restrictions_cleaned) ){
+		echo "Starting......: ".date("H:i:s")." smtpd_recipient_restrictions Final: ".trim($ligne)."\n";
+		$smtpd_recipient_restrictions[]=trim($ligne);
+	}
 
    //CLEAN engine ---------------------------------------------------------------------------------------
 	
-	
+	smtpd_client_restrictions_progress("{smtpd_recipient_restrictions}",59);
 	if(is_array($smtpd_recipient_restrictions)){$newval=implode(",",$smtpd_recipient_restrictions);}
 	if($GLOBALS["DEBUG"]){echo "smtpd_recipient_restrictions = $newval\n";}
 	postconf("smtpd_recipient_restrictions",$newval);
-	
+	smtpd_client_restrictions_progress("{smtpd_recipient_restrictions}",60);
 	
 	}
 	
@@ -2221,10 +2381,12 @@ function smtpd_sender_restrictions(){
 	$EnablePostfixInternalDomainsCheck=$sock->GET_INFO("EnablePostfixInternalDomainsCheck");
 	$reject_non_fqdn_sender=$sock->GET_INFO('reject_non_fqdn_sender');	
 	$reject_unknown_sender_domain=$sock->GET_INFO('reject_unknown_sender_domain');
+	$enforce_helo_restrictions=intval($sock->GET_INFO("enforce_helo_restrictions"));
 	
 	$smtpd_sender_restrictions[]="permit_mynetworks";
-	$smtpd_sender_restrictions[]="cidr:/etc/postfix/check_client_access.cidr";
-	$smtpd_sender_restrictions[]="hash:/etc/postfix/check_client_access";
+	$smtpd_sender_restrictions[]="permit_sasl_authenticated";
+	$smtpd_sender_restrictions[]="check_client_access cidr:/etc/postfix/check_client_access.cidr";
+	$smtpd_sender_restrictions[]="check_client_access hash:/etc/postfix/check_client_access";
 	
 	if($EnablePostfixInternalDomainsCheck==1){
 			$smtpd_sender_restrictions[]="reject_unknown_sender_domain";
@@ -2249,12 +2411,26 @@ function smtpd_sender_restrictions(){
 		if($smtpd_sender_restrictions_black<>null){$smtpd_sender_restrictions[]=$smtpd_sender_restrictions_black;}
 	}
 	
+	
+	postconf("smtpd_helo_restrictions",null);
+	
+	
+	if($enforce_helo_restrictions==1){
+		$enforce_helo_restrictions_final="permit_mynetworks,permit_sasl_authenticated, check_client_access hash:/etc/postfix/check_client_access, check_client_access cidr:/etc/postfix/check_client_access.cidr,reject_invalid_helo_hostname,reject_unknown_helo_hostname";
+		postconf("smtpd_helo_required","yes");
+		postconf("smtpd_helo_restrictions",$enforce_helo_restrictions_final);
+	}else{
+		postconf("smtpd_helo_required","no");
+		postconf("smtpd_helo_restrictions","permit_mynetworks,permit_sasl_authenticated, check_client_access hash:/etc/postfix/check_client_access, check_client_access cidr:/etc/postfix/check_client_access.cidr, permit");
+	}
+	
+	
 	if(!isset($smtpd_sender_restrictions)){postconf("smtpd_sender_restrictions");return;}
 	if(!is_array($smtpd_sender_restrictions)){postconf("smtpd_sender_restrictions");return;}
 	
 	$final=@implode(",",$smtpd_sender_restrictions);
 	postconf("smtpd_sender_restrictions",$final);
-	postconf("smtpd_helo_restrictions",$final);
+	
 	
 	
 	
@@ -2441,7 +2617,7 @@ function postscreen($hostname=null){
 	postconf("postscreen_dnsbl_action",$postscreen_dnsbl_action);
 	postconf("postscreen_dnsbl_ttl",$postscreen_dnsbl_ttl);
 	postconf("postscreen_dnsbl_threshold",$postscreen_dnsbl_threshold);
-	postconf("postscreen_cache_map","btree:\\\$data_directory/postscreen_master_cache");
+	postconf("postscreen_cache_map","btree:/var/lib/postfix/postscreen_master_cache");
 	
 	
 	
@@ -2876,10 +3052,10 @@ function MasterCFBuilder($restart_service=false){
 		if($re_cleanup_infos<>null){$SSL_INSTANCE[]=$re_cleanup_infos;}
 		$SSL_INSTANCE[]=" -o smtpd_tls_wrappermode=yes";
 		$SSL_INSTANCE[]=" -o smtpd_delay_reject=yes";
-		$SSL_INSTANCE[]=" -o smtpd_client_restrictions={$permit_mynetworks}permit_sasl_authenticated,reject\n";
-		$SSL_INSTANCE[]=" -o smtpd_sender_restrictions=permit_sasl_authenticated,reject";
-		$SSL_INSTANCE[]=" -o smtpd_helo_restrictions=permit_sasl_authenticated,reject";
-		$SSL_INSTANCE[]=" -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject";		
+		//$SSL_INSTANCE[]=" -o smtpd_client_restrictions={$permit_mynetworks}permit_sasl_authenticated,reject\n";
+		//$SSL_INSTANCE[]=" -o smtpd_sender_restrictions=permit_sasl_authenticated,reject";
+		//$SSL_INSTANCE[]=" -o smtpd_helo_restrictions=permit_sasl_authenticated,reject";
+		//$SSL_INSTANCE[]=" -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject";		
 		$smtp_ssl=@implode("\n",$SSL_INSTANCE);
 	}else{
 		echo "Starting......: ".date("H:i:s")." SSL (465 port) Disabled\n";
@@ -3062,7 +3238,7 @@ $conf[]="";
 $conf[]=$master_amavis;
 $conf[]="";
 $conf[]="127.0.0.1:33559\tinet\tn\t-\tn\t-\t-\tsmtpd";
-$conf[]="    -o notify_clases=protocol,resource,software";
+$conf[]="    -o notify_classes=protocol,resource,software";
 $conf[]="    -o header_checks=";
 $conf[]="    -o content_filter=";
 $conf[]="    -o smtpd_restriction_classes=";
@@ -3168,13 +3344,24 @@ if($restart_service){
 
 
 }
-
+function build_progress_postfix_templates($text,$pourc){
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/web/build_progress_postfix_templates";
+	echo "{$pourc}% $text\n";
+	$cachefile=$GLOBALS["CACHEFILE"];
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	@file_put_contents($cachefile, serialize($array));
+	@chmod($cachefile,0755);
+}
 
 function postfix_templates(){
 	$mainTPL=new bounces_templates();
 	$main=new maincf_multi("master");
 	$mainTemplates=new bounces_templates();
 	$conf=null;
+	
+	
+	build_progress_postfix_templates("{building}",10);
 	
 	$double_bounce_sender=$main->GET("double_bounce_sender");
 	$address_verify_sender=$main->GET("address_verify_sender");
@@ -3195,6 +3382,9 @@ function postfix_templates(){
 	if($empty_address_recipient==null){$empty_address_recipient=$PostfixPostmaster;}	
 	if(is_array($mainTemplates->templates_array)){
 		while (list ($template, $nothing) = each ($mainTemplates->templates_array) ){
+			
+			build_progress_postfix_templates("{{$template}}",50);
+			
 			$array=unserialize(base64_decode($main->GET_BIGDATA($template)));
 			if(!is_array($array)){$array=$mainTemplates->templates_array[$template];}
 				$tp=explode("\n",$array["Body"]);
@@ -3225,6 +3415,8 @@ function postfix_templates(){
 	if($notify_class["notify_class_protocol"]==1){$not[]="protocol";}
 	
 	
+	build_progress_postfix_templates("{apply_config}",90);
+	
 	postconf("notify_class",@implode(",",$not));
 	postconf("double_bounce_sender","$double_bounce_sender");
 	postconf("address_verify_sender","$address_verify_sender");	
@@ -3234,6 +3426,8 @@ function postfix_templates(){
 	postconf("empty_address_recipient",$empty_address_recipient);
 	postconf("bounce_template_file","/etc/postfix/bounce.template.cf");				
 
+	build_progress_postfix_templates("{done}",100);
+	
 	}
 
 

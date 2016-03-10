@@ -3,7 +3,7 @@
 	include_once('ressources/class.users.menus.inc');
 	include_once('ressources/class.squid.inc');
 	include_once('ressources/class.status.inc');
-	include_once('ressources/class.artica.graphs.inc');
+	
 	include_once('ressources/class.computers.inc');
 	$users=new usersMenus();
 	if(!$users->AsWebStatisticsAdministrator){die();}

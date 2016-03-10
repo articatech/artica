@@ -635,30 +635,7 @@ private function events($text){
 		}
 		
 		
-	public function LIST_HOUR_TABLES(){
-		if(isset($GLOBALS["POSTFIX_LIST_HOUR_TABLES"])){return $GLOBALS["POSTFIX_LIST_HOUR_TABLES"];}
-		$array=array();
-		$sql="SELECT table_name as c FROM information_schema.tables WHERE table_schema = '$this->database' AND table_name LIKE '%_hour'";
-		$results=$this->QUERY_SQL($sql);
-		if(!$this->ok){writelogs("Fatal Error: $this->mysql_error",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);return array();}
-		if($GLOBALS["VERBOSE"]){echo $sql." => ". mysql_num_rows($results)."\n";}
-		$thishour=date("YmdH");
-		while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
-			if(preg_match("#([0-9]+)_hour#", $ligne["c"],$re)){
-				if($re[1]==$thishour){continue;}
-				$number=$re[1];
-				$year=substr($number, 0,4);
-				$month=substr($number, 4,2);
-				$day=substr($number, 6,2);
-				$hour=substr($number, 8,2);
-				$GLOBALS["POSTFIX_LIST_HOUR_TABLES"][$ligne["c"]]="$year-$month-$day $hour:00:00";
-				$array[$ligne["c"]]=$ligne["c"];
-			}
-		}
-		return $GLOBALS["POSTFIX_LIST_HOUR_TABLES"];	
-		
-		
-	}
+	public function LIST_HOUR_TABLES(){}
 	
 	
 	public function LIST_POSTFIX_CNX_HOUR_TABLES(){

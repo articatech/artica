@@ -19,7 +19,8 @@ if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;ini_set('display_errors', 1
 	if(isset($_GET["parameters"])){page();exit;}
 	if(isset($_GET["graph1"])){graph1();exit;}
 	if(isset($_GET["settings"])){settings();exit;}
-	if(isset($_POST["InfluxAdminEnabled"])){InfluxAdminEnabled_save();exit;}
+	if(isset($_POST["InfluxAdminRetentionTime"])){InfluxAdminEnabled_save();exit;}
+	if(isset($_POST["ActAsASyslogServerCheck"])){ActAsASyslogServerCheck();exit;}
 	
 tabs();
 
@@ -31,9 +32,9 @@ function tabs(){
 
 	$array["parameters"]="{parameters}";
 	$array["clients"]="{clients}";
-	$array["events"]="{events}";
+	//$array["events"]="{events}";
 	$array["artica-events"]="{events}: Artica";
-	$array["update"]="{update}";
+	
 
 	$fontsize=22;
 
@@ -81,22 +82,27 @@ function page(){
 	$tpl=new templates();
 	$sock=new sockets();
 	$t=time();
-	$version=$sock->getFrameWork("influx.php?version=yes");
-	$title=$tpl->_ENGINE_parse_body("{APP_INFLUXDB} $version");
+	$version=$sock->getFrameWork("postgres.php?version=yes");
+	$title=$tpl->_ENGINE_parse_body("PostgreSQL $version");
 	$EnableInfluxDB=intval($sock->GET_INFO("EnableInfluxDB"));
+	
+	$update="<center style='margin-top:10px'>". button("{update}","GotoInfluxUpdate()",28,447)."</center>";
+	$update=null;
 	
 	if($EnableInfluxDB==1){
 		$others="		<center style='margin-top:10px'>". button("{databases}","Loadjs('influxdb.databases.php')",28,447)."</center>
-		<center style='margin-top:10px'>". button("{update}","GotoInfluxUpdate()",28,447)."</center>
-		<center style='margin-top:10px'>". button("{restart_service}","Loadjs('influxdb.restart.progress.php')",28,447)."</center>
-		<center style='margin-top:10px'>". button("{backup_now}","Loadjs('influxdb.backup.progress.php')",28,447)."</center>
-		<center style='margin-top:10px'>". button("{restore}","Loadjs('influxdb.restore.php')",28,447)."</center>";
+		$update
+		<center style='margin-top:10px'>". button("{restart_service}","Loadjs('postgres.progress.php')",28,447)."</center>
+		<center style='margin-top:10px'>". button("{backup_now}","Loadjs('postgres.backup.progress.php')",28,447)."</center>
+		<center style='margin-top:10px'>". button("{restore}","Loadjs('postgres.restore.php')",28,447)."</center>";
 		$bdis=button("{disable_service}","Loadjs('influxdb.disable.progress.php')",28,447);
 	}else{
 		$bdis=button("{enable_service}","Loadjs('influxdb.enable.progress.php')",28,447);
 		$others=null;
 	}
 	
+	$remove="<center style='margin-top:10px'>". button("{REMOVE_DATABASE}",
+			"Loadjs('postgres.remove.progress.php')",28,447)."</center>";
 	
 	
 	echo $tpl->_ENGINE_parse_body("
@@ -107,8 +113,9 @@ function page(){
 			<div id='influx-db-status' style='margin-bottom:10px'></div>
 			<div id='influx-db-size'></div>
 		$others
+		$remove
 		<center style='margin-top:10px'>$bdis</center>
-		<center style='margin-top:10px'>". button("{REMOVE_DATABASE}","Loadjs('influxdb.remove.progress.php')",28,447)."</center>
+		
 			
 		
 		
@@ -147,12 +154,22 @@ function settings(){
 	$ResolvIPStatistics=intval($sock->GET_INFO("ResolvIPStatistics"));
 	$EnableQuotasStatistics=intval($sock->GET_INFO("EnableQuotasStatistics"));
 	$QuotasStatisticsInterval=intval($sock->GET_INFO("QuotasStatisticsInterval"));
-	$InfluxListenInterface=intval($sock->GET_INFO("InfluxListenInterface"));
+	$InfluxListenInterface=$sock->GET_INFO("InfluxListenInterface");
 	if($InfluxListenInterface==null){$InfluxListenInterface="lo";}
 	$EnableInfluxDB=intval($sock->GET_INFO("EnableInfluxDB"));
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
 	$MySQLStatisticsRetentionDays=intval($sock->GET_INFO("MySQLStatisticsRetentionDays"));
 	if($MySQLStatisticsRetentionDays==0){$MySQLStatisticsRetentionDays=5;}
+	$PostGresBackupMaxContainers=intval($sock->GET_INFO("PostGresBackupMaxContainers"));
+	if($PostGresBackupMaxContainers==0){$PostGresBackupMaxContainers=3;}
+	$CalamarisSchedules=intval($sock->GET_INFO("CalamarisSchedules"));
+	
+	$sock->getFrameWork("postgres.php?PostGresSQLDatabaseDirectory=yes");
+	$PostGresSQLDatabaseDirectory=$sock->GET_INFO("PostGresSQLDatabaseDirectory");
+	
+	
+	
+	
 	$bt_disconnect=null;
 	$STATS_APPLIANCE=0;
 	$sys=new networking();
@@ -198,6 +215,16 @@ function settings(){
 	$QuotasStatisticsIntervalA[30]="30 {minutes}";
 	
 	
+	
+	
+	
+	$CalamarisSchedulesZ[0]="{disabled}";
+	$CalamarisSchedulesZ[1]="{each} 1 {hour}";
+	$CalamarisSchedulesZ[2]="{each} 2 {hours}";
+	$CalamarisSchedulesZ[3]="{each} 4 {hours}";
+	$CalamarisSchedulesZ[4]="{each} 6 {hours}";
+	
+	
 	if($QuotasStatisticsInterval==0){$QuotasStatisticsInterval=15;}
 	
 	
@@ -210,8 +237,8 @@ function settings(){
 	
 	if(!$users->CORP_LICENSE){
 		
-		$InfluxAdminRetentionTime=7;$CORP_LICENSE=0;
-		$field_ret=Field_hidden("InfluxAdminRetentionTime", 5)."5 {days}<div><i style='font-size:16px'>{retention_time_limited_license}</i></div>";
+		$InfluxAdminRetentionTime=5;$CORP_LICENSE=0;
+		$field_ret=Field_hidden("InfluxAdminRetentionTime", 365)."5 {days}<div><i style='font-size:16px'>{retention_time_limited_license}</i></div>";
 	
 	}
 	
@@ -238,7 +265,8 @@ function settings(){
 	$InfluxUseRemotePort=intval($sock->GET_INFO("InfluxUseRemotePort"));
 	$InfluxUseRemoteArticaPort=intval($sock->GET_INFO("InfluxUseRemoteArticaPort"));
 	if($InfluxRemoteDB==null){$InfluxRemoteDB=$influx->db;}
-	if($InfluxUseRemotePort==0){$InfluxUseRemotePort=8086;}
+	if($InfluxUseRemotePort==0){$InfluxUseRemotePort=5432;}
+	if($InfluxUseRemotePort==8086){$InfluxUseRemotePort=5432;}
 	if($InfluxUseRemoteArticaPort==0){$InfluxUseRemoteArticaPort=9000;}
 	$InfluxDBPassword=$sock->GET_INFO("InfluxDBPassword");
 	$ArticaInfluxUsername=$sock->GET_INFO("ArticaInfluxUsername");
@@ -246,7 +274,17 @@ function settings(){
 	$InfluxSyslogRemote=intval($sock->GET_INFO("InfluxSyslogRemote"));
 	$NoCompressStatisticsByHour=intval($sock->GET_INFO("NoCompressStatisticsByHour"));
 	$ArticaInfluxPassword=$sock->GET_INFO("ArticaInfluxPassword");
+	$InfluxRestartMem=intval($sock->GET_INFO("InfluxRestartMem"));
+	$ActAsASyslogServer=intval($sock->GET_INFO("ActAsASyslogServer"));
 	
+	$PostgreSQLSharedBuffer=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/PostgreSQLSharedBuffer"));
+	if($PostgreSQLSharedBuffer==0){$PostgreSQLSharedBuffer=32;}
+	
+	$PostgreSQLEffectiveCacheSize=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/PostgreSQLEffectiveCacheSize"));
+	if($PostgreSQLEffectiveCacheSize==0){$PostgreSQLEffectiveCacheSize=256;}
+	
+	$PostgreSQLWorkMem=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/PostgreSQLWorkMem"));
+	if($PostgreSQLWorkMem==0){$PostgreSQLWorkMem=4;}
 	
 	if($SquidPerformance>2){
 		
@@ -255,7 +293,7 @@ function settings(){
 		
 	}
 	
-	
+
 	
 	if($InfluxUseRemote==1){
 		if($InfluxUseRemoteIpaddr<>null){
@@ -276,6 +314,10 @@ function settings(){
 	$Intervals[7200]="5 {days}";
 	$Intervals[10080]="1 {week}";
 	$Intervals[20160]="2 {weeks}";
+	
+	for($i=0;$i<100;$i++){
+		$PostGresBackupMaxContainersHASH[$i]=$i;
+	}
 	
 	$password="	<tr>
 		<td class=legend style='font-size:22px'>{password}:</td>		
@@ -307,10 +349,6 @@ function settings(){
 	
 	
 	<tr>
-		<td class=legend style='font-size:22px' nowrap>".texttooltip("{no_hourly_compression}","{no_hourly_compression_explain}").":</td>		
-		<td style='font-size:22px;font-weight:bold' colspan=2>".Field_checkbox_design("NoCompressStatisticsByHour", 1,$NoCompressStatisticsByHour,"")."</td>
-	</tr>	
-	<tr>
 		<td class=legend style='font-size:22px' nowrap>".texttooltip("{ResolvIPStatistics}","{ResolvIPStatistics_explain}").":</td>		
 		<td style='font-size:22px;font-weight:bold' colspan=2>".Field_checkbox_design("ResolvIPStatistics", 1,$ResolvIPStatistics,"")."</td>
 	</tr>	
@@ -320,7 +358,11 @@ function settings(){
 	</tr>	
 	
 				
-				
+	<tr>
+		<td class=legend style='font-size:22px' nowrap>".texttooltip("{calamaris_statistics}","{calamaris_statistics_explain}").":</td>		
+		<td style='font-size:22px;font-weight:bold' colspan=2>".Field_array_Hash($CalamarisSchedulesZ,"CalamarisSchedules","$CalamarisSchedules","blur()",null,0,"font-size:22px")."</td>
+		
+	</tr>					
 	<tr>
 		<td class=legend style='font-size:22px' nowrap>{useragents_statistics}:</td>		
 		<td style='font-size:22px;font-weight:bold' colspan=2>".Field_checkbox_design("UserAgentsStatistics", 1,$UserAgentsStatistics,"")."</td>
@@ -342,25 +384,48 @@ function settings(){
 		<td colspan=3 style='font-size:30px'>{service_parameters}:</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:22px' nowrap>{query_interface}:</td>		
-		<td style='font-size:22px;font-weight:bold'>".Field_checkbox_design("InfluxAdminEnabled", 1,$InfluxAdminEnabled,"InfluxAdminEnabledCheck()")."</td>
-	</tr>
-	<tr>
 		<td class=legend style='font-size:22px' nowrap>{listen_interface}:</td>		
 		<td style='font-size:22px;font-weight:bold' colspan=2>".Field_array_Hash($Local_interfaces,
 				"InfluxListenInterface","$InfluxListenInterface","blur()",null,0,"font-size:22px")."</td>
-		<td style='font-size:22px;font-weight:bold'>$InfluxListenInterface:8086</td>
-	</tr>				
-	<tr>
-		<td class=legend style='font-size:22px'>{listen_port}:</td>		
-		<td style='font-size:22px;font-weight:bold'>".Field_text("InfluxAdminPort",$InfluxAdminPort,"font-size:22px;width:120px")."</td>
-		<td style='font-size:22px;text-decoration:underline'><a href=\"http://{$_SERVER["SERVER_ADDR"]}:$InfluxAdminPort\" target=_new>{browse}</a></td>
+		<td style='font-size:22px;font-weight:bold'>$InfluxListenInterface:5432</td>
 	</tr>	
-		
+	
+	<tr>
+		<td class=legend style='font-size:22px' nowrap>". texttooltip("{enable_syslog_server}","{enable_syslog_server_text}").":</td>		
+		<td style='font-size:22px;font-weight:bold' colspan=2>".Field_checkbox_design("ActAsASyslogServer", 1,$ActAsASyslogServer,"ActAsASyslogServerCheck()")."</td>
+	</tr>	
+
+<tr>
+		<td class=legend style='font-size:22px' nowrap>". texttooltip("{database_storage_path}","{database_storage_path}").":</td>		
+		<td style='font-size:22px;font-weight:bold' colspan=2>$PostGresSQLDatabaseDirectory&nbsp;".button("{edit}", "Loadjs('postgres.directory.php')",16)."</td>
+	</tr>		
+				
+	
+	
+	<tr>
+		<td class=legend style='font-size:22px' nowrap>". texttooltip("{restart_if_memory_exceed}","{influx_restart_if_memory_exceed}").":</td>		
+		<td style='font-size:22px;font-weight:bold' colspan=2>".Field_text("InfluxRestartMem",$InfluxRestartMem,"font-size:22px;width:180px")."&nbsp;MB</td>
+	</tr>		
+		<tr>
+			<td class=legend style='font-size:22px' nowrap>".texttooltip("{shared_buffer}","{PostgreSQLSharedBuffer}").":</td>		
+			<td style='font-size:22px;font-weight:bold'>".Field_text("PostgreSQLSharedBuffer", $PostgreSQLSharedBuffer,"font-size:22px;width:110px")."&nbsp;MB</td>
+		</tr>								
+		<tr>
+			<td class=legend style='font-size:22px' nowrap>".texttooltip("{effective_cache_size}","{PostgreSQLEffectiveCacheSize}").":</td>		
+			<td style='font-size:22px;font-weight:bold'>".Field_text("PostgreSQLEffectiveCacheSize", $PostgreSQLEffectiveCacheSize,"font-size:22px;width:110px")."&nbsp;MB</td>
+		</tr>
+		<tr>
+			<td class=legend style='font-size:22px' nowrap>".texttooltip("{work_mem}","{PostgreSQLWorkMem}").":</td>		
+			<td style='font-size:22px;font-weight:bold'>".Field_text("PostgreSQLWorkMem", $PostgreSQLWorkMem,"font-size:22px;width:110px")."&nbsp;MB</td>
+		</tr>		
+	
 	<tr>
 		<td class=legend style='font-size:22px' nowrap>{retention_time}:</td>		
 		<td style='font-size:22px;font-weight:bold' colspan=2>$field_ret$explain_retention</td>
 	</tr>
+	
+	
+	
 	<tr style='height:80px;'>
 		<td colspan=3 align='right' style='padding-top:30px'><hr>". button("{apply}","Save$t()",40)."</td>
 	</tr>	
@@ -376,7 +441,7 @@ function settings(){
 			<td colspan=3 style='font-size:30px'>{remote_server}:</td>
 		</tr>	
 		<tr>
-			<td class=legend style='font-size:22px' nowrap>{use_remote_server}:</td>		
+			<td class=legend style='font-size:22px' nowrap>{use_statistics_appliance}:</td>		
 			<td style='font-size:22px;font-weight:bold'>".Field_checkbox_design("InfluxUseRemote", 1,$InfluxUseRemote,"InfluxUseRemoteCheck()")."</td>
 		</tr>	
 		</table>
@@ -393,6 +458,8 @@ $bt_disconnect
 						$InfluxUseRemoteIpaddr,"font-size:22px;width:291px")."</td>
 				
 			</tr>
+									
+
 								
 			<tr>
 				<td class=legend style='font-size:22px'>{remote_port}:</td>		
@@ -431,6 +498,12 @@ $bt_disconnect
 		
 	</tr>
 	<tr>
+		<td class=legend style='font-size:22px' nowrap>{ExecBackupMaxContainers}:</td>		
+		<td style='font-size:22px;font-weight:bold'>".Field_array_Hash($PostGresBackupMaxContainersHASH,
+		"PostGresBackupMaxContainers","$PostGresBackupMaxContainers","blur()",null,0,"font-size:22px")."</td>
+		<td>". button("{backup_now}","Loadjs('postgres.backup.progress.php')",18)."</td>
+	</tr>							
+	<tr>
 		<td class=legend style='font-size:22px' nowrap>{backup_directory}:</td>		
 		<td style='font-size:22px;font-weight:bold'>".Field_text("InFluxBackupDatabaseDir",
 				$InFluxBackupDatabaseDir,"font-size:22px;width:291px")."</td>
@@ -441,7 +514,10 @@ $bt_disconnect
 				<a href=\"/backup-influx/\" style='text-decoration:underline'>{backup_directory} ". FormatBytes($influxdb_snapshotsize/1024)."</a>
 		</td>
 		<td>&nbsp;</td>
-	</tr>				
+	</tr>	
+
+						
+						
 	<tr>
 		<td class=legend style='font-size:22px' nowrap>".texttooltip("{allow_browse_directory}","{allow_browse_directory_web_explain}").":</td>		
 		<td style='font-size:22px;font-weight:bold' colspan=2>".Field_checkbox_design("InfluxDBAllowBrowse", 1,$InfluxDBAllowBrowse,"")."</td>
@@ -465,7 +541,7 @@ $bt_disconnect
 var xSave$t= function (obj) {	
 	var res=obj.responseText;
 	if(res.length>3){alert(res);return;}
-	Loadjs('influxdb.restart.progress.php');
+	Loadjs('postgres.progress.php');
 }	
 var xSaveRemote$t= function (obj) {	
 	var res=obj.responseText;
@@ -482,6 +558,7 @@ function SaveRemote$t(){
 	XHR.appendData('InfluxUseRemoteArticaPort', document.getElementById('InfluxUseRemoteArticaPort').value);
 	XHR.appendData('ArticaInfluxPassword', encodeURIComponent(document.getElementById('ArticaInfluxPassword').value));
 	XHR.appendData('ArticaInfluxUsername', document.getElementById('ArticaInfluxUsername').value);
+	XHR.appendData('InfluxAdminEnabled',0);
 	XHR.sendAndLoad('$page', 'POST',xSaveRemote$t);  
 
 }
@@ -490,22 +567,31 @@ function SaveRemote$t(){
 function Save$t(){
 	var XHR = new XHRConnection();
 	
-	if(document.getElementById('NoCompressStatisticsByHour').checked){XHR.appendData('NoCompressStatisticsByHour', 1);	}else{XHR.appendData('NoCompressStatisticsByHour', 0);}
+	XHR.appendData('NoCompressStatisticsByHour', 0);
 	if(document.getElementById('ResolvIPStatistics').checked){XHR.appendData('ResolvIPStatistics', 1);	}else{XHR.appendData('ResolvIPStatistics', 0);}
-	if(document.getElementById('InfluxAdminEnabled').checked){XHR.appendData('InfluxAdminEnabled', 1);	}else{XHR.appendData('InfluxAdminEnabled', 0);}
 	if(document.getElementById('EnableQuotasStatistics').checked){XHR.appendData('EnableQuotasStatistics', 1);	}else{XHR.appendData('EnableQuotasStatistics', 0);}
 	if(document.getElementById('UserAgentsStatistics').checked){XHR.appendData('UserAgentsStatistics', 1);	}else{XHR.appendData('UserAgentsStatistics', 0);}
 	if(document.getElementById('InfluxDBAllowBrowse').checked){XHR.appendData('InfluxDBAllowBrowse', 1);	}else{XHR.appendData('InfluxDBAllowBrowse', 0);}
-  	//XHR.appendData('InfluxDBPassword', encodeURIComponent(document.getElementById('InfluxDBPassword').value));
+	if(document.getElementById('ActAsASyslogServer').checked){XHR.appendData('ActAsASyslogServer', 1);}else{XHR.appendData('ActAsASyslogServer', 0);}
 	
 	
+	if(document.getElementById('CalamarisSchedules')){
+		XHR.appendData('CalamarisSchedules', document.getElementById('CalamarisSchedules').value);
+	}
+	
+	XHR.appendData('PostGresBackupMaxContainers', document.getElementById('PostGresBackupMaxContainers').value);
 	XHR.appendData('MySQLStatisticsRetentionDays', document.getElementById('MySQLStatisticsRetentionDays').value);
-	XHR.appendData('InfluxAdminPort', document.getElementById('InfluxAdminPort').value);
+	XHR.appendData('InfluxAdminPort', '8083');
+	XHR.appendData('InfluxRestartMem', document.getElementById('InfluxRestartMem').value);
 	XHR.appendData('InfluxAdminRetentionTime', document.getElementById('InfluxAdminRetentionTime').value);		
 	XHR.appendData('QuotasStatisticsInterval', document.getElementById('QuotasStatisticsInterval').value);
 	XHR.appendData('InfluxListenInterface', document.getElementById('InfluxListenInterface').value);
 	XHR.appendData('InFluxBackupDatabaseInterval', document.getElementById('InFluxBackupDatabaseInterval').value);
 	XHR.appendData('InFluxBackupDatabaseDir', document.getElementById('InFluxBackupDatabaseDir').value);
+	
+	XHR.appendData('PostgreSQLWorkMem', document.getElementById('PostgreSQLWorkMem').value);
+	XHR.appendData('PostgreSQLSharedBuffer', document.getElementById('PostgreSQLSharedBuffer').value);
+	XHR.appendData('PostgreSQLEffectiveCacheSize', document.getElementById('PostgreSQLEffectiveCacheSize').value);
 	
 	XHR.sendAndLoad('$page', 'POST',xSave$t);  			
 }
@@ -536,6 +622,21 @@ function InfluxUseRemoteCheck(){
 	}
 }
 
+function ActAsASyslogServerCheck(){
+	var XHR = new XHRConnection();
+	XHR.appendData('ActAsASyslogServerCheck', 0);
+	
+
+	if(document.getElementById('ActAsASyslogServer').checked){
+		XHR.appendData('ActAsASyslogServer', 1);
+	}else{
+		XHR.appendData('ActAsASyslogServer', 0);
+	
+	}
+	
+	XHR.sendAndLoad('$page', 'POST');  		
+}
+
 
 function checkt$t(){
 	var CORP_LICENSE=$CORP_LICENSE;
@@ -559,12 +660,25 @@ LoadAjaxRound('influx-db-status','$page?service-status=yes');
 	
 }
 
+function ActAsASyslogServerCheck(){
+	$sock=new sockets();
+	$sock->SET_INFO("ActAsASyslogServer", $_POST["ActAsASyslogServer"]);
+	$sock->getFrameWork("cmd.php?syslog-master-mode=yes");
+	
+}
+
 function InfluxUseRemote(){
 	
 	$_POST["ArticaInfluxPassword"]=url_decode_special_tool($_POST["ArticaInfluxPassword"]);
 	
+	if($_POST["InfluxUseRemotePort"]==8086){
+		echo "Port: 8086 not allowed\n";
+		return;
+	}
+	
 	$sock=new sockets();
 	$sock->SaveConfigFile(serialize($_POST), "InfluxRemoteProgress");
+	$sock->getFrameWork("cmd.php?syslog-master-mode=yes");
 }
 
 
@@ -577,7 +691,7 @@ function service_status(){
 	$sock->getFrameWork("influx.php?service-status=yes");
 	$ini=new Bs_IniHandler();
 	$ini->loadFile("/usr/share/artica-postfix/ressources/logs/APP_INFLUXDB.status");
-	$status=DAEMON_STATUS_ROUND("APP_INFLUXDB", $ini);
+	$status=DAEMON_STATUS_ROUND("APP_POSTGRES", $ini);
 	$html="$status<div style='text-align:right;height:40px;'>". imgtootltip("refresh-32.png","{refresh}","RefreshTab('influxdb_main_table');","right")."</div>";
 	echo $tpl->_ENGINE_parse_body($html);
 }
@@ -585,22 +699,16 @@ function service_status(){
 
 
 function InfluxAdminEnabled_save(){
-	
-	if(isset($_POST["InfluxDBPassword"])){
-		$_POST["InfluxDBPassword"]=url_decode_special_tool($_POST["InfluxDBPassword"]);
-	}
-	
 	$sock=new sockets();
+	
+	
 	while (list ($num, $val) = each ($_POST)){
 		$sock->SET_INFO($num, $val);
 		
 	}
-	
 	$sock->getFrameWork("squid.php?access-tail-restart=yes");
-	if($_POST["InfluxDBPassword"]<>null){
-		$sock->getFrameWork("influx.php?InfluxDBPassword=yes");
-	}
-	$sock->getFrameWork("artica.php?lighttpd-reload=yes");
+	$sock->getFrameWork("cmd.php?syslog-master-mode=yes");
+
 }
 
 function graph1(){

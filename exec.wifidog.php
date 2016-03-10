@@ -39,10 +39,10 @@ if($argv[1]=="--testcnx"){$GLOBALS["OUTPUT"]=true;TESTCONNECTION();die();}
 if($argv[1]=="--clean-all-sessions"){$GLOBALS["OUTPUT"]=true;CLEAN_ALL_SESSIONS();die();}
 if($argv[1]=="--reconfigure-progress"){$GLOBALS["OUTPUT"]=true;RECONFIGURE_PROGRESS();die();}
 if($argv[1]=="--wizard"){$GLOBALS["OUTPUT"]=true;WIZARD_PROGRESS();die();}
-
-
-
-
+if($argv[1]=="--backup"){$GLOBALS["OUTPUT"]=true;BACKUP_PROGRESS();die();}
+if($argv[1]=="--restore"){$GLOBALS["OUTPUT"]=true;BACKUP_RESTORE($argv[2]);die();}
+if($argv[1]=="--emergency-on"){$GLOBALS["OUTPUT"]=true;EMERGENCY_ON();die();}
+if($argv[1]=="--emergency-off"){$GLOBALS["OUTPUT"]=true;EMERGENCY_OFF();die();}
 
 
 
@@ -62,6 +62,116 @@ function build_progress_reconfigure($text,$pourc){
 	@file_put_contents($filename, serialize($array));
 	@chmod($filename,0777);
 
+}
+function build_progress_backup($text,$pourc){
+	$filename="/usr/share/artica-postfix/ressources/logs/webauth.rules.bakckup.progress";
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	echo "[$pourc]: $text\n";
+	@file_put_contents($filename, serialize($array));
+	@chmod($filename,0777);
+
+}
+function build_progress_restore($text,$pourc){
+	$filename="/usr/share/artica-postfix/ressources/logs/webauth.rules.restore.progress";
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	echo "[$pourc]: $text\n";
+	@file_put_contents($filename, serialize($array));
+	@chmod($filename,0777);
+
+}
+
+function BACKUP_RESTORE($filename){
+	$unix=new unix();
+	build_progress_restore("{restore} $filename",5);
+	$content_dir=dirname(__FILE__)."/ressources/conf/upload/";
+	$filesource="$content_dir$filename";
+	$filedest=$unix->FILE_TEMP();
+	if(!is_file($filesource)){
+		@unlink($filesource);
+		echo "$filesource no such file\n";
+		build_progress_backup("{restore} {failed}",110);
+		return;
+		
+	}
+	
+	build_progress_restore("{restore} $filename {uncompress}",50);
+	if(!$unix->uncompress($filesource, $filedest)){
+		@unlink($filesource);
+		@unlink($filedest);
+		echo "$filesource unable to uncompress\n";
+		build_progress_backup("{restore} {failed}",110);
+		return;
+	}
+	@unlink($filesource);
+	
+	
+	build_progress_restore("{restore} $filename {injecting}",90);
+	$q=new mysql_squid_builder();
+	$cmdline=$q->MYSQL_CMDLINES;
+	$mysql=$unix->find_program("mysql");
+	
+	$cmdline="$mysql $cmdline --force squidlogs < $filedest";
+	echo $cmdline."\n";
+	system($cmdline);
+	sleep(5);
+	@unlink($filedest);
+	build_progress_restore("{restore} {done}",100);
+	
+}
+
+function BACKUP_PROGRESS(){
+	
+	build_progress_backup("{backup} {rules}",5);
+	$tables[]="webauth_rules";
+	$tables[]="webauth_settings";
+	$tables[]="hotspot_members";
+	
+	$q=new mysql_squid_builder();
+	$cmdline=$q->MYSQL_CMDLINES;
+	$unix=new unix();
+	$mysqldump=$unix->find_program("mysqldump");
+	$bzip2=$unix->find_program("bzip2");
+	$bzip2_cmd="| $bzip2 ";
+	
+	
+	$filename="/usr/share/artica-postfix/ressources/logs/web/hotspot.rules.backup.sql";
+	$fileCompressName="/usr/share/artica-postfix/ressources/logs/web/hotspot.rules.backup.gz";
+	if(is_file($filename)){@unlink($filename);}
+	build_progress_backup("{backup} {tables}",50);
+	$cmd="$mysqldump $cmdline --skip-add-drop-table --insert-ignore --single-transaction --skip-add-locks --skip-lock-tables squidlogs ".@implode(" ", $tables) ."> $filename 2>&1";
+	echo $cmd."\n";
+	system("$cmd");
+	if(!is_file($filename)){
+		build_progress_backup("{backup} {failed}",110);
+		return;
+	}
+	
+	$size=@filesize($filename);
+	echo "Size: ".$size ." bytes ". FormatBytes($size/1024,true)."\n";
+	
+	sleep(3);
+	
+	build_progress_backup("{backup} {compress}",80);
+	if(!$unix->compress($filename, $fileCompressName)){
+		@unlink($filename);
+		build_progress_backup("{backup} {compress} failed}",110);
+		return;
+		
+	}
+	
+	@unlink($filename);
+	
+	$size=@filesize($fileCompressName);
+	echo "Size: ( after compression)  ".$size ." bytes ". FormatBytes($size/1024,true)."\n";
+	sleep(2);
+	
+	
+	build_progress_backup("{backup} {done}",100);
+	
+	
+	
 }
 
 function WIZARD_PROGRESS(){
@@ -98,7 +208,18 @@ function WIZARD_PROGRESS(){
 	if(!is_numeric($ArticaSplashHotSpotPort)){$ArticaSplashHotSpotPort=16080;}
 	if(!is_numeric($ArticaSplashHotSpotPortSSL)){$ArticaSplashHotSpotPortSSL=16443;}
 	
+	
+	$EnableKerbAuth=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableKerbAuth"));
+	
+	
+	
 	$php=$unix->LOCATE_PHP5_BIN();
+	
+	if($EnableKerbAuth==1){
+		build_progress("{disconnect} Active Directory",8);
+		shell_exec("$php /usr/share/artica-postfix/exec.kerbauth.php --disconnect");
+	}
+	
 	
 	
 	if($ArticaHotSpotPort==0){
@@ -150,6 +271,10 @@ function restart($nopid=false,$wizard=false) {
 	sleep(1);
 	build_progress("{starting_service}",50);
 	start(true);
+	build_progress("{restarting_service} ( Web)",60);
+	system("/etc/init.d/artica-hotspot restart");
+	build_progress("{restarting_service} ( {done})",100);
+	
 	
 }
 
@@ -274,14 +399,14 @@ function start($aspid=false){
 		
 		build_progress_reconfigure("{starting_service} waiting iptables rules",55);
 		
-		for($i=0;$i<5;$i++){
+		for($i=0;$i<10;$i++){
 			if(iptables_created()){break;}
-			build_progress_reconfigure("{starting_service} waiting iptables rules $i/5",55);
+			build_progress_reconfigure("{starting_service} waiting iptables rules $i/10",55);
 			sleep(1);
 		}
 		
 		Specifics_rules();
-		
+		Trusted_sites();
 		build_progress_reconfigure("{starting_service} {success}",50);
 		build_progress("{starting_service} {success}",100);
 	}else{
@@ -300,7 +425,7 @@ function iptables_created(){
 	exec("$iptables 2>&1",$results);
 	
 	while (list ($num, $ligne) = each ($results) ){
-		if(preg_match("#WiFiDog_.*?WIFI2Internet#", $ligne)){return true;}
+		if(preg_match("#WiFiDog_(.*?)_Unknown#", $ligne)){return true;}
 		
 	}
 	
@@ -318,6 +443,7 @@ function BuildSSLTables(){
 	if(!is_numeric($ArticaHotSpotEnableMIT)){$ArticaHotSpotEnableMIT=1;}
 	$iptables_restore=$unix->find_program("iptables-restore");
 	$iptables_save=$unix->find_program("iptables-save");
+	$HotSpotDenySSL=intval($sock->GET_INFO("HotSpotDenySSL"));
 	
 	if($GLOBALS["RECOVER"]){
 		if(is_file("/etc/wifidog.dump")){
@@ -338,7 +464,17 @@ function BuildSSLTables(){
 		system("$iptables -t nat -I WiFiDog_{$ArticaHotSpotInterface}_Internet -i $ArticaHotSpotInterface -m mark --mark 0x2 -p tcp --dport 443 -j REDIRECT --to-port $SquidHotSpotSSLPort");
 		trusted_ssl_sites();
 	}
-	system("$iptables  -t nat -I WiFiDog_{$ArticaHotSpotInterface}_Unknown -p tcp -m tcp --dport 443 -j REDIRECT --to-ports $ArticaSplashHotSpotPortSSL");
+	
+	if($HotSpotDenySSL==0){
+		system("$iptables  -t nat -I WiFiDog_{$ArticaHotSpotInterface}_Unknown -p tcp -m tcp --dport 443 -j REDIRECT --to-ports $ArticaSplashHotSpotPortSSL");
+	}else{
+		system("$iptables  -t nat -I WiFiDog_{$ArticaHotSpotInterface}_Unknown -p tcp -m tcp --dport 443 -j REJECT --reject-with icmp-port-unreachable");
+	}
+	
+	
+	
+	
+	
 }
 
 function Specifics_rules(){
@@ -382,7 +518,47 @@ function Specifics_rules(){
 
 	}
 	
+	
 
+	
+
+}
+
+
+function Trusted_sites(){
+	$sock=new sockets();
+	$unix=new unix();
+	$q=new mysql_squid_builder();
+	$iptables=$unix->find_program("iptables");
+	$ArticaHotSpotInterface=$sock->GET_INFO("ArticaHotSpotInterface");
+	if($ArticaHotSpotInterface==null){$ArticaHotSpotInterface="eth0";}
+	$WifiGroup="WiFiDog_{$ArticaHotSpotInterface}_Internet";
+	$WifiGroupUnknown="WiFiDog_{$ArticaHotSpotInterface}_Unknown";
+	$prefix_iptables2="$iptables -t nat -I $WifiGroup -i $ArticaHotSpotInterface -p tcp ";
+	$prefix_iptables3="$iptables -t nat -I $WifiGroupUnknown -i $ArticaHotSpotInterface -p tcp ";
+	$suffix_iptables="-j RETURN";
+	
+	
+	$sql="SELECT *  FROM `hotspot_whitelist`";
+	$results=$q->QUERY_SQL($sql);
+	if(!$q->ok){if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} $q->mysql_error\n";}return;}
+	$Total=mysql_num_rows($results);
+	
+	
+	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} $Total whitelisted websites\n";}
+	while ($ligne = mysql_fetch_assoc($results)) {
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}: Trust {$ligne["ipaddr"]}\n";}
+		$f["$prefix_iptables2 --dst {$ligne["ipaddr"]} $suffix_iptables"]=true;
+		$f["$prefix_iptables3 --dst {$ligne["ipaddr"]} $suffix_iptables"]=true;
+	}
+	
+	if(count($f)>0){
+		while (list ($cmdline, $b) = each ($f) ){
+			system($cmdline);
+		}
+	
+	}
+	
 }
 
 
@@ -393,6 +569,8 @@ function trusted_ssl_sites(){
 	$ArticaHotSpotInterface=$sock->GET_INFO("ArticaHotSpotInterface");
 	if($ArticaHotSpotInterface==null){$ArticaHotSpotInterface="eth0";}
 	$WifiGroup="WiFiDog_{$ArticaHotSpotInterface}_Internet";
+	$WifiGroupUnknown="WiFiDog_{$ArticaHotSpotInterface}_Unknown";
+	$HotSpotWhiteWhatsApp=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/HotSpotWhiteWhatsApp"));
 	
 	
 	
@@ -414,11 +592,37 @@ function trusted_ssl_sites(){
 	$Count=mysql_num_rows($results);
 	
 	if($GLOBALS["OUTPUT"]){echo "Configuring...: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}: Checking SSL whitelists $Count rule(s)\n";}
-	if($Count==0){return;}
+	
 	
 	
 	$prefix_iptables="$iptables -t nat -I $WifiGroup -i $ArticaHotSpotInterface -m mark --mark 0x2 -p tcp --dport 443";
+	$prefix_iptables_full="$iptables -t nat -I $WifiGroup -i $ArticaHotSpotInterface -p tcp";
+	
+	
 	$suffix_iptables="-j RETURN";
+	
+	
+	if($HotSpotWhiteWhatsApp==1){
+		$products_ip_ranges=new products_ip_ranges();
+		$array=$products_ip_ranges->whatsapp_networks();
+		if($GLOBALS["VERBOSE"]){echo "whatsapp_networks ->".count($array)." items [".__LINE__."]\n";}
+		while (list ($a, $b) = each ($array) ){
+			if(preg_match("#([0-9]+)-([0-9]+)#", $b)){
+				$f["$prefix_iptables_full -m iprange --dst-range $b $suffix_iptables"]=true;
+				continue;
+			}
+			$f["$prefix_iptables_full --dst $b $suffix_iptables"]=true;
+				
+		}
+	}
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	
 	while ($ligne = mysql_fetch_assoc($results)) {	
@@ -440,6 +644,27 @@ function trusted_ssl_sites(){
 			if($GLOBALS["VERBOSE"]){echo "[".__LINE__."]: teamviewer::{$ligne["objectid"]} -> ".count($f)." item(s).\n";}
 			continue;
 		}
+		
+		if($GroupType=="whatsapp"){
+			if($HotSpotWhiteWhatsApp==1){continue;}
+			$products_ip_ranges=new products_ip_ranges();
+			$array=$products_ip_ranges->whatsapp_networks();
+			if($GLOBALS["VERBOSE"]){echo "whatsapp_networks ->".count($array)." items [".__LINE__."]\n";}
+			while (list ($a, $b) = each ($array) ){
+				if(preg_match("#([0-9]+)-([0-9]+)#", $b)){
+					$f["$prefix_iptables -m iprange --dst-range $b $suffix_iptables"]=true;
+					continue;
+				}
+				$f["$prefix_iptables --dst $b $suffix_iptables"]=true;
+					
+			}
+		
+			if($GLOBALS["VERBOSE"]){echo "[".__LINE__."]: teamviewer::{$ligne["objectid"]} -> ".count($f)." item(s).\n";}
+			continue;
+			
+		}		
+		
+		
 		
 		if($GroupType=="skype"){
 			$products_ip_ranges=new products_ip_ranges();
@@ -475,6 +700,23 @@ function trusted_ssl_sites(){
 			continue;
 		}
 		
+		if($GroupType=="youtube"){
+			$products_ip_ranges=new products_ip_ranges();
+			$array=$products_ip_ranges->youtube_networks();
+			if($GLOBALS["VERBOSE"]){echo "youtube_networks ->".count($array)." items [".__LINE__."]\n";}
+			while (list ($a, $b) = each ($array) ){
+				if(preg_match("#([0-9]+)-([0-9]+)#", $b)){
+					$f["$prefix_iptables -m iprange --dst-range $b $suffix_iptables"]=true;
+					continue;
+				}
+				$f["$prefix_iptables --dst $b $suffix_iptables"]=true;
+					
+			}
+		
+			if($GLOBALS["VERBOSE"]){echo "[".__LINE__."]: youtube_networks::{$ligne["objectid"]} -> ".count($f)." item(s).\n";}
+			continue;
+		}		
+		
 		
 		if($GroupType=="google_ssl"){
 			include_once(dirname(__FILE__)."/ressources/class.products-ip-ranges.inc");
@@ -498,14 +740,14 @@ function trusted_ssl_sites(){
 	}
 	
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}: Building ". count($f). " Trusted SSL sites\n";}
+
 	
 	if(count($f)>0){
-		
 		while (list ($cmdline, $b) = each ($f) ){
 			system($cmdline);
 		}
-		
-	}
+	
+	}	
 	
 	
 }
@@ -788,13 +1030,17 @@ function buildconfig(){
 	
 	$sock=new sockets();
 	$unix=new unix();
+	$q=new mysql_squid_builder();
+	$q->check_hotspot_tables();
 	$php=$unix->LOCATE_PHP5_BIN();
 	$SquidHotSpotPort=intval($sock->GET_INFO("SquidHotSpotPort"));
 	$ArticaHotSpotPort=intval($sock->GET_INFO("ArticaHotSpotPort"));
 	$ArticaSSLHotSpotPort=intval($sock->GET_INFO("ArticaSSLHotSpotPort"));
 	$ArticaSplashHotSpotPort=intval($sock->GET_INFO("ArticaSplashHotSpotPort"));
 	$SquidHotSpotSSLPort=intval($sock->GET_INFO("SquidHotSpotSSLPort"));
-	
+	$HospotNoSSL=intval($sock->GET_INFO("HospotNoSSL"));
+	$HotSpotDenySSL=intval($sock->GET_INFO("HotSpotDenySSL"));
+	$ArticaHotSpotEmergency=intval($sock->GET_INFO("ArticaHotSpotEmergency"));
 	
 	$ArticaSplashHotSpotPortSSL=intval($sock->GET_INFO("ArticaSplashHotSpotPortSSL"));
 	
@@ -843,6 +1089,10 @@ function buildconfig(){
 
 	
 	$IPADDR=$NETWORK_ALL_INTERFACES[$ArticaHotSpotInterface]["IPADDR"];
+	$GatewayAddress=$IPADDR;
+	
+	$sock->SET_INFO("HotSpotGatewayAddr", $IPADDR);
+	
 	if($GLOBALS["OUTPUT"]){echo "Configuring...: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}: HTTP service on {$NETWORK_ALL_INTERFACES[$ArticaHotSpotInterface]["IPADDR"]} `$IPADDR` port\n";}
 	$HospotHTTPServerName=trim($sock->GET_INFO("HospotHTTPServerName"));
 	
@@ -973,24 +1223,8 @@ function buildconfig(){
 		$f[]="#ExternalInterface eth0 or ppp0 otherwise";
 	}
 	$f[]="";
-	$f[]="# Parameter: GatewayInterface";
-	$f[]="# Default: NONE";
-	$f[]="# Mandatory";
-	$f[]="#";
-	$f[]="# Set this to the internal interface (typically your wifi interface).    ";
-	$f[]="# Typically br-lan for Openwrt (by default the wifi interface is bridged with wired lan in openwrt)";
-	$f[]="# and eth1, wlan0, ath0, etc. otherwise";
-	$f[]="# You can get this interface with the ifconfig command and finding your wifi interface";
-	$f[]="";
 	$f[]="GatewayInterface $ArticaHotSpotInterface";
-	$f[]="";
-	$f[]="# Parameter: GatewayAddress";
-	$f[]="# Default: Find it from GatewayInterface";
-	$f[]="# Optional";
-	$f[]="#";
-	$f[]="# Set this to the internal IP address of the gateway.  Not normally required.";
-	$f[]="";
-	$f[]="#GatewayAddress 192.168.1.210";
+	$f[]="GatewayAddress $GatewayAddress";
 	$f[]="";
 	$f[]="# Parameter: HtmlMessageFile";
 	$f[]="# Default: wifidog-msg.html";
@@ -1030,10 +1264,15 @@ function buildconfig(){
 		$f[]="    Hostname $IPADDR";
 	}
 	
+	if($HotSpotDenySSL==1){$HospotNoSSL=1;}
 	
 	
 	$f[]="    SSLPort $ArticaSplashHotSpotPortSSL";
-	$f[]="    SSLAvailable yes";
+	if($HospotNoSSL==0){
+		$f[]="    SSLAvailable yes";
+	}else{
+		$f[]="    SSLAvailable no";
+	}
 	$f[]="    HTTPPort $ArticaSplashHotSpotPort";
 	$f[]="    LoginScriptPathFragment hotspot.php?wifidog-login=yes&";
 	$f[]="    PingScriptPathFragment hotspot.php?wifidog-ping=yes&";
@@ -1101,7 +1340,14 @@ function buildconfig(){
 	$f[]="# ";
 	$f[]="# Used for rules to be applied to all other rulesets except locked.";
 	$f[]="FirewallRuleSet global {";
-	$f[]=firewall_rules(0);
+	
+	if($ArticaHotSpotEmergency==1){
+		$f[]="\tFirewallRule allow udp to 0.0.0.0/0";
+		$f[]="\tFirewallRule allow tcp to 0.0.0.0/0";
+		
+	}else{
+		$f[]=firewall_rules(0);
+	}
 	$f[]="    # FirewallRule syntax:";
 	$f[]="    # FirewallRule (block|drop|allow|log|ulog) [(tcp|udp|icmp) [port X]] [to IP/CIDR]";
 	$f[]="";
@@ -1138,7 +1384,14 @@ function buildconfig(){
 	$f[]="# Rule Set: validating-users";
 	$f[]="# Used for new users validating their account";
 	$f[]="FirewallRuleSet validating-users {";
-	$f[]=firewall_rules(1);
+	if($ArticaHotSpotEmergency==1){
+		$f[]="\tFirewallRule allow udp to 0.0.0.0/0";
+		$f[]="\tFirewallRule allow tcp to 0.0.0.0/0";
+	
+	}else{
+		$f[]=firewall_rules(1);
+	}
+	
 	$f[]="FirewallRule allow tcp port 80 to 0.0.0.0/0";
 	$f[]="FirewallRule allow tcp port 443 to 0.0.0.0/0";
 	$f[]="}";
@@ -1146,7 +1399,13 @@ function buildconfig(){
 	$f[]="# Rule Set: known-users";
 	$f[]="# Used for normal validated users.";
 	$f[]="FirewallRuleSet known-users {";
-	$f[]=firewall_rules(1);
+	if($ArticaHotSpotEmergency==1){
+		$f[]="\tFirewallRule allow udp to 0.0.0.0/0";
+		$f[]="\tFirewallRule allow tcp to 0.0.0.0/0";
+	
+	}else{
+		$f[]=firewall_rules(1);
+	}
 	$f[]="FirewallRule allow tcp port 80 to 0.0.0.0/0";
 	$f[]="FirewallRule allow tcp port 443 to 0.0.0.0/0";
 	$f[]="}";
@@ -1157,24 +1416,59 @@ function buildconfig(){
 	$f[]="#";
 	$f[]="# XXX The redirect code adds the Default DROP clause.";
 	$f[]="FirewallRuleSet unknown-users {";
-	$f[]="    FirewallRule allow udp port 53";
-	$f[]="    FirewallRule allow tcp port 53";
-	$f[]="    FirewallRule allow udp port 67";
-	$f[]="    FirewallRule allow tcp port 67";
-	$f[]=firewall_rules(2);
-	$f[]="FirewallRule block tcp port 443 to 0.0.0.0/0";
+	
+	if($ArticaHotSpotEmergency==1){
+		$f[]="\tFirewallRule allow udp to 0.0.0.0/0";
+		$f[]="\tFirewallRule allow tcp to 0.0.0.0/0";
+	}else{
+	
+		if($HotSpotDenySSL==1){$f[]="FirewallRule block tcp port 443 to 0.0.0.0/0";}
+		if($HotSpotDenySSL==0){$f[]="FirewallRule allow tcp port 443 to 0.0.0.0/0";}
+		$f[]="    FirewallRule allow udp port 53";
+		$f[]="    FirewallRule allow tcp port 53";
+		$f[]="    FirewallRule allow udp port 67";
+		$f[]="    FirewallRule allow tcp port 67";	
+		$f[]=firewall_rules(2);
+	}
 	$f[]="}";
 	$f[]="";
 	$f[]="# Rule Set: locked-users";
 	$f[]="#";
 	$f[]="# Not currently used";
 	$f[]="FirewallRuleSet locked-users {";
-	$f[]="    FirewallRule block to 0.0.0.0/0";
+	if($ArticaHotSpotEmergency==1){
+		$f[]="\tFirewallRule allow udp to 0.0.0.0/0";
+		$f[]="\tFirewallRule allow tcp to 0.0.0.0/0";
+	}else{
+	$f[]="\tFirewallRule block to 0.0.0.0/0";
+	}
 	$f[]="}";
 	$f[]="";
 	@file_put_contents("/etc/wifidog.conf", @implode("\n", $f));
 	build_progress("{reconfiguring}",90);
+	build_error_page();
 }
+function build_error_page(){
+	$sock=new sockets();
+	$HotSpotErrorRedirect=$sock->GET_INFO("HotSpotErrorRedirect");
+	if($HotSpotErrorRedirect==null){$HotSpotErrorRedirect="http://www.msftncsi.com";}
+
+
+	$f[]="<html>";
+	$f[]="<head>";
+	$f[]="<META http-equiv=\"refresh\" content=\"1; URL=$HotSpotErrorRedirect\">";
+	$f[]="</head>";
+	$f[]="<body style='font-size:40px;text-align:center;margin:80px'>";
+	$f[]="Redirecting to $HotSpotErrorRedirect";
+	$f[]="</body></html>";
+
+	@file_put_contents(dirname(__FILE__)."/hotspot.html" ,@implode("", $f));
+	@chmod(dirname(__FILE__)."/hotspot.html", 0755);
+
+
+
+}
+
 
 function trusted_macs(){
 	$Ipclass=new IP();
@@ -1195,6 +1489,7 @@ function trusted_macs(){
 
 function firewall_rules($type=0){
 	if(isset($GLOBALS["FWRLS"][$type])){return $GLOBALS["FWRLS"][$type];}
+	$HotSpotWhiteWhatsApp=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/HotSpotWhiteWhatsApp"));
 	$Ipclass=new IP();
 	$q=new mysql_squid_builder();
 	$f=array();
@@ -1204,6 +1499,28 @@ function firewall_rules($type=0){
 	$array[2]="unknown-users";
 	
 	
+	if($type==1){
+		if($HotSpotWhiteWhatsApp==1){
+			$f[]="FirewallRule allow tcp port 5222";
+			$f[]="FirewallRule allow tcp port 5223";
+			$f[]="FirewallRule allow tcp port 5228";
+			
+		}
+	}
+	
+	
+	
+	
+	//--------------------------------------------------------------------------
+	$sql="SELECT *  FROM `hotspot_whitelist`";
+	$results=$q->QUERY_SQL($sql);
+	
+	while ($ligne = mysql_fetch_assoc($results)) {
+		$f[]="\tFirewallRule allow to {$ligne["ipaddr"]}";
+	}
+	//--------------------------------------------------------------------------
+	
+	
 	$results=$q->QUERY_SQL("SELECT * FROM hotspot_networks WHERE hotspoted=$type AND direction=0 ORDER BY zorder");
 	$Count=mysql_num_rows($results);
 	
@@ -1211,7 +1528,6 @@ function firewall_rules($type=0){
 	if($Count==0){
 		$f[]="# Type $type No rule set";
 		if($type==1){ $f[]="FirewallRule allow to 0.0.0.0/0"; }
-		
 		return @implode("\n", $f);
 	}
 	
@@ -1254,7 +1570,11 @@ function firewall_rules($type=0){
 	}
 	if($type==0){
 		if(count($f)==0){$f[]="\tFirewallRule drop to 0.0.0.0/0";}
-	}	
+	}
+
+	
+	
+	
 	
 	$GLOBALS["FWRLS"][$type]=@implode("\n", $f);
 	return $GLOBALS["FWRLS"][$type];
@@ -1276,6 +1596,12 @@ function TESTCONNECTION($force=false){
 	$sock=new sockets();
 	$unix=new unix();
 	if($GLOBALS["FORCE"]){$force=true;}
+	
+	if(system_is_overloaded()){
+		hotspot_admin_mysql(1, "Aborting task: Overloaded system Memory:{$GLOBALS["SYSTEM_INTERNAL_MEMM"]}M, Load {$GLOBALS["SYSTEM_INTERNAL_LOAD"]}",null,__FILE__,__LINE__);
+		die();
+	}
+	
 	$TimeFile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".time";
 	$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
 	
@@ -1306,6 +1632,10 @@ function TESTCONNECTION($force=false){
 	$ArticaHotSpotPort=intval($sock->GET_INFO("ArticaHotSpotPort"));
 	
 	$uri="http://$IPADDR:$ArticaHotSpotPort/wifidog/status";
+	
+	@file_put_contents("/home/artica/hotspot/caches/WifidogUri",$uri);
+	@file_put_contents("/home/artica/hotspot/caches/HTTPClientIP",$IPADDR);
+	
 	$curl=new ccurl($uri,true,$IPADDR,true);
 	$curl->NoHTTP_POST=true;
 	$curl->Timeout=5;
@@ -1355,6 +1685,7 @@ function TESTCONNECTION($force=false){
 	$ARRAY["TIME"]=time();
 	if($GLOBALS["VERBOSE"]){print_r($ARRAY);}
 	@mkdir("/usr/share/artica/postfix/ressources/logs/web",0755,true);
+	@unlink("/usr/share/artica/postfix/ressources/logs/web/wifidog.status");
 	file_put_contents("/usr/share/artica/postfix/ressources/logs/web/wifidog.status", serialize($ARRAY));
 	chmod("/usr/share/artica/postfix/ressources/logs/web/wifidog.status",0755);
 	return $ARRAY;
@@ -1405,26 +1736,46 @@ function apache_pid(){
 	return $unix->PIDOF_PATTERN($apache2ctl." -f /etc/artica-postfix/hotspot-httpd.conf");
 }
 
-function RECONFIGURE_PROGRESS(){
+function EMERGENCY_OFF(){
+	$sock=new sockets();
+	$sock->SET_INFO("ArticaHotSpotEmergency", 0);
+	RECONFIGURE_PROGRESS(true);	
+	
+}
+
+function EMERGENCY_ON(){
+	$sock=new sockets();
+	$sock->SET_INFO("ArticaHotSpotEmergency", 1);
+	RECONFIGURE_PROGRESS(true);
+}
+
+function RECONFIGURE_PROGRESS($aspid=false){
 	$unix=new unix();
-	$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
-	$pid=$unix->get_pid_from_file($pidfile);
-	if($unix->process_exists($pid,basename(__FILE__))){
-		$time=$unix->PROCCESS_TIME_MIN($pid);
-		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}: Already Artica task running PID $pid since {$time}mn\n";}
-		build_progress_reconfigure("{failed}",110);
-		return;
+	if(!$aspid){
+		$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
+		$pid=$unix->get_pid_from_file($pidfile);
+		if($unix->process_exists($pid,basename(__FILE__))){
+			$time=$unix->PROCCESS_TIME_MIN($pid);
+			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}: Already Artica task running PID $pid since {$time}mn\n";}
+			build_progress_reconfigure("{failed}",110);
+			return;
+		}
 	}
 	$sock=new sockets();
 	$ArticaHotSpotEnableMIT=$sock->GET_INFO("ArticaHotSpotEnableMIT");
 	$ArticaHotSpotEnableProxy=$sock->GET_INFO("ArticaHotSpotEnableProxy");
+	$ArticaHotSpotEmergency=intval($sock->GET_INFO("ArticaHotSpotEmergency"));
+	
 	
 	if(!is_numeric($ArticaHotSpotEnableMIT)){$ArticaHotSpotEnableMIT=1;}
 	if(!is_numeric($ArticaHotSpotEnableProxy)){$ArticaHotSpotEnableProxy=1;}
 	
+	
 	$proxyRestart=0;
 	if($ArticaHotSpotEnableMIT==1){$proxyRestart=1;}
 	if($ArticaHotSpotEnableProxy==1){$proxyRestart=1;}
+	
+	
 	
 	$php=$unix->LOCATE_PHP5_BIN();
 	build_progress_reconfigure("{reconfigure_hostpot_service}",5);
@@ -1440,21 +1791,28 @@ function RECONFIGURE_PROGRESS(){
 	build_progress_reconfigure("{starting_service} Hostpot",40);
 	start(true);
 	
-	if($proxyRestart==1){
-		build_progress_reconfigure("{reconfigure_proxy_service}",50);
-		system("$php /usr/share/artica-postfix/exec.squid.php --build --force");
+
+
+	
+	if($ArticaHotSpotEmergency==0){
+		if($proxyRestart==1){
+			build_progress_reconfigure("{reconfigure_proxy_service}",50);
+			system("$php /usr/share/artica-postfix/exec.squid.php --build --force");
+		}
+		
+		build_progress_reconfigure("{reconfiguring} {webserver}",60);
+		system("$php /usr/share/artica-postfix/exec.hostpot-web.php --build");
+		sleep(2);
+		
+		build_progress_reconfigure("{restarting} {webserver}",70);
+		system("$php /usr/share/artica-postfix/exec.hostpot-web.php --restart --force");
+		sleep(2);
+	
+	
+		build_progress_reconfigure("{restarting} {dns_service}",71);
+		system("/etc/init.d/dnsmasq restart");
+		sleep(2);
 	}
-	build_progress_reconfigure("{reconfiguring} {webserver}",60);
-	system("$php /usr/share/artica-postfix/exec.hostpot-web.php --build");
-	sleep(2);
-	
-	build_progress_reconfigure("{restarting} {webserver}",70);
-	system("$php /usr/share/artica-postfix/exec.hostpot-web.php --restart --force");
-	sleep(2);
-	
-	build_progress_reconfigure("{restarting} {dns_service}",71);
-	system("/etc/init.d/dnsmasq restart");
-	sleep(2);
 
 	$pid=PID_NUM();
 	if(!$unix->process_exists($pid)){

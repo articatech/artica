@@ -48,6 +48,11 @@ function Page(){
 	$LIMIT_BY_SIZE=intval($sock->GET_INFO("LIMIT_BY_SIZE"));
 	$LANDING_PAGE=$sock->GET_INFO("LANDING_PAGE");
 	$LOST_LANDING_PAGE=$sock->GET_INFO("LOST_LANDING_PAGE");
+	$MACWHITE=intval($sock->GET_INFO("MACWHITE"));
+	$SMS_REGISTER=intval($sock->GET_INFO("SMS_REGISTER"));
+	$BOUNCE_AUTH=intval($sock->GET_INFO("BOUNCE_AUTH"));
+	$TOS_VALUE=intval($sock->GET_INFO("TOS_VALUE"));
+	
 	if($LOST_LANDING_PAGE==null){$LOST_LANDING_PAGE="http://articatech.net";}
 	$ArticaSplashHotSpotRemoveAccount=intval($sock->GET_INFO("ArticaSplashHotSpotRemoveAccount"));
 	
@@ -67,7 +72,7 @@ function Page(){
 	}
 	
 	
-	
+	$ayDscp = array(0 => '{default}',8 => '0x20',10 => '0x28',12 => '0x30',14 => '0x38',16 => '0x40',18 => '0x48',20 => '0x50',22 => '0x58',24 => '0x60',26 => '0x68',28 => '0x70',30 => '0x78',32 => '0x80',34 => '0x88',36 => '0x90',38 => '0x98',40 => '0xA0',46 => '0xB8',48 => '0xC0',56 => '0xE0');
 	$html="<div style='width:98%' class=form>
 	<table style='width:100%'>
 		
@@ -87,9 +92,7 @@ function Page(){
 		<td class=legend style='font-size:22px'>". texttooltip("{lost_landing_page}","{lost_landing_page_explain}").":</td>
 		<td>". Field_text("LOST_LANDING_PAGE-$t",$LOST_LANDING_PAGE,"font-size:22px;width:350px")."</td>
 	</tr>	
-							
-				
-				
+
 	<tr>
 		<td class=legend style='font-size:22px'>". texttooltip("{landing_page}","{landing_page_hotspot_explain}").":</td>
 		<td>". Field_text("LANDING_PAGE-$t",$LANDING_PAGE,"font-size:22px;width:350px")."</td>
@@ -104,7 +107,13 @@ function Page(){
 	<tr>
 		<td class=legend style='font-size:22px;text-transform:capitalize'>".texttooltip("{re_authenticate_each}","{re_authenticate_each_hotspot_size}").":</td>
 		<td style='font-size:18px'>". Field_text("LIMIT_BY_SIZE-$t",$LIMIT_BY_SIZE,"font-size:22px;width:120px")."&nbsp;MB</td>
-	</tr>								
+	</tr>	
+	<tr>
+		<td class=legend style='font-size:18px'>". texttooltip("{tcp_outgoing_tos}","{HOTSPOT_TOS_VALUE_EXPLAIN}").":</td>
+		<td>". Field_array_Hash($ayDscp,"TOS_VALUE-$t",$TOS_VALUE,'style:font-size:22px;')."</td>
+	</tr>
+				
+				
 							
 							
 	<tr>
@@ -114,8 +123,17 @@ function Page(){
 	<tr>
 		<td class=legend style='font-size:22px;text-transform:capitalize'>".texttooltip("{remove_account_in} ({default})","{ArticaSplashHotSpotRemoveAccount_explain}").":</td>
 		<td style='font-size:18px'>". Field_array_Hash($Timez,"ArticaSplashHotSpotRemoveAccount-$t",$ArticaSplashHotSpotRemoveAccount,null,null,0,"font-size:22px")."</td>
-	</tr>			
+	</tr>
+
+	<tr>
+		<td class=legend style='font-size:22px;text-transform:capitalize'>".texttooltip("{bounce_if_already_authenticated}","{bounce_if_already_authenticated_hotspot}").":</td>
+		<td>". Field_checkbox_design("BOUNCE_AUTH-$t",1,$BOUNCE_AUTH)."</td>
+	</tr>				
 				
+	<tr>
+		<td class=legend style='font-size:22px;text-transform:capitalize'>".texttooltip("{save_computer_in_whitelist}","{save_computer_in_whitelist_hotspot}").":</td>
+		<td>". Field_checkbox_design("MACWHITE-$t",1,$MACWHITE)."</td>
+	</tr>					
 				
 
 	<tr><td colspan=2 style='font-size:30px'>{authentication}</td></tr>					
@@ -137,7 +155,13 @@ function Page(){
 	<tr>
 		<td class=legend style='font-size:22px;text-transform:capitalize'>". texttooltip("{enable_hotspot_autologin}","{enable_hotspot_autologin_explain}").":</td>
 		<td>". Field_checkbox_design("ENABLED_AUTO_LOGIN-$t",1,intval($sock->GET_INFO("ENABLED_AUTO_LOGIN")))."</td>
-	</tr>				
+	</tr>
+	<tr>
+		<td class=legend style='font-size:22px;text-transform:capitalize'>". texttooltip("{enable_hotspot_sms}","{enable_hotspot_sms_explain}").":</td>
+		<td>". Field_checkbox_design("SMS_REGISTER-$t",1,$SMS_REGISTER)."</td>
+	</tr>
+				
+				
 	<tr>
 		<td class=legend style='font-size:22px;text-transform:capitalize'>". texttooltip("{enable_confirmation_establish_session}","{enable_confirmation_establish_session_explain}").":</td>
 		<td>". Field_checkbox_design("ENABLED_REDIRECT_LOGIN-$t",1,$ENABLED_REDIRECT_LOGIN)."</td>
@@ -185,6 +209,10 @@ function Page(){
 		if(document.getElementById('DO_NOT_AUTENTICATE-$t').checked){XHR.appendData('DO_NOT_AUTENTICATE',1); }else{ XHR.appendData('DO_NOT_AUTENTICATE',0); }
 		if(document.getElementById('USE_MYSQL-$t').checked){XHR.appendData('USE_MYSQL',1); }else{ XHR.appendData('USE_MYSQL',0); }
 		if(document.getElementById('USE_ACTIVEDIRECTORY-$t').checked){XHR.appendData('USE_ACTIVEDIRECTORY',1); }else{ XHR.appendData('USE_ACTIVEDIRECTORY',0); }
+		if(document.getElementById('SMS_REGISTER-$t').checked){XHR.appendData('SMS_REGISTER',1); }else{ XHR.appendData('SMS_REGISTER',0); }
+		if(document.getElementById('MACWHITE-$t').checked){XHR.appendData('MACWHITE',1); }else{ XHR.appendData('MACWHITE',0); }
+		if(document.getElementById('BOUNCE_AUTH-$t').checked){XHR.appendData('BOUNCE_AUTH',1); }else{ XHR.appendData('BOUNCE_AUTH',0); }
+		XHR.appendData('TOS_VALUE',document.getElementById('TOS_VALUE-$t').value);
 		XHR.appendData('ArticaSplashHotSpotCacheAuth',document.getElementById('ArticaSplashHotSpotCacheAuth-$t').value);
 		XHR.appendData('ArticaSplashHotSpotEndTime',document.getElementById('ArticaSplashHotSpotEndTime-$t').value);
 		XHR.appendData('ArticaSplashHotSpotRemoveAccount',document.getElementById('ArticaSplashHotSpotRemoveAccount-$t').value);
@@ -213,5 +241,7 @@ function Save(){
 		$sock->SET_INFO($key, $value);
 		
 	}
-	
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
+	$sock->getFrameWork("squid.php?reconfigure-squid=yes");
 }

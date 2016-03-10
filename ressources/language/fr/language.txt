@@ -903,7 +903,7 @@ Si le parent n'est pas titulaire d'un objet de requ&ecirc;te, il transmet la req
 <businessRole>R&ocirc;le d'affaires</businessRole>
 <by_file_type>Par type de fichier</by_file_type>
 <cache>cache</cache>
-<cached>cache</cached>
+<cached>Mise en cache</cached>
 <cached_files_number>Nombre de fichiers mis en cache</cached_files_number>
 <cache_cleaned>Cache de la console nettoy&eacute;.</cache_cleaned>
 <cache_type_text>Squid dispose de plusieurs m&eacute;thode d'&eacute;criture de son cache.[br]
@@ -4386,7 +4386,7 @@ Si il est en rouge, vous allez devoir maintenir la base des utilisateurs.[br]Cet
 <updates_success>Mise &agrave; jour effectu&eacute;e avec succ&egrave;s</updates_success>
 <UPDATE_ANTIVIRUS>Base de donn&eacute;es de mise &agrave; jour antivirale</UPDATE_ANTIVIRUS>
 <UPDATE_ANTIVIRUS_DATABASE_PERFORMED>La t&acirc;che de mise &agrave; jour &agrave; &eacute;t&eacute; programm&eacute;e pour tourner en arri&egrave;re-plan, r&eacute;f&eacute;rez-vous aux &eacute;v&egrave;nements pour afficher les r&eacute;sultats</UPDATE_ANTIVIRUS_DATABASE_PERFORMED>
-<UPDATE_ANTIVIRUS_TEXT>effectuer la mise &agrave; jour des bases antivirus</UPDATE_ANTIVIRUS_TEXT>
+<UPDATE_ANTIVIRUS_TEXT>Effectuer la mise &agrave; jour des bases antivirus</UPDATE_ANTIVIRUS_TEXT>
 <UPDATE_CLAMAV>Mettez &agrave; jour la base antivirus ClamAV</UPDATE_CLAMAV>
 <UPDATE_CLAMAV_EXPLAIN>Lancez la mise &agrave; jour du moteur de scan et des fichiers de signatures ClamAV</UPDATE_CLAMAV_EXPLAIN>
 <update_events>&Eacute;v&egrave;nements de mises &agrave; jour</update_events>

@@ -9,7 +9,7 @@
     * |                  http://www.phpguru.org/static/license.html                  |
     * o------------------------------------------------------------------------------o
     *
-    * © Copyright 2008,2009 Richard Heyes
+    * ï¿½ Copyright 2008,2009 Richard Heyes
     */
 
 require_once(dirname(__FILE__) . '/mimePart.php');
@@ -927,7 +927,7 @@ class fileAttachment extends attachment
     {
         $encoding = is_null($encoding) ? new Base64Encoding() : $encoding;
 
-        parent::__construct(file_get_contents($filename), basename($filename), $contentType, $encoding);
+        parent::__construct(@file_get_contents($filename), basename($filename), $contentType, $encoding);
     }
 }
 

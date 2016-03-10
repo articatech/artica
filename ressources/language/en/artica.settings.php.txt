@@ -32,7 +32,7 @@ Disable services growth SMTP flow performances but it reduce email security too.
 <EnableSyslogMysql>Enable Syslog injection</EnableSyslogMysql>
 <EnableSyslogMysql_text>This option allows artica to parse syslog and insert all events into Mysql database.[br]
 This feature enable the syslog query section in Administrator index page.</EnableSyslogMysql_text>
-<events_table_count>Mysql Events Rows number</events_table_count>
+<events_table_count>MySQL Events Rows number</events_table_count>
 <global_admin_account>Global administrator account</global_admin_account>
 <global_admin_confirm>Are you sure to change the administrator account, this operation will change the LDAP server superuser and apply all changes according the LDAP access of all modules</global_admin_confirm>
 <global_paths>Global paths</global_paths>
@@ -95,11 +95,11 @@ Pop-Up authentication enable lighttpd engine web server to parse the LDAP databa
 <MysqlMaxEventsLogs>Max syslogs events</MysqlMaxEventsLogs>
 <MysqlMaxEventsLogs_text>Artica will store all syslog informations on your MYSQL Database, it depends on your server[br]
 but for better performances you need to define a maximum number of rows stored in database (default 200 000)</MysqlMaxEventsLogs_text>
-<mysqlpass>Mysql account password</mysqlpass>
-<mysqlroot>Mysql account</mysqlroot>
+<mysqlpass>MySQL account password</mysqlpass>
+<mysqlroot>MySQL account</mysqlroot>
 <mysqlroot_text>Can create database, insert, update, reach root account...</mysqlroot_text>
-<mysql_settings>Mysql settings</mysql_settings>
-<mysql_settings_text>Change the Mysql password, define the behavior of mysql database storage & max events</mysql_settings_text>
+<mysql_settings>MySQL settings</mysql_settings>
+<mysql_settings_text>Change the MySQL password, define the behavior of mysql database storage & max events</mysql_settings_text>
 <nothing_to_change>Nothing to change</nothing_to_change>
 <notification_context>Define here which notification you want to be receive</notification_context>
 <PHP_FCGI_CHILDREN>The number of php-cgi processes per daemon processes</PHP_FCGI_CHILDREN>
@@ -119,7 +119,7 @@ The size of the data set is the sum of the Berkeley DataBase (BDB) files</set_ca
 <smtp_auth_user>Username AUTH</smtp_auth_user>
 <smtp_dest>Your email address</smtp_dest>
 <smtp_enabled>Enable SMTP notifications</smtp_enabled>
-<smtp_notifications>email notifications</smtp_notifications>
+<smtp_notifications>Email notifications</smtp_notifications>
 <SMTP_NOTIFICATIONS_ADD_CC>Give the eMail address that will receive mail notifications</SMTP_NOTIFICATIONS_ADD_CC>
 <smtp_notifications_text>Be informed of system dysfunctions or mandatories scheduled tasks[br]
 do not use artica server has the main mail server[br]If it's not working you will be not be able to receive notifications
@@ -127,7 +127,7 @@ do not use artica server has the main mail server[br]If it's not working you wil
 <smtp_sender>sender mail address</smtp_sender>
 <smtp_server_name>Mail server name</smtp_server_name>
 <smtp_server_port>Mail server port</smtp_server_port>
-<sql_database>Mysql Database</sql_database>
+<sql_database>MySQL Database</sql_database>
 <SystemCPUAlarmPourc>when reach % cpu used</SystemCPUAlarmPourc>
 <tls_enabled>Enable TLS support</tls_enabled>
 <UseDNSMasq>Recommended to use Dnsmasq</UseDNSMasq>

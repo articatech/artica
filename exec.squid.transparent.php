@@ -716,7 +716,11 @@ function GetSourcesAndDestinations($ligne){
 	$AVAILABLE_MACROS["office365"]=true;
 	$AVAILABLE_MACROS["skype"]=true;
 	$AVAILABLE_MACROS["dropbox"]=true;
+	$AVAILABLE_MACROS["whatsapp"]=true;
+	$AVAILABLE_MACROS["youtube"]=true;
 	
+	
+
 	while (list ($Destport, $b) = each ($PortsZ) ){
 		
 		if(isset($AVAILABLE_MACROS[trim(strtolower($ligne["destination"]))])){
@@ -1042,6 +1046,11 @@ function destinations_macro($macro,$destinations=array(),$eth,$port=0,$destinati
 	if($macro=="teamviewer"){
 		$mains=$nets->teamviewer_networks();
 	}
+	
+	if($macro=="whatsapp"){
+		$mains=$nets->whatsapp_networks();
+		
+	}
 
 	if($macro=="dropbox"){
 		$mains=$nets->dropbox_networks();
@@ -1056,8 +1065,13 @@ function destinations_macro($macro,$destinations=array(),$eth,$port=0,$destinati
 		$mains=$nets->office365_networks();
 		$mains=$nets->office365_domains($mains);
 	}
-	
+	if($macro=="youtube"){
+		$mains=$nets->youtube_networks();
+		
+	}	
 
+
+	
 	
 	
 	

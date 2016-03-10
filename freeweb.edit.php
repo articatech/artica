@@ -1843,22 +1843,22 @@ function security_tabs(){
 	$array["authentication"]='{authentication}';
 	$array["clients_restrictions"]='{clients_restrictions}';
 	
-	if(count($array)<10){$fontsize="style='font-size:14px'";}
+	if(count($array)<10){$fontsize="style='font-size:18px'";}
 	
 	
 	while (list ($num, $ligne) = each ($array) ){
 		if($num=="security"){
-			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"freeweb.edit.security.php?servername={$_GET["servername"]}&freewebs=1&group_id={$_REQUEST["group_id"]}&ForceInstanceZarafaID={$_GET["ForceInstanceZarafaID"]}\"><span $fontsize>$ligne</span></a></li>\n");
+			$html[]= $tpl->_ENGINE_parse_body("<li $fontsize><a href=\"freeweb.edit.security.php?servername={$_GET["servername"]}&freewebs=1&group_id={$_REQUEST["group_id"]}&ForceInstanceZarafaID={$_GET["ForceInstanceZarafaID"]}\"><span $fontsize>$ligne</span></a></li>\n");
 			continue;
 		}		
 		
 		if($num=="authentication"){
-			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"freeweb.edit.autentification.php?servername={$_GET["servername"]}&freewebs=1&group_id={$_REQUEST["group_id"]}&ForceInstanceZarafaID={$_GET["ForceInstanceZarafaID"]}\"><span $fontsize>$ligne</span></a></li>\n");
+			$html[]= $tpl->_ENGINE_parse_body("<li $fontsize><a href=\"freeweb.edit.autentification.php?servername={$_GET["servername"]}&freewebs=1&group_id={$_REQUEST["group_id"]}&ForceInstanceZarafaID={$_GET["ForceInstanceZarafaID"]}\"><span $fontsize>$ligne</span></a></li>\n");
 			continue;
 		}		
 		
 		if($num=="clients_restrictions"){
-			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"freeweb.edit.clients.restrictions.php?servername={$_GET["servername"]}&freewebs=1&group_id={$_REQUEST["group_id"]}&ForceInstanceZarafaID={$_GET["ForceInstanceZarafaID"]}\"><span $fontsize>$ligne</span></a></li>\n");
+			$html[]= $tpl->_ENGINE_parse_body("<li $fontsize><a href=\"freeweb.edit.clients.restrictions.php?servername={$_GET["servername"]}&freewebs=1&group_id={$_REQUEST["group_id"]}&ForceInstanceZarafaID={$_GET["ForceInstanceZarafaID"]}\"><span $fontsize>$ligne</span></a></li>\n");
 			continue;
 		}
 		
@@ -1866,15 +1866,8 @@ function security_tabs(){
 	}
 	
 	
-	echo "
-	<div id=main_config_freewebeditsecu style='width:100%;height:600px;;overflow:auto'>
-		<ul>". implode("\n",$html)."</ul>
-	</div>
-		<script>
-		  $(document).ready(function() {
-			$(\"#main_config_freewebeditsecu\").tabs();});
-		</script>";		
-		
+	echo build_artica_tabs($html, "main_config_freewebeditsecu");
+
 	
 	
 }

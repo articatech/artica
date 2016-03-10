@@ -97,18 +97,22 @@ function perform(){
 	}
 	apt_mirror_events("INFO: Starting calculate {$config["webserverpath"]} directory size");
 	$du_bin=$unix->find_program("du");
-	if(is_dir($config["webserverpath"])){
-		exec("$du -h -s {$config["webserverpath"]}",$results2);
-		while (list ($num, $line) = each ($results2) ){	
-			if(preg_match("#^([0-9\.,]+)([A-Za-z]+)\s+#",$line,$ri)){
-				$sock->SET_INFO("AptMirrorRepoSize","{$ri[1]}{$ri[2]}");
-				$repos_size="{$ri[1]}{$ri[2]}";
+	$NICE=$unix->EXEC_NICE();
+	
+	if(!system_is_overloaded(basename(__FILE__))){
+		if(is_dir($config["webserverpath"])){
+			exec("$NICE$du_bin -h -s {$config["webserverpath"]}",$results2);
+			while (list ($num, $line) = each ($results2) ){	
+				if(preg_match("#^([0-9\.,]+)([A-Za-z]+)\s+#",$line,$ri)){
+					$sock->SET_INFO("AptMirrorRepoSize","{$ri[1]}{$ri[2]}");
+					$repos_size="{$ri[1]}{$ri[2]}";
+				}
 			}
 		}
+		apt_mirror_events("INFO: Starting calculate {$config["webserverpath"]} directory size=$repos_size",@implode("\n",$results2));
+		apt_mirror_events_file("$repos_size$distanceOfTimeInWords -> mysql");
+		apt_mirror_events("$repos_size$distanceOfTimeInWords",@implode("\n",$results));
 	}
-	apt_mirror_events("INFO: Starting calculate {$config["webserverpath"]} directory size=$repos_size",@implode("\n",$results2));
-	apt_mirror_events_file("$repos_size$distanceOfTimeInWords -> mysql");
-	apt_mirror_events("$repos_size$distanceOfTimeInWords",@implode("\n",$results));
 
 	
 }

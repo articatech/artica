@@ -23,13 +23,11 @@ function InfluxDB(){
 	$l[]="[APP_INFLUXDB]";
 	$l[]="service_name=APP_INFLUXDB";
 	$enabled=1;
-	$l[]="service_cmd=/etc/init.d/influx-db";
+	$l[]="service_cmd=/etc/init.d/artica-postgres";
 	$l[]="family=proxy";
 	$l[]="watchdog_features=1";
 
 	if(!is_file("/opt/influxdb/influxd")){
-		$l[]="[APP_INFLUXDB]";
-		$l[]="service_name=APP_INFLUXDB";
 		$l[]="running=0\ninstalled=0";
 		$l[]="";
 		return implode("\n",$l);
@@ -39,7 +37,7 @@ function InfluxDB(){
 	$SquidPerformance=intval($GLOBALS["CLASS_SOCKETS"]->GET_INFO("SquidPerformance"));
 	$InfluxUseRemote=intval($GLOBALS["CLASS_SOCKETS"]->GET_INFO("InfluxUseRemote"));
 	$EnableInfluxDB=intval($GLOBALS["CLASS_SOCKETS"]->GET_INFO("EnableInfluxDB"));
-	$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+	$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 	
 	$LOG[]="SquidPerformance = $SquidPerformance";
 	$LOG[]="InfluxUseRemote = $InfluxUseRemote";
@@ -49,6 +47,7 @@ function InfluxDB(){
 	if($SquidPerformance>2){$enabled=0;}
 	if($InfluxUseRemote==1){$enabled=0;}
 	if($EnableInfluxDB==0){$enabled=0;}
+	
 	if(is_file("/etc/artica-postfix/STATS_APPLIANCE")){$EnableInflux=1;$SquidPerformance=0;$EnableIntelCeleron=0;}
 	if($EnableIntelCeleron==1){$enabled=0;}
 
@@ -96,7 +95,7 @@ function InfluxDB(){
 	}else{
 		if($enabled==0){
 			squid_admin_mysql(0, "Stopping BigData engine PID: $master_pid (must be disabled)", null,__FILE__,__LINE__);
-			shell_exec2("{$GLOBALS["nohup"]} /etc/init.d/influx-db stop >/dev/null 2>&1 &");
+			shell_exec2("{$GLOBALS["nohup"]} /etc/init.d/artica-postgres stop >/dev/null 2>&1 &");
 			$l[]="running=0";
 			$l[]="installed=1";
 			$l[]="";
@@ -119,7 +118,7 @@ function InfluxDB(){
 	if(!$fp){
 		WriteToSyslogMail("Influxdb:tcp:8086 $errno $errstr",basename(__FILE__));
 		squid_admin_mysql(0, "Statistics Engine Error:[$errstr] failed on port 8086 [action=restart]", "Influxdb:tcp:8086\n$errno $errstr",__FILE__,__LINE__);
-		shell_exec2("{$GLOBALS["nohup"]} /etc/init.d/influx-db restart >/dev/null 2>&1 &");
+		shell_exec2("{$GLOBALS["nohup"]} /etc/init.d/artica-postgres restart >/dev/null 2>&1 &");
 	}
 	
 	if(is_resource($fp)){socket_close($fp);}

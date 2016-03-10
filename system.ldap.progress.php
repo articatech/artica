@@ -20,7 +20,7 @@ js();
 
 function title(){
 	$tpl=new templates();
-	return $tpl->javascript_parse_text("{restart_service}");
+	return $tpl->javascript_parse_text("{restart_openldap_service}");
 }
 
 
@@ -149,6 +149,7 @@ if($prc==100){
 		$('#progress-$t').progressbar({ value: $prc });
 		RTMMailHide();
 		RefreshTab('main_config_ldap');
+		CacheOff();
 	}
 	setTimeout(\"Start$time()\",1000);
 	";	
@@ -188,7 +189,7 @@ function popup(){
 	$t=$_GET["t"];
 	if(!is_numeric($t)){$t=time();}
 	
-	$title="{restart_service}";
+	$title="{restart_openldap_service}";
 	
 	$text=$tpl->_ENGINE_parse_body($title);
 	
@@ -199,7 +200,7 @@ $html="
 <div id='progress-$t' style='height:50px'></div>
 <p>&nbsp;</p>
 <textarea style='margin-top:5px;font-family:Courier New;
-font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 overflow:auto;font-size:11px' id='text-$t'></textarea>
 	
 <script>

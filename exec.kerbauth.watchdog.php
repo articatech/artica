@@ -31,7 +31,18 @@ function xdisable(){
 	$unix=new unix();
 	$sock=new sockets();
 	$php=$unix->LOCATE_PHP5_BIN();
-	build_progress("{checking} Active Directory with wbinfo...",20);
+	
+	build_progress("{checking} Join to the Active Directory Domain",15);
+	system("$php /usr/share/artica-postfix/exec.kerbauth.php --join");
+	
+	for($i=1;$i<4;$i++){
+		build_progress("{checking} {waiting} $i/3 {seconds}",20);
+		sleep(1);
+	}
+	
+	build_progress("{checking} Active Directory with wbinfo...",25);
+	$php=$unix->LOCATE_PHP5_BIN();
+	wbinfo_if_available();
 	if(!wbinfo(true)){build_progress("{checking} Active Directory {failed}",110);return;}
 	build_progress("{checking} Active Directory...",30);
 	if(!testjoin()){build_progress("{checking} Active Directory {failed}",110);return;}
@@ -42,7 +53,7 @@ function xdisable(){
 	$sock->SET_INFO("ActiveDirectoryEmergencyReboot", 0);
 	$sock->SET_INFO("ActiveDirectoryEmergencyNone", 0);
 	build_progress("{reconfigure}...",80);
-	
+	system("$php /usr/share/artica-postfix/exec.squid.php --build --force");
 	build_progress("{done}...",100);
 	if($GLOBALS["META"]){
 		$unix->THREAD_COMMAND_SET("$php /usr/share/artica-postfix/exec.artica-meta-client.php --ping --force");
@@ -245,6 +256,24 @@ function build_progress($text,$pourc){
 	@chmod($cachefile,0755);
 	sleep(1);
 
+}
+
+function wbinfo_if_available(){
+	$unix=new unix();
+	$wbinfo=$unix->find_program("wbinfo");
+	$php=$unix->LOCATE_PHP5_BIN();
+	$net=$unix->find_program("net");
+	exec("$wbinfo -t 2>&1",$results);
+	
+	while (list ($md5, $line) = each ($results) ){
+		if(preg_match("#WBC_ERR_WINBIND_NOT_AVAILABLE#",$line)){
+			squid_admin_mysql(0, "Warning WBC_ERR_WINBIND_NOT_AVAILABLE [action=start winbindd]", @implode("\n", $results),__FILE__,__LINE__);
+			shell_exec("/etc/init.d/winbind start");
+			return;
+		}
+		
+	}
+	
 }
 
 function wbinfo($Reloadifneed=false){

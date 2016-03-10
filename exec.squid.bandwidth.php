@@ -47,6 +47,7 @@ function start($port_id){
 	$squid=new squidbee();
 	$q=new mysql_squid_builder();
 	$INCLUDE=false;
+	$GLOBALS["OUTPUT"]=true;
 	
 	$f=explode("\n",@file_get_contents("/etc/squid3/squid.conf"));
 	build_progress_bandwidth("{limit_rate} {analyze}",20);
@@ -80,9 +81,24 @@ function start($port_id){
 		return;
 	}
 	
+	$squid_checks=new squid_checks();
+	if(!$squid_checks->squid_parse()){
+		build_progress_bandwidth("{limit_rate} {failed}",110);
+		return;
+	}
+	
 	$squidbin=$unix->LOCATE_SQUID_BIN();
 	build_progress_bandwidth("{limit_rate} {reloading}",97);
 	system("$squidbin -k reconfigure");
+	
+	if(is_file("/root/squid-good.tgz")){@unlink("/root/squid-good.tgz");}
+	chdir("/etc/squid3");
+	shell_exec("cd /etc/squid3");
+	shell_exec("tar -czf /root/squid-good.tgz *");
+	chdir("/root");
+	shell_exec("cd /root");
+	
+	
 	
 	build_progress_bandwidth("{limit_rate} {done} OK",100);
 	// FATAL: No valid signing SSL certificate

@@ -10,7 +10,7 @@
 <interface>Network Interface</interface>
 <irq>Interrups</irq>
 <load>Load average</load>
-<mysql>Mysql database</mysql>
+<mysql>MySQL database</mysql>
 <netlink>Network link</netlink>
 <ntpd>Network Time Daemon</ntpd>
 <plugin>Service</plugin>

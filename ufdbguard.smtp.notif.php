@@ -53,7 +53,7 @@ function page(){
 	
 	if(!isset($UfdbguardSMTPNotifs["smtp_server_name"])){$UfdbguardSMTPNotifs["smtp_server_name"]=$ini->_params["SMTP"]["smtp_server_name"];}
 	if(!isset($UfdbguardSMTPNotifs["smtp_server_port"])){$UfdbguardSMTPNotifs["smtp_server_port"]=$ini->_params["SMTP"]["smtp_server_port"];}
-	if(!isset($UfdbguardSMTPNotifs["smtp_sender"])){$UfdbguardSMTPNotifs["smtp_server_port"]=$ini->_params["SMTP"]["smtp_sender"];}
+	if(!isset($UfdbguardSMTPNotifs["smtp_sender"])){$UfdbguardSMTPNotifs["smtp_sender"]=$ini->_params["SMTP"]["smtp_sender"];}
 	if(!isset($UfdbguardSMTPNotifs["smtp_dest"])){$UfdbguardSMTPNotifs["smtp_dest"]=$ini->_params["SMTP"]["smtp_dest"];}
 	if(!isset($UfdbguardSMTPNotifs["smtp_auth_user"])){$UfdbguardSMTPNotifs["smtp_dest"]=$ini->_params["SMTP"]["smtp_auth_user"];}
 	if(!isset($UfdbguardSMTPNotifs["smtp_auth_passwd"])){$UfdbguardSMTPNotifs["smtp_auth_passwd"]=$ini->_params["SMTP"]["smtp_auth_passwd"];}
@@ -64,48 +64,53 @@ function page(){
 		//Switchdiv
 	
 $html="
-	<div class=explain style='font-size:14px'>{smtp_ufdbguard_notifications_text}</div>
+	<div class=explain style='font-size:22px'>{smtp_ufdbguard_notifications_text}</div>
 	<div id='notif1-$t'></div>
 
 	<table style='width:99%' class=form id='main-form-$t'>
 	<tr>
-		<td nowrap class=legend style='font-size:14px'>{smtp_enabled}:</strong></td>
-		<td>" . Field_checkbox("ENABLED",1,$UfdbguardSMTPNotifs["ENABLED"],"SMTPNotifArticaEnableSwitch$t()")."</td>
+		<td nowrap class=legend style='font-size:22px'>{smtp_enabled}:</strong></td>
+		<td>" . Field_checkbox_design("ENABLED",1,$UfdbguardSMTPNotifs["ENABLED"],"SMTPNotifArticaEnableSwitch$t()")."</td>
 	</tr>
 	<tr>
-		<td nowrap class=legend style='font-size:14px'>{smtp_server_name}:</strong></td>
-		<td>" . Field_text('smtp_server_name',trim($UfdbguardSMTPNotifs["smtp_server_name"]),'font-size:14px;padding:3px;width:250px')."</td>
+		<td nowrap class=legend style='font-size:22px'>{notify_blocks}:</strong></td>
+		<td>" . Field_checkbox_design("BLOCK_NOTIFS",1,$UfdbguardSMTPNotifs["BLOCK_NOTIFS"])."</td>
+	</tr>				
+				
+	<tr>
+		<td nowrap class=legend style='font-size:22px'>{smtp_server_name}:</strong></td>
+		<td>" . Field_text('smtp_server_name',trim($UfdbguardSMTPNotifs["smtp_server_name"]),'font-size:22px;padding:3px;width:550px')."</td>
 	</tr>
 	<tr>
-		<td nowrap class=legend style='font-size:14px'>{smtp_server_port}:</strong></td>
-		<td>" . Field_text('smtp_server_port',trim($UfdbguardSMTPNotifs["smtp_server_port"]),'font-size:14px;padding:3px;width:40px')."</td>
+		<td nowrap class=legend style='font-size:22px'>{smtp_server_port}:</strong></td>
+		<td>" . Field_text('smtp_server_port',trim($UfdbguardSMTPNotifs["smtp_server_port"]),'font-size:22px;padding:3px;width:120px')."</td>
 	</tr>	
 	<tr>
-		<td nowrap class=legend style='font-size:14px'>{smtp_sender}:</strong></td>
-		<td>" . Field_text('smtp_sender',trim($UfdbguardSMTPNotifs["smtp_sender"]),'font-size:14px;padding:3px;width:290px')."</td>
+		<td nowrap class=legend style='font-size:22px'>{smtp_sender}:</strong></td>
+		<td>" . Field_text('smtp_sender',trim($UfdbguardSMTPNotifs["smtp_sender"]),'font-size:22px;padding:3px;width:550px')."</td>
 	</tr>
 	<tr>
-		<td nowrap class=legend style='font-size:14px'>{smtp_dest}:</strong></td>
-		<td>" . Field_text('smtp_dest',trim($UfdbguardSMTPNotifs["smtp_dest"]),'font-size:14px;padding:3px;width:290px')."</td>
+		<td nowrap class=legend style='font-size:22px'>{smtp_dest}:</strong></td>
+		<td>" . Field_text('smtp_dest',trim($UfdbguardSMTPNotifs["smtp_dest"]),'font-size:22px;padding:3px;width:550px')."</td>
 	</tr>
 	<tr>
-		<td nowrap class=legend style='font-size:14px'>{smtp_auth_user}:</strong></td>
-		<td>" . Field_text('smtp_auth_user',trim($UfdbguardSMTPNotifs["smtp_auth_user"]),'font-size:14px;padding:3px;width:200px')."</td>
+		<td nowrap class=legend style='font-size:22px'>{smtp_auth_user}:</strong></td>
+		<td>" . Field_text('smtp_auth_user',trim($UfdbguardSMTPNotifs["smtp_auth_user"]),'font-size:22px;padding:3px;width:550px')."</td>
 	</tr>	
 	<tr>
-		<td nowrap class=legend style='font-size:14px'>{smtp_auth_passwd}:</strong></td>
-		<td>" . Field_password("smtp_auth_passwd-$t",trim($UfdbguardSMTPNotifs["smtp_auth_passwd"]),'font-size:14px;padding:3px;width:100px')."</td>
+		<td nowrap class=legend style='font-size:22px'>{smtp_auth_passwd}:</strong></td>
+		<td>" . Field_password("smtp_auth_passwd-$t",trim($UfdbguardSMTPNotifs["smtp_auth_passwd"]),'font-size:22px;padding:3px;width:550px')."</td>
 	</tr>
 	<tr>
-		<td nowrap class=legend style='font-size:14px'>{tls_enabled}:</strong></td>
-		<td>" . Field_checkbox("tls_enabled",1,$UfdbguardSMTPNotifs["tls_enabled"])."</td>
+		<td nowrap class=legend style='font-size:22px'>{tls_enabled}:</strong></td>
+		<td>" . Field_checkbox_design("tls_enabled",1,$UfdbguardSMTPNotifs["tls_enabled"])."</td>
 	</tr>
 	<tr>
-		<td nowrap class=legend style='font-size:14px'>{UseSSL}:</strong></td>
-		<td>" . Field_checkbox("ssl_enabled",1,$UfdbguardSMTPNotifs["ssl_enabled"])."</td>
+		<td nowrap class=legend style='font-size:22px'>{UseSSL}:</strong></td>
+		<td>" . Field_checkbox_design("ssl_enabled",1,$UfdbguardSMTPNotifs["ssl_enabled"])."</td>
 	</tr>					
 	<tr>
-		<td align='right' colspan=2>".button('{apply}',"SaveArticaSMTPNotifValues$t();",16)."</td>
+		<td align='right' colspan=2>".button('{apply}',"SaveArticaSMTPNotifValues$t();",40)."</td>
 	</tr>
 
 	</tr>
@@ -124,6 +129,7 @@ $html="
 		var XHR = new XHRConnection();
 		var pp=encodeURIComponent(document.getElementById('smtp_auth_passwd-$t').value);
 		if(document.getElementById('ENABLED').checked){XHR.appendData('ENABLED',1);}else {XHR.appendData('ENABLED',0);}
+		if(document.getElementById('BLOCK_NOTIFS').checked){XHR.appendData('BLOCK_NOTIFS',1);}else {XHR.appendData('BLOCK_NOTIFS',0);}
 		if(document.getElementById('tls_enabled').checked){XHR.appendData('tls_enabled',1);}else {XHR.appendData('tls_enabled',0);}
 		if(document.getElementById('ssl_enabled').checked){XHR.appendData('ssl_enabled',1);}else {XHR.appendData('ssl_enabled',0);}
 		XHR.appendData('smtp_server_name',document.getElementById('smtp_server_name').value);
@@ -133,7 +139,6 @@ $html="
 		XHR.appendData('smtp_auth_user',document.getElementById('smtp_auth_user').value);
 		XHR.appendData('smtp_auth_passwd',pp);
 		XHR.appendData('smtp_notifications','yes');
-		AnimateDiv('notif1-$t');
 		XHR.sendAndLoad('$page', 'POST',x_SaveArticaSMTPNotifValues$t);
 	}
 	
@@ -181,6 +186,7 @@ function Save(){
 		$UfdbguardSMTPNotifs[$num]=$ligne;
 	}
 	$sock->SaveConfigFile(base64_encode(serialize($UfdbguardSMTPNotifs)), "UfdbguardSMTPNotifs");
+	$sock->getFrameWork("ufdbguard.php?ufdbtail-restart=yes");
 	
 }
 

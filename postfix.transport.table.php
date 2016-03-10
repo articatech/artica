@@ -47,9 +47,7 @@ function main_tabs(){
 	$array["relay-sender-table"]='{senders}';
 	$array["smtp-dest-table"]='{recipients}';
 	$array["tls"]='{tls_table}';
-	
 	$array["mailboxes"]='{mailboxes}';
-	$array["diff-dest-table"]='{diffusion_lists}';
 	$array["smtp-artica-sync"]='{artica_sync}';
 	
 	

@@ -235,7 +235,7 @@ function test(){
 	}
 	
 	
-	if($url["path"] == "/exec.squidguard.php"){
+	if($url["path"] == "/ufdbguardd.php"){
 		if(isset($array["rule-id"])){
 			$sql="SELECT * FROM webfilter_rules WHERE ID={$array["rule-id"]}";
 			$ligne=mysql_fetch_array($q->QUERY_SQL($sql));

@@ -586,16 +586,12 @@ function start_watchdog(){
 		@copy("/usr/share/artica-postfix/img/logo-artica-64.png","/usr/share/squid3/icons/silk/logo-artica-64.png");
 	}
 	
-	$articafiles[]="exec.logfile_daemon.php";
-	$articafiles[]="external_acl_squid_ldap.php";
-	$articafiles[]="external_acl_dynamic.php";
-	$articafiles[]="external_acl_quota.php";
-	$articafiles[]="external_acl_basic_auth.php";
-	$articafiles[]="external_acl_squid.php";
-	$articafiles[]="external_acl_restrict_access.php";
+	$articafiles=$unix->SquidPHPFiles();
+
+	
 	
 	while (list ($num, $filename) = each ($articafiles) ){
-		$filepath="/usr/share/artica-postfix/$filename";
+		$filepath="/usr/share/artica-postfix/$num";
 		@chmod($filepath,0755);
 		@chown($filepath,"squid");
 		@chgrp($filepath,"squid");
@@ -655,7 +651,7 @@ function start_watchdog(){
 	}
 	
 	
-	CACHE_DIR_SIZE_CACHES();
+	
 	verify_var_log();
 	
 	$GLOBALS["ALL_SCORES_WHY"][]="score: {$GLOBALS["ALL_SCORES"]} after START";
@@ -1736,23 +1732,8 @@ function TEST_PORT($aspid=false){
 	
 	
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
-	if($SquidPerformance<2){
-		if(!is_file("/etc/cron.d/squid-statsmembers5mn")){
-			$cmdline=trim("$nice $php5 ".dirname(__FILE__)."/exec.squid.statistics.buildmembers.php");
-			$f[]="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/X11R6/bin:/usr/share/artica-postfix/bin";
-			$f[]="MAILTO=\"\"";
-			$f[]="0,5,10,15,20,25,30,35,40,45,50,55 * * * *  root $cmdline >/dev/null 2>&1";
-			$f[]="";
-			@file_put_contents("/etc/cron.d/squid-statsmembers5mn", @implode("\n", $f));
-			shell_exec("/etc/init.d/cron reload");
-		}
+	if(is_file("/etc/cron.d/squid-statsmembers5mn")){@unlink("/etc/cron.d/squid-statsmembers5mn");}
 		
-	}else{
-		if(is_file("/etc/cron.d/squid-statsmembers5mn")){
-			@unlink("/etc/cron.d/squid-statsmembers5mn");
-		}
-		
-	}
 	
 	$f=array();
 	if(!is_file("/etc/cron.d/squid-statsclean")){
@@ -1850,10 +1831,17 @@ function TEST_PORT($aspid=false){
 		}
 		if($cache_manager->errno==4){
 			squid_admin_mysql(1,"{$suffix}Proxy Port report $cache_manager->errstr ($cache_manager->errstr_plus) [action=disable-icap]", @file_get_contents("/var/log/artica.proxy.watchdog.test.ports.log"),__FILE__,__LINE__);
+			return true;				
+		}
+		if($cache_manager->errno==5){
+			squid_admin_mysql(1,"{$suffix}Proxy Port report invalid URL $cache_manager->URL_SENDED suggest to restart proxy service", @file_get_contents("/var/log/artica.proxy.watchdog.test.ports.log"),__FILE__,__LINE__);
 			return true;
-			continue;
-				
+		}				
+		if($cache_manager->errno==6){
+			squid_admin_mysql(1,"{$suffix}Proxy Port report $cache_manager->errstr suggest to check your paranoid rules", @file_get_contents("/var/log/artica.proxy.watchdog.test.ports.log"),__FILE__,__LINE__);
+			return true;
 		}		
+		
 		
 		PROXY_TESTS_PORTS_EVENTS("{$suffix} ($i/{$MonitConfig["TEST_PORT_TIMEOUT"]}) Cache Manager report failed with error $cache_manager->errstr ($cache_manager->errstr_plus)");
 		$LOGS[]="{$suffix}Connection $i/{$MonitConfig["TEST_PORT_TIMEOUT"]} Error:$cache_manager->errstr sleeping {$MonitConfig["TEST_PORT_INTERVAL"]}";
@@ -1983,37 +1971,7 @@ function PING_GATEWAY(){
 
 }
 
-function CACHE_DIR_SIZE_CACHES(){
-	$pidtime="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".time";
-	$unix=new unix();
-	if($unix->file_time_min($pidtime)<45){return;}
-	
-	@unlink($pidtime);
-	@file_put_contents($pidtime, time());
-	
-	$q=new mysql();
-	$sql="SELECT * FROM squid_caches_center WHERE `enabled`=1 AND `remove`=0 ORDER BY zOrder";
-	$results=$q->QUERY_SQL($sql,"artica_backup");
-	while ($ligne = mysql_fetch_assoc($results)) {
-		$ID=$ligne["ID"];
-		$cachename=$ligne["cachename"];
-		$cache_dir=$ligne["cache_dir"];
-		$cache_type=$ligne["cache_type"];
-		$cache_size=$ligne["cache_size"];
-		$cache_dir_level1=$ligne["cache_dir_level1"];
-		$cache_dir_level2=$ligne["cache_dir_level2"];
-			
-		if($cache_type=="tmpfs"){continue; }
-		if($cache_type=="Cachenull"){continue;}
-		if($cache_type=="rock"){continue;}
-			
-		if(@is_link($cache_dir)){$cache_dir=@readlink($cache_dir);}
-		$size=$unix->DIRSIZE_MB($cache_dir);	
-		$unix->ToSyslog("squid-cache: $cache_dir = {$size}MB");
-	}
-	
-	
-}
+
 
 
 
@@ -3485,6 +3443,8 @@ function start_squid($aspid=false){
 	
 	build_progress_start("Preparing proxy service",50);
 	start_prepare();
+	$squid_checks=new squid_checks();
+	$squid_checks->squid_parse();
 	build_progress_start("{starting_proxy_service}",60);
 	$pid=SQUID_PID();
 	if($GLOBALS["CRASHED"]){
@@ -4469,6 +4429,9 @@ function squid_get_storage_info(){
 		}
 		$dirs=0;
 		while (list($num,$ligne)=each($results)){
+			
+			
+			
 			if(preg_match("#Current Capacity.*?:\s+([0-9\.]+)%\s+used#",$ligne,$re)){
 				$CURCAP=trim($re[1]);
 				if($GLOBALS["OUTPUT"]){echo "* * * * * * * * *\nDISK \"$ligne\"\nDISK Current Capacity: $CURCAP\n* * * * * * * * *\n";}
@@ -4476,26 +4439,38 @@ function squid_get_storage_info(){
 			if(preg_match("#Store Directory.*?:\s+(.+)#", $ligne,$re)){
 				$StoreDir=trim($re[1]);
 				if($StoreDir==null){continue;}
+				if($GLOBALS["OUTPUT"]){echo " \n\n******************************************\n";}
 				if($GLOBALS["VERBOSE"]){echo "\"$ligne\" => $StoreDir\n";}
-				$dats[$StoreDir]["USED"]=$unix->DIRSIZE_BYTES($StoreDir)/1024;
-				
-				
 				$dirs++;
 				continue;
 			}
 			
+			if(preg_match("#Filesystem Space in use:\s+([0-9]+)\/([0-9]+)#",$ligne,$re)){
+				if(isset($dats[$StoreDir]["USED"])){continue;}
+				$dats[$StoreDir]["USED"]=$re[2];
+				continue;
+			}
+			
+			
+			
+			
 			
 			if(preg_match("#Percent Used:\s+([0-9\.]+)%#", $ligne,$re)){
 				if($StoreDir==null){continue;}
-				$dats[$StoreDir]["PERC"]=$re[1];continue;}
+				$dats[$StoreDir]["PERC"]=$re[1];
+				continue;
+			}
 			if(preg_match("#Maximum Size:\s+([0-9\.]+)#", $ligne,$re)){
 				if($StoreDir==null){continue;}
-				$dats[$StoreDir]["SIZE"]=$re[1];continue;}
+				$dats[$StoreDir]["SIZE"]=intval($re[1]);
+				if($GLOBALS["OUTPUT"]){echo "DISK $StoreDir Maximum Size: {$re[1]}\n";}
+				continue;
+			
+			}
 			
 			if(preg_match("#Current Size:\s+([0-9\.]+)#", $ligne,$re)){
-				if(isset($dats[$StoreDir]["USED"])){continue;}
-				if($GLOBALS["OUTPUT"]){echo "* * * * * * * * *\nDISK \"$ligne\"\nDISK $StoreDir Current Size: {$re[1]}\n* * * * * * * * *\n";}
-				$dats[$StoreDir]["USED"]=$re[1];
+				if($GLOBALS["OUTPUT"]){echo "* * * * * * * * *\nDETECTED \"$ligne\"\nDISK $StoreDir Current Size: ". intval($re[1])."\n* * * * * * * * *\n";}
+				$dats[$StoreDir]["USED"]=intval($re[1]);
 				continue;
 			}
 			
@@ -4512,7 +4487,7 @@ function squid_get_storage_info(){
 				if($StoreDir==null){continue;}
 				if(isset($dats[$StoreDir]["USED"])){continue;}
 				if($GLOBALS["OUTPUT"]){echo "* * * * * * * * *\nDISK \"$ligne\"\nDISK (2) $StoreDir Current Size: {$re[1]}\n* * * * * * * * *\n";}
-				$dats[$StoreDir]["USED"]=$re[1];
+				$dats[$StoreDir]["USED"]=intval($re[1]);
 			}
 			
 			
@@ -4979,7 +4954,7 @@ function squid_memory_monitor(){
 	$unix=new unix();
 	
 	
-	$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+	$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 	if($EnableIntelCeleron==1){return;}
 	$pidfileTime="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".time";
 	
@@ -5040,19 +5015,15 @@ function squid_memory_monitor(){
 	if($GLOBALS["VERBOSE"]){echo "MEMORY_SYSTEM_MB: {$MEMORY_SYSTEM_MB}MB\n";}
 
 	$prc=($total_memory_MB/$MEMORY_SYSTEM_MB);
-	$prc=round($prc*100,2);
+	$prc=round($prc*100);
 	$total_memory_MB=round($total_memory_MB);
 	if($GLOBALS["VERBOSE"]){echo "Bytes: $total_memory MB: $total_memory_MB/$MEMORY_SYSTEM_MB ({$prc}%) \n";}
 	$date=date("Y-m-d H:i:s");
-	
-	$array["fields"]["memory"]=$total_memory_MB;
-	$array["fields"]["prc"]=$prc;
-	$array["tags"]["proxyname"]=$unix->hostname_g();
-	if($GLOBALS["VERBOSE"]){print_r($array);}
-	$q->insert("squidmem", $array);
-	
+	$proxyname=$unix->hostname_g();
 
-	
+
+	$q=new postgres_sql();
+	$q->QUERY_SQL("INSERT INTO squidmem (zdate,zpercent,memory,proxyname) VALUES ('$date','$prc','$total_memory_MB','$proxyname')");
 
 	if($MonitConfig["watchdog"]==0){ return;}
 	if($MonitConfig["watchdogRestart"]>99){return;}
@@ -5167,20 +5138,16 @@ function cache_center_status($aspid=false){
 	@file_put_contents($TimeFile, time());
 	
 	$ARRAY=unserialize(base64_decode(squid_get_storage_info()));
+	
+	if($GLOBALS["VERBOSE"]){print_r($ARRAY);}
+	
 	$q=new mysql();
 	while (list($directory,$arrayStore)=each($ARRAY)){
 		$arrayStore["USED"]=intval($arrayStore["USED"]);
 		$arrayStore["PERC"]=intval($arrayStore["PERC"]);
-		
-		if($arrayStore["USED"]==0 && $arrayStore["PERC"]>0){
-			$arrayStore["USED"]=$unix->DIRSIZE_BYTES($directory);
-		}
-		
 		if($GLOBALS["VERBOSE"]){echo "$directory USED {$arrayStore["USED"]} PERC:{$arrayStore["PERC"]}\n";}
 		
 		if($directory=="MEM"){continue;}
-		
-		
 		if($arrayStore["USED"]==0){continue;}
 		$PERC=$arrayStore["PERC"];
 		$USED=$arrayStore["USED"];
@@ -5644,7 +5611,7 @@ function caches_size(){
 			$ARRAY[$cache_dir]["PARTITION"]=$cache_partition;
 			$ARRAY[$cache_dir]["DIRPART_INFO"]=$unix->DIRPART_INFO($cache_dir);
 			$ARRAY[$cache_dir]["SIZE"]=$ARRAY["CACHES_SIZE"][$cache_partition];
-			$ARRAY[$cache_dir]["DIRSIZE_MB"]=$unix->DIRSIZE_MB($cache_dir);
+			
 			
 			
 			
@@ -5663,11 +5630,11 @@ function caches_size(){
 		$ARRAY[$cache_dir]["PARTITION"]=$cache_partition;
 		$ARRAY[$cache_dir]["DIRPART_INFO"]=$unix->DIRPART_INFO($cache_dir);
 		$ARRAY[$cache_dir]["SIZE"]=$GLOBALS["CACHES_SIZE"][$cache_partition];
-		$ARRAY[$cache_dir]["DIRSIZE_MB"]=$unix->DIRSIZE_MB($cache_dir);
+		
 		
 	}
 	
-	print_r($ARRAY);
+	
 	@unlink($cache_file);
 	@file_put_contents($cache_file, serialize($ARRAY));
 	@chmod($cache_file, 0777);
@@ -5780,7 +5747,7 @@ function redirectors_array($aspid=false){
 		if($NotifyTimeEx<10){return;}
 		@unlink($NotifyTime);
 		@file_put_contents($NotifyTime, time());
-		if($FINAL_PERC>95){$severity=0;$action="reload";}
+		if($FINAL_PERC>95){$severity=1;$action="reload";}
 	
 		Events("$line $Current/$max  severity = $severity");
 	
@@ -6130,9 +6097,15 @@ function CATEGORIES_SERVICE(){
 			exec("/etc/init.d/ufdbcat restart 2>&1",$results);
 			squid_admin_mysql(0, "Categories services unix socket failed [action=restart]",@implode("\n", $results),__FILE__,__LINE);
 			return;
-		}		
+		}	
+
+		if(preg_match("#No unix socket found#i", $catz->mysql_error)){
+			exec("/etc/init.d/ufdbcat restart 2>&1",$results);
+			squid_admin_mysql(0, "Categories services unix socket failed [action=restart]",@implode("\n", $results),__FILE__,__LINE);
+			return;
+		}
 		
-		squid_admin_mysql(0, "Categories services unavailable [action=report]",$catz->mysql_error,__FILE__,__LINE__);
+		squid_admin_mysql(0, "Categories service unavailable [action=report]",$catz->mysql_error,__FILE__,__LINE__);
 	}
 	
 }
@@ -6194,15 +6167,17 @@ function BANDWIDTH_MONITOR(){
 	$olddate=strtotime("-{$CHECK_BANDWITDH_INTERVAL} minutes",time());
 	$CHECK_BANDWITDH_SIZE=intval($MonitConfig["CHECK_BANDWITDH_INTERVAL"]);
 	
-	$sql="select sum(SIZE) as size from access_log where time > {$olddate}s";
-	$main=$influx->QUERY_SQL($sql);
 	
+	$query_date=date("Y-m-d H:i:s",$olddate);
+	$postgres=new postgres_sql();
+	$sql="select sum(SIZE) as size from access_log where zdate > '$olddate'";
+	$ligne=@pg_fetch_assoc($postgres->QUERY_SQL($sql));
 	
-	foreach ($main as $row) {
-		$size=$row->size/1024;
-		$size=round($size/1024,2);
-		if($GLOBALS["VERBOSE"]){echo "Since ".date("Y-m-d H:i:s",$olddate)."- Size: {$size}MB\n";}
-	}
+
+	$size=($ligne["size"]/1024);
+	$size=round($size/1024,2);
+	if($GLOBALS["VERBOSE"]){echo "Since ".date("Y-m-d H:i:s",$olddate)."- Size: {$size}MB\n";}
+
 	
 	
 	if($GLOBALS["VERBOSE"]){echo "{$size}MB must be higher than {$CHECK_BANDWITDH_SIZE}MB\n";}
@@ -6213,24 +6188,24 @@ function BANDWIDTH_MONITOR(){
 	$REPORT[]="Report bandwidth usage since: ".date("{l} {F} d H:i:s",$olddate);
 
 	$ipclass=new IP();
-	$sql="select sum(SIZE) as size,IPADDR,MAC,USERID from access_log group by IPADDR,MAC,USERID where time > {$olddate}s";
-	$main=$influx->QUERY_SQL($sql);
+	$sql="select sum(size) as size,ipaddr,mac,userid from access_log where zdate > '$olddate' group by IPADDR,MAC,USERID order by size desc";
+	$results=$postgres->QUERY_SQL($sql);
 	
 	
 	
-	foreach ($main as $row) {
+	while($ligne=@pg_fetch_assoc($results)){
 		$users2=array();
 	
-		$size=$row->size/1024;
+		$size=$ligne["size"]/1024;
 		$size=round($size/1024,2);
 		if($size==0){continue;}
 		if($size<1){continue;}
 		if($CHECK_BANDWITDH_SIZE>1){if($size<2){continue;}}
-		$IPADDR=$row->IPADDR;
+		$IPADDR=$ligne["ipaddr"];
 		$users2[]=$IPADDR;
-		$MAC=trim($row->MAC);
+		$MAC=trim($ligne["mac"]);
 		
-		$USERID=trim($row->USERID);
+		$USERID=$ligne["userid"];
 		if($USERID<>null){
 			$users2[]=$USERID;
 		}
@@ -6247,14 +6222,14 @@ function BANDWIDTH_MONITOR(){
 	
 	
 	$catz=new mysql_catz();
-	$sql="select sum(SIZE) as size,FAMILYSITE from access_log group by FAMILYSITE where time > {$olddate}s";
-	$main=$influx->QUERY_SQL($sql);
-	foreach ($main as $row) {
-		$size=$row->size/1024;
+	$sql="select sum(SIZE) as size,familysite from access_log group by familysite where zdate > '{$olddate}' ORDER by size desc";
+	$results=$postgres->QUERY_SQL($sql);
+	while($ligne=@pg_fetch_assoc($results)){
+		$size=$ligne["size"]/1024;
 		$size=round($size/1024,2);
 		if($size==0){continue;}
 		if($size<1){continue;}
-		$FAMILYSITE=$row->FAMILYSITE;
+		$FAMILYSITE=$ligne["familysite"];
 		$category=$catz->GET_CATEGORIES($FAMILYSITE);
 		if($category<>null){$category_text=" (category:$category)";}
 		$REPORT[]="Web site: $FAMILYSITE {$size}MB used$category_text";

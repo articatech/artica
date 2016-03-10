@@ -108,7 +108,7 @@ function SAVE_SERVER(){
 		$vpn->main_array["GLOBAL"][$num]=$ligne;
 		
 	}
-	$vpn->Save();	
+	$vpn->Save(true);	
 
 }
 
@@ -154,11 +154,8 @@ $html="
 <div id='openvpnserverform'>
 <div style='font-size:32px'><strong>{service_parameters}</strong></div>
 <div style='width:98%' class=form>
+		<input type='hidden' id='ENABLE_SERVER' value='{$vpn->main_array["GLOBAL"]["ENABLE_SERVER"]}'>
 <table style='width:99%'>
-<tr>
-		<td colspan=3>". Paragraphe_switch_img("{enable_openvpn_server_mode}", "{enable_openvpn_server_mode_text}","ENABLE_SERVER",$vpn->main_array["GLOBAL"]["ENABLE_SERVER"],null,850,"DisableOpenVPNFields()")."</td>
-</tr>
-
 <tr>
 	<td class=legend style='font-size:22px' id='LOCAL_BIND_FIELD'>{openvpn_local}:</td>
 	<td>$ips</td>
@@ -216,12 +213,12 @@ $html="
 </div>
 <script>
 
-		var x_SaveOpenVpnServerParams= function (obj) {
-			var tempvalue=obj.responseText;
-				if(tempvalue.length>3){alert(tempvalue);}
-				if(document.getElementById('main_openvpn_config2')){RefreshTab('main_openvpn_config2');}
-				if(document.getElementById('main_openvpn_config')){RefreshTab('main_openvpn_config');}
-			}
+var x_SaveOpenVpnServerParams= function (obj) {
+	var tempvalue=obj.responseText;
+	if(tempvalue.length>3){alert(tempvalue);return;}
+	Loadjs('index.openvpn.enable.progress.php');
+
+}
 
 
 	function SaveOpenVpnServerParams(){

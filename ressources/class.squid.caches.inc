@@ -10,6 +10,7 @@ class SquidCacheCenter{
 	private $SquidBoosterEnable=0;
 	private $DisableAnyCache=0;
 	private $SquidCacheLevel=4;
+	private $SquidSimpleConfig;
 	public $CURRENT_PROGRESS=0;
 	public $MAX_PROGRESS=0;
 	public $ASROOT=false;
@@ -24,6 +25,7 @@ class SquidCacheCenter{
 		$this->SquidBoosterEnable=intval($sock->GET_INFO("SquidBoosterEnable"));
 		$this->DisableAnyCache=$sock->GET_INFO("DisableAnyCache");
 		$this->SquidCacheLevel=$sock->GET_INFO("SquidCacheLevel");
+		$this->SquidSimpleConfig=intval($sock->GET_INFO("SquidSimpleConfig"));
 		if(!is_numeric($this->SquidCacheLevel)){$this->SquidCacheLevel=4;}
 		if($this->SquidCacheLevel==0){$this->DisableAnyCache=1;$this->SquidBoosterEnable=0;}
 		$this->CACHES_ARRAY=unserialize(@file_get_contents("/usr/share/artica-postfix/ressources/logs/web/squid_caches_center.db"));
@@ -66,16 +68,38 @@ class SquidCacheCenter{
 			if(!$q->ok){writelogs("$q->mysql_error\n$sql",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);}
 		}
 		
+		if(!$q->FIELD_EXISTS("squid_caches_center","min_size","artica_backup")){
+			$sql="ALTER TABLE `squid_caches_center` ADD `min_size` BIGINT UNSIGNED NOT NULL DEFAULT 0";
+			$q->QUERY_SQL($sql,"artica_backup");
+			if(!$q->ok){writelogs("$q->mysql_error\n$sql",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);}
+		}
+		if(!$q->FIELD_EXISTS("squid_caches_center","max_size","artica_backup")){
+			$sql="ALTER TABLE `squid_caches_center` ADD `max_size` BIGINT UNSIGNED NOT NULL DEFAULT 0";
+			$q->QUERY_SQL($sql,"artica_backup");
+			if(!$q->ok){writelogs("$q->mysql_error\n$sql",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);}
+		}
+		
 		
 		if(!$q->COUNT_ROWS($this->table, $this->database)==0){
 			$squid=new squidbee();
 			$cachename=basename($squid->CACHE_PATH);
 			$q->QUERY_SQL("INSERT IGNORE INTO $this->table (cachename,cpu,cache_dir,cache_type,cache_size,cache_dir_level1,cache_dir_level2,enabled,percentcache,usedcache,remove)
 			VALUES('$cachename',1,'$squid->CACHE_PATH','aufs','2000','128','256',1,0,0,0)",$this->database);
-			
-			
-	
 		}
+		
+		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT ID FROM $this->table WHERE cachename='MicroCache'","artica_backup"));
+		if(intval($ligne["ID"])==0){
+			$q->QUERY_SQL("INSERT IGNORE INTO $this->table (cachename,cpu,cache_dir,cache_type,cache_size,
+			cache_dir_level1,cache_dir_level2,enabled,percentcache,usedcache,remove,min_size,max_size)
+			VALUES('MicroCache',1,'/home/squid/microcache','aufs','8','128','256',1,0,0,0,0,2048)",$this->database);
+			
+		}
+		
+		if($this->SquidSimpleConfig==1){$q->QUERY_SQL("UPDATE $this->table SET cpu=1",$this->database);}
+		
+		
+		
+					
 		
 
 	}
@@ -237,24 +261,12 @@ class SquidCacheCenter{
 			}
 			
 			
-			$used=$unix->DIRSIZE_MB($cache_dir);
-			$current_cache_size=$cache_size-$used;
-			$reste=$GLOBALS["CACHES_SIZE"][$cache_partition]-$current_cache_size;
 			
-			if($GLOBALS["VERBOSE"]){
-				echo "$cache_type $cache_dir\nDefined Size:{$ligne["cache_size"]}M\n";
-				echo "Partition: $cache_partition\n";
-				echo "Available:  {$GLOBALS["CACHES_SIZE"][$cache_partition]}M\n";
-				echo "Used: {$used}M size = $cache_size\n";
-				echo "Reste: {$reste}M\n";
-				
-				echo "--------------------------\n";
-				echo "New size: {$GLOBALS["CACHES_SIZE"][$cache_partition]}M\n\n\n";
-			}
-					
-					
+			$current_cache_size=$cache_size+50;
+			$reste=$GLOBALS["CACHES_SIZE"][$cache_partition]-$current_cache_size;
+								
 			$this->CreateDir($cache_dir);
-			$conf[]="# --------- $cache_dir used:{$used}M/{$cache_size}M Disk:$cache_partition free:{$reste}M";
+			$conf[]="# --------- $cache_dir Size:{$cache_size}M Disk:$cache_partition free:{$reste}M";
 			if($reste<1){
 				$conf[]="# --------- $cache_dir no space left\n";
 				continue;

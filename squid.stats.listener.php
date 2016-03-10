@@ -46,7 +46,7 @@ function STATS_LINE(){
 	
 	$array=unserialize(base64_decode($_POST["STATS_LINE"]));
 	while (list ($table, $contentArray) = each ($array) ){
-		if(preg_match("#squidhour_([0-9]+)#",$table,$re)){$q->TablePrimaireHour($re[1]);}
+		
 		if(!$q->TABLE_EXISTS($table)){
 			writelogs("$table no such table, aborting ",__FUNCTION__,__FILE__,__LINE__);
 			echo "<ANSWER>$table no such table</ANSWER>\n";

@@ -46,105 +46,118 @@ function GRAB_DATAS($ligne,$md5){
 	$GLOBALS["zMD5"]=$md5;
 	$params=unserialize($ligne["params"]);
 	$influx=new influx();
-	$to=InfluxQueryFromUTC($params["TO"]);
-	$from=InfluxQueryFromUTC($params["FROM"]);
+	$mintime=strtotime("2008-01-01 00:00:00");$params["TO"]=intval($params["TO"]);$params["FROM"]=abs(intval($params["FROM"]));
+	if($params["FROM"]<$mintime){$params["FROM"]=strtotime(date("Y-m-d 00:00:00"));}
+	$params["TO"]=intval($params["TO"]);if($params["TO"]<$mintime){$params["TO"]=time();}
+	$influx=new influx();
+	
+	
+	$to=$params["TO"];
+	$from=$params["FROM"];
 	$interval=$params["INTERVAL"];
 	$user=$params["USER"];
-	$md5_table="{$md5}sites";
+	$md5_table="{$md5}report";
 	$search=$params["SEARCH"];
-	$USER_FIELD=$params["USER"];
+	$USER_FIELD=strtolower($params["USER"]);
 	echo "FLOW: FROM $from to $to $interval user:$user $search\n";
 	
 	if($search=="*"){$search=null;}
 	if($search<>null){
 		$search=str_replace("*", ".*", $search);
-		$SSEARCH=" AND ($USER_FIELD=~ /$search/)";
+		$SSEARCH=" ($USER_FIELD ~* '$search') AND ";
 	}
 	
-	$sql="SELECT $user,SIZE FROM access_log WHERE (time >'".date("Y-m-d H:i:s",$from)."' and time < '".date("Y-m-d H:i:s",$to)."')$SSEARCH";
+	if($USER_FIELD=="ipaddr"){
+		$ip=new IP();
+		
+		$operator=null;
+		if(substr($search, 0,1)==">"){$operator="<";$search=substr($search, 1,strlen($search));}
+		if(substr($search, 0,1)=="<"){$operator=">";$search=substr($search, 1,strlen($search));}
+		
+		if(preg_match("#[0-9\.]+\/[0-9]+#", $search)){
+			$SSEARCH=" ( inet '$search' >> $USER_FIELD) AND ";
+		}
+		if(preg_match("#^[0-9\.]+$#", $search)){
+			$SSEARCH=" ( inet '$search' {$operator}= $USER_FIELD) AND ";
+		}
+	}
+	
+	
+	$sql="CREATE TABLE IF NOT EXISTS \"{$md5}report\"
+	(zDate timestamp,
+	$USER_FIELD VARCHAR(128),
+	size BIGINT)";
+	
+	$q=new postgres_sql();
+	$q->QUERY_SQL($sql);
+	if(!$q->ok){
+		echo "***************\n$q->mysql_error\n***************\n";
+		return false;
+	}
+	
+	
+
+	
+	$TimeGroup="date_trunc('hour', zdate) as zdate";
+	$distance=$influx->DistanceHour($from,$to);
+	echo "Distance: {$distance} hours\n";
+	$FilterDate="(zdate >='".date("Y-m-d H:i:s",$from)."' and zdate <= '".date("Y-m-d H:i:s",$to)."')";
+	
+	
+	$sql="SELECT SUM(SIZE) as size,$TimeGroup,$USER_FIELD FROM access_log
+	WHERE $SSEARCH $FilterDate
+	GROUP BY zdate, $USER_FIELD";
+	
+	
+	if($distance>23){
+		echo "Distance: {$distance} hours use the Month table\n";
+		$sql="SELECT SUM(SIZE) as size,zdate,$USER_FIELD FROM access_month
+		WHERE $SSEARCH$FilterDate
+		GROUP BY zdate, $USER_FIELD";
+	}
+	
+	if($distance>720){
+		echo "Distance: {$distance} hours use the Year table\n";
+		$sql="SELECT SUM(SIZE) as size,zdate,$USER_FIELD FROM access_year
+		WHERE $SSEARCH$FilterDate
+		GROUP BY zdate, $USER_FIELD";
+	
+	}	
+	
+	$q->QUERY_SQL("TRUNCATE TABLE \"{$md5}report\"");
+	$q->QUERY_SQL("create index zdate{$md5}report on \"{$md5}report\"(zdate);");
+	$q->QUERY_SQL("create index $USER_FIELD{$md5}report on \"{$md5}report\"($USER_FIELD);");
+	
+	$sql="INSERT INTO \"{$md5}report\" (size,zdate,$USER_FIELD) $sql";
+	
+	
+	
 	echo "$sql\n";
 	build_progress("{step} {waiting_data}: BigData engine, (websites) {please_wait}",6);
 	
-	$main=$influx->QUERY_SQL($sql);
+	$postgres=new postgres_sql();
 	
-	foreach ($main as $row) {
-		
-		$time=InfluxToTime($row->time);
-		$SIZE=intval($row->SIZE);
-		$USER=$row->$USER_FIELD;
-		if($SIZE==0){continue;}
-		
-		if(!isset($MAIN_ARRAY[$USER])){
-			$MAIN_ARRAY[$USER]=$SIZE;
-		}else{
-			$MAIN_ARRAY[$USER]=$MAIN_ARRAY[$USER]+$SIZE;
-		}
-	}
-	
-	if(count($MAIN_ARRAY)==0){
-		echo "MAIN_ARRAY is null....\n";
+	$results=$postgres->QUERY_SQL($sql);
+	if(!$postgres->ok){
+		echo "ERROR.....\n";
+		echo "***************\n$postgres->mysql_error\n***************\n";
+		$q->QUERY_SQL("DROP TABLE \"{$md5}report\"");
 		return false;
 	}
 	
-	echo "MAIN_ARRAY (1) = ".count($MAIN_ARRAY)."\n";
+	$sql="SELECT COUNT(*) AS tcount FROM \"{$md5}report\"";
+	$ligne=pg_fetch_assoc($postgres->QUERY_SQL($sql));
+	$total = intval($ligne["tcount"]);
 	
-	build_progress("{step} {insert_data}: MySQL engine, {please_wait}",8);
-	$f=array();
+	echo "Members $total items inserted to PostGreSQL\n";
 	
-	$GLOBALS["CSV1"][]=array("member","SizeBytes");
-	
-	$sql="CREATE TABLE IF NOT EXISTS `{$md5}user` 
-	(`user` VARCHAR(128),`size` INT UNSIGNED NOT NULL DEFAULT 1,
-	KEY `user`(`user`),
-	KEY `size`(`size`)
-	)  ENGINE = MYISAM;";
-	$q=new mysql_squid_builder();
-	
-	
-	
-	$q->QUERY_SQL($sql);
-	if(!$q->ok){
-		echo $q->mysql_error;
-		REMOVE_TABLES($md5);
+	if($total==0){
+		$q->QUERY_SQL("DROP TABLE \"{$md5}report\"");
 		return false;
 	}
 	
-	
-	while (list ($USER, $SIZE) = each ($MAIN_ARRAY) ){
-		$c=0;
-		$f[]="('$USER','$SIZE')";
-		if($GLOBALS["VERBOSE"]){echo "$USER -> $SIZE\n";}
-		$GLOBALS["CSV1"][]=array($USER,$SIZE);
-		if(count($f)>500){
-			$q->QUERY_SQL("INSERT IGNORE INTO `{$md5}user` (user,size) VALUES ".@implode(",", $f));
-			if(!$q->ok){
-				echo $q->mysql_error;
-				REMOVE_TABLES($md5);
-				return false;
-			}
-			$f=array();
-		}
-	}
-	
-	if(count($f)>0){
-		$q->QUERY_SQL("INSERT IGNORE INTO `{$md5}user` (user,size) VALUES ".@implode(",", $f));
-		$f=array();
-		
-	}
-	
-	echo "Members $c items inserted to MySQL\n";
-	
-
 	return true;
 }
-
-function REMOVE_TABLES($md5){
-	$q=new mysql_squid_builder();
-	$q->QUERY_SQL("DROP TABLE `{$md5}sites`");
-	$q->QUERY_SQL("DROP TABLE `{$md5}users`");
-	
-}
-
 
 function BUILD_REPORT($md5){
 	build_progress("{building_query}",5);
@@ -155,6 +168,10 @@ function BUILD_REPORT($md5){
 	
 	$params=unserialize($ligne["params"]);
 	$influx=new influx();
+	$mintime=strtotime("2008-01-01 00:00:00");$params["TO"]=intval($params["TO"]);$params["FROM"]=abs(intval($params["FROM"]));
+	if($params["FROM"]<$mintime){$params["FROM"]=strtotime(date("Y-m-d 00:00:00"));}
+	$params["TO"]=intval($params["TO"]);if($params["TO"]<$mintime){$params["TO"]=time();}
+	$influx=new influx();
 	$to=InfluxQueryFromUTC($params["TO"]);
 	$from=InfluxQueryFromUTC($params["FROM"]);
 	$interval=$params["INTERVAL"];
@@ -162,45 +179,21 @@ function BUILD_REPORT($md5){
 	$md5_table=$md5;
 	if(!GRAB_DATAS($ligne,$md5)){
 		build_progress("{unable_to_query_to_bigdata}",110);
+		return false;
 	}
 	
+	$q=new postgres_sql();
+	$q->QUERY_SQL("COPY (SELECT * from \"{$md5}report\") To '/tmp/{$md5}report.csv' with CSV HEADER;");
+	$values_size=@filesize("/tmp/{$md5}report.csv");
+	$values=mysql_escape_string2(@file_get_contents("/tmp/{$md5}report.csv"));
+	echo "MD5:{$GLOBALS["zMD5"]} {$values_size}Bytes ". FormatBytes($values_size/1024)."\n";
 	$q=new mysql_squid_builder();
-	$per["10m"]="DATE_FORMAT(zDate,'%m-%d %Hh') as tdate";
-	$per["1h"]="DATE_FORMAT(zDate,'%m-%d %Hh') as tdate";
-	$per["1d"]="DATE_FORMAT(zDate,'%m-%d') as tdate";
-	$per["1w"]="DATE_FORMAT(zDate,'%U') as tdate";
-	$per["30d"]="DATE_FORMAT(zDate,'%m') as tdate";
+	$q->QUERY_SQL("UPDATE reports_cache SET `builded`=1,`values`='$values',`values_size`='$values_size' WHERE `zmd5`='{$GLOBALS["zMD5"]}'");
 	
-	
-	$datformat=$per[$interval];
-	$results=$q->QUERY_SQL("SELECT user,size FROM `{$md5}user` ORDER BY size DESC");
-	
-	
-	build_progress("{parsing_data} (2)",25);
-	$c=0;
-	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
-		$USER=$ligne["user"];
-		$SIZE=$ligne["size"];
-		$BIGDATA[$USER]=$SIZE;
-		$c++;
-	}
-	
-	build_progress("$c {rows}",8);
-	
-	
-	echo "$c rows....\n";
-	
-	REMOVE_TABLES($md5);
-	$encoded_data=base64_encode(serialize($BIGDATA));
-	$datasize=strlen($encoded_data);
-	echo "Saving ".strlen($encoded_data)." bytes...\n";
-	
-	
-	$q->QUERY_SQL("UPDATE reports_cache SET `builded`=1,`values`='$encoded_data',`values_size`='$datasize' WHERE `zmd5`='{$GLOBALS["zMD5"]}'");
 	if(!$q->ok){
-		echo $q->mysql_error."\n";
-		build_progress("MySQL {failed}",110);
-		return;
+	echo $q->mysql_error."\n";
+			build_progress("PostGreSQL {failed}",110);
+			return;
 	}
 	
 	build_progress("{success}",100);

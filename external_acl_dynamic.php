@@ -1,5 +1,6 @@
 #!/usr/bin/php -q
 <?php
+include_once(dirname(__FILE__)."/ressources/class.tcpip.inc");
 $GLOBALS["HERLPER_LOADED_BY_SQUID"]=true;
 $GLOBALS["LOG_FILE_NAME"]="/var/log/squid/external-acl-dynamic.log";
 //ini_set('display_errors', 1);	ini_set('html_errors',0);ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);
@@ -15,60 +16,11 @@ $GLOBALS["LOG_FILE_NAME"]="/var/log/squid/external-acl-dynamic.log";
   $GLOBALS["CATZ-EXTRN"]=0;
   $GLOBALS["DEBUG_LEVEL"]=4;
   $GLOBALS["UNBLOCK"]=false;
-
-  if(preg_match("#--itchart#", @implode("", $argv))){
-  	WLOG("Starting ACLs dynamic with itchart feature...");
-  	include_once(dirname(__FILE__)."/ressources/class.mysql.squid.builder.php");
-  	$GLOBALS["ITCHART"]=true;
-  }
-  if(preg_match("#--ufdbunlock#", @implode("", $argv))){
-  	WLOG("Starting ACLs dynamic with Dynamic Unblock feature...");
-  	include_once(dirname(__FILE__)."/ressources/class.mysql.squid.builder.php");
-  	include_once(dirname(__FILE__)."/ressources/class.tcpip.inc");
-  	$GLOBALS["UNBLOCK"]=true;
-  }  
-  
-  
-  if($argv[1]=="--test-itchart"){
-  	include_once(dirname(__FILE__)."/ressources/class.mysql.squid.builder.php");
-  	ini_set('display_errors', 1);	ini_set('html_errors',0);ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);
-  	echo CheckITChart($argv[2],$argv[3],$argv[4]);
-  	die();
-  }
-  
-  if(preg_match("#--tests-categories\s+([0-9]+)#", @implode(" ", $argv),$re)){
-  	WLOG("Starting ACLs dynamic with Categories features Group {$re[1]}...");
-  	ini_set('display_errors', 1);	ini_set('html_errors',0);ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);
-  	include_once(dirname(__FILE__)."/ressources/class.mysql.squid.builder.php");
-  	$GLOBALS["QZ"]=new mysql_catz();
-  	$GLOBALS["CATZ-EXTRN"]=$re[1];
-  
-  	$categories_match=categories_match($GLOBALS["CATZ-EXTRN"],$argv[3]);
-  	echo "RESULTS: $categories_match\n";
-  	if($categories_match<>null){
-  		fwrite(STDOUT, "ERR message=$categories_match\n");
-  		
-  	}
-  	return;
-  }  
-  
-
-  if(preg_match("#--categories\s+([0-9]+)#", @implode(" ", $argv),$re)){
-  	WLOG("Starting ACLs dynamic with Categories features Group {$re[1]}...");
-  	include_once(dirname(__FILE__)."/ressources/class.mysql.squid.builder.php");
-  	$GLOBALS["QZ"]=new mysql_catz();
-  	$GLOBALS["CATZ-EXTRN"]=$re[1];
-  	
-  }
-  
-  
-  
-  
   if(!is_numeric($GLOBALS["DEBUG_LEVEL"])){$GLOBALS["DEBUG_LEVEL"]=1;}
   $GLOBALS["RULE_ID"]=0;
   WLOG("Starting ACLs dynamic with debug level:{$GLOBALS["DEBUG_LEVEL"]} - License: {$GLOBALS["XVFERTSZ"]}");
   openLogs();
-  
+  ap_mysql_load_params();
  
   
   if($GLOBALS["DEBUG_LEVEL"]>0){
@@ -81,71 +33,22 @@ $GLOBALS["LOG_FILE_NAME"]="/var/log/squid/external-acl-dynamic.log";
 //----------------- LOOP ------------------------------------  
   
 	while (!feof(STDIN)) {
-	 $url = trim(fgets(STDIN));
-	 if($url==null){
-	 	if($GLOBALS["DEBUG_LEVEL"]>3){WLOG("LOOP::URL is NULL");}
-	 	continue;
-	 }
-	 
-	 if($GLOBALS["UNBLOCK"]){	
-	 		WLOG("UNBLOCK::$url");
-	 		
-	 		if(UFDGUARD_UNLOCKED($url)){
-	 			WLOG("UNBLOCK::OK");
-	 			fwrite(STDOUT, "OK\n"); 
-	 			continue; 
-	 		}
-	 		
-	 		WLOG("UNBLOCK::ERR");
-	 		fwrite(STDOUT, "ERR\n");
-	 		continue;
-	 	}
-	 
-	 
-		if($url<>null){
-			$array=parseURL($url);
-			if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("LOOP()::str ".$url ." [".__LINE__."]");}
-			$ID=0;
-			if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("LOOP()::str:".strlen($url)." Array(".count($array).") Rule ID:{$GLOBALS["RULE_ID"]}; LOGIN:{$array["LOGIN"]}; IPADDR:{$array["IPADDR"]}; MAC:{$array["MAC"]}; HOST:{$array["HOST"]}; RHOST:{$array["RHOST"]}; URI:{$array["URI"]}");}
-			 	
-			if($GLOBALS["ITCHART"]){
-				$ChartID=CheckITChart($array["LOGIN"],$array["IPADDR"],$array["MAC"]);
-				if($ChartID>0){
-					$error=base64_encode(serialize(array("ChartID"=>$ChartID,"LOGIN"=>$array["LOGIN"],"IPADDR"=>$array["IPADDR"],"MAC"=>$array["MAC"])));
-					fwrite(STDOUT, "ERR message=$error\n");
-					continue;
-				}
-				fwrite(STDOUT, "OK\n");
-			 	continue;
-			}
-			 	
-			if($GLOBALS["CATZ-EXTRN"]>0){
-				if(!$GLOBALS["XVFERTSZ"]){
-			 		$error=urlencode("License Error, please remove Artica categories objects in ACL");
-			 		WLOG("LOOP():: License Error ! [".__LINE__."]");
-			 		fwrite(STDOUT, "BH message=$error\n");
-			 		continue;
-			 	}
-			 		
-			 	$categories_match=categories_match($GLOBALS["CATZ-EXTRN"],$array["RHOST"]);
-			 	if($categories_match<>null){
-			 		fwrite(STDOUT, "OK message=$categories_match\n");
-			 		continue;
-			 	}
-			 	fwrite(STDOUT, "ERR\n");
-			 	continue;
-			 }
-			 	
-			 	
-			 	if(isset($array["LOGIN"])){
+		$ID=0;
+	 	$url = trim(fgets(STDIN));
+	 	if($url==null){if($GLOBALS["DEBUG_LEVEL"]>3){WLOG("LOOP::URL is NULL");}continue;}
+	 	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("LOOP()::str ".$url ." [".__LINE__."]");}
+		$array=parseURL($url);
+	 	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("LOOP()::str:".strlen($url)." Array(".count($array).") Rule ID:{$GLOBALS["RULE_ID"]}; LOGIN:{$array["LOGIN"]}; IPADDR:{$array["IPADDR"]}; MAC:{$array["MAC"]}; HOST:{$array["HOST"]}; RHOST:{$array["RHOST"]}; URI:{$array["URI"]}");}
+	
+			 if(isset($array["LOGIN"])){
 			 		if($GLOBALS["DEBUG_LEVEL"]>3){WLOG("LOOP()::{$GLOBALS["RULE_ID"]} ->{$array["LOGIN"]} type 2");}
 			 		$ID=CheckPattern($array["LOGIN"],$GLOBALS["RULE_ID"],2);
-			 	}
-			 	if($ID==0){
-				 	if(isset($array["HOST"])){
-				 		if(preg_match("#^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$#", $array["HOST"])){$array["HOST"]=gethostbyaddr($array["HOST"]);}
-				 		if($GLOBALS["DEBUG_LEVEL"]>3){WLOG("LOOP()::{$GLOBALS["RULE_ID"]} ->{$array["HOST"]} type 3");}
-				 		$ID=CheckPattern($array["HOST"],$GLOBALS["RULE_ID"],3);
+			 }
+			 if($ID==0){
+				if(isset($array["HOST"])){
+					if(preg_match("#^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$#", $array["HOST"])){$array["HOST"]=gethostbyaddr($array["HOST"]);}
+				 	if($GLOBALS["DEBUG_LEVEL"]>3){WLOG("LOOP()::{$GLOBALS["RULE_ID"]} ->{$array["HOST"]} type 3");}
+				 	$ID=CheckPattern($array["HOST"],$GLOBALS["RULE_ID"],3);
 				 	}
 			 	}	
 			
@@ -157,9 +60,9 @@ $GLOBALS["LOG_FILE_NAME"]="/var/log/squid/external-acl-dynamic.log";
 			 		}
 			 	}
 			 	if($ID==0){
-			 		if(isset($array["RHOST"])){
-			 			if($GLOBALS["DEBUG_LEVEL"]>3){WLOG("LOOP()::{$GLOBALS["RULE_ID"]} ->{$array["RHOST"]} type 4");}
-			 			$ID=CheckPattern($array["RHOST"],$GLOBALS["RULE_ID"],4);
+			 		if(isset($array["DOMAIN"])){
+			 			if($GLOBALS["DEBUG_LEVEL"]>3){WLOG("LOOP()::{$GLOBALS["RULE_ID"]} ->{$array["DOMAIN"]} type 4");}
+			 			$ID=CheckPattern($array["DOMAIN"],$GLOBALS["RULE_ID"],4);
 			 		}
 			 	}
 			 	
@@ -180,305 +83,79 @@ $GLOBALS["LOG_FILE_NAME"]="/var/log/squid/external-acl-dynamic.log";
 			 	if($GLOBALS["DEBUG_LEVEL"]>3){WLOG("LOOP()::Rule:{$GLOBALS["RULE_ID"]} ({$array["LOGIN"]}/{$array["MAC"]}/{$array["IPADDR"]}/{$array["HOST"]}/{$array["RHOST"]}) nothing match");}
 				fwrite(STDOUT, "ERR\n");
 			 	continue;
-		 	}
+		 	
 	}
 
 //-----------------------------------------------------
-CleanSessions();
 $distanceInSeconds = round(abs(time() - $GLOBALS["STARTIME"]));
 $distanceInMinutes = round($distanceInSeconds / 60);
 WLOG("Dynamic ACL: v1.0a: die after ({$distanceInSeconds}s/about {$distanceInMinutes}mn)");
-if(isset($GLOBALS["F"])){@fclose($GLOBALS["F"]);}
 
 
-function CleanSessions(){
-	if(!isset($GLOBALS["SESSIONS"])){return;}
-	if(!is_array($GLOBALS["SESSIONS"])){return;}
-	$cachesSessions=unserialize(@file_get_contents("/etc/squid3/session.cache"));
-	if(isset($cachesSessions)){
-		if(is_array($cachesSessions)){
-			while (list ($md5, $array) = each ($cachesSessions)){$GLOBALS["SESSIONS"][$md5]=$array;}
-		}
-	}
-	@file_put_contents("/etc/squid3/session.cache", serialize($GLOBALS["SESSIONS"]));
-}
 
-function categories_get_memory($gpid,$sitname){
-	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("categories_get_memory: $gpid,$sitname ->". strlen($GLOBALS["categories_memory"])." bytes");}
-	
-	$data=unserialize($GLOBALS["categories_memory"]);
-	if(count($data[$sitname])>64000){$GLOBALS["categories_memory"]=null;}
-	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("MEMORY: Group: $gpid `$sitname` -> {$data[$sitname][$gpid]}");}
-	return $data[$sitname][$gpid];
-}
-
-function categories_set_memory($gpid,$sitname,$result){
-	
-	$data=unserialize($GLOBALS["categories_memory"]);
-	$data[$sitname][$gpid]=$result;
-	$GLOBALS["categories_memory"]=serialize($data);
-}
-
-function categories_match($gpid,$sitname){
-	if(preg_match("#^www\.(.+)#", $sitname,$re)){$sitname=$re[1];}
-	if(preg_match("#^(.+):[0-9]+]#", $sitname,$re)){$sitname=$re[1];}
-	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("Analyze: Group: $gpid `$sitname`");}
-	
-	$categories_get_memory=categories_get_memory($gpid,$sitname);
-	if($categories_get_memory<>null){
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("Group: $gpid `$sitname` -> MEMORY: `$categories_get_memory` ");}
-		if($categories_get_memory=="UNKNOWN"){return null;}
-		return $categories_get_memory;
-	}
-	
-	$q=new mysql_catz();
-	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("Group: $gpid `$sitname` -> CATEGORY ?? [".__LINE__."]");}
-	$categoriF=$q->GET_CATEGORIES($sitname);
-	
-	$trans=$q->TransArray();
-	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("Group: $gpid `$sitname` -> category: `$categoriF` ");}
-	
-	if($categoriF==null){
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("squid_familysite()");}
-		if(!class_exists("squid_familysite")){include_once(dirname(__FILE__)."/ressources/class.squid.familysites.inc");}
-		$qF=new squid_familysite();
-		$familysite=$qF->GetFamilySites($sitname);
-		if($familysite<>$sitname){
-			
-			$categoriF=$q->GET_CATEGORIES($familysite);
-			if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("Group: $gpid `$sitname` -> $familysite -> category: `$categoriF` ");}
-		}
-	}
-	
-	if($categoriF==null){
-		categories_set_memory($gpid,$sitname,"UNKNOWN");
-		return null;
-	}
-	
-	if(strpos($categoriF, ",")>0){
-		$categoriT=explode(",",$categoriF);
-	}else{
-		$categoriT[]=$categoriF;
-	}
-	
-	while (list ($a, $b) = each ($categoriT)){
-		$MAIN[$b]=true;
-	}
-	
-	$filename="/etc/squid3/acls/catz_gpid{$gpid}.acl";
-	$categories=unserialize(@file_get_contents($filename));
-	
-	while (list ($category_table, $category_rule) = each ($categories)){
-		$category_rule=urlencode($category_rule);
-		$categoryname=$trans[$category_table];
-		
-		if(isset($MAIN[$categoryname])){
-			if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("FOUND `$categoryname` -> `$category_rule` ");}
-			categories_set_memory($gpid,$sitname,$category_rule);
-			return $category_rule;
-		}
-		
-	}
-	
-	categories_set_memory($gpid,$sitname,"UNKNOWN");
-	
-}
-
-function parseURL($url,$return_rhost=false){
+function parseURL($url){
 	$uri=null;
-	$md5=md5($url);
-	$MAIN_ARRAY=array();
-	if(isset($GLOBALS["CACHE_URI"][$md5])){
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("MEMORY $md5 ". strlen($GLOBALS["CACHE_URI"][$md5])." [".__LINE__."]");}
-		if($return_rhost){
-			$a=unserialize($GLOBALS["CACHE_URI"][$md5]);
-			if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("RETURN MEMORY $md5 [".__LINE__."]");}
-			return $a["RHOST"];
-		}
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("RETURN MEMORY $md5 [".__LINE__."]");}
-		return unserialize($GLOBALS["CACHE_URI"][$md5]);
+	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL():: Analyze [$url]");}
+	//%LOGIN %SRC %SRCEUI48 %>ha{X-Forwarded-For} %DST
+
+	$MAIN=explode(" ",$url);
+
+	if(is_numeric($MAIN[0])){
+		$GLOBALS["CHANNEL"]=$MAIN[0];
+
+		$LOGIN2=trim($MAIN[1]);
+		$IPADDR=trim($MAIN[2]);
+		$MAC=trim($MAIN[3]);
+		$IPADDR2=trim($MAIN[4]);
+		$DOMAIN=trim($MAIN[5]);
+		$ID=trim($MAIN[6]);
+	}else{
+
+		$LOGIN2=trim($MAIN[0]);
+		$IPADDR=trim($MAIN[1]);
+		$MAC=trim($MAIN[2]);
+		$IPADDR2=trim($MAIN[3]);
+		$DOMAIN=trim($MAIN[4]);
+		$ID=trim($MAIN[5]);
 	}
 	
-	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("\n -----------------------------------------------------\n");}
-	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL():: Analyze $url /CATZ = {$GLOBALS["CATZ-EXTRN"]} [".__LINE__."]");}
+	if(preg_match("#ID([0-9]+)#", $ID,$re)){$GLOBALS["RULE_ID"]=$re[1];}
 	
-	if( $GLOBALS["CATZ-EXTRN"]>0){
-		$tr=explode(" ", $url);
-		
-		$MAIN_ARRAY["LOGIN"]=null;
-		$MAIN_ARRAY["IPADDR"]=$tr[0];
-		$MAIN_ARRAY["MAC"]=$tr[1];
-		$MAIN_ARRAY["HOST"]=GetComputerName($tr[0]);
-		$MAIN_ARRAY["URI"]=$tr[3];
-		
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL():: Analyze RHOST = {$tr[3]} [".__LINE__."]");}
-		
-		if(preg_match("#^(.*?):([0-9]+)$#i", $tr[3],$re)){
-			$MAIN_ARRAY["RHOST"]=$re[1];
-			if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL():: FOUND RHOST = {$MAIN_ARRAY["RHOST"]} [".__LINE__."]");}
-			if($return_rhost){return $re[1];}
-			$GLOBALS["CACHE_URI"][$md5]=serialize($MAIN_ARRAY);
-			return $MAIN_ARRAY;
-		}
-		
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL():: {$tr[3]} != ^([a-z0-9\.]+):([0-9]+) [".__LINE__."]");}
-		
-		if(preg_match("#^http.*?:#", $tr[3])){
-			$URLAR=parse_url($tr[3]);
-			if(isset($URLAR["host"])){
-				$MAIN_ARRAY["RHOST"]=$URLAR["host"];
-				if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL():: FOUND RHOST = {$MAIN_ARRAY["RHOST"]} [".__LINE__."]");}
-				if($return_rhost){return $re[1];}
-				$GLOBALS["CACHE_URI"][$md5]=serialize($MAIN_ARRAY);
-				return $MAIN_ARRAY;
-			}
-			
-		}
-		
-		
-		
+	$LOGIN=null;
+	if($LOGIN2=="-"){$LOGIN2=null;}
+	if($IPADDR2=="-"){$IPADDR2=null;}
+	if($MAC=="-"){$MAC=null;}
+
+
+	if($LOGIN2<>null){
+		$LOGIN=$LOGIN2;
 	}
-	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL():: Analyze $url [".__LINE__."]");}
+
+	if($IPADDR2<>null){$IPADDR=$IPADDR2;}
+	if(preg_match("#(.+?):([0-9]+)#", $DOMAIN,$re)){$DOMAIN=$re[1];}
+
+	$GLOBALS["USERID"]=$LOGIN;
+	$GLOBALS["IPADDR"]=$IPADDR;
+	$GLOBALS["MAC"]=$MAC;
+	$GLOBALS["DOMAIN"]=$DOMAIN;
 	
-	if(preg_match("#-\s+(.+?)\s+ID([0-9]+)#", $url,$re)){
-		$GLOBALS["RULE_ID"]=$re[2];
-		$url=str_replace($re[0], "", $url);
-		
-		if(preg_match("#(.+?):([0-9]+)#", $re[1],$ri)){$re[1]=$ri[1];}
-		$MAIN_ARRAY["RHOST"]=$re[1];
-		$MAIN_ARRAY["RULE_ID"]=$re[2];
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL()::found ID:{$GLOBALS["RULE_ID"]} remote host={$re[1]}  [".__LINE__."]");}
+	
+	if(count($GLOBALS["CACHE_HOSTS"])>500){$GLOBALS["CACHE_HOSTS"]=array();}
+	
+	if(isset($GLOBALS["CACHE_HOSTS"][$IPADDR])){
+		$GLOBALS["CACHE_HOSTS"][$IPADDR]=gethostbyaddr($IPADDR);
 	}
-	
-	
-	if(preg_match("#-\s+ID([0-9]+)#", $url,$re)){
-		$GLOBALS["RULE_ID"]=$re[1];
-		$MAIN_ARRAY["RULE_ID"]=$re[1];
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL()::found ID:{$GLOBALS["RULE_ID"]}  [".__LINE__."]");}
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL()::Analyze {$re[0]}  [".__LINE__."]");}
-		$url=str_replace($re[0], "", $url);
-	}
-	
-	
-	
-	if(preg_match("#(http|ftp|https|ftps):\/\/(.*)#i", $url,$re)){
-		$uri=$re[1]."://".$re[2];
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL()::found uri $uri  [".__LINE__."]");}
-		$url=trim(str_replace($uri, "", $url));
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL()::Analyze $url  [".__LINE__."]");}
-		
-	}
-	if($uri==null){
-		if(preg_match("#^(.*?):([0-9]+)$#i", $url,$re)){
-			$uri="http://".$re[1];
-			if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL()::found uri $uri  [".__LINE__."]");}
-			$url=trim(str_replace($re[1].":".$re[2], "", $url));
-			if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL()::Analyze \"$url\"  [".__LINE__."]");}
-		}
-	}
-	if($uri<>null){
-		$URLAR=parse_url($uri);
-		if(isset($URLAR["host"])){$rhost=$URLAR["host"];}
-	}
-	
-	
-	
-	
-	
-	$tr=explode(" ", $url);
-	if($GLOBALS["DEBUG_LEVEL"]>1){
-		while (list ($index, $line) = each ($tr)){
-			WLOG("parseURL()::tr[$index] = $line");	
-		}
-	}
-	
-	
-	//max auth=4
-	if(count($tr)==4){
-		
-		$login=$tr[0];
-		$ipaddr=$tr[1];
-		$mac=$tr[2];
-		$forwarded=$tr[3];
-		if(isset($tr[4])){$uri=$tr[4];}
-		if($mac=="00:00:00:00:00:00"){$mac=null;}
-		if(preg_match("#^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$#", $forwarded)){$ipaddr=$forwarded;}
-		if($mac==null){$mac=GetMacFromIP($ipaddr);}
-		
-		if($mac=="00:00:00:00:00:00"){$mac=null;}
-		$MAIN_ARRAY["LOGIN"]=$login;
-		$MAIN_ARRAY["IPADDR"]=$ipaddr;
-		$MAIN_ARRAY["MAC"]=$mac;
-		$MAIN_ARRAY["HOST"]=GetComputerName($ipaddr);
-		$MAIN_ARRAY["URI"]=$uri;
-		$MAIN_ARRAY["RHOST"]=$rhost;
-		$GLOBALS["CACHE_URI"][$md5]=serialize($MAIN_ARRAY);
-		return $MAIN_ARRAY;
-	}
-	
-	
-	
-	if(count($tr)==3){
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL()::count --> 3");}
-		if(preg_match("#^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$#", $tr[0])){
-			//ip en premier donc mac=ok, pas de login
-			$login=null;	
-			$ipaddr=$tr[0];
-			$mac=$tr[1];
-			$forwarded=$tr[2];
-			if(isset($tr[3])){$uri=$tr[3];}	
-		}else{
-			//login en premier donc mac=bad
-			$login=$tr[0];
-			$ipaddr=$tr[1];
-			
-			$forwarded=$tr[2];
-			if(isset($tr[3])){$uri=$tr[3];}	
-		}
-		if($mac=="00:00:00:00:00:00"){$mac=null;}
-		if(preg_match("#[0-9]+\[0-9]+\.[0-9]+\.[0-9]+#", $forwarded)){$ipaddr=$forwarded;}
-		if($mac==null){$mac=GetMacFromIP($ipaddr);}
-		if($mac=="00:00:00:00:00:00"){$mac=null;}
-		$MAIN_ARRAY["LOGIN"]=$login;
-		$MAIN_ARRAY["IPADDR"]=$ipaddr;
-		$MAIN_ARRAY["MAC"]=$mac;
-		$MAIN_ARRAY["HOST"]=GetComputerName($ipaddr);
-		$MAIN_ARRAY["URI"]=$uri;	
-		$MAIN_ARRAY["RHOST"]=$rhost;		
-		$GLOBALS["CACHE_URI"][$md5]=serialize($MAIN_ARRAY);
-		return $MAIN_ARRAY;
-		
-	}
-	
-	
-	
-	if(count($tr)==2){
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("parseURL()::count --> 2");}
-		//pas de login et pas de MAC;
-		$login=null;	
-		$ipaddr=$tr[0];
-		$mac=null;
-		$forwarded=$tr[1];
-		if(isset($tr[2])){$uri=$tr[2];}	
-		if(preg_match("#[0-9]+\[0-9]+\.[0-9]+\.[0-9]+#", $forwarded)){$ipaddr=$forwarded;}
-		
-	}
-	if($mac==null){$mac=GetMacFromIP($ipaddr);}
-	else{		
-		if($mac=="00:00:00:00:00:00"){$mac=null;$mac=GetMacFromIP($ipaddr);}
-	}
-	if($mac=="00:00:00:00:00:00"){$mac=null;}
-	$MAIN_ARRAY["LOGIN"]=$login;
-	$MAIN_ARRAY["IPADDR"]=$ipaddr;
-	$MAIN_ARRAY["MAC"]=$mac;
-	$MAIN_ARRAY["HOST"]=GetComputerName($ipaddr);
-	$MAIN_ARRAY["URI"]=$uri;	
-	$MAIN_ARRAY["RHOST"]=$rhost;
-	$GLOBALS["CACHE_URI"][$md5]=serialize($MAIN_ARRAY);
-	return $MAIN_ARRAY;
-	
-	
+
+	$ARRAY["USERID"]=$LOGIN;
+	$ARRAY["IPADDR"]=$IPADDR;
+	$ARRAY["MAC"]=$MAC;
+	$ARRAY["HOST"]=$GLOBALS["CACHE_HOSTS"][$IPADDR];
+	$ARRAY["DOMAIN"]=trim(strtolower($DOMAIN));
+	return $ARRAY;
+
 }
+
+
 
 function CheckPattern($name,$gpid,$type){
 	if(!is_numeric($gpid)){return;}
@@ -494,17 +171,13 @@ function CheckPattern($name,$gpid,$type){
 	try{
 		
 	
-	if(!class_exists("mysql_squid_builder")){include_once(dirname(__FILE__)."/ressources/class.mysql.squid.builder.php");}
-	$q=new mysql_squid_builder();
 	$sql="SELECT ID,`value`  FROM webfilter_aclsdynamic WHERE gpid=$gpid AND `type`=$type";
-	$results = $q->QUERY_SQL($sql);
-	if(!$q->ok){
-		WLOG("CheckPattern()::ERROR SQL: $sql");
-		WLOG("CheckPattern()::ERROR SQL: `$q->mysql_error`");
+	$results = api_QUERY_SQL($sql);
+	
+	if(mysql_num_rows($results)==0){
+		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("CheckPattern()::$sql -> NO ROW");}
 		return 0;
 	}
-	
-	if(mysql_num_rows($results)==0){return 0;}
 	
 	while ($ligne = mysql_fetch_assoc($results)) {
 		$value=$ligne["value"];
@@ -525,8 +198,8 @@ function CheckPattern($name,$gpid,$type){
 		$GLOBALS["CACHE_CLEAN_MYSQL"]=time();
 		if($GLOBALS["DEBUG_LEVEL"]>3){WLOG("CheckPattern():: Clean old rules...");}
 		$sql="DELETE FROM `webfilter_aclsdynamic` WHERE `duration`>0 AND `maxtime`>".time();
-		$q->QUERY_SQL($sql);
-		if(!$q->ok){WLOG("CheckPattern()::$q->mysql_error,$sql");}
+		api_QUERY_SQL($sql);
+		
 	}
 	
 	
@@ -540,247 +213,9 @@ function CheckPattern($name,$gpid,$type){
 }
 
 
-function GetMacToUid($mac){
-	if($mac==null){return;}
-	if(isset($GLOBALS["GetMacToUidMD5"])){
-			$md5file=md5_file("/etc/squid3/MacToUid.ini");
-			if($md5file<>$GLOBALS["GetMacToUidMD5"]){
-				unset($GLOBALS["GetMacToUid"]);
-			}
-	}
-	if(isset($GLOBALS["GetMacToUid"])){
-		if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("MEM: $mac =`{$GLOBALS["GetMacToUid"][$mac]}`");}
-		if(isset($GLOBALS["GetMacToUid"][$mac])){
-				return $GLOBALS["GetMacToUid"][$mac];
-			}
-		return;
-	}
-	
-	$GLOBALS["GetMacToUid"]=unserialize(@file_get_contents("/etc/squid3/MacToUid.ini"));
-	$GLOBALS["GetMacToUidMD5"]=md5_file("/etc/squid3/MacToUid.ini");
-	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("DISK: $mac =`{$GLOBALS["GetMacToUid"][$mac]}`");}
-	if(isset($GLOBALS["GetMacToUid"][$mac])){return $GLOBALS["GetMacToUid"][$mac];}
-}
 
 
 
-
-function CheckQuota($CPINFOS){
-	$RULES=unserialize(@file_get_contents("/etc/squid3/squid.durations.ini"));
-	if(!is_array($RULES)){return true;}
-	if(count($RULES)==0){return true;}
-	
-	while (list ($duration, $array_duration) = each ($RULES)){
-		while (list ($xtype, $array_type) = each ($array_duration)){
-			while (list ($pattern, $quotaBytes) = each ($array_type)){
-				WLOG("Check rule for duration:$duration type:$xtype ($pattern) $quotaBytes bytes");
-				
-				if($duration==1){
-					if(CheckQuota_day($CPINFOS,$xtype,$pattern,$quotaBytes)){return false;}
-					continue;
-				}
-				if($duration==2){
-					if(CheckQuota_hour($CPINFOS,$xtype,$pattern,$quotaBytes)){return false;}
-					continue;
-				}
-			}
-		}
-		
-	}
-
-return true;
-	
-	
-}
-function CheckQuota_day($infos,$xtype,$pattern,$quotaBytes){
-	$IPADDR=$infos["IPADDR"];
-	$MAC=$infos["MAC"];
-	$HOST=$infos["HOST"];
-	$LOGIN=$infos["LOGIN"];
-	
-	$array=unserialize(@file_get_contents("/etc/squid3/squid.quotasD.ini"));
-	$pattern=str_replace(".", "\.", $pattern);
-	$pattern=str_replace("*", ".*?", $pattern);	
-	
-	if($xtype=="ipaddr"){
-		if($IPADDR==null){WLOG("$IPADDR is null");return false;}
-		if(!preg_match("#$pattern#i", $IPADDR)){WLOG("$IPADDR did nor match rule $pattern");return false;}
-		if(count($array["ipaddr"])==0){WLOG("ipaddr: not an array...");return false;}
-		if(!isset($array["ipaddr"][$IPADDR])){WLOG("ipaddr[$IPADDR]: !isset");return false;}
-		$CurrentQuota=$array["ipaddr"][$IPADDR];
-		$CurrentQuotaM=($CurrentQuota/1024)/1000;
-		$quotaBytesM=($quotaBytes/1024)/1000;
-		if($CurrentQuota<$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB did not match rule of $quotaBytes - $quotaBytesM MB");return false;}
-		if($CurrentQuota>=$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB match rule of $quotaBytesM MB");return true;}
-	}
-
-	if($xtype=="uid"){
-		if($LOGIN==null){WLOG("LOGIN is null");return false;}
-		if(!preg_match("#$pattern#i", $LOGIN)){WLOG("$LOGIN did nor match rule $pattern");return false;}
-		if(count($array["uid"])==0){WLOG("uid: not an array...");return false;}
-		if(!isset($array["uid"][$LOGIN])){WLOG("uid[$LOGIN]: !isset");return false;}
-		$CurrentQuota=$array["uid"][$LOGIN];
-		$CurrentQuotaM=($CurrentQuota/1024)/1000;
-		$quotaBytesM=($quotaBytes/1024)/1000;
-		if($CurrentQuota<$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB did not match rule of $quotaBytes - $quotaBytesM MB");return false;}
-		if($CurrentQuota>=$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB match rule of $quotaBytesM MB");return true;}
-	}	
-	
-	if($xtype=="hostname"){
-		if($HOST==null){WLOG("HOST is null");return false;}
-		if(!preg_match("#$pattern#i", $HOST)){WLOG("$HOST did nor match rule $pattern");return false;}
-		if(count($array["hostname"])==0){WLOG("hostname: not an array...");return false;}
-		if(!isset($array["hostname"][$HOST])){WLOG("hostname[$LOGIN]: !isset");return false;}
-		$CurrentQuota=$array["hostname"][$HOST];
-		$CurrentQuotaM=($CurrentQuota/1024)/1000;
-		$quotaBytesM=($quotaBytes/1024)/1000;
-		if($CurrentQuota<$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB did not match rule of $quotaBytes - $quotaBytesM MB");return false;}
-		if($CurrentQuota>=$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB match rule of $quotaBytesM MB");return true;}
-	}	
-	
-	if($xtype=="MAC"){
-		if($MAC==null){WLOG("MAC is null");return false;}
-		if(!preg_match("#$pattern#i", $MAC)){WLOG("$MAC did nor match rule $pattern");return false;}
-		if(count($array["MAC"])==0){WLOG("MAC: not an array...");return false;}
-		if(!isset($array["MAC"][$MAC])){WLOG("MAC[$MAC]: !isset");return false;}
-		$CurrentQuota=$array["MAC"][$MAC];
-		$CurrentQuotaM=($CurrentQuota/1024)/1000;
-		$quotaBytesM=($quotaBytes/1024)/1000;
-		if($CurrentQuota<$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB did not match rule of $quotaBytes - $quotaBytesM MB");return false;}
-		if($CurrentQuota>=$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB match rule of $quotaBytesM MB");return true;}
-	}		
-	
-	
-}
-
-function CheckQuota_hour($infos,$xtype,$pattern,$quotaBytes){
-	
-	$IPADDR=$infos["IPADDR"];
-	$MAC=$infos["MAC"];
-	$HOST=$infos["HOST"];
-	$LOGIN=$infos["LOGIN"];
-	
-	
-	$array=unserialize(@file_get_contents("/etc/squid3/squid.quotasH.ini"));
-	$pattern=str_replace(".", "\.", $pattern);
-	$pattern=str_replace("*", ".*?", $pattern);
-
-	if($xtype=="ipaddr"){
-		if($IPADDR==null){WLOG("IPADDR is null");return false;}
-		if(!preg_match("#$pattern#i", $IPADDR)){WLOG("$IPADDR did nor match rule $pattern");return false;}
-		if(count($array["ipaddr"])==0){WLOG("ipaddr: not an array...");return false;}
-		if(!isset($array["ipaddr"][$IPADDR])){WLOG("ipaddr[$IPADDR]: !isset");return false;}
-		$CurrentQuota=$array["ipaddr"][$IPADDR];
-		$CurrentQuotaM=($CurrentQuota/1024)/1000;
-		$quotaBytesM=($quotaBytes/1024)/1000;
-		if($CurrentQuota<$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB did not match rule of $quotaBytes - $quotaBytesM MB");return false;}
-		if($CurrentQuota>=$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB match rule of $quotaBytesM MB");return true;}
-	}
-
-	if($xtype=="uid"){
-		if($LOGIN==null){WLOG("LOGIN is null");return false;}
-		if(!preg_match("#$pattern#i", $LOGIN)){WLOG("$LOGIN did nor match rule $pattern");return false;}
-		if(count($array["uid"])==0){WLOG("uid: not an array...");return false;}
-		if(!isset($array["uid"][$LOGIN])){WLOG("uid[$LOGIN]: !isset");return false;}
-		$CurrentQuota=$array["uid"][$LOGIN];
-		$CurrentQuotaM=($CurrentQuota/1024)/1000;
-		$quotaBytesM=($quotaBytes/1024)/1000;
-		if($CurrentQuota<$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB did not match rule of $quotaBytes - $quotaBytesM MB");return false;}
-		if($CurrentQuota>=$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB match rule of $quotaBytesM MB");return true;}
-	}	
-	
-	if($xtype=="hostname"){
-		if($HOST==null){WLOG("HOST is null");return false;}
-		if(!preg_match("#$pattern#i", $HOST)){WLOG("$HOST did nor match rule $pattern");return false;}
-		if(count($array["hostname"])==0){WLOG("hostname: not an array...");return false;}
-		if(!isset($array["hostname"][$HOST])){WLOG("hostname[$LOGIN]: !isset");return false;}
-		$CurrentQuota=$array["hostname"][$HOST];
-		$CurrentQuotaM=($CurrentQuota/1024)/1000;
-		$quotaBytesM=($quotaBytes/1024)/1000;
-		if($CurrentQuota<$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB did not match rule of $quotaBytes - $quotaBytesM MB");return false;}
-		if($CurrentQuota>=$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB match rule of $quotaBytesM MB");return true;}
-	}	
-	
-	if($xtype=="MAC"){
-		if($MAC==null){WLOG("MAC is null");return false;}
-		if(!preg_match("#$pattern#i", $MAC)){WLOG("$MAC did nor match rule $pattern");return false;}
-		if(count($array["MAC"])==0){WLOG("MAC: not an array...");return false;}
-		if(!isset($array["MAC"][$MAC])){WLOG("MAC[$MAC]: !isset");return false;}
-		$CurrentQuota=$array["MAC"][$MAC];
-		$CurrentQuotaM=($CurrentQuota/1024)/1000;
-		$quotaBytesM=($quotaBytes/1024)/1000;
-		if($CurrentQuota<$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB did not match rule of $quotaBytes - $quotaBytesM MB");return false;}
-		if($CurrentQuota>=$quotaBytes){WLOG("Current $CurrentQuota - $CurrentQuotaM MB match rule of $quotaBytesM MB");return true;}
-	}	
-
-	
-	
-}
-
-function SplasHCheckAuth($array){
-	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("curl_init()");}
-	$ch = curl_init();
-	
-	$LOGIN=$array["LOGIN"];
-	$IPADDR=$array["IPADDR"];
-	$MAC=$array["MAC"];
-	$HOST=$array["HOST"];
-	$md5key=md5("$LOGIN$IPADDR$MAC$HOST");	
-	
-	$params="?checks=".base64_encode(serialize($array));
-	curl_setopt($ch, CURLOPT_INTERFACE,"127.0.0.1");
-	curl_setopt($ch, CURLOPT_URL, $GLOBALS["SplashScreenURI"].$params);
-	curl_setopt($ch, CURLOPT_HEADER, 0);
-	curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt($ch, CURLOPT_POST, 0);
-	curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:10.0) Gecko/20100101 Firefox/10.0");
-	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-	curl_setopt($ch, CURLOPT_HTTPHEADER, array("Pragma: no-cache", "Cache-Control: no-cache",'Expect:'));
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
-	
-	
-	if($GLOBALS["DEBUG_LEVEL"]>2){WLOG("curl_exec()-> ".$GLOBALS["SplashScreenURI"].$params);}
-	$data=curl_exec($ch);
-	$errno=curl_errno($ch);
-	
-	if($errno>0){
-		if($GLOBALS["DEBUG_LEVEL"]>0){WLOG("Error $errno");}
-		return;
-	}
-	
-	if($GLOBALS["DEBUG_LEVEL"]>0){WLOG("{$GLOBALS["SplashScreenURI"]} Error:$errno $data");}
-	
-	if(preg_match("#<OK>uid=(.*?)</OK>#is", $data,$re)){
-		$time=time();
-		WLOG("{$re[1]}: $md5key return {$re[1]} -> Cache time:$time");
-		$GLOBALS["SESSIONS"][$md5key]["TIME"]=$time;
-		$GLOBALS["SESSIONS"][$md5key]["uid"]=$re[1];
-		return $re[1];
-	}
-	
-	
-	curl_close($ch);
-}
-
-function SessionActive($array){
-	
-	$LOGIN=$array["LOGIN"];
-	$IPADDR=$array["IPADDR"];
-	$MAC=$array["MAC"];
-	$HOST=$array["HOST"];
-	$md5key=md5("$LOGIN$IPADDR$MAC$HOST");
-	if(!isset($GLOBALS["SESSIONS"][$md5key])){return;}
-	$distanceInSeconds = round(abs(time() - $GLOBALS["SESSIONS"][$md5key]["TIME"]));
-	
-	
-	if($distanceInSeconds>$GLOBALS["SESSION_TIME"]){
-		WLOG("{$GLOBALS["SESSIONS"][$md5key]["uid"]}: Key: $md5key {$GLOBALS["SESSIONS"][$md5key]["TIME"]} = $distanceInSeconds seconds <> {$GLOBALS["SESSION_TIME"]} seconds");
-		unset($GLOBALS["SESSIONS"][$md5key]);return; }
-	return $GLOBALS["SESSIONS"][$md5key]["uid"];
-
-}
 function DistanceInMns($time){
 	$data1 = $time;
 	$data2 = time();
@@ -825,6 +260,77 @@ function WLOG($text=null){
 	if($GLOBALS["VERBOSE"]){echo "$date [{$GLOBALS["PID"]}]: $text $called\n";}
 	@fwrite($f, "$date [{$GLOBALS["PID"]}]: $text $called - process Memory:$mem\n");
 	@fclose($f);
+}
+
+function ap_mysql_load_params(){
+	$GLOBALS["MYSQL_SOCKET"]=null;
+	$GLOBALS["MYSQL_PASSWORD"]=trim(@file_get_contents("/etc/artica-postfix/settings/Mysql/database_password"));
+	if($GLOBALS["MYSQL_PASSWORD"]=="!nil"){$GLOBALS["MYSQL_PASSWORD"]=null;}
+	$GLOBALS["MYSQL_PASSWORD"]=stripslashes($GLOBALS["MYSQL_PASSWORD"]);
+	$GLOBALS["MYSQL_USERNAME"]=trim(@file_get_contents("/etc/artica-postfix/settings/Mysql/database_admin"));
+	$GLOBALS["MYSQL_SERVER"]=trim(@file_get_contents("/etc/artica-postfix/settings/Mysql/mysql_server"));
+	$GLOBALS["MYSQL_PORT"]=intval(@file_get_contents("/etc/artica-postfix/settings/Mysql/port"));
+	if($GLOBALS["MYSQL_PORT"]==0){$GLOBALS["MYSQL_PORT"]=3306;}
+	if($GLOBALS["MYSQL_SERVER"]==null){$GLOBALS["MYSQL_SERVER"]="127.0.0.1";}
+	$GLOBALS["MYSQL_USERNAME"]=str_replace("\r", "", $GLOBALS["MYSQL_USERNAME"]);
+	$GLOBALS["MYSQL_USERNAME"]=trim($GLOBALS["MYSQL_USERNAME"]);
+	$GLOBALS["MYSQL_PASSWORD"]=str_replace("\r", "", $GLOBALS["MYSQL_PASSWORD"]);
+	$GLOBALS["MYSQL_PASSWORD"]=trim($GLOBALS["MYSQL_PASSWORD"]);
+
+	if($GLOBALS["MYSQL_USERNAME"]==null){$GLOBALS["MYSQL_USERNAME"]="root";}
+	if($GLOBALS["MYSQL_SERVER"]=="localhost"){$GLOBALS["MYSQL_SERVER"]="127.0.0.1";}
+	if($GLOBALS["MYSQL_SERVER"]=="127.0.0.1"){$GLOBALS["MYSQL_SOCKET"]="/var/run/mysqld/squid-db.sock";}
+}
+function api_mysql_connect(){
+
+	if($GLOBALS["MYSQL_SOCKET"]<>null){
+		$bd=@mysql_connect(":{$GLOBALS["MYSQL_SOCKET"]}",$GLOBALS["MYSQL_USERNAME"],$GLOBALS["MYSQL_PASSWORD"]);
+	}else{
+		$bd=@mysql_connect("{$GLOBALS["MYSQL_SERVER"]}:{$GLOBALS["MYSQL_PORT"]}","{$GLOBALS["MYSQL_USERNAME"]}","{$GLOBALS["MYSQL_PASSWORD"]}");
+	}
+
+	if($bd){return $bd;}
+	$des=@mysql_error();
+	$errnum=@mysql_errno();
+	WLOG("api_mysql_connect() failed (N:$errnum) \"$des\"");
+	return false;
+}
+function api_QUERY_SQL($sql){
+	if($GLOBALS["DEBUG_LEVEL"]){WLOG("api_QUERY_SQL::Call api_mysql_connect");}
+	$mysql_connection=api_mysql_connect();
+	if(!$mysql_connection){return false;}
+
+	if($GLOBALS["DEBUG_LEVEL"]>0){WLOG("api_QUERY_SQL::Call mysql_select_db");}
+	$ok=@mysql_select_db("squidlogs",$mysql_connection);
+	if(!$ok){
+		$errnum=@mysql_errno($mysql_connection);
+		$des=@mysql_error($mysql_connection);
+		@mysql_close($mysql_connection);
+		WLOG("mysql_select_db() failed (N:$errnum) \"$des\"");
+		return false;
+	}
+
+	$mysql_unbuffered_query_log=null;
+	if(preg_match("#^(UPDATE|DELETE)#i", $sql)){
+		$mysql_unbuffered_query_log="mysql_unbuffered_query";
+		$results=@mysql_unbuffered_query($sql,$mysql_connection);
+			
+	}else{
+		$mysql_unbuffered_query_log="mysql_query";
+		$results=@mysql_query($sql,$mysql_connection);
+	}
+
+	if(!$results){
+		$errnum=@mysql_errno($mysql_connection);
+		$des=@mysql_error($mysql_connection);
+		@mysql_close($mysql_connection);
+		WLOG("$mysql_unbuffered_query_log() failed (N:$errnum) \"$des\"");
+		return false;
+	}
+	@mysql_close($mysql_connection);
+	return $results;
+
+
 }
 
 function uriToHost($uri){
@@ -892,176 +398,7 @@ function GetMacFromIP($ipaddr){
 		
 	}
 	
-function CheckITChart($login,$ipaddr,$mac){
-	$q=new mysql_squid_builder();
-	
-	if(!isset($GLOBALS["ITCHARTSIDS"])){
-		$sql="SELECT ID FROM itcharters WHERE enabled=1";
-		$results = $q->QUERY_SQL($sql);
-		while ($ligne = mysql_fetch_assoc($results)) {
-			$GLOBALS["ITCHARTSIDS"][$ligne["ID"]]=$ligne["ID"];
-			WLOG("CheckITChart():: ChartID {$ligne["ID"]} to check..");
-		}
-	}
-	
-	if(count($GLOBALS["ITCHARTSIDS"])==0){
-		WLOG("CheckITChart():: $login,$ipaddr,$mac no chart id, aborting, you should disable this feature.");
-		return 0;}
-	
-	$itCharts=$GLOBALS["ITCHARTSIDS"];
-	reset($itCharts);
-	if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("CheckITChart():: login=$login,ipaddr=$ipaddr,mac=$mac ". count($itCharts)." to check");}
-	if(trim($login<>null)){
-		$login=trim(strtolower($login));
-		while (list ($ID, $line) = each ($itCharts)){
-			$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT ID FROM itchartlog WHERE uid='$login' AND chartid='$ID'"));
-			$EvID=$ligne["ID"];
-			
-			if(!is_numeric($EvID)){$EvID=0;}
-			if($EvID==0){
-				WLOG("CheckITChart():: LOGIN:$login ChartID $ID not read..");
-				return $ID;}
-		}
-		return 0;
-	}
-	
-	if(trim($mac<>null)){
-		$mac=trim(strtolower($mac));
-		reset($itCharts);
-		while (list ($ID, $line) = each ($itCharts)){
-			$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT ID FROM itchartlog WHERE MAC='$mac' AND chartid='$ID'"));
-			$EvID=$ligne["ID"];
-			if(!is_numeric($EvID)){$EvID=0;}
-			if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("CheckITChart()::MAC:$mac ChartID $ID = $EvID");}
-			if($EvID==0){
-				WLOG("CheckITChart():: MAC:$mac ChartID $ID not read..");
-				return $ID;}
-		}
-		return 0;
-	}	
-	if(trim($ipaddr<>null)){
-		$ipaddr=trim(strtolower($ipaddr));
-		reset($itCharts);
-		while (list ($ID, $line) = each ($itCharts)){
-			$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT ID FROM itchartlog WHERE ipaddr='$ipaddr' AND chartid='$ID'"));
-			$EvID=$ligne["ID"];
-			if($GLOBALS["DEBUG_LEVEL"]>1){WLOG("CheckITChart()::IPADDR:$ipaddr ChartID $ID = $EvID");}
-			
-			if(!is_numeric($EvID)){$EvID=0;}
-			if($EvID==0){
-				WLOG("CheckITChart():: IPADDR:$ipaddr ChartID $ID not read..");
-				return $ID;}
-		}
-		return 0;
-	}
 
-	WLOG("CheckITChart():: ??!!");
-	
-}	
-
-function UFDGUARD_UNLOCKED($url){
-	
-	if(trim($url)==null){
-		
-		return false;}
-	$q=new mysql_squid_builder();
-	if($q->COUNT_ROWS("ufdbunlock")==0){
-		
-		return false;}
-	$values=explode(" ",$url);
-	$LOGIN=$values[0];
-	$IPADDR=$values[1];
-	$MAC=$values[2];
-	$XFORWARD=$values[3];
-	$WWW=$values[4];
-	$LOGIN=str_replace("%25", "-", $LOGIN);
-	$IPADDR=str_replace("%25", "-", $IPADDR);
-	$MAC=str_replace("%25", "-", $MAC);
-	$XFORWARD=str_replace("%25", "-", $XFORWARD);
-	if($XFORWARD=="-"){$XFORWARD=null;}
-	if($MAC=="00:00:00:00:00:00"){$MAC=null;}
-	if($MAC=="-"){$MAC=null;}
-	if($LOGIN=="-"){$LOGIN=null;}
-	$IPCalls=new IP();
-	if($IPCalls->isIPAddress($XFORWARD)){$IPADDR=$XFORWARD;}
-	
-	if(preg_match("#(.+?):[0-9]+#", $WWW,$re)){$WWW=$re[1];}
-	if(preg_match("#^www\.(.+)#", $WWW,$re)){$WWW=$re[1];}
-	
-	
-	$WWW=$q->GetFamilySites($WWW);
-	if(!isset($GLOBALS["ufdbunlock_c"])){$GLOBALS["ufdbunlock_c"]=0;}
-	$GLOBALS["ufdbunlock_c"]++;
-	
-	
-	if($GLOBALS["ufdbunlock_c"]>90){
-		$q->QUERY_SQL("DELETE FROM ufdbunlock WHERE `finaltime` <". time());
-		if(!$q->ok){WLOG("$q->mysql_error");}
-		$GLOBALS["ufdbunlock_c"]=0;
-	}
-	
-	if($LOGIN<>null){
-		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT md5,finaltime FROM ufdbunlock WHERE `www`='$WWW' AND uid='$LOGIN'"));
-		if(!$q->ok){WLOG("$q->mysql_error");}
-		
-		
-		
-		if($ligne["md5"]<>null){
-			if($ligne["finaltime"]<time()){
-				return false;
-			}
-			if($MAC<>null){
-				$q->QUERY_SQL("UPDATE ufdbunlock SET MAC='$MAC' WHERE uid='$LOGIN'");
-			}
-			
-			return true;
-		}
-	}
-		
-
-	if($MAC<>null){
-			$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT md5,finaltime FROM ufdbunlock WHERE `www`='$WWW' AND MAC='$MAC'"));
-			if(!$q->ok){WLOG("$q->mysql_error");}
-			
-			
-			
-			if($ligne["md5"]<>null){
-				if($ligne["finaltime"]<time()){return false;}
-				if($IPADDR<>null){
-					$q->QUERY_SQL("UPDATE ufdbunlock SET ipaddr='$IPADDR' WHERE MAC='$MAC'");
-				}
-				
-				return true;
-			}	
-	}
-			
-	
-	if($IPADDR<>null){
-		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT md5,finaltime FROM ufdbunlock WHERE `www`='$WWW' AND ipaddr='$IPADDR'"));
-		if(!$q->ok){WLOG("$q->mysql_error");}
-		$time=time();
-		
-		
-		if($ligne["md5"]<>null){
-			if($ligne["finaltime"]<time()){
-				WLOG("{$ligne["finaltime"]} < $time -> FALSE");
-				return false;}
-		
-		if($MAC<>null){
-			$q->QUERY_SQL("UPDATE ufdbunlock SET MAC='$MAC' WHERE ipaddr='$IPADDR'");
-		}
-		
-		return true;
-		}
-	}	
-	
-	
-	
-	
-	
-	
-}
-	
 	
 function find_program($strProgram) {
 	  $key=md5($strProgram);
@@ -1102,5 +439,26 @@ function internal_find_program($strProgram){
 	  } else {
 	   	return strpos($strProgram, '.exe');
 	  }
-	}	
+	}
+function string_to_regex($pattern){
+		if(trim($pattern)==null){return null;}
+		$pattern=str_replace("/", "\/", $pattern);
+		$pattern=str_replace(".", "\.", $pattern);
+		//$pattern=str_replace("-", "\-", $pattern);
+		$pattern=str_replace("[", "\[", $pattern);
+		$pattern=str_replace("]", "\]", $pattern);
+		$pattern=str_replace("(", "\(", $pattern);
+		$pattern=str_replace(")", "\)", $pattern);
+		$pattern=str_replace("$", "\$", $pattern);
+		$pattern=str_replace("?", "\?", $pattern);
+		$pattern=str_replace("#", "\#", $pattern);
+		$pattern=str_replace("{", "\{", $pattern);
+		$pattern=str_replace("}", "\}", $pattern);
+		$pattern=str_replace("^", "\^", $pattern);
+		$pattern=str_replace("!", "\!", $pattern);
+		$pattern=str_replace("+", "\+", $pattern);
+		$pattern=str_replace("*", ".*?", $pattern);
+		$pattern=str_replace("|", "\|", $pattern);
+		return $pattern;
+}		
 ?>

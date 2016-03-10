@@ -67,7 +67,7 @@ function aliases_table(){
 	url: '$page?host-aliases-list=yes&t=$t&tt={$_GET["tt"]}&recordid={$_GET["ID"]}',
 	dataType: 'json',
 	colModel : [
-	{display: '$hosts', name : 'hostname', width : 406, sortable : false, align: 'left'},
+	{display: '<span style=font-size:18px>$hosts</span>', name : 'hostname', width : 406, sortable : false, align: 'left'},
 	{display: '&nbsp;', name : 'delete', width : 46, sortable : false, align: 'center'},
 	],
 	$buttons
@@ -113,7 +113,7 @@ function table(){
 	
 	$aliases=$tpl->_ENGINE_parse_body("{aliases}");
 	$appy=$tpl->_ENGINE_parse_body("{apply}");
-	
+	$title=$tpl->javascript_parse_text("{dns_items}");
 	
 	
 	
@@ -133,10 +133,10 @@ function table(){
 	
 	$buttons="
 	buttons : [
-	{name: '$new_computer', bclass: 'add', onpress : AddHost$t},
+	{name: '<strong style=font-size:18px>$new_computer</strong>', bclass: 'add', onpress : AddHost$t},
 	
 	
-	{name: '$appy', bclass: 'apply', onpress : Apply$t},
+	{name: '<strong style=font-size:18px>$appy</strong>', bclass: 'apply', onpress : Apply$t},
 	],";
 	
 	$html="
@@ -148,10 +148,10 @@ $(document).ready(function(){
 	url: '$page?hosts=yes&t=$t',
 	dataType: 'json',
 	colModel : [
-		{display: '$hosts', name : 'hostname', width : 280, sortable : false, align: 'left'},
-		{display: '$addr', name : 'ipaddrton', width :156, sortable : true, align: 'left'},
-		{display: '$aliases', name : 'aliases', width :94, sortable : false, align: 'center'},
-		{display: '&nbsp;', name : 'delete', width : 46, sortable : false, align: 'center'},
+		{display: '<span style=font-size:18px>$hosts</span>', name : 'hostname', width : 481, sortable : false, align: 'left'},
+		{display: '<span style=font-size:18px>$addr</span>', name : 'ipaddrton', width :193, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$aliases</span>', name : 'aliases', width :193, sortable : false, align: 'center'},
+		{display: '&nbsp;', name : 'delete', width : 100, sortable : false, align: 'center'},
 	],
 	$buttons
 	searchitems : [
@@ -161,12 +161,12 @@ $(document).ready(function(){
 	sortname: 'hostname',
 	sortorder: 'asc',
 	usepager: true,
-	title: '',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 150,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 300,
+	height: 550,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200]
 	
@@ -560,7 +560,7 @@ function hosts(){
 	if(!$q->ok){	json_error_show($q->mysql_error."<br>$sql");}
 	if(mysql_num_rows($results)==0){json_error_show("no data");}
 	
-	$fontsize="16";
+	$fontsize="22";
 	
 	while ($ligne = mysql_fetch_assoc($results)) {
 		$color="black";
@@ -581,7 +581,7 @@ function hosts(){
 					"<span style='font-size:{$fontsize}px;font-weight:bold;color:$color'>$editjs$hostname</a><br><i style='font-size:12px'>&nbsp;$grouptype</i></span>",
 					"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$ipaddr</span>",
 					"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$Items</span>",
-					"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$delete</span>",)
+					"<center style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$delete</center>",)
 	);
 	}
 	

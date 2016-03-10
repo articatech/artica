@@ -88,7 +88,7 @@ function tabs(){
 	
 	$array["aliases"]="{aliases}";
 	$array["duplicate"]="{duplicate_domain}";
-	$array["antispam"]="{spam_rules}";
+	
 	
 	
 	$fontsize=22;

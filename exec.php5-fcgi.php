@@ -141,6 +141,10 @@ function start($aspid=false){
 	}
 	
 	$spawn_fcgi=$unix->find_program("spawn-fcgi");
+	
+	
+	
+	
 	if(!is_file($spawn_fcgi)){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} not installed\n";}
 		return;
@@ -169,9 +173,9 @@ function start($aspid=false){
 	if(!is_numeric($EnablePHPFPMFreeWeb)){$EnablePHPFPMFreeWeb=0;}
 	if(!is_numeric($EnableFreeWeb)){$EnableFreeWeb=0;}
 	if($EnableFreeWeb==0){$EnablePHPFPMFreeWeb=1;}
+	$EnablePHPFCGI=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableSPAWNFCGI"));
 	
-	
-	$enabled=1;
+	$enabled=$EnablePHPFCGI;
 	if($EnablePHPFPM==1){
 		if($EnablePHPFPMFrameWork==1){
 			if($EnableArticaApachePHPFPM==1){
@@ -182,7 +186,7 @@ function start($aspid=false){
 		}
 	}
 	
-	
+	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} EnableSPAWNFCGI.........: $EnablePHPFCGI\n";}
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} EnablePHPFPM............: $EnablePHPFPM\n";}
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} EnablePHPFPMFrameWork...: $EnablePHPFPMFrameWork\n";}
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} EnableArticaApachePHPFPM: $EnableArticaApachePHPFPM\n";}

@@ -81,12 +81,12 @@ function page(){
 	$choose_your_zarafa_webserver_type=$tpl->_ENGINE_parse_body("{choose_your_zarafa_webserver_type}");
 	$freeweb_compile_background=$tpl->javascript_parse_text("{freeweb_compile_background}");
 	$enable=$tpl->javascript_parse_text("{enable}");
-	$bt_default_www="{name: '$add_default_www', bclass: 'add', onpress : FreeWebAddDefaultVirtualHost},";
-	$bt_webdav="{name: '$WebDavPerUser', bclass: 'add', onpress : FreeWebWebDavPerUsers},";
-	$bt_rebuild="{name: '$rebuild_items', bclass: 'Reconf', onpress : RebuildFreeweb},";
-	$bt_help="{name: '$help', bclass: 'Help', onpress : HelpSection},";					
-	$bt_restore="{name: '$restore', bclass: 'Restore', onpress : RestoreSite},";
-	$bt_stats="{name: '$status', bclass: 'Network', onpress : ApacheAllstatus},";
+	$bt_default_www="{name: '<strong style=font-size:18px>$add_default_www</strong>', bclass: 'add', onpress : FreeWebAddDefaultVirtualHost},";
+	$bt_webdav="{name: '<strong style=font-size:18px>$WebDavPerUser</strong>', bclass: 'add', onpress : FreeWebWebDavPerUsers},";
+	$bt_rebuild="{name: '<strong style=font-size:18px>$rebuild_items</strong>', bclass: 'Reconf', onpress : RebuildFreeweb},";
+						
+	$bt_restore="{name: '<strong style=font-size:18px>$restore</strong>', bclass: 'Restore', onpress : RestoreSite},";
+	$bt_stats="{name: '<strong style=font-size:18px>$status</strong>', bclass: 'Network', onpress : ApacheAllstatus},";
 	$MAIN_TITLE=null;
 	$tablewidth=874;
 	$servername_size=366;
@@ -145,7 +145,8 @@ function page(){
 	
 	$buttons="
 	buttons : [
-	{name: '<b>$new_server</b>', bclass: 'add', onpress : $bt_function_add},$bt_default_www$bt_webdav$bt_rebuild$bt_restore$bt_klms_reset_pwd$bt_help$bt_stats
+	{name: '<strong style=font-size:18px>$new_server</strong>', bclass: 'add', onpress : $bt_function_add},
+	$bt_default_www$bt_webdav$bt_rebuild$bt_restore$bt_klms_reset_pwd$bt_help$bt_stats
 	
 		],";
 	$html="
@@ -603,9 +604,7 @@ function servers_list(){
 			$groupware=div_groupware("WebCopy: {$ligne2["sitename"]}",$ligne["enabled"]);
 		}
 		
-		if($ligne["groupware"]=="UPDATEUTILITY"){
-			$iconPlus="<a href=\"javascript:blur();\" OnClick=\"javascript:Loadjs('UpdateUtility.php?js=yes');\"><img src='img/settings-15.png' align='left'></a>";
-		}
+
 		
 		$servername_enc=urlencode($ligne["servername"]);
 		$color_span="#5F5656";
@@ -634,15 +633,16 @@ function servers_list(){
 					"<img src='img/$icon'>", 
 					"<strong style='font-size:13px;style='color:$color'>$href$servername_text</a>$groupware_duplicate$iconPlus$groupware$forward_text
 					$added_port$Members$sizevg</strong></span>$ServerAlias$uptime",
-					$compile,$enable,	
+					"<center>$compile</center>",
+					"<center>$enable</center>",	
 					"$spanStyle1$DirectorySize</span>",
 					"$spanStyle1$memory</span>",
 					"$spanStyle1$requests_second&nbsp;|&nbsp;$traffic_second</span>",
-					"<img src='img/$ssl'>",
-					"$checkResolv",
-					"$checkDNS",
-					"$checkMember",
-					$delete
+					"<center><img src='img/$ssl'></center>",
+					"<center>$checkResolv</center>",
+					"<center>$checkDNS</center>",
+					"<center>$checkMember</center>",
+					"<center>$delete</center>"
 					)
 				);		
 		

@@ -294,7 +294,11 @@ function build(){
 	if(!is_numeric($LighttpdUseUnixSocket)){$LighttpdUseUnixSocket=0;}
 	
 	$lighttpdPhpPort=$sock->GET_INFO('lighttpdPhpPort');
-	if(!is_numeric($lighttpdPhpPort)){$lighttpdPhpPort=1808;}	
+	if(!is_numeric($lighttpdPhpPort)){$lighttpdPhpPort=1808;}
+
+	$SquidGuardEvasiveMaxConnsPerIP=$sock->GET_INFO("SquidGuardEvasiveMaxConnsPerIP");
+	if(!is_numeric($SquidGuardEvasiveMaxConnsPerIP)){$SquidGuardEvasiveMaxConnsPerIP=5;}
+	
 	
 	$LighttpdArticaMaxProcs=$sock->GET_INFO('LighttpdArticaMaxProcs');
 	if(!is_numeric($LighttpdArticaMaxProcs)){$LighttpdArticaMaxProcs=0;}
@@ -341,6 +345,7 @@ $f[]="        \"mod_accesslog\",";
 $f[]="        \"mod_compress\",";
 $f[]="        \"mod_fastcgi\",";
 $f[]="        \"mod_cgi\",";
+$f[]="		  \"mod_evasive\",";
 $f[]="	       \"mod_status\"";
 $f[]=")";
 $f[]="";
@@ -348,7 +353,7 @@ $f[]="server.document-root        = \"/usr/share/artica-postfix\"";
 $f[]="server.username = \"$username\"";
 $f[]="server.groupname = \"$username\"";
 $f[]="server.errorlog             = \"/var/log/lighttpd/squidguard-lighttpd-error.log\"";
-$f[]="index-file.names            = ( \"exec.squidguard.php\")";
+$f[]="index-file.names            = ( \"ufdbguardd.php\")";
 
 $f[]="";
 $f[]="mimetype.assign             = (";
@@ -418,8 +423,16 @@ $f[]="server.error-handler-404   = \"/exec.squidguard.php\"";
 $f[]="#server.error-handler-404   = \"/error-handler.php\"";
 $f[]="server.pid-file             = \"/var/run/lighttpd/squidguard-lighttpd.pid\"";
 $f[]="server.max-fds 		   = 2048";
-$f[]="server.network-backend      = \"write\"";
+$f[]="evasive.max-conns-per-ip = $SquidGuardEvasiveMaxConnsPerIP";
+//$f[]="server.network-backend      = \"write\"";
+$f[]="server.network-backend = \"linux-sendfile\"";
 $f[]="server.follow-symlink = \"enable\"";
+$f[]="server.max-keep-alive-requests = 0";
+$f[]="server.max-keep-alive-idle = 1";
+$f[]="server.max-read-idle = 15";
+$f[]="server.max-write-idle = 15";
+$f[]="server.event-handler = \"linux-sysepoll\"";
+
 $f[]="";
 $f[]='';
 $f[]="\$SERVER[\"socket\"]== \":$SquidGuardApacheSSLPort\" {";

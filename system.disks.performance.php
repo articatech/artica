@@ -213,8 +213,9 @@ function table(){
 		$hard_drive=$tpl->javascript_parse_text("{disk}");
 		$performance=$tpl->javascript_parse_text("{performance}");
 		$TABLE_WIDTH=705;
-		$title=$tpl->javascript_parse_text("{directories_monitor} {$_GET["dev"]}");
+		$title=$tpl->javascript_parse_text("{disks_benchmarks}");
 		$reads=$tpl->javascript_parse_text("{read}/s");
+		$rescan=$tpl->javascript_parse_text("{analyze}");
 	
 		$dir_size=273;
 		$partition_size=125;
@@ -226,13 +227,11 @@ function table(){
 		}
 		//`zDate`,`ms_read`,`disk`,`seeks`,`kbs`
 		
-		$buttons="
+	$buttons="
 		buttons : [
-			{name: '$new_directory', bclass: 'add', onpress : AddShared$t},
-			{name: '$rescan', bclass: 'Reconf', onpress : Refresh$t},
+			
+			{name: '<strong style=font-size:18px>$rescan</strong>', bclass: 'Reconf', onpress : Refresh$t},
 		],";
-		
-		$buttons=null;
 		
 		$html="
 <table class='WATCHDOG_SEEK_TABLE' style='display: none' id='WATCHDOG_SEEK_TABLE' style='width:100%;'></table>
@@ -243,12 +242,12 @@ function table(){
 		url: '$page?getlist=yes&dev={$_GET["dev"]}',
 		dataType: 'json',
 		colModel : [
-		{display: '$date', name : 'zDate', width :155, sortable : true, align: 'left'},
-		{display: '$disk', name : 'disk', width :111, sortable : true, align: 'left'},
-		{display: '$read', name : 'ms_read', width :$partition_size, sortable : true, align: 'left'},
-		{display: '$seeks', name : 'seeks', width : 70, sortable : true, align: 'right'},
-		{display: '$reads', name : 'kbs', width : 85, sortable : true, align: 'right'},
-		{display: '$performance', name : 'perf', width : 516, sortable : false, align: 'right'},
+		{display: '<span style=font-size:18px>$date</span>', name : 'zDate', width :210, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$disk</span>', name : 'disk', width :157, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$read</span>', name : 'ms_read', width :157, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$seeks</span>', name : 'seeks', width : 70, sortable : true, align: 'right'},
+		{display: '<span style=font-size:18px>$reads</span>', name : 'kbs', width : 85, sortable : true, align: 'right'},
+		{display: '<span style=font-size:18px>$performance</span>', name : 'perf', width : 676, sortable : false, align: 'right'},
 		
 		],
 		$buttons
@@ -261,12 +260,12 @@ function table(){
 		sortname: 'zDate',
 		sortorder: 'desc',
 		usepager: true,
-		title: '<span style=font-size:18px>$title</span>',
+		title: '<span style=font-size:30px>$title</span>',
 		useRp: false,
 		rp: 50,
 		showTableToggleBtn: false,
 		width: '99%',
-		height: 450,
+		height: 550,
 		singleSelect: true,
 		rpOptions: [10, 20, 30, 50,100,200]
 	
@@ -278,7 +277,7 @@ function AddShared$t(){
 }
 	
 function Refresh$t(){
-	Loadjs('system.folders.monitor.progress.php');
+	Loadjs('system.disks.performance.progress.php');
 }
 	
 </script>
@@ -292,7 +291,7 @@ function table_list(){
 	$MyPage=CurrentPageName();
 	$q=new mysql();
 	
-	$fontsize="16px";
+	$fontsize="22px";
 	$cs=0;
 	$page=1;
 	

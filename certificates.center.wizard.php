@@ -37,7 +37,7 @@
 	if(isset($_GET["wizard-godaddy-3"])){wizard_godaddy_3();exit;}
 	if(isset($_GET["wizard-godaddy-4"])){wizard_godaddy_4();exit;}
 	
-	
+	if(isset($_POST["OwnCert"])){OwnCert_save();exit;}
 	if(isset($_POST["CommonName"])){wizard_godaddy_save();exit;}
 	if(isset($_POST["GODADDY-CERTIFICATE"])){wizard_godaddy_save();exit;}
 	if(isset($_POST["GODADDY-BUNDLE"])){wizard_godaddy_save();exit;}
@@ -62,15 +62,17 @@ function wizard_certificate_0(){
 	
 	$upload_certif="<center style='margin:30px'>".button("{upload_your_certificate}", "Loadjs('certificates.center.wizard.upload.php?t={$_GET["t"]}')",32)."</center>";
 	
+	//<center style='margin:30px'>".button("{upload_an_official_certificate}", "LoadAjax('$t','$page?wizard-official-1&t={$_GET["t"]}&div=$t')",32)."</center>
+	
 	$html="
 	<div id='$t'>		
 	<div style='width:98%' class=form>
 			
 	<center style='margin:30px'>".button("{create_a_sef_signed_certificate}", "LoadAjax('$t','$page?wizard-certificate-1&t={$_GET["t"]}')",32)."</center>
 				
-	<center style='margin:30px'>".button("{upload_an_official_certificate}", "LoadAjax('$t','$page?wizard-official-1&t={$_GET["t"]}&div=$t')",32)."</center>
+	
 			
-	<center style='margin:30px'>".button("{upload_a_GoDaddy_certificate}", "LoadAjax('$t','$page?wizard-godaddy-1&t={$_GET["t"]}&div=$t')",32)."</center>			
+	<center style='margin:30px'>".button("{upload_your_certificate}", "LoadAjax('$t','$page?wizard-godaddy-1&t={$_GET["t"]}&div=$t')",32)."</center>			
 			
 	</div>";
 	
@@ -494,19 +496,18 @@ function wizard_godaddy_1(){
 	$t=time();
 	$tpl=new templates();
 	$page=CurrentPageName();
-	$button_save=$tpl->_ENGINE_parse_body(button("{next}", "Save$tt()",26));
-	$ssl_explain=$tpl->_ENGINE_parse_body("{csr_godaddy_explain}");
+	$button_save=$tpl->_ENGINE_parse_body(button("{create}", "Save$tt()",26));
 	
-	if($_SESSION["GODADDY"]["GODADDY-CSR"]==null){$_SESSION["GODADDY"]["GODADDY-CSR"]="-----BEGIN CERTIFICATE REQUEST-----\n PUT CONTENT HERE\n-----END CERTIFICATE REQUEST-----\n";}
+
 	
 	$html="
-	<center style='font-size:32px'>{CSR} (CERTIFICATE REQUEST)</center>
-	<div class=explain style='font-size:18px'>$ssl_explain</div>
+	<center style='font-size:32px'>{certificate_name}</center>
+	
 	<center style='margin:10px'>
-	<textarea id='text$t' style='font-family:Courier New;
-	font-weight:bold;width:100%;height:520px;border:5px solid #8E8E8E;
-	overflow:auto;font-size:16px !important;width:99%;height:390px'>{$_SESSION["GODADDY"]["GODADDY-CSR"]}</textarea>
-	<br>$button_save
+	". Field_text("Certificate-$t",null,"font-size:22px;width:90%",null,null,null,false,"SaveCer$t(event)",false)."
+	<br>
+	
+	$button_save
 	</center>
 	</div>
 	
@@ -514,13 +515,20 @@ function wizard_godaddy_1(){
 	var xSave$tt= function (obj) {
 		var results=obj.responseText;
 		if(results.length>3){alert(results);return;}
-		LoadAjax('{$_GET["div"]}','$page?wizard-godaddy-2&t={$_GET["t"]}&div={$_GET["div"]}');
-		
+		$('#TABLE_CERTIFICATE_CENTER_MAIN').flexReload();
+		YahooWin6Hide();
+		var certif=document.getElementById('Certificate-$t').value;
+		Loadjs('certificates.center.php?certificate-edit-js=yes&CommonName='+certif);
 	}
 	
-	function Save$tt(CommonName,md5){
+	function SaveCer$t(e){
+		if(!checkEnter(e)){return;}
+		Save$tt();
+	}
+	
+	function Save$tt(){
 		var XHR = new XHRConnection();
-		XHR.appendData('GODADDY-CSR',encodeURIComponent(document.getElementById('text$t').value));
+		XHR.appendData('OwnCert',encodeURIComponent(document.getElementById('Certificate-$t').value));
 		XHR.sendAndLoad('$page', 'POST',xSave$tt);
 	}
 
@@ -711,6 +719,25 @@ function wizard_godaddy_save(){
 		$_SESSION["GODADDY"][$num]=url_decode_special_tool($ligne);
 		
 	}
+	
+}
+
+
+function OwnCert_save(){
+	$UsePrivKeyCrt=1;
+	$CommonName=mysql_escape_string2(url_decode_special_tool($_POST["OwnCert"]));
+	$privkey=null;
+	if($CommonName==null){$CommonName="Certificate-".time();}
+	
+	if(is_file("/etc/openssl/private-key/privkey.key")){
+		$privkey=mysql_escape_string2(@file_get_contents("/etc/openssl/private-key/privkey.key"));
+	}
+	$sql="DELETE FROM sslcertificates WHERE CommonName='$CommonName'";
+	$q=new mysql();
+	$q->QUERY_SQL($sql,"artica_backup");
+	$sql="INSERT INTO sslcertificates (commonName,UsePrivKeyCrt,privkey) VALUES ('$CommonName','$UsePrivKeyCrt','$privkey')";
+	$q->QUERY_SQL($sql,"artica_backup");
+	if(!$q->ok){echo $q->mysql_error;}
 	
 }
 

@@ -143,7 +143,7 @@ echo "
 				<img src=\"img/wait_verybig.gif\">
 	</center>
 	<textarea style='margin-top:5px;font-family:Courier New;
-	font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+	font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 	overflow:auto;font-size:11px' id='procedure3-text$t'>$data</textarea>
 	</div>
 	<script>
@@ -170,7 +170,7 @@ function procedure3(){
 	<div id='procedure3-$t'>
 	<center id='animate-$t'></center>
 	<textarea style='margin-top:5px;font-family:Courier New;
-	font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+	font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 	overflow:auto;font-size:11px' id='procedure3-text$t'>$data2\n$data\n</textarea>
 	</div>
 	<script>

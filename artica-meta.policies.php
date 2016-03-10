@@ -18,7 +18,7 @@ if(isset($_GET["table"])){table();exit;}
 if(isset($_GET["search"])){search();exit;}
 if(isset($_GET["policy-js"])){policy_js();exit;}
 if(isset($_GET["delete-js"])){policy_delete_js();exit;}
-if(isset($_POST["policy-delete"])){policy-delete();exit;}
+if(isset($_POST["policy-delete"])){policy_delete();exit;}
 if(isset($_GET["policy-edit"])){policy_edit();exit;}
 if(isset($_GET["policy-popup"])){policy_popup();exit;}
 
@@ -302,7 +302,7 @@ function table(){
 	$q->CheckTables();
 	
 	$buttons="	buttons : [
-	{name: '$new_policy', bclass: 'add', onpress : NewPolicy$t},
+	{name: '<strong style=font-size:18px>$new_policy</strong>', bclass: 'add', onpress : NewPolicy$t},
 	
 	],";
 	
@@ -317,11 +317,11 @@ $(document).ready(function(){
 	url: '$page?search=yes&function=$function',
 	dataType: 'json',
 	colModel : [
-	{display: 'status', name : 'icon1', width : 50, sortable : false, align: 'center'},
-	{display: '$policies', name : 'policy_name', width : 250, sortable : true, align: 'left'},
-	{display: '$type', name : 'policy_type', width : 250, sortable : true, align: 'left'},
-	{display: '$groups', name : 'null1', width : 70, sortable : true, align: 'center'},
-	{display: '$delete', name : 'delete', width : 60, sortable : true, align: 'center'},
+	{display: '<span style=font-size:18px>status</span>', name : 'icon1', width : 50, sortable : false, align: 'center'},
+	{display: '<span style=font-size:18px>$policies</span>', name : 'policy_name', width : 250, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$type</span>', name : 'policy_type', width : 250, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$groups</span>', name : 'null1', width : 70, sortable : true, align: 'center'},
+	{display: '<span style=font-size:18px>$delete</span>', name : 'delete', width : 60, sortable : true, align: 'center'},
 	
 	],
 $buttons
@@ -331,7 +331,7 @@ $buttons
 	sortname: 'policy_name',
 	sortorder: 'asc',
 	usepager: true,
-	title: '<strong style=font-size:22px>Meta Server $policies</strong>',
+	title: '<strong style=font-size:30px>Meta Server $policies</strong>',
 	useRp: true,
 	rpOptions: [10, 20, 30, 50,100,200],
 	rp:50,
@@ -482,7 +482,7 @@ function search(){
 	
 	$fontsize="18";
 	
-	$style="<span style='font-size:{$fontsize}px'>";
+	
 	$free_text=$tpl->javascript_parse_text("{free}");
 	$computers=$tpl->javascript_parse_text("{computers}");
 	$overloaded_text=$tpl->javascript_parse_text("{overloaded}");
@@ -492,12 +492,12 @@ function search(){
 		$icon_red_32="32-red.png";
 		$icon="ok-32.png";
 		$icon_disabled="ok32-grey.png";
+		$color="black";
+		if($ligne["enabled"]==0){$icon=$icon_disabled;$color="#898989";}
 		
-		if($switch==1){
-			$icon_warning_32="22-warn.png";
-			$icon_red_32="22-red.png";
-			$icon="ok22.png";
-		}
+		
+		$style="<span style='font-size:{$fontsize}px;color:$color'>";
+
 
 		$policy_name=utf8_encode($ligne["policy_name"]);
 		$policy_type=$tpl->_ENGINE_parse_body($q->policy_type[$ligne["policy_type"]]);
@@ -515,7 +515,10 @@ function search(){
 		$ligneCount=mysql_fetch_array($q->QUERY_SQL("SELECT COUNT(zmd5) as tcount FROM metapolicies_link WHERE `policy-id`='{$ligne["ID"]}'"));
 		$CountDeGroup=$ligneCount["tcount"];
 		
-		$js="<a href=\"javascript:blur();\" OnClick=\"javascript:Loadjs('$MyPage?policy-js=yes&ID={$ligne["ID"]}');\" style='text-decoration:underline'>";
+		
+		$js="<a href=\"javascript:blur();\" 
+		OnClick=\"javascript:Loadjs('$MyPage?policy-js=yes&ID={$ligne["ID"]}');\" 
+		style='text-decoration:underline;color:$color'>";
 		$cell=array();
 		$cell[]="<img src=\"img/$icon\">";
 		$cell[]="$style$js$policy_name</a></span>";

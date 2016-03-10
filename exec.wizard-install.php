@@ -403,12 +403,18 @@ function automation(){
 
 	
 	writeprogress(17,"Analyze configuration file...");
+	
+
+	
+	
 	$sock->SET_INFO("EnableUfdbGuard", $WizardSavedSettings["EnableWebFiltering"]);
 	$sock->SET_INFO("EnableArpDaemon", $WizardSavedSettings["EnableArpDaemon"]);
 	$sock->SET_INFO("EnablePHPFPM",0);
 	$sock->SET_INFO("EnableFreeWeb",$WizardSavedSettings["EnableFreeWeb"]);
 	$sock->SET_INFO("SlapdThreads", $WizardSavedSettings["SlapdThreads"]);
 	$sock->SET_INFO("AsCategoriesAppliance", intval($WizardSavedSettings["AsCategoriesAppliance"]));
+	$sock->SET_INFO("AsHapProxyAppliance", intval($WizardSavedSettings["AsHapProxyAppliance"]));
+	
 	$sock->SET_INFO("AsMetaServer", intval($WizardSavedSettings["AsMetaServer"]));
 	$sock->SET_INFO("EnableVnStat", 0);
 	$sock->SET_INFO("WizardSavedSettingsSend", 1);	
@@ -459,7 +465,7 @@ function WizardExecute($aspid=false){
 	shell_exec("$php /usr/share/artica-postfix/exec.checkfolder-permissions.php --force --wizard");
 	writeprogress(10,"{uuid}: $uuid");
 	sleep(2);
-	$savedsettings=unserialize(base64_decode(file_get_contents("/etc/artica-postfix/settings/Daemons/WizardSavedSettings")));
+	$savedsettings=unserialize(base64_decode(@file_get_contents("/etc/artica-postfix/settings/Daemons/WizardSavedSettings")));
 	
 	if(!is_array($savedsettings)){
 		writeprogress(110,"No saved settings Corrupted Array...");
@@ -498,6 +504,8 @@ function WizardExecute($aspid=false){
 	$AsTransparentProxy=intval($savedsettings["AsTransparentProxy"]);
 	$AsReverseProxyAppliance=intval($savedsettings["AsReverseProxyAppliance"]);
 	$AsMetaServer=intval($savedsettings["AsMetaServer"]);
+	$AsHapProxyAppliance=intval($savedsettings["AsHapProxyAppliance"]);
+
 	
 	$WizardWebFilteringLevel=$sock->GET_INFO("WizardWebFilteringLevel");
 	if(is_numeric($WizardWebFilteringLevel)){
@@ -506,6 +514,7 @@ function WizardExecute($aspid=false){
 	@file_put_contents("/etc/artica-postfix/settings/Daemons/DisableBWMng",1);
 	@file_put_contents("/etc/artica-postfix/settings/Daemons/SquidDatabasesUtlseEnable",1);
 	@file_put_contents("/etc/artica-postfix/settings/Daemons/AsMetaServer", $AsMetaServer);
+	@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP", 1);
 	@file_put_contents("/etc/artica-postfix/settings/Daemons/AsCategoriesAppliance", $AsCategoriesAppliance);
 	if($AsCategoriesAppliance==1){
 		$savedsettings["EnableWebFiltering"]=0;
@@ -518,6 +527,23 @@ function WizardExecute($aspid=false){
 		@file_put_contents("/etc/artica-postfix/settings/Daemons/DisableBWMng",1);
 		@file_put_contents("/etc/artica-postfix/settings/Daemons/DisableNetDiscover",1);
 		@file_put_contents("/etc/artica-postfix/settings/Daemons/SambaEnabled",0);
+		$SQUIDEnable=0;
+	}
+	
+	if($AsHapProxyAppliance==1){
+		$savedsettings["EnableWebFiltering"]=0;
+		$savedsettings["adminwebserver"]=null;
+		$savedsettings["second_webadmin"]=null;
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableUfdbGuard", 0);
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/SQUIDEnable", 0);
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/ProxyUseArticaDB",0);
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableArpDaemon",0);
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableFreeWeb",0);
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/SlapdThreads",2);
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/DisableBWMng",1);
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/DisableNetDiscover",1);
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/SambaEnabled",0);
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableHaProxy",1);
 		$SQUIDEnable=0;
 	}
 	
@@ -930,7 +956,10 @@ function WizardExecute($aspid=false){
 	shell_exec("$nohup $php5 /usr/share/artica-postfix/exec.monit.php --build >/dev/null 2>&1");
 	shell_exec("$nohup /usr/share/artica-postfix/exec.web-community-filter.php --register  >/dev/null 2>&1 &");
 	
-	$EnableArticaMetaClient=intval($sock->GET_INFO("EnableArticaMetaClient"));
+	$EnableArticaMetaClient=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaClient"));
+	$EnableArticaMetaServer=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaServer"));
+	if($EnableArticaMetaServer==1){$EnableArticaMetaClient=0;}
+	
 	if($EnableArticaMetaClient==1){shell_exec("$nohup $php5 /usr/share/artica-postfix/exec.artica-meta-client.php --ping --force >/dev/null 2>&1 &"); }
 	
 	if(is_file($squidbin)){
@@ -944,7 +973,14 @@ function WizardExecute($aspid=false){
 				}
 			}
 			
-			
+			@mkdir("/var/log/squid",0755,true);
+			@chown("/var/log/squid","squid");
+			@chgrp("/var/log/squid", "squid");
+			@file_put_contents("/etc/artica-postfix/settings/Daemons/SquidUrgency", 0);
+			@file_put_contents("/etc/artica-postfix/settings/Daemons/SquidUFDBUrgency", 0);
+			@file_put_contents("/etc/artica-postfix/settings/Daemons/SquidSSLUrgency", 0);
+			@file_put_contents("/etc/artica-postfix/settings/Daemons/LogsWarninStop", 0);
+			@file_put_contents("/etc/artica-postfix/settings/Daemons/ActiveDirectoryEmergency", 0);
 			writeprogress(95,"{ReconfiguringProxy} {please_wait} 2/2");
 			shell_exec("$php5 /usr/share/artica-postfix/exec.squid.php --build --force");
 			writeprogress(97,"{checking_hypercache_feature} {please_wait}");
@@ -979,17 +1015,10 @@ function FINAL___(){
 	$cmd=trim("$nohup $php5 /usr/share/artica-postfix/exec.squid.php --build-schedules >/dev/null 2>&1 &");
 	shell_exec($cmd);
 	
-	$articafiles[]="exec.logfile_daemon.php";
-	$articafiles[]="external_acl_squid_ldap.php";
-	$articafiles[]="external_acl_dynamic.php";
-	$articafiles[]="external_acl_quota.php";
-	$articafiles[]="external_acl_basic_auth.php";
-	$articafiles[]="external_acl_squid.php";
-	$articafiles[]="external_acl_restrict_access.php";
-	
-	
+	$articafiles=$unix->SquidPHPFiles();
+
 	while (list ($num, $filename) = each ($articafiles) ){
-		$filepath="/usr/share/artica-postfix/$filename";
+		$filepath="/usr/share/artica-postfix/$num";
 		@chmod($filepath,0755);
 		@chown($filepath,"squid");
 		@chgrp($filepath,"squid");
@@ -1014,7 +1043,7 @@ function BUILD_NETWORK(){
 	$php5=$unix->LOCATE_PHP5_BIN();
 	
 	
-	$savedsettings=unserialize(base64_decode(file_get_contents("/etc/artica-postfix/settings/Daemons/WizardSavedSettings")));
+	$savedsettings=unserialize(base64_decode(@file_get_contents("/etc/artica-postfix/settings/Daemons/WizardSavedSettings")));
 	$KEEPNET=$savedsettings["KEEPNET"];
 	if($KEEPNET==1){return;}
 	
@@ -1271,6 +1300,7 @@ function EnableWebFiltering(){
 		$array["mailing"]=true;
 	}
 	if($WizardWebFilteringLevel==3){
+		$array["youtube"]=true;
 		$array["audio-video"]=true;
 		$array["webtv"]=true;
 		$array["music"]=true;

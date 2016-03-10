@@ -12,7 +12,7 @@ class monit_unix{
 	function monit_unix(){
 		if(!isset($GLOBALS["CLASS_UNIX"])){$GLOBALS["CLASS_UNIX"]=new unix();}
 		if(!isset($GLOBALS["CLASS_SOCKETS"])){$GLOBALS["CLASS_SOCKETS"]=new sockets();}
-		if(isset($GLOBALS["COUNT_DE_STOPPED"])){$GLOBALS["COUNT_DE_STOPPED"]=array();}
+		if(!isset($GLOBALS["COUNT_DE_STOPPED"])){$GLOBALS["COUNT_DE_STOPPED"]=array();}
 		
 		
 		$this->monitbin=$GLOBALS["CLASS_UNIX"]->find_program("monit");

@@ -463,7 +463,8 @@ if(!$GLOBALS["NO_STANDARD_BACKUP"]){
 	writelogs(date('m-d H:i:s')." "."[TASK $ID]: Calculate directory size on $mount_path_final",__FUNCTION__,__FILE__,__LINE__);
 	$du=$unix->find_program("du");
 	$dut1=time();
-	$cmd="$du -s $mount_path_final";
+	$nice=$unix->EXEC_NICE();
+	$cmd="$nice$du -s $mount_path_final";
 	exec($cmd,$du_results);
 	$calculate=distanceOfTimeInWords($dut1,time());
 	$BackupSize=0;

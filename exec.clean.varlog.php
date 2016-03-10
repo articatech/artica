@@ -69,6 +69,7 @@ function varlog(){
 	$other[]="/var/log/squid/HyperCache-error.log";
 	$other[]="/var/log/squid/ext_time_quota_acl.log";
 	$other[]="/var/log/squid/cache-nat.log";
+	$other[]="/var/log/squid/sockd.log";
 	$other[]="/var/log/influxdb/influxd.log";
 	$other[]="/var/log/wanproxy/wanproxy.log";
 	$other[]="/var/log/lighttpd/access.log";

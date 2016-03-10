@@ -130,6 +130,8 @@ function popup_index(){
 	$EnablePolicydWeight_field=Paragraphe_switch_img('{EnablePolicydWeight}',
 			'{APP_POLICYD_WEIGHT_TEXT}<br>{APP_POLICYD_WEIGHT_EXPLAIN}','EnablePolicydWeight',
 			$EnablePolicydWeight,"{enable_disable}",1450);
+	
+	
 
 	
 	
@@ -139,7 +141,7 @@ function popup_index(){
 	<div style='margin-top:20px;text-align:right'>". button("{apply}","EnablePolicydWeight()",40)."</div>
 	<script>
 var X_EnablePolicydWeight=function (obj) {
-		RefreshTab('main_policydaemon');
+		Loadjs('postfix.clients_restrictions.progress.php');
 	}	
 function EnablePolicydWeight(){
 	var XHR = new XHRConnection();
@@ -510,7 +512,7 @@ function DelRHSBL(){
 function EnablePolicydWeight(){
 	$sock=new sockets();
 	$sock->SET_INFO('EnablePolicydWeight',$_GET["EnablePolicydWeight"]);
-	$sock->getFrameWork("cmd.php?reconfigure-postfix=yes");
+	
 	
 }
 

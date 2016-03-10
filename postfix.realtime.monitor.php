@@ -114,6 +114,7 @@ function page(){
 	
 	
 	function events_list(){
+		include_once(dirname(__FILE__)."/ressources/class.status.logs.inc");
 		$MyPage=CurrentPageName();
 		$sock=new sockets();
 		$users=new usersMenus();

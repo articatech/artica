@@ -1,5 +1,5 @@
 <?php
-$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 if($EnableIntelCeleron==1){die("EnableIntelCeleron==1\n");}
 if(preg_match("#--verbose#",implode(" ",$argv))){$GLOBALS["VERBOSE"]=true;}
 if(preg_match("#--force#",implode(" ",$argv))){$GLOBALS["FORCE"]=true;}
@@ -17,11 +17,22 @@ function events($text,$line=0){
 	
 }
 
+function build_progress($text,$pourc){
+	$GLOBALS["PROGRESS_FILE"]="/usr/share/artica-postfix/ressources/logs/seeker.progress";
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	echo "[$pourc]: $text\n";
+	@file_put_contents($GLOBALS["PROGRESS_FILE"], serialize($array));
+	@chmod($GLOBALS["PROGRESS_FILE"],0755);
+
+}
+
 function xtart(){
 	if(!isset($GLOBALS["ARTICALOGDIR"])){$GLOBALS["ARTICALOGDIR"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/ArticaLogDir"); if($GLOBALS["ARTICALOGDIR"]==null){ $GLOBALS["ARTICALOGDIR"]="/var/log/artica-postfix"; } }
 	$unix=new unix();
 	$binfile="/usr/share/artica-postfix/bin/seeker";
 	if(!is_file($binfile)){
+		build_progress("{failed}",110);
 		events("Unable to stat $binfile");
 		return;
 	}
@@ -39,32 +50,38 @@ function xtart(){
 	if(system_is_overloaded(basename(__FILE__))){
 		events("Overloaded system, schedule it later",__LINE__);
 		$unix->THREAD_COMMAND_SET("$php ".__FILE__);
+		build_progress("{failed} Overloaded",110);
 		return;
 	}
 	
 	@file_put_contents($pidfile, getmypid());
 	$timefile=$unix->file_time_min($pidTime);
+	$DisksBenchs=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/DisksBenchs"));
+	$DisksBenchs=$DisksBenchs*60;
 	if(!$GLOBALS["FORCE"]){
-		if($timefile<30){
-			events("{$timefile}mn, require at least 30mn",__LINE__);
+		if($timefile<$DisksBenchs){
+			events("{$timefile}mn, require at least {$DisksBenchs}mn",__LINE__);
 			return;
 		}
 	}
 	@unlink($pidTime);
 	@file_put_contents($pidTime, time());
 	
-	
+	build_progress("{scanning} {disks}",10);
 	$fdisk=$unix->find_program("fdisk");
 	exec("$fdisk -l 2>&1",$results);
 	$DISKS=array();
 	while (list ($index, $line) = each ($results) ){
 		$line=trim($line);
 		if($line==null){continue;}
-		if(preg_match("#^(Disque|Disk)\s+\/(.+?):\s+[0-9]+.*?bytes#", $line,$re)){$DISKS["/".$re[2]]=true;}
+		if(preg_match("#^(Disque|Disk)\s+\/([a-zA-Z0-9\-\_\/\.]+).*?:\s+[0-9]+.*?(bytes|octets)#", $line,$re)){
+			$DISKS["/".$re[2]]=true;
+		}
 		
 	}
 	
 	if(count($DISKS)==0){
+		build_progress("{scanning} {disks} {failed}",110);
 		events("Unable to detect disks");
 		$unix->ToSyslog("Unable to detect disks");
 		system_admin_events("Unable to detect disks\n".@implode("\n", $results),__FUNCTION__,__FILE__,__LINE__,"system");
@@ -76,10 +93,14 @@ function xtart(){
 	while (list ($disk, $line) = each ($DISKS) ){
 		$results=array();
 		@chmod("$binfile",0755);
-		events("$binfile $disk 2>&1");
-		exec("$binfile $disk 2>&1",$results);
+		
+		$cmd="$binfile \"".trim($disk)."\" 2>&1";
+		build_progress("{scanning} $disk",60);
+		events("$cmd");
+		exec($cmd,$results);
 		while (list ($index, $line) = each ($results) ){
 			$line=trim($line);
+			echo "***: $line\n";
 			$md5=md5("$disk".time());
 			if($line==null){continue;}
 			if(!preg_match("#^Results:\s+([0-9]+)\s+seeks.*?,\s+([0-9\.]+)\s+ms#", $line,$re)){continue;}
@@ -104,10 +125,13 @@ function xtart(){
 	if($RUN){
 		$php=$unix->LOCATE_PHP5_BIN();
 		$nohup=$unix->find_program("nohup");
-		$cmd="$nohup $php ".dirname(__FILE__)."/exec.syslog-engine.php --seeker >/dev/null 2>&1 &";
+		build_progress("{analyze}",90);
+		$cmd="$php ".dirname(__FILE__)."/exec.syslog-engine.php --seeker";
 		events($cmd);
-		shell_exec($cmd);
+		system($cmd);
 	}
+	
+	build_progress("{done}",100);
 	
 }
 

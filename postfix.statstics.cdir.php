@@ -1,4 +1,5 @@
 <?php
+if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);}
 //postfix.statstics.domains.php
 include_once('ressources/class.artica.graphs.inc');
 include_once('ressources/class.templates.inc');
@@ -6,6 +7,7 @@ include_once('ressources/class.users.menus.inc');
 include_once('ressources/class.templates.inc');
 include_once('ressources/class.ldap.inc');
 include_once('ressources/class.mysql.inc');
+include_once('ressources/class.postgres.inc');
 
 $user=new usersMenus();
 if($user->AsPostfixAdministrator==false){
@@ -53,16 +55,16 @@ $(document).ready(function(){
 		url: '$page?list=yes',
 		dataType: 'json',
 		colModel : [
-		{display: '<span style=font-size:22px>$CDIR</span>', name : 'CDIR', width : 755, sortable : true, align: 'left'},
-		{display: '<span style=font-size:22px>$DOMAINS</span>', name : 'DOMAINS', width :162, sortable : true, align: 'right'},
+		{display: '<span style=font-size:22px>$CDIR</span>', name : 'cdir', width : 755, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>$DOMAINS</span>', name : 'domains', width :162, sortable : true, align: 'right'},
 		
-		{display: '<span style=font-size:22px>$connections</span>', name : 'CNX', width :162, sortable : true, align: 'right'},
-		{display: '<span style=font-size:22px>$blacklisted</span>', name : 'BLACK', width : 162, sortable : true, align: 'right'},
-		{display: '<span style=font-size:22px>$greylisted</span>', name : 'GREY', width : 162, sortable : true, align: 'right'},
+		{display: '<span style=font-size:22px>$connections</span>', name : 'cnx', width :162, sortable : true, align: 'right'},
+		{display: '<span style=font-size:22px>$blacklisted</span>', name : 'black', width : 162, sortable : true, align: 'right'},
+		{display: '<span style=font-size:22px>$greylisted</span>', name : 'grey', width : 162, sortable : true, align: 'right'},
 		],
 		$buttons
 		searchitems : [
-		{display: '$CDIR', name : 'CDIR'},
+		{display: '$CDIR', name : 'cdir'},
 		],
 		sortname: 'CNX',
 		sortorder: 'desc',
@@ -116,14 +118,14 @@ $(document).ready(function(){
 function search(){
 	$tpl=new templates();
 	$MyPage=CurrentPageName();
-	$q=new mysql();
+	$q=new postgres_sql();
 	$t=$_GET["t"];
 	$search='%';
 	$table="smtpstats_day";
 	$page=1;
-	if($q->COUNT_ROWS("smtpcdir_day","artica_events")==0){json_error_show("smtpstats_day: no item,1");}
 	
-	$table="(SELECT SUM(GREY) as GREY, SUM(BLACK) AS BLACK, SUM(CNX) as CNX,AVG(DOMAINS) as DOMAINS,CDIR FROM smtpcdir_day GROUP BY CDIR) as t";
+	
+	$table="(SELECT SUM(grey) as grey, SUM(black) AS black, SUM(cnx) as cnx,AVG(domains) as domains,cdir FROM smtpcdir_day GROUP BY cdir) as t";
 
 	if(isset($_POST["sortname"])){
 		if($_POST["sortname"]<>null){
@@ -134,16 +136,16 @@ function search(){
 
 	if (isset($_POST['page'])) {$page = $_POST['page'];}
 
-	$searchstring=string_to_flexquery();
+	$searchstring=string_to_flexPostGresquery();
 	if($searchstring<>null){
-		$sql="SELECT COUNT(*) as TCOUNT FROM $table WHERE 1 $searchstring $FORCE";
-		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_events"));
-		$total = $ligne["TCOUNT"];
+		$sql="SELECT COUNT(*) as tcount FROM $table WHERE $searchstring";
+		$ligne=pg_fetch_assoc($q->QUERY_SQL($sql,"artica_events"));
+		$total = $ligne["tcount"];
 
 	}else{
-		$sql="SELECT COUNT(*) as TCOUNT FROM $table WHERE 1 $FORCE";
-		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_events"));
-		$total = $ligne["TCOUNT"];
+		$sql="SELECT COUNT(*) as tcount FROM $table";
+		$ligne=pg_fetch_assoc($q->QUERY_SQL($sql,"artica_events"));
+		$total = $ligne["tcount"];
 	}
 
 	if (isset($_POST['rp'])) {$rp = $_POST['rp'];}
@@ -151,8 +153,8 @@ function search(){
 
 
 	$pageStart = ($page-1)*$rp;
-	$limitSql = "LIMIT $pageStart, $rp";
-	$sql="SELECT *  FROM $table WHERE 1 $searchstring $FORCE $ORDER $limitSql";
+	$limitSql = "LIMIT $rp OFFSET $pageStart";
+	$sql="SELECT *  FROM $table WHERE $searchstring $FORCE $ORDER $limitSql";
 	writelogs($sql,__FUNCTION__,__FILE__,__LINE__);
 
 	$data = array();
@@ -164,21 +166,21 @@ function search(){
 
 	$divstart="<span style='font-size:12px;font-weight:normal'>";
 	$divstop="</div>";
-	if((mysql_num_rows($results)==0)){json_error_show("no data");}
+	if((pg_num_rows($results)==0)){pg_num_rows("no data");}
 
 
-	while ($ligne = mysql_fetch_assoc($results)) {
+	while ($ligne = pg_fetch_assoc($results)) {
 		$id=md5(serialize($ligne));
 		$color="black";
 		$color_black="black";
 		$fontweight="normal";
-		if($ligne["BLACK"]>0){$color_black="#d32d2d";}
-		if($ligne["GREY"]>0){$fontweight="bold";}
-		$BLACK=FormatNumber($ligne["BLACK"]);
-		$GREY=FormatNumber($ligne["GREY"]);
-		$CNX=FormatNumber($ligne["CNX"]);
-		$CDIR=$ligne["CDIR"];
-		$DOMAINS=FormatNumber($ligne["DOMAINS"]);
+		if($ligne["black"]>0){$color_black="#d32d2d";}
+		if($ligne["grey"]>0){$fontweight="bold";}
+		$BLACK=FormatNumber($ligne["black"]);
+		$GREY=FormatNumber($ligne["grey"]);
+		$CNX=FormatNumber($ligne["cnx"]);
+		$CDIR=$ligne["cdir"];
+		$DOMAINS=FormatNumber($ligne["domains"]);
 		$data['rows'][] = array(
 			'id' => $ligne['ID'],
 			'cell' => array(

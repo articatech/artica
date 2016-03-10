@@ -27,6 +27,8 @@
 	if(isset($_GET["js"])){js();exit;}	
 	if($_GET["tab"]=="groups"){LIST_GROUPS_FROM_OU();exit;}
 	if(isset($_GET["groups-area-search"])){LIST_GROUPS_FROM_OU_search();exit;}
+	if(isset($_GET["add-group-no-ou"])){add_group_no_ou();exit;}
+	
 	
 	if(isset($_GET["ChangeGroupDescription"])){ChangeGroupDescription();exit;}
 	if(isset($_POST["SaveGrouPdescript"])){ChangeGroupDescription_save();exit;}
@@ -119,6 +121,41 @@ function GroupPrivilegesjs(){
 	
 }
 
+function add_group_no_ou(){
+	$t=time();
+	$page=CurrentPageName();
+	$tpl=new templates();
+	$ldap=new clladp();
+	$hash=$ldap->hash_get_ou(false);
+	$ous[null]="{select}";
+	while (list ($num, $ligne) = each ($hash) ){
+		$ous[$ligne]=$ligne;
+	}
+	
+	$ou=Field_array_Hash($ous,"organization-$t",$_GET["ou"],"ChangeFormValues$t()",null,0,"font-size:28px;padding:3px");
+	
+	$html="<div style='width:98%' class=form>
+	<p class=text-error style='font-size:18px'>{error_select_ou_first}</p>
+	<table style='width:100%'>
+		<tr>
+			<td class=legend style='font-size:28px'>{organization}:</td>
+			<td>$ou</td>
+		</tr>
+		</table>
+	</div>
+<script>
+function ChangeFormValues$t(){
+	var ou=document.getElementById('organization-$t').value;
+	YahooWin6Hide();
+	Loadjs('$page?popup-add-group=yes&dn={$_GET["dn"]}&ou='+ou+'&CallBackFunction={$_GET["CallBackFunction"]}&t={$_GET["t"]}&tt={$_GET["tt"]}');
+}
+</script>
+";
+	
+	echo $tpl->_ENGINE_parse_body($html);
+	
+}
+
 
 function add_group_js(){
 if(is_base64_encoded($_GET["ou"])){$_GET["ou"]=base64_decode($_GET["ou"]);}
@@ -126,6 +163,7 @@ $ou_encrypted=base64_encode($_GET["ou"]);
 $page=CurrentPageName();
 $tpl=new templates();
 $dn=urlencode($_GET["dn"]);
+$ldap=new clladp();
 $title=$tpl->javascript_parse_text("{group name}");
 $t=$_GET["t"];
 $tt=$_GET["tt"];
@@ -133,6 +171,13 @@ $add_group_ou_text=$tpl->javascript_parse_text("{add_group_ou_text}");
 $add_group_ou_text=str_replace("%OU", "{$_GET["ou"]}", $add_group_ou_text);
 if($_GET["CallBackFunction"]<>null){$CallBackFunction="{$_GET["CallBackFunction"]}();";}
 if($_GET["ou"]==null){
+	$hash=$ldap->Hash_Get_ou_from_users($_SESSION["uid"],1);
+	if(count($hash)==0){if(isset($_SESSION["ou"])){$hash[0]=$_SESSION["ou"];}}
+	if($hash[0]==null){
+		echo "YahooWin6('650','$page?add-group-no-ou=yes&dn={$_GET["dn"]}&CallBackFunction={$_GET["CallBackFunction"]}&t={$_GET["t"]}&tt={$_GET["tt"]}','New group')";
+		return;
+	}
+	
 	$error_select_ou_first=$tpl->javascript_parse_text("{error_select_ou_first}");
 	echo "alert('$error_select_ou_first');";
 	return;
@@ -508,7 +553,7 @@ $('#flexRT$t').flexigrid({
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
-	width: 814,
+	width: '99%',
 	height: 350,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200]
@@ -1313,10 +1358,14 @@ function MEMBERS_LIST($gid){
 	$members=$tpl->_ENGINE_parse_body("{members}");
 	$js_addmember="Loadjs('domains.add.user.php?ou=$group->ou&gpid=$gid&t=$t&tt={$_GET["tt"]}&ttt={$_GET["ttt"]}&flexRT=$t')";
 	$js_impotmember="Loadjs('domains.import.user.php?ou=". base64_encode($group->ou)."&gpid=$gid&t=$t&tt={$_GET["tt"]}&ttt={$_GET["ttt"]}')";
-	$add_member=imgtootltip('member-add-64.png','{add_member}',$js_addmember);
-	$import_member=imgtootltip('64-import-member.png','{add_already_member}',$js_impotmember);
-	$import_members=imgtootltip('member-64-import.png','{import}',"Loadjs('domains.import.members.php?gid=$gid&t=$t&tt={$_GET["tt"]}&ttt={$_GET["ttt"]}')");
-	$delete_members=imgtootltip('member-64-delete.png','{delete_members}',"DeleteMembersGroup($gid)");
+	
+	$add_member=$tpl->javascript_parse_text("{add_member}");
+	$add_already_member=$tpl->javascript_parse_text("{add_already_member}");
+	$import=$tpl->javascript_parse_text("{import}");
+	$delete_members=$tpl->javascript_parse_text("{delete_members}");
+	
+	
+	
 	$sure_to_delete_selected_user=$tpl->javascript_parse_text("{disconnect_from_this_group}");	
 	if($users->ARTICA_META_ENABLED){
 		if($sock->GET_INFO("AllowArticaMetaAddUsers")<>1){
@@ -1328,15 +1377,17 @@ function MEMBERS_LIST($gid){
 		$users->EnableManageUsersTroughActiveDirectory=true;
 	}
 	
+	$bts[]="{name: '<strong style=font-size:16px>$add_member</strong>', bclass: 'add', onpress : addmembers$t},";
+	$bts[]="{name: '<strong style=font-size:16px>$add_already_member</strong>', bclass: 'add', onpress : ImportMember$t},";
+	$bts[]="{name: '<strong style=font-size:16px>$import</strong>', bclass: 'add', onpress : ImportMembers$t},";
+	$bts[]="{name: '<strong style=font-size:16px>$delete_members</strong>', bclass: 'Delz', onpress : DeleteAll$t},";
+	
+	
+	
 	$GLOBALS["EnableManageUsersTroughActiveDirectory"]=$users->EnableManageUsersTroughActiveDirectory;
 	if($GLOBALS["EnableManageUsersTroughActiveDirectory"]){
-		$js_addmember=null;
-		$js_impotmember=null;
-		$import_member=imgsimple("64-import-member-grey.png");
-		$import_members=imgsimple("member-64-import-grey.png");
-		$delete_members=imgsimple("member-64-delete-grey.png");
-		$add_member=imgtootltip('member-add-64-grey.png','{add_member}');
-		
+		$bts=array();
+	
 	}
 	
 	
@@ -1350,32 +1401,9 @@ $html="
 
 <input type='hidden' id='groups-section-from-members' value='$gid'>
 <input type='hidden' id='delete_this_user' value='{delete_this_user}'>
+<table class='table-$t' style='display: none' id='table-$t' style='width:99%'></table>
+<span id='ShowDeleteAll'></span>
 
-	<table style='width:100%'>
-		<td valign='top'><table class='table-$t' style='display: none' id='table-$t' style='width:99%'></table></td>
-	<td valign='top' width=5%>
-	<div style='width:98%' class=form>
-		<table>
-			<tr>
-				<td>$add_member</td>
-			</tr>
-			<tr>
-				<td>$import_member</td>
-			</tr>
-			<tr>
-				<td>$import_members</td>
-			</tr>
-			<tr>
-				<td>$delete_members</td>
-			</tr>
-			<tr>
-				<td><span id='ShowDeleteAll'></span>
-			</tr>		
-		</table>
-		</div>
-	<td>
-	
-	</table>
 <script>
 var MemUidG$t='';
 	$(document).ready(function(){
@@ -1388,6 +1416,10 @@ var MemUidG$t='';
 				{display: '<span style=font-size:18px>&nbsp;', name : 'items', width : 31, sortable : false, align: 'center'},
 				
 			],
+	buttons : [
+	".@implode("\n", $bts)."
+	
+	],			
 			searchitems : [
 				{display: '$members', name : 'events'},
 				],
@@ -1399,12 +1431,28 @@ var MemUidG$t='';
 			rp: 50,
 			rpOptions: [10, 20, 30, 50,100,200,500],
 			showTableToggleBtn: false,
-			width: 814,
+			width: '99%',
 			height: 350,
 			singleSelect: true
 			
 			});   
 	});	
+	
+function addmembers$t(){
+	$js_addmember
+}
+
+function ImportMember$t(){
+	$js_impotmember
+}
+
+function ImportMembers$t(){
+	Loadjs('domains.import.members.php?gid=$gid&t=$t&tt={$_GET["tt"]}&ttt={$_GET["ttt"]}')
+}
+
+function DeleteAll$t(){
+	DeleteMembersGroup($gid);
+}
 
 	var x_DeleteUserFromGroup$t= function (obj) {
 		var results=obj.responseText;
@@ -1472,7 +1520,7 @@ function MEMBERS_LIST_LIST($gid=0){
 	$number_of_users=$count;
 	
 	
-	
+	if($number_of_users==0){json_error_show("No Members $search...");}
 	
 	if(!is_array($members)){json_error_show("No Members $search...");}
 	$user_img="user-32.png";

@@ -9,9 +9,14 @@ include_once(dirname(__FILE__) . '/ressources/class.main.hashtables.inc');
 include_once(dirname(__FILE__) . '/ressources/class.postfix.externaldbs.inc');
 include_once(dirname(__FILE__).'/framework/class.unix.inc');
 include_once(dirname(__FILE__)."/framework/frame.class.inc");
+$GLOBALS["PROGRESS_FILE"]=null;
+$GLOBALS["POURC_START"]=0;
 if(preg_match("#--verbose#",implode(" ",$argv))){$GLOBALS["DEBUG"]=true;$GLOBALS["VERBOSE"]=true;}
 if(preg_match("#--reload#",implode(" ",$argv))){$GLOBALS["RELOAD"]=true;}
 if(preg_match("#--pourc=([0-9]+)#",implode(" ",$argv),$re)){$GLOBALS["POURC_START"]=$re[1];}
+if(preg_match("#--progress-file=(.+?)\s+#",implode(" ",$argv),$re)){$GLOBALS["PROGRESS_FILE"]=$re[1];}
+
+
 
 if($GLOBALS["VERBOSE"]){ini_set('html_errors',0);ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);}
 $sock=new sockets();
@@ -58,7 +63,10 @@ if($argv[1]=="--mailbox-transport-maps"){
 start();
 
 function build_progress($text,$pourc){
+	if($GLOBALS["POURC_START"]>0){if($pourc<$GLOBALS["POURC_START"]){$pourc=$GLOBALS["POURC_START"];}}
+	if($GLOBALS["POURC_START"]>0){if($pourc>95){$pourc=95;}}
 	$cachefile="/usr/share/artica-postfix/ressources/logs/web/postfix.transport.progress";
+	if($GLOBALS["PROGRESS_FILE"]<>null){$cachefile=$GLOBALS["PROGRESS_FILE"];}
 	echo "{$pourc}% $text\n";
 	$array["POURC"]=$pourc;
 	$array["TEXT"]=$text;
@@ -67,34 +75,39 @@ function build_progress($text,$pourc){
 
 }
 
+
+
+
 function start(){
 	build_progress("Loading LDAP config",15);
 	LoadLDAPDBs();
 	build_progress("Loading Transport data",20);
 	transport_maps_search();
-	build_progress("Loading Transport data",25);
+	build_progress("Loading relais_domains_search",25);
 	relais_domains_search();
-	build_progress("Building Transport database",30);
+	build_progress("Building build_transport_maps",30);
 	build_transport_maps();
 	build_progress("Building Transport database",35);
 	build_relay_domains();
-	build_progress("Building Transport database",40);
+	build_progress("Building restrict_relay_domains",40);
 	restrict_relay_domains();
-	build_progress("Building Transport database",50);
+	build_progress("Building build_cyrus_lmtp_auth",50);
 	build_cyrus_lmtp_auth();
-	build_progress("Building Transport database",55);
+	build_progress("Building relay_recipient_maps_build",55);
 	relay_recipient_maps_build();
 	$hashT=new main_hash_table();
 	$hashT->mydestination();
-	build_progress("Building Transport database",60);
+	build_progress("Building mailbox_transport_maps",60);
 	mailbox_transport_maps();
-	build_progress("Building Transport database",70);
+	build_progress("Building relayhost",70);
 	relayhost();
-	build_progress("Building Transport database",80);
+	build_progress("Building perso_settings",80);
 	perso_settings();
-	build_progress("{reloading_smtp_service}",90);
-	shell_exec("{$GLOBALS["postfix"]} reload >/dev/null 2>&1");
-	build_progress("{done}",100);
+	if($GLOBALS["POURC_START"]==0){
+		build_progress("{reloading_smtp_service}",90);
+		shell_exec("{$GLOBALS["postfix"]} reload >/dev/null 2>&1");
+		build_progress("{done}",100);
+	}
 	
 }
 function perso_settings(){
@@ -158,18 +171,7 @@ function relay_recipient_maps_by_transport(){
 }
 
 function relay_recipient_maps_build(){
-	$relay_recipient_maps=null;
-	if(!isset($GLOBALS["LDAPDBS"])){$GLOBALS["LDAPDBS"]=array();}
-	if(!isset($GLOBALS["LDAPDBS"]["relay_recipient_maps"])){$GLOBALS["LDAPDBS"]["relay_recipient_maps"]=array();}
-	$relay_recipient_maps_by_transport=relay_recipient_maps_by_transport();
-	$postdbs=new postfix_extern();
-	$postdbData=$postdbs->build_extern("master", "relay_recipient_maps");
-	if($postdbData<>null){$GLOBALS["LDAPDBS"]["relay_recipient_maps"][]=$postdbData;}
-	if($relay_recipient_maps_by_transport<>null){$GLOBALS["LDAPDBS"]["relay_recipient_maps"][]=$relay_recipient_maps_by_transport;}
-	if(count($GLOBALS["LDAPDBS"]["relay_recipient_maps"])>0){
-		$relay_recipient_maps=@implode(",",$GLOBALS["LDAPDBS"]["relay_recipient_maps"]);
-	}
-	shell_exec("{$GLOBALS["postconf"]} -e \"relay_recipient_maps = $relay_recipient_maps\" >/dev/null 2>&1");
+	shell_exec("{$GLOBALS["postconf"]} -X \"relay_recipient_maps\" >/dev/null 2>&1");
 }
 
 function build_cyrus_lmtp_auth(){

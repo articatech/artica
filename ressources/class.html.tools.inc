@@ -23,7 +23,10 @@ function DAEMON_STATUS_ROUND($key,$bsini,$textoadd=null,$noenable=0,$newInterfac
 	if(!isset($bsini->_params[$key]["uptime"])){$bsini->_params[$key]["uptime"]=null;}
 	if(!isset($bsini->_params[$key]["processes_number"])){$bsini->_params[$key]["processes_number"]=0;}
 	if(!isset($bsini->_params[$key]["running"])){$bsini->_params[$key]["running"]=0;}
+	if(!isset($bsini->_params[$key]["installed"])){$bsini->_params[$key]["installed"]=1;}
 	
+	
+	$installed=$bsini->_params[$key]["installed"];
 	$pid=null;
 	$pid_text=null;
 	$emailqueue=null;
@@ -86,11 +89,10 @@ if($bsini->_params[$key]["running"]==0){
 
 	
 	if($bsini->_params["$key"]["running"]==1){
-	
-	$button="<input type='button' OnClick=\"$js_service\" value='{stop}&nbsp;&raquo;'>";
+		$button="<input type='button' OnClick=\"$js_service\" value='{stop}&nbsp;&raquo;'>";
 	}else{
-	$js_service="StartStopService('".$bsini->_params["$key"]["service_cmd"]."','1','$title');";	
-	$button="<input type='button' OnClick=\"$js_service\" value='{start}&nbsp;&raquo;'>";
+		$js_service="StartStopService('".$bsini->_params["$key"]["service_cmd"]."','1','$title');";	
+		$button="<input type='button' OnClick=\"$js_service\" value='{start}&nbsp;&raquo;'>";
 	}
 	
 	if(!isset($bsini->_params[$key]["pattern_version"])){$bsini->_params[$key]["pattern_version"]=null;}
@@ -127,6 +129,13 @@ if($bsini->_params["$key"]["service_disabled"]=="0"){
 	//$js_service="StartStopService('".$bsini->_params["$key"]["service_cmd"]."','1','$title');";
 	$disabled="<tr><td colspan=2 align='right'><strong style='font-size:11px;line-height:auto'><i style='font-size:11px'>{service_disabled}</i></strong></td></tr>";
 	$disabled_mini="<i style='font-size:11px'>{service_disabled}</i>";
+}
+
+if($installed==0){
+	$img="42-green-grey.png";
+	$disabled="<tr><td colspan=2 align='right'><strong style='font-size:11px;line-height:auto'><i style='font-size:11px'>{not_installed}</i></strong></td></tr>";
+	$disabled_mini="<i style='font-size:11px'>{not_installed}</i>";
+	$status="&nbsp;-&nbsp;";
 }
 
 if($bsini->_params["$key"]["master_pid"]<>null){
@@ -185,8 +194,12 @@ if($bsini->_params["$key"]["master_pid"]<>null){
 
 	
 	$label_version="{version}";
-	if(preg_match("#[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$#", trim($bsini->_params["$key"]["master_version"]))){
-		$label_version="{ip_addr}";
+	if($key<>"APP_UPDATEUTILITYRUN"){
+		if(!class_exists("IP")){include_once(dirname(__FILE__)."/class.tcpip.inc");}
+		$ipClass=new IP();
+		if($ipClass->isValid(trim($bsini->_params["$key"]["master_version"]))){
+			$label_version="{ip_addr}";
+		}
 	}
 	if(strlen($bsini->_params["$key"]["master_version"])>14){
 		$bsini->_params["$key"]["master_version"]=substr($bsini->_params["$key"]["master_version"],0,14)."...";
@@ -509,6 +522,7 @@ return $html;}
 
 
 function url_decode_special_tool($path){
+	
 	$path=str_replace("%C3%A7","ç",$path);
 	$path=str_replace("%C3%C2§","ç",$path);
 	$path=str_replace("%5C","\\",$path);
@@ -518,6 +532,10 @@ function url_decode_special_tool($path){
 	$path=str_replace("%C2§","§",$path);
 	$path=str_replace("%C3§","ç",$path);
 	$path=str_replace("%E2%82%AC","€",$path);
+	$path=str_replace("%C5%93","œ",$path);
+	$path=str_replace("%C2%AB","«",$path);
+	$path=str_replace("%C2%BB","»",$path);
+	
 	
 	$path=str_replace("%C3%89","É",$path);
 	$path=str_replace("%C3%A9","é",$path);

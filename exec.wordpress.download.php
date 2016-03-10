@@ -47,6 +47,8 @@ function download(){
 	$TMP_DIR=$unix->TEMP_DIR();
 	echo "Downloading $URI\n";
 	$curl=new ccurl($URI);
+	$curl->WriteProgress=true;
+	$curl->ProgressFunction="download_progress";
 	if(!$curl->GetFile($TMP_FILE)){
 		build_progress("{downloading} {failed}",110);
 		echo $curl->error;
@@ -81,12 +83,36 @@ if(is_dir($WDP_DIR)){
 	echo "Removing $WDP_DIR\n";
 	shell_exec("$rm -rf $WDP_DIR");
 }
+$sock=new sockets();
+$sock->SET_INFO("EnableFreeWeb", 1);
+@file_put_contents("/etc/artica-postfix/settings/Daemons/WordPressInstalled", 1);
+system("/etc/init.d/artica-status restart --force");
+
 build_progress("{success}",100);
 $nohup=$unix->find_program("nohup");
+$sock=new sockets();
+
+
 shell_exec("$nohup /usr/share/artica-postfix/bin/process1 --verbose 654646 >/dev/null 2>&1 &");
 
 }
 
+function download_progress( $download_size, $downloaded_size, $upload_size, $uploaded_size ){
+	if(!isset($GLOBALS["previousProgress"])){$GLOBALS["previousProgress"]= 0;}
 
+	if ( $download_size == 0 ){
+		$progress = 0;
+	}else{
+		$progress = round( $downloaded_size * 100 / $download_size );
+	}
+
+	if ( $progress > $GLOBALS["previousProgress"]){
+		if($progress<95){
+			echo "Downloading {$progress}% {$downloaded_size}/$download_size";
+		}
+		$GLOBALS["previousProgress"]=$progress;
+			
+	}
+}
 
 

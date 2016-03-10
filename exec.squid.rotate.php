@@ -44,6 +44,40 @@ function ifdirMounted($directory){
 }
 
 
+function ss5_log($BackupMaxDaysDir){
+	
+	if(!is_file("/var/log/ss5/ss5.log")){return;}
+	$sock=new sockets();
+	$unix=new unix();
+	$syslog=new mysql_storelogs();
+	
+	$LogsRotateDefaultSizeRotation=$sock->GET_INFO("LogsRotateDefaultSizeRotation");
+	$SquidRotateOnlySchedule=intval($sock->GET_INFO("SquidRotateOnlySchedule"));
+	if(!is_numeric($LogsRotateDefaultSizeRotation)){$LogsRotateDefaultSizeRotation=100;}
+	if($SquidRotateOnlySchedule==1){$LogsRotateDefaultSizeRotation=0;}
+	$FinalDirectory="$BackupMaxDaysDir/proxy/".date("Y")."/".date("m")."/".date("d");
+	
+	$size=@filesize("/var/log/ss5/ss5.log");
+	$size=$size/1024;
+	$size=$size/1024;
+	$syslog->events("/var/log/ss5/ss5.log........: {$size}M",__FUNCTION__,__LINE__);
+	if($size<$LogsRotateDefaultSizeRotation){
+		$syslog->events("/var/log/ss5/ss5.log........: {$size}M but need {$LogsRotateDefaultSizeRotation}M, aborting",__FUNCTION__,__LINE__);
+		return;
+	}
+	$destfile="$FinalDirectory/ss5.".time().".gz";
+	$syslog->events("/var/log/ss5/ss5.log........: Compress to $destfile",__FUNCTION__,__LINE__);
+	if(!$unix->compress("/var/log/ss5/ss5.log", $destfile)){
+		squid_admin_mysql(1, "Unable to compress /var/log/ss5/ss5.log", null,__FILE__,__LINE__);
+		return;
+	}
+	squid_admin_mysql(1, "Restart Socks Proxy for log rotation task.", null,__FILE__,__LINE__);
+	@unlink("/var/log/ss5/ss5.log");
+	shell_exec("/etc/init.d/ss5 restart");
+	
+}
+
+
 function build(){
 	
 	$timefile="/etc/artica-postfix/pids/exec.squid.rotate.php.build.time";
@@ -150,7 +184,7 @@ function build(){
 	$syslog->events("Final storage directory..........: {$BackupMaxDaysDir}",__FUNCTION__,__LINE__);
 	$syslog->events("Backup files to a NAS............: {$BackupSquidLogsUseNas}",__FUNCTION__,__LINE__);
 	
-	
+	ss5_log($BackupMaxDaysDir);
 	
 	
 	if ($handle = opendir("/var/run/squid")){

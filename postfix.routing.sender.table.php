@@ -398,25 +398,25 @@ function main_table(){
 	$add_local_domain_form_text=$tpl->javascript_parse_text("{add_local_domain_form}");
 	$add_local_domain=$tpl->_ENGINE_parse_body("{add_local_domain}");
 	$sender_dependent_relayhost_maps_title=$tpl->_ENGINE_parse_body("{sender_dependent_relayhost_maps_title}");
-	$ouescape=urlencode($ou);
+	$ouescape=urlencode($_GET["ou"]);
 	$destination=$tpl->javascript_parse_text("{destination}");
 	$hostname=$_GET["hostname"];
 	$apply=$tpl->javascript_parse_text("{apply}");
 	$about2=$tpl->javascript_parse_text("{about2}");
 	$add_sender_routing_rule=$tpl->_ENGINE_parse_body("{add_sender_routing_rule}");
 	$add_remote_domain=Paragraphe("64-remotedomain-add.png",'{add_relay_domain}','{add_relay_domain_text}',
-			"javascript:AddRemoteDomain_form(\"$ou\",\"new domain\")","add_relay_domain",210);
+			"javascript:AddRemoteDomain_form(\"{$_GET["ou"]}\",\"new domain\")","add_relay_domain",210);
 
 	$buttons="
 	buttons : [
-	{name: '$add_sender_routing_rule', bclass: 'add', onpress : add_sender_routing_rule$t},
-	{name: '$apply', bclass: 'apply', onpress : apply_sender_routing_rule$t},
-	{name: '$about2', bclass: 'help', onpress : Help$t},
+	{name: '<strong style=font-size:18px>$add_sender_routing_rule</strong>', bclass: 'add', onpress : add_sender_routing_rule$t},
+	{name: '<strong style=font-size:18px>$apply</strong>', bclass: 'apply', onpress : apply_sender_routing_rule$t},
+	{name: '<strong style=font-size:18px>$about2</strong>', bclass: 'help', onpress : Help$t},
 	],";
 
 	$explain=$tpl->javascript_parse_text("{postfix_transport_senders_explain}");
 	$html="
-	<input type='hidden' id='ou' value='$ou'>
+	<input type='hidden' id='ou' value='{$_GET["ou"]}'>
 	<table class='SENDER_DEPENDENT_RELAY_HOST' style='display: none' id='SENDER_DEPENDENT_RELAY_HOST' style='width:100%'></table>
 	<script>
 	$(document).ready(function(){
@@ -424,12 +424,12 @@ function main_table(){
 	url: '$page?relay-sender-table-list=yes&hostname=$hostname&t=$t',
 	dataType: 'json',
 	colModel : [
-	{display: '$domain', name : 'domain', width : 428, sortable : true, align: 'left'},
-	{display: '$relay', name : 'relay', width :260, sortable : true, align: 'left'},
-	{display: 'AUTH', name : 'zOrders', width : 50, sortable : false, align: 'center'},
-	{display: 'UP', name : 'zOrders', width : 50, sortable : true, align: 'center'},
-	{display: 'DOWN', name : 'zOrders', width : 50, sortable : true, align: 'center'},
-	{display: '$delete;', name : 'delete', width : 75, sortable : false, align: 'center'},
+	{display: '<span style=font-size:22px>$domain</span>', name : 'domain', width : 450, sortable : true, align: 'left'},
+	{display: '<span style=font-size:22px>$relay</span>', name : 'relay', width :450, sortable : true, align: 'left'},
+	{display: '<span style=font-size:22px>AUTH</span>', name : 'zOrders', width : 84, sortable : false, align: 'center'},
+	{display: '<span style=font-size:22px>UP</span>', name : 'zOrders', width : 84, sortable : true, align: 'center'},
+	{display: '<span style=font-size:22px>DOWN</span>', name : 'zOrders', width : 84, sortable : true, align: 'center'},
+	{display: '<span style=font-size:22px>$delete</span>', name : 'delete', width : 136, sortable : false, align: 'center'},
 	],
 	$buttons
 	searchitems : [
@@ -643,10 +643,10 @@ function main_search(){
 		$cell=array();
 		$cell[]="<span $style>$link$domain</a></span>";
 		$cell[]="<span $style>$link$relay_text</a></span>";
-		$cell[]="<span $style><img src='img/$icon_f'></a></span>";
-		$cell[]="<span $style>$up</a></span>";
-		$cell[]="<span $style>$down</a></span>";
-		$cell[]="<span $style>$delete</a></span>";
+		$cell[]="<center $style><img src='img/$icon_f'></a></center>";
+		$cell[]="<center $style>$up</a></center>";
+		$cell[]="<center $style>$down</a></center>";
+		$cell[]="<center $style>$delete</a></center>";
 
 		$data['rows'][] = array(
 				'id' => $ligne['uuid'],

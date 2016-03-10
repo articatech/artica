@@ -43,9 +43,9 @@ function popup(){
 	$online_help=$tpl->_ENGINE_parse_body("{online_help}");
 	$buttons="
 	buttons : [
-	{name: '$new_entry', bclass: 'Add', onpress : NewGItem$t},
-	{name: '$compile_rules', bclass: 'Reconf', onpress : MimeDefangCompileRules},
-	{name: '$online_help', bclass: 'Help', onpress : ItemHelp$t},
+	{name: '<strong style=font-size:18px>$new_entry</strong>', bclass: 'Add', onpress : NewGItem$t},
+	
+	
 	],	";
 	
 	
@@ -58,10 +58,10 @@ $('#flexRT$t').flexigrid({
 	url: '$page?items-rules=yes&t=$t',
 	dataType: 'json',
 	colModel : [	
-		{display: '$from', name : 'mailfrom', width :224, sortable : true, align: 'left'},
-		{display: '$to', name : 'mailto', width :224, sortable : false, align: 'left'},
-		{display: '&nbsp;', name : 'explain', width :334, sortable : false, align: 'left'},
-		{display: '&nbsp;', name : 'action', width :31, sortable : false, align: 'center'},
+		{display: '<span style=font-size:18px>$from</span>', name : 'mailfrom', width :422, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$to</span>', name : 'mailto', width :422, sortable : false, align: 'left'},
+		{display: '<span style=font-size:18px>&nbsp;</span>', name : 'explain', width :506, sortable : false, align: 'left'},
+		{display: '<span style=font-size:18px>&nbsp;</span>', name : 'action', width :50, sortable : false, align: 'center'},
 
 	],
 	$buttons
@@ -74,12 +74,12 @@ $('#flexRT$t').flexigrid({
 	sortname: 'mailfrom',
 	sortorder: 'asc',
 	usepager: true,
-	title: '$title',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
-	width: $TB_WIDTH,
-	height: $TB_HEIGHT,
+	width: '99%',
+	height: 550,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200,500]
 	
@@ -185,15 +185,15 @@ function items(){
 	$data['rows'] = array();
 	
 	if(!$q->ok){json_error_show($q->mysql_error);}	
-	
+	if(mysql_num_rows($results)==0){json_error_show("no rule");}
 	while ($ligne = mysql_fetch_assoc($results)) {
 	$zmd5=$ligne["zmd5"];
 
-	
+	$color="#000000";
 	$delete=imgsimple("delete-24.png","","DeleteAutCompress$t('$zmd5')");
 	
 	$urljs="<a href=\"javascript:blur();\" OnClick=\"javascript:GItem$t('$zmd5','{$ligne["mailfrom"]}&nbsp;&raquo;&nbsp;{$ligne["mailto"]}');\"
-	style='font-size:16px;color:$color;text-decoration:underline'>";
+	style='font-size:18px;color:$color;text-decoration:underline'>";
 	
 	if($ligne["uncompress"]==0){
 		$explain=$tpl->_ENGINE_parse_body("{automatically_compress_when_attachments_exceed}&nbsp;<strong>{$ligne["maxsize"]}M</strong>");
@@ -205,10 +205,10 @@ function items(){
 	$data['rows'][] = array(
 		'id' => "C$zmd5",
 		'cell' => array(
-			"<span style='font-size:16px;color:$color'>$urljs{$ligne["mailfrom"]}</a></span>",
+			"<span style='font-size:18px;color:$color'>$urljs{$ligne["mailfrom"]}</a></span>",
 			"<span style='font-size:18px;color:$color'>$urljs{$ligne["mailto"]}</a></span>",
-			"<span style='font-size:12px;color:$color'>$explain</a></span>",
-			"<span style='font-size:16px;color:$color'>$delete</a></span>",
+			"<span style='font-size:13px;color:$color'>$explain</a></span>",
+			"<center style='font-size:18px;color:$color'>$delete</a></center>",
 			)
 		);
 	}
@@ -259,7 +259,7 @@ function main_rule(){
 	$tpl=new templates();
 	$page=CurrentPageName();
 	$q=new mysql();
-	$btname=button("{add}","Addisclaimer$t();","18px");
+	$btname=button("{add}","Addisclaimer$t();","34px");
 	$zmd5=$_GET["rulemd5"];
 	
 	if($zmd5<>null){
@@ -271,19 +271,19 @@ function main_rule(){
 	
 	$html="
 	<input type='hidden' id='uncompress-$t' value='0'>
-	<div id='$t-adddis'></div>
+	<div id='$t-adddis' class=explain style='font-size:18px'>{mimedefang_email_explain}</div>
 	 <table style='width:99%' class=form>
 	 <tr>
-	 	<td class=legend style='font-size:16px'>{sender}:</td>
-	 	<td>". Field_text("mailfrom-$t",$ligne["mailfrom"],"font-size:16px;width:310px")."</td>
+	 	<td class=legend style='font-size:24px'>{sender}:</td>
+	 	<td>". Field_text("mailfrom-$t",$ligne["mailfrom"],"font-size:24px;width:97%")."</td>
 	 </tr>
 	 <tr>
-	 	<td class=legend style='font-size:16px'>{recipient}:</td>
-	 	<td>". Field_text("mailto-$t",$ligne["mailto"],"font-size:16px;width:310px",null,null,null,false,"AddisclaimerC$t(event)")."</td>
+	 	<td class=legend style='font-size:24px'>{recipient}:</td>
+	 	<td>". Field_text("mailto-$t",$ligne["mailto"],"font-size:24px;width:97%",null,null,null,false,"AddisclaimerC$t(event)")."</td>
 	 </tr>	
 	 <tr>
-	 	<td class=legend style='font-size:16px'>{maxsize}:</td>
-	 	<td style='font-size:16px'>". Field_text("maxsize-$t",$ligne["maxsize"],"font-size:16px;width:60px",null,null,null,false,"AddisclaimerC$t(event)")."&nbsp;M</td>
+	 	<td class=legend style='font-size:24px'>{maxsize}:</td>
+	 	<td style='font-size:24px'>". Field_text("maxsize-$t",$ligne["maxsize"],"font-size:24px;width:120px",null,null,null,false,"AddisclaimerC$t(event)")."&nbsp;M</td>
 	 </tr> 		 
 	<tr>
 		<td colspan=2 align='right'><hr>$btname</td>

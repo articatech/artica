@@ -135,7 +135,8 @@ class dhcpd{
 	public $authoritative=0;
 	public $ping_check=0;
 	public $noloadFixed=0;
-	public $local_pac_server=0;
+	public $local_pac_server=null;
+	public $browser_portal_page=null;
 	public $get_lease_hostnames=0;
 	
 	function dhcpd($noload=0,$noloadFixed=0){
@@ -178,7 +179,7 @@ class dhcpd{
 		$this->local_pac_server=$ini->_params["SET"]["local_pac_server"];
 		$this->get_lease_hostnames=$ini->_params["SET"]["get_lease_hostnames"];
 		$this->deny_unkown_clients=intval($ini->_params["SET"]["deny_unkown_clients"]);
-		
+		$this->browser_portal_page=$ini->_params["SET"]["browser_portal_page"];
 		
 		
 		
@@ -288,6 +289,7 @@ class dhcpd{
 		$ini=$ini."get_lease_hostnames=$this->get_lease_hostnames\n";
 		$ini=$ini."do_no_verify_range=$this->do_no_verify_range\n";
 		$ini=$ini."deny_unkown_clients=$this->deny_unkown_clients\n";
+		$ini=$ini."browser_portal_page=$this->browser_portal_page\n";
 		
 		
 		$sock=new sockets();
@@ -551,11 +553,6 @@ private function DomainNameServers(){
 			$gateway_array[]=$this->gateway;
 		}
 
-		
-		
-		
-		
-
 		if(preg_match('#([0-9]+)\.([0-9]+)\.([0-9]+)#',$this->WINS)){
 			$conf=$conf."option netbios-name-servers $this->WINS;\n";
 		}
@@ -564,6 +561,16 @@ private function DomainNameServers(){
 			$conf=$conf."option local-pac-server code 252 = text;\n";
 			$conf=$conf."option local-pac-server \"$this->local_pac_server\";\n";
 		}
+		
+		$conf=$conf."# Portal page \"$this->browser_portal_page\"\n";
+		
+		if(preg_match("#http.*:\/\/.*#", $this->browser_portal_page)){
+			$conf=$conf."option browser-portal-page code 224 = string;\n";
+			$conf=$conf."option browser-portal-page  \"$this->browser_portal_page\";\n";
+			$conf=$conf."option default-url \"$this->browser_portal_page\";\n";
+			
+		}
+		
 		
 
 		

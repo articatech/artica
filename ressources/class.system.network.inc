@@ -228,7 +228,8 @@ class networking{
 			if($GLOBALS["VERBOSE"]){echo "<strong style='color:blue'>cmd.php?nicstatus=$nic</strong><br>\n";}
 			$nicinfos=$sock->getFrameWork("cmd.php?nicstatus=$nic");
 		}else{
-			$nicinfos=exec("/usr/share/artica-postfix/bin/artica-install --nicstatus $nic 2>&1");
+			$nicinfos=$this->GetNicStatusAsRoot($nic);
+			
 		}
 		
 		$tbl=explode(";",$nicinfos);
@@ -292,8 +293,15 @@ class networking{
 				if($GLOBALS["VERBOSE"]){echo "*** GetNicInfosAsRoot($nic) *** \n{$GLOBALS["GetNicInfosAsRoot$nic"]}\n";}
 				return $GLOBALS["GetNicInfosAsRoot$nic"];
 			}
-			exec("/usr/share/artica-postfix/bin/artica-install --nicinfos $nic",$results);
-			$datas=trim(@implode("\n",$results));
+			if(!class_exists("unix")){include_once("/usr/share/artica-postfix/framework/class.unix.inc");}
+			$unix=new unix();
+			
+			$MAIN=$unix->NETWORK_ALL_INTERFACES();
+			$f[]="BOOTPROTO=";
+			$f[]="METHOD=debian";
+			$f[]="DEVICE=$nic";
+			$f[]="MAC={$MAIN[$nic]["MAC"]}";
+			$datas=trim(@implode("\n",$f));	
 			if($GLOBALS["VERBOSE"]){echo "*** GetNicInfosAsRoot($nic) *** \n$datas\n";}
 			$GLOBALS["GetNicInfosAsRoot$nic"]=$datas;
 			return $datas;
@@ -301,11 +309,19 @@ class networking{
 		
 		private function GetNicStatusAsRoot($nic){
 			if(isset($GLOBALS["GetNicStatusAsRoot$nic"])){return $GLOBALS["GetNicStatusAsRoot$nic"];}
-			exec("/usr/share/artica-postfix/bin/artica-install --nicstatus $nic",$results);
-			$datas=trim(@implode(" ",$results));
-			if($GLOBALS["VERBOSE"]){echo "*** GetNicStatusAsRoot *** \n$datas\n";}
-			$GLOBALS["GetNicStatusAsRoot$nic"]=$datas;
-			return $datas;
+			if(!class_exists("unix")){include_once("/usr/share/artica-postfix/framework/class.unix.inc");}
+			$unix=new unix();
+			$ALLARRAY=$unix->NETWORK_ALL_INTERFACES();
+			$outputz[]=$ALLARRAY[$_GET["nicstatus"]]["IPADDR"];
+			$outputz[]=$ALLARRAY[$_GET["nicstatus"]]["MAC"];
+			$outputz[]=$ALLARRAY[$_GET["nicstatus"]]["NETMASK"];
+			$outputz[]=$ALLARRAY[$_GET["nicstatus"]]["SCOPE"];
+			$outputz[]=$ALLARRAY[$_GET["nicstatus"]]["GATEWAY"];
+			$outputz[]="no";
+			$outputz[]=$ALLARRAY[$_GET["nicstatus"]]["STATE"];
+			$sortie=@implode(";",$outputz);
+			$GLOBALS["GetNicStatusAsRoot$nic"]=$sortie;
+			return $sortie;
 		}		
 		
 	

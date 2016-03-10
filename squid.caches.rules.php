@@ -219,7 +219,7 @@ function global_parameters(){
 	
 	$compilefile="ressources/logs/squid.compilation.params";
 	if(!is_file($compilefile)){$sock->getFrameWork("squid.php?compil-params=yes");}
-	$COMPILATION_PARAMS=unserialize(base64_decode(file_get_contents($compilefile)));
+	$COMPILATION_PARAMS=unserialize(base64_decode(@file_get_contents($compilefile)));
 	
 	$SquidReloadIntoIMS=$sock->GET_INFO("SquidReloadIntoIMS");
 	
@@ -565,15 +565,13 @@ function main_tabs(){
 	$sock=new sockets();
 	$DisableAnyCache=$sock->GET_INFO("DisableAnyCache");
 	if(!is_numeric($DisableAnyCache)){$DisableAnyCache=0;}
-	$CacheManagement2=$sock->GET_INFO("CacheManagement2");
-	if(!is_numeric($CacheManagement2)){$CacheManagement2=0;}
 	$SquidCacheLevel=$sock->GET_INFO("SquidCacheLevel");
 	if(!is_numeric($SquidCacheLevel)){$SquidCacheLevel=4;}
 	if($SquidCacheLevel==0){$DisableAnyCache=1;}
 	$UseSimplifiedCachePattern=$sock->GET_INFO("UseSimplifiedCachePattern");
 	if(!is_numeric($UseSimplifiedCachePattern)){$UseSimplifiedCachePattern=1;}
 	
-	$realsquidversion=$sock->getFrameWork("squid.php?full-version=yes");
+	$realsquidversion=@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidVersion");
 	
 	$ID=$_GET["ID"];
 	$t=$_GET["t"];
@@ -590,9 +588,7 @@ function main_tabs(){
 	
 	}
 	
-	if($CacheManagement2==1){
-		$array["caches-center"]='{caches_center}';
-	}
+	$array["caches-center"]='{caches_center}';
 	
 	
 	$array["artica-cache"]="{enforce_rules}";
@@ -618,11 +614,7 @@ function main_tabs(){
 	$array["parameters"]="{global_parameters}";
 	
 
-	
-	if($CacheManagement2==0){
-		$array["caches"]='{caches}';
-		$array["caches-params"]='{caches_parameters}';
-	}
+
 	
 
 	if($DisableAnyCache==0){
@@ -630,7 +622,7 @@ function main_tabs(){
 		if($q->TABLE_EXISTS("cacheitems_localhost")){
 			$ct=$q->COUNT_ROWS("cacheitems_localhost");
 			if($ct>0){
-				if($CacheManagement2==1){$array["cached_items"]="$ct {cached_items}";}
+				$array["cached_items"]="$ct {cached_items}";
 	
 			}
 		}

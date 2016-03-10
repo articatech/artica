@@ -6,7 +6,7 @@ interface
 uses
   Classes, SysUtils,variants, Process,unix,logs,
   RegExpr,zsystem,IniFiles,
-  global_conf in 'global_conf.pas',common,process_infos,cyrus,clamav,spamass,pureftpd,roundcube,openldap,spfmilter,samba,mimedefang,bogofilter,squid,stunnel4,dkimfilter,
+  global_conf in 'global_conf.pas',common,process_infos,cyrus,clamav,spamass,pureftpd,roundcube,openldap,spfmilter,samba,bogofilter,squid,stunnel4,dkimfilter,
   postfix_class,mailgraph_daemon,lighttpd,miltergreylist,dansguardian,monitorix,kav4samba,awstats,ntpd,kav4proxy,bind9,fdm,p3scan,syslogng,kas3,isoqlog,dhcp_server,cups,wifi,
   dnsmasq,kavmilter,  jcheckmail, rdiffbackup,openvpn,strutils,xapian,dstat,BaseUnix,nfsserver,policyd_weight,tcpip,pdns,mysql_daemon,assp,postfilter, vmwaretools,phpldapadmin,zarafa_server,squidguard,backuppc,auditd,sshd,toolsversions,apachesrc,amanda,tomcat,
   collectd         in '/home/dtouzeau/developpement/artica-postfix/bin/src/artica-install/collectd.pas',crossroads,
@@ -112,13 +112,6 @@ begin
   logs.Debuglogs('-> DeleteLogs()');
   logs.DeleteLogs();
 
-//  logs.Debuglogs('Tprocess1.Execute -> CROSSROADS_SEND_REQUESTS_TO_SERVER()');
-//GLOBAL_INI.CROSSROADS_SEND_REQUESTS_TO_SERVER('');
-
-    logs.Debuglogs('Tprocess1.Execute -> SQUID_RRD_EXECUTE()');
-    squid:=Tsquid.create;
-    squid.SQUID_RRD_EXECUTE();
-    squid.free;
 
   if D then begin
   if FileExists('/etc/artica-postfix/autokill') then writeln('Tprocess1.Execute ->/etc/artica-postfix/autokill exists aborting');
@@ -344,7 +337,7 @@ var
    Cpureftpd             :Tpureftpd;
    spf                   :tspf;
    samba                 :Tsamba;
-   mimedef               :Tmimedefang;
+
    bogo                  :Tbogofilter;
    squid                 :Tsquid;
    stunnel               :Tstunnel;
@@ -421,7 +414,7 @@ begin
        if verbosed then writeln('web_settings:: 0.5%');
        SYS:=Tsystem.Create;
        if verbosed then writeln('web_settings:: 0.6%');
-       mimedef:=Tmimedefang.Create(SYS);
+
        bogo:=Tbogofilter.Create;
        squid:=Tsquid.Create;
        stunnel:=Tstunnel.Create(SYS);
@@ -697,8 +690,8 @@ begin
 
    if verbosed then writeln('web_settings:: 6%');
    if SYS.IS_INSIDE_VPS() then list.add('$_GLOBAL["AS_VPS_CLIENT"]=True;') else list.Add('$_GLOBAL["AS_VPS_CLIENT"]=False;');
-   list.Add('$_GLOBAL["disks_size"]="' + SYS.DISKS_STATUS_DEV()+'";');
-   list.Add('$_GLOBAL["disks_inodes"]="' + trim(SYS.DISKS_INODE_DEV())+'";');
+
+
    list.Add('$_GLOBAL["LOCATE_AUTHLOG_PATH"]="' + trim(SYS.LOCATE_AUTHLOG_PATH())+'";');
 
 
@@ -1368,12 +1361,6 @@ if POSTFIX_INSTALLED then begin
    end;
 
         //------------- policyd-weight
-        try
-           pol:=tpolicyd_weight.Create(SYS);
-           list.Add('$_GLOBAL["POLICYD_WEIGHT_PORT"]="'+pol.GET_VALUE('TCP_PORT')+'";');
-        except
-          logs.Syslogs('FATAL ERROR FOR POLICYD_WEIGHT_PORT value')
-        end;
 
         if FileExists(SYS.LOCATE_GENERIC_BIN('cbpolicyd')) then list.Add('$_GLOBAL["CLUEBRINGER_INSTALLED"]=True;') else list.Add('$_GLOBAL["CLUEBRINGER_INSTALLED"]=False;');
 
@@ -1408,17 +1395,6 @@ if POSTFIX_INSTALLED then begin
 
 
 
-        //------------- spamassassin
-        if FileExists(spamass.SPAMASSASSIN_BIN_PATH()) then begin
-           list.Add('$_GLOBAL["spamassassin_installed"]=True;');
-           list.Add('$_GLOBAL["spamassassin_conf_path"]="'+spamass.SPAMASSASSIN_LOCAL_CF()+'";');
-           list.Add('$_GLOBAL["spamassassin_bin_path"]="'+spamass.SPAMASSASSIN_BIN_PATH()+'";');
-           list.Add('$_GLOBAL["spamassassin_version"]="'+spamass.SPAMASSASSIN_VERSION()+'";');
-           if SYS.CHECK_PERL_MODULES('IP::Country::Fast') then  list.Add('$_GLOBAL["spamassassin_ipcountry"]=True;') else list.Add('$_GLOBAL["spamassassin_ipcountry"]=False;');
-        end else begin
-             list.Add('$_GLOBAL["spamassassin_installed"]=False;');
-        end;
-        
         //-------------Razor
         if FileExists(spamass.RAZOR_ADMIN_PATH()) then begin
           list.Add('$_GLOBAL["razor_installed"]=True;');
@@ -1689,13 +1665,7 @@ end;
  end;
  //--------------------------------------------------------------------------------------------
  
- if FileExists(spamass.MILTER_DAEMON_BIN_PATH()) then begin
-     list.Add('$_GLOBAL["SPAMASS_MILTER_INSTALLED"]=True;');
-     list.Add('$_GLOBAL["SPAMASS_MILTER_SOCKET"]="' + spamass.MILTER_SOCKET_PATH() + '";' );
-  end else begin
-     list.Add('$_GLOBAL["SPAMASS_MILTER_INSTALLED"]=False;');
- end;
- //--------------------------------------------------------------------------------------------
+
  
 
  
@@ -1854,29 +1824,47 @@ logs.Debuglogs('web_settings() -> 75%');
 
 
     forcedirectories(php_path + '/ressources');
-    LOGS.Debuglogs('web_settings() Terminate save file settings.new.inc');
+
+    fpsystem('/bin/cp -f /usr/share/artica-postfix/ressources/settings.inc /usr/share/artica-postfix/ressources/settings.bak');
+
+    LOGS.Debuglogs('web_settings() * * * * Terminate save file /usr/share/artica-postfix/ressources/settings.new.inc * * * * ');
      try
-         list.SaveToFile('/usr/share/artica-postfix/ressources/settings.new.inc');
+         logs.WriteToFile(list.Text,'/usr/share/artica-postfix/ressources/settings.new.inc');
+
+         if not FileExists('/usr/share/artica-postfix/ressources/settings.new.inc') then begin
+            LOGS.Debuglogs('web_settings() !!! FATAL ERROR !!! unable to save /usr/share/artica-postfix/ressources/settings.new.inc');
+            exit;
+         end;
     except
-        LOGS.Debuglogs('web_settings() !!! FATAL ERROR !!! unable to save /usr/share/artica-postfix/ressources/settings.new.inc');
+        LOGS.Debuglogs('web_settings() !!! FATAL EXCEPTION: ERROR !!! unable to save /usr/share/artica-postfix/ressources/settings.new.inc');
         exit;
    end;
     LOGS.Debuglogs('web_settings() verify file...');
+    logs.DeleteFile('/tmp/settings.ok');
     LOGS.Debuglogs(SYS.LOCATE_PHP5_BIN()+' /usr/share/artica-postfix/exec.tests-settings.php');
-    fpsystem(SYS.LOCATE_PHP5_BIN()+' /usr/share/artica-postfix/exec.tests-settings.php >/tmp/exec.tests-settings.txt 2>&1');
-    LOGS.Debuglogs('web_settings() ' + logs.ReadFromFile('/tmp/exec.tests-settings.txt'));
-    if not FileExists(php_path + '/ressources/settings.inc') then begin
-       LOGS.Debuglogs('web_settings() verify file failed ( exec.tests-settings.php return null)..');
-    end;
-    if not FileExists(php_path + '/ressources/settings.new.inc') then begin
-        LOGS.Debuglogs('web_settings() verify file success.. ( settings.new.inc still exists)');
-    end else begin
-        LOGS.Debuglogs('web_settings() !!!! verify file failed !!!! ressources/settings.new.inc still exists..');
+    fpsystem(SYS.LOCATE_PHP5_BIN()+' /usr/share/artica-postfix/exec.tests-settings.php');
+
+    if not FileExists('/tmp/settings.ok') then begin
+          LOGS.Debuglogs('web_settings() * * * * * *  FAILED (1) * * * * * *');
+          fpsystem('/bin/cp /usr/share/artica-postfix/ressources/settings.bak /usr/share/artica-postfix/ressources/settings.inc');
+          list.Free;
+          exit;
     end;
 
-    fpchmod(php_path + '/ressources/settings.inc',&755);
+    LOGS.Debuglogs('web_settings() * * * * * *  SUCCESS (1) * * * * * *');
+
+    if not FileExists(php_path + '/ressources/settings.inc') then begin
+       LOGS.Debuglogs('web_settings() * * * * * *  FAILED (2) * * * * * *');
+       LOGS.Debuglogs('web_settings() verify file failed ( exec.tests-settings.php return null)..');
+       fpsystem('/bin/cp /usr/share/artica-postfix/ressources/settings.bak /usr/share/artica-postfix/ressources/settings.inc');
+       list.Free;
+       exit;
+    end;
+
+    LOGS.Debuglogs('web_settings() * * * * * *  SUCCESS (2) * * * * * *');
+
     logs.Debuglogs('thProcThread.web_settings('+ php_path + ') -> TERM');
-    list.Free;;
+    list.Free;
     if verbosed then writeln('web_settings:: 100%');
 
 

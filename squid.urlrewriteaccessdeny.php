@@ -31,6 +31,8 @@ if(isset($_GET["verbose"])){ini_set('html_errors',0);ini_set('display_errors', 1
 	
 	if(isset($_GET["add-nocache-popup"])){add_nocache_popup();exit;}
 	if(isset($_GET["add-white-popup"])){add_white_popup();exit;}
+	if(isset($_GET["add-white-popup2"])){add_white_popup2();exit;}
+	
 	if(isset($_GET["add-white-tab"])){add_white_tab();exit;}
 	
 	
@@ -273,7 +275,7 @@ function add_nocache_popup(){
 	<div style='text-align:right;margin-top:20px;font-size:28px'>
 			<hr>
 			".
-			button("{compile2}","Save2$t()",28)."&nbsp;|&nbsp;". button("{apply}","Save$t()",28)."</div>
+			button("{compile2}","Save2$t()",28)."&nbsp;|&nbsp;". button("{save}","Save$t()",28)."</div>
 
 			<script>
 			var xSave$t=function(obj){
@@ -328,6 +330,7 @@ function add_white_tab(){
 	$sock=new sockets();
 	
 	$array["add-white-popup"]="{whitelist}";
+	$array["add-white-popup2"]="{import}";
 	$array["analyze"]="{analyze}";
 	
 	
@@ -335,6 +338,12 @@ function add_white_tab(){
 	$fontsize=18;
 	
 	while (list ($num, $ligne) = each ($array) ){
+		
+		
+		if($num=="add-white-popup"){
+			$tab[]="<li><a href=\"squid.global.whitelist.php\"><span style='font-size:{$fontsize}px'>$ligne</span></a></li>\n";
+			continue;
+		}		
 		if($num=="analyze"){
 			$tab[]="<li><a href=\"squid.analyze.page.php\"><span style='font-size:{$fontsize}px'>$ligne</span></a></li>\n";
 			continue;
@@ -486,15 +495,20 @@ XHR.sendAndLoad('$page', 'POST',xSave2$t);
 
 }
 
-
 function add_white_popup(){
 	//ini_set('html_errors',0);ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string','');ini_set('error_append_string','');
+	$page=CurrentPageName();
+	$t=time();
+	echo "<div id='$t'></div><script>LoadAjax('$t','squid.global.whitelist.php');</script>";
+}
+
+
+function add_white_popup2(){
 	$page=CurrentPageName();
 	$tpl=new templates();
 	$q=new mysql();
 	$sock=new sockets();
-	$SquidHTTPTemplateLanguage=$sock->GET_INFO("SquidHTTPTemplateLanguage");
-	if($SquidHTTPTemplateLanguage==null){$SquidHTTPTemplateLanguage="en-us";}
+
 
 	$t=time();
 	$sql="SELECT items  FROM urlrewriteaccessdeny ORDER BY items";
@@ -511,8 +525,7 @@ function add_white_popup(){
 	id='form$t'>".@implode("\n", $tr)."</textarea>
 	<div style='text-align:right;margin-top:20px;font-size:28px'>
 			<hr>
-			".
-			button("{compile2}","Save2$t()",28)."&nbsp;|&nbsp;". button("{apply}","Save$t()",28)."</div>
+			". button("{save}","Save$t()",28)."</div>
 
 			<script>
 			var xSave$t=function(obj){
@@ -523,7 +536,7 @@ function add_white_popup(){
 var xSave2$t=function(obj){
 	var tempvalue=obj.responseText;
 	if(tempvalue.length>3){alert(tempvalue);return;}
-	Loadjs('squid.compile.whiteblack.progress.php');
+	
 }
 
 function Save$t(){

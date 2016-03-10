@@ -94,7 +94,7 @@ function popup(){
 	
 	$t=time();
 	$html="
-	<div style='font-size:40px;margin-bottom:20px'>{system} $CPU_NUMBER CPU(s)</div>		
+	<div style='font-size:40px;margin-bottom:20px'>{system} $CPU_NUMBER CPU(s)&nbsp;&nbsp;|&nbsp;&nbsp;". button("{refresh_system_information}","Loadjs('system.refreshcpu.progress.php')",30)."&nbsp;&nbsp|&nbsp;&nbsp</div>		
 	<div style='width:98%' class=form>
 			
 	". Paragraphe_switch_img("{enable_system_optimization}", 
@@ -106,7 +106,7 @@ function popup(){
 	". Paragraphe_switch_img("{enable_intel_celeron}", 
 			"{enable_intel_celeron_text}","EnableIntelCeleron",$EnableIntelCeleron,null,1200)."
 		<div style='margin-top:25px;text-align:right;font-size:40px'>
-					". button("{refresh_system_information}","Loadjs('system.refreshcpu.progress.php')",40)."&nbsp;&nbsp|&nbsp;&nbsp
+					
 					". button("{apply}","Save2$t()",40)."</div>
 	
 </div><p>&nbsp;</p>

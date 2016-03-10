@@ -15,7 +15,6 @@ var
    zsquid:Tsquid;
    zlogs:Tlogs;
    mypid,tmpstr,oldpid:string;
-   tcp:ttcp;
    SYS:Tsystem;
    zmonitorix:tmonitorix;
    zapachesrc            :tapachesrc;
@@ -296,11 +295,8 @@ end;
      end;
 
 
- if ParamStr(1)='--inodes' then begin
-          SYS.verbosed:=true;
-          writeln(SYS.DISKS_INODE_DEV());
-          halt(0);
-     end;
+ if ParamStr(1)='--inodes' then halt(0);
+
 
 
 

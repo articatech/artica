@@ -1,4 +1,5 @@
 <?php
+ini_set('memory_limit','1000M');
 header("Pragma: no-cache");
 header("Expires: 0");
 header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
@@ -28,12 +29,6 @@ include(dirname(__FILE__)."/ressources/class.influx.inc");
 	if(isset($_GET["remove-cache"])){remove_cache_button();exit;}
 	if(isset($_POST["remove-cache"])){remove_cache();exit;}
 	if(isset($_GET["query-js"])){build_query_js();exit;}
-	if(isset($_GET["graph0"])){graph0();exit;}
-	if(isset($_GET["graph1"])){graph1();exit;}
-	if(isset($_GET["table1"])){table1();exit;}
-	
-	if(isset($_GET["graph2"])){graph2();exit;}
-	if(isset($_GET["table2"])){table2();exit;}
 	
 	if(isset($_GET["table3"])){table3();exit;}
 	if(isset($_GET["graph3"])){graph3();exit;}	
@@ -193,14 +188,13 @@ function requeteur_popup(){
 	$members["IPADDR"]="{ipaddr}";
 	
 	
-	$q=new influx();
-	$date_start=date("Y-m-d",intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/DATE_START")));
-	$date_end=date("Y-m-d",intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/DATE_END")));
-	$Selectore="mindate:$date_start;maxdate:$date_end";
+	$q=new postgres_sql();
+	$Selectore=$q->fieldSelectore();
 	
 	
 	$stylelegend="style='vertical-align:top;font-size:18px;padding-top:5px' nowrap";
 	$html="<div style='width:98%;margin-bottom:20px' class=form>
+	<input type='hidden' id='interval-$t' value='10m'>
 	<table style='width:100%'>
 	<tr>
 		<td $stylelegend class=legend>{from_date}:</td>
@@ -212,11 +206,6 @@ function requeteur_popup(){
 		<td style='vertical-align:top;font-size:18px'>". field_date("to-date-$t",$_SESSION["SQUID_STATS_DATE2"],";font-size:18px;width:160px",$Selectore)."
 		&nbsp;". Field_text("to-time-$t",$_SESSION["SQUID_STATS_TIME2"],";font-size:18px;width:82px")."</td>
 	</tr>
-	<tr>
-		<td $stylelegend class=legend>{interval}:</td>
-		<td style='vertical-align:top;font-size:18px;'>". Field_array_Hash($per,"interval-$t","10m","blur()",null,0,"font-size:18px;")."</td>
-	</tr>	
-				
 	<tr>
 		<td $stylelegend class=legend>{members}:</td>
 		<td style='vertical-align:top;font-size:18px;'>". Field_array_Hash($members,"members-$t",$_SESSION["SQUID_STATS_MEMBER"],"blur()",null,0,"font-size:18px;")."</td>
@@ -274,7 +263,7 @@ function page(){
 	
 	
 	
-	echo "<div style='float:right;margin:5px;margin-top:-17px'>".button($tpl->_ENGINE_parse_body("{build_the_query}"), "Loadjs('$page?requeteur-js=yes&t=$t')",16)."</div>";
+	echo "<div style='float:right;margin:5px;margin-top:5px'>".button($tpl->_ENGINE_parse_body("{build_the_query}"), "Loadjs('$page?requeteur-js=yes&t=$t')",16)."</div>";
 	$content="<center style='margin:50px' id='websites-button-area'>". button("{build_the_query}","Loadjs('$page?requeteur-js=yes&t=$t')",42)."</center>";
 	
 	
@@ -291,7 +280,10 @@ function page(){
 	if($ligne["zmd5"]<>null){
 		$nextFunction="LoadAjax('CATEGORIES_STATS_MAIN_GRAPH','$page?main=yes&zmd5={$ligne["zmd5"]}&t=$t');";
 		$content=null;
-		$title="<div style='font-size:30px;margin-bottom:20px'>".$tpl->javascript_parse_text($ligne["title"])."</div>";
+		$title="<div style='font-size:26px;margin-bottom:20px'>".
+	texttooltip($tpl->javascript_parse_text($ligne["title"]),
+	"{edit}","Loadjs('squid.statistics.edit.report.php?zmd5={$ligne["zmd5"]}&t=$t')").
+	"</div>";
 	}
 
 	$html="
@@ -312,202 +304,78 @@ function main_page(){
 	$tpl=new templates();
 	$q=new mysql_squid_builder();
 	$zmd5=$_GET["zmd5"];
+	$t=time();
 	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
 	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `title` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$title="<div style='font-size:30px;margin-bottom:20px;margin-top:20px'>".$tpl->javascript_parse_text($ligne["title"])."</div>";
-	$t=time();
+		$title="
+				
+	<div style='float:right'>". imgtootltip("refresh32.png","{refresh}","Start$t()")."</div><div style='font-size:26px;margin-bottom:20px'>".
+	texttooltip($tpl->javascript_parse_text($ligne["title"]),
+	"{edit}","Loadjs('squid.statistics.edit.report.php?zmd5=$zmd5&t=$t')").
+	"</div>";
+	
 	
 $html="$title<div style='text-align:left' id='button-$t'></div>
-	
-	</div>	
-	<div style='width:1490px;height:550px' id='graph0-$zmd5'></div>
-	
+
+<div style='width:98%' class=form>
 	<table style='width:100%'>
+			<td width='800px'>		
+				<div style='width:800px;height:550px' id='graph3-$zmd5'><center><img src='img/wait_verybig_mini_red.gif'></center></div>
+			</td>
+			<td style='width:700px;vertical-align:top'>		
+				<div  id='table3-$zmd5'><center><img src='img/wait_verybig_mini_red.gif'></center></div>
+			</td>
+		</tr>	
+	</table>
+</div>
+
+<div style='width:98%' class=form>
+<table style='width:100%'>
 	<tr>
 		<td width='800px'>		
-			<div style='width:800px;height:550px' id='graph1-$zmd5'></div>
-		</td>
-		<td style='width:700px;vertical-align:top'>
-			<div id='table1-$zmd5'></div>
-		</td>
-	</tr>
-	<tr>
-		<td colspan=2><p>&nbsp;</p></td>
-	</tr>
-	<tr>
-		<td width='800px'>		
-			<div style='width:800px;height:550px' id='graph2-$zmd5'></div>
+			<div style='width:800px;height:550px' id='graph4-$zmd5'><center><img src='img/wait_verybig_mini_red.gif'></center></div>
 		</td>
 		<td style='width:700px;vertical-align:top'>		
-			<div  id='table2-$zmd5'></div>
-		</td>
-	</tr>
-	
-	<tr>
-		<td width='800px'>		
-			<div style='width:800px;height:550px' id='graph3-$zmd5'></div>
-		</td>
-		<td style='width:700px;vertical-align:top'>		
-			<div  id='table3-$zmd5'></div>
-		</td>
-	</tr>	
-	
-	<tr>
-		<td width='800px'>		
-			<div style='width:800px;height:550px' id='graph4-$zmd5'></div>
-		</td>
-		<td style='width:700px;vertical-align:top'>		
-			<div  id='table4-$zmd5'></div>
+			<div  id='table4-$zmd5'><center><img src='img/wait_verybig_mini_red.gif'></center></div>
 		</td>
 	</tr>	
 		
 </table>
+</div>
 
+<div style='width:98%' class=form>
+<table style='width:100%'>
 
 	<tr>
 		<td width='800px'>		
-			<div style='width:800px;height:550px' id='graph5-$zmd5'></div>
+			<div style='width:800px;height:550px' id='graph5-$zmd5'><center><img src='img/wait_verybig_mini_red.gif'></center></div>
 		</td>
 		<td style='width:700px;vertical-align:top'>		
-			<div  id='table5-$zmd5'></div>
+			<div  id='table5-$zmd5'><center><img src='img/wait_verybig_mini_red.gif'></center></div>
 		</td>
 	</tr>	
-	
-	
+		
+</table>
+</div>
+
 <script>
-	LoadAjaxTiny('stats-requeteur','$page?stats-requeteur=yes&t=$t');
-	Loadjs('$page?graph1=yes&zmd5=$zmd5');
+
+	function Start$t(){
+		LoadAjaxTiny('stats-requeteur','$page?stats-requeteur=yes&t=$t');
+		Loadjs('$page?graph3=yes&zmd5=$zmd5');
+	}
+	
+	Start$t();
 </script>";	
 	
 	echo $html;
 }
 
 
-function graph0(){
-	
-	$q=new mysql_squid_builder();
-	$zmd5=$_GET["zmd5"];
-	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	if(strlen($values)==0){echo "alert('NO data...{$ligne["values"]}');";$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");return;}
-	$MAIN=unserialize(base64_decode($values));
-	
-	if(!isset($MAIN["GRAPH0"])){
-		echo "alert('Corrupted data...Report will be deleted');UnlockPage();";
-		$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");
-		return;
-	}
-	
-	$page=CurrentPageName();
-	$time=time();
-	
-	$xdata=$MAIN["GRAPH0"]["xdata"];
-	$ydata=$MAIN["GRAPH0"]["ydata"];
-	
-	
-	
-	$title="{downloaded_flow} (Ko)";
-	$timetext=$_GET["interval"];
-	$highcharts=new highcharts();
-	$highcharts->container="graph0-$zmd5";
-	$highcharts->xAxis=$xdata;
-	$highcharts->Title=$title;
-	$highcharts->TitleFontSize="14px";
-	$highcharts->AxisFontsize="12px";
-	$highcharts->yAxisTtitle="Ko";
-	$highcharts->xAxis_labels=true;
-	
-	$highcharts->LegendSuffix="Ko";
-	$highcharts->xAxisTtitle=$timetext;
-	$highcharts->datas=array("{size}"=>$ydata);
-	echo $highcharts->BuildChart();
-	echo "\n";
-	echo "if(document.getElementById('websites-button-area')){document.getElementById('websites-button-area').innerHTML='';}\n";
-	
 	
 
-}	
 
-function graph1(){
-	$page=CurrentPageName();
-	$tpl=new templates();
-	
-	$q=new mysql_squid_builder();
-	$zmd5=$_GET["zmd5"];
-	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	
-	if(strlen($values)==0){echo "alert('NO data...{$ligne["values"]}');UnlockPage();";$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");return;}
-	$MAIN=unserialize(base64_decode($values));
-	
-	$PieData=$MAIN["GRAPH2"];
-	$highcharts=new highcharts();
-	$highcharts->container="graph1-$zmd5";
-	$highcharts->PieDatas=$PieData;
-	$highcharts->ChartType="pie";
-	$highcharts->PiePlotTitle="{websites}";
-	$highcharts->Title=$tpl->_ENGINE_parse_body("{websites}/{size} (Ko)");
-	echo $highcharts->BuildChart();
-	//echo "LoadAjax('table2-$zmd5','$page?table2=yes&zmd5=$zmd5&t={$_GET["t"]}');\n";
-	echo "LoadAjax('table1-$zmd5','$page?table1=yes&zmd5=$zmd5&t={$_GET["t"]}');\n";
-	
-}
-function graph2(){
-	$page=CurrentPageName();
-	$tpl=new templates();
 
-	$q=new mysql_squid_builder();
-	$zmd5=$_GET["zmd5"];
-	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-
-	if(strlen($values)==0){echo "alert('NO data...{$ligne["values"]}');UnlockPage();";$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");return;}
-	$MAIN=unserialize(base64_decode($values));
-
-	$PieData=$MAIN["GRAPH3"];
-	$highcharts=new highcharts();
-	$highcharts->container="graph2-$zmd5";
-	$highcharts->PieDatas=$PieData;
-	$highcharts->ChartType="pie";
-	$highcharts->PiePlotTitle="{members}";
-	$highcharts->Title=$tpl->_ENGINE_parse_body("{members}/{size} (Ko)");
-	echo $highcharts->BuildChart();
-	echo "LoadAjax('table2-$zmd5','$page?table2=yes&zmd5=$zmd5&t={$_GET["t"]}');\n";
-	//echo "LoadAjax('table1-$zmd5','$page?table1=yes&zmd5=$zmd5&t={$_GET["t"]}');\n";
-
-}
-
-function table2(){
-	$page=CurrentPageName();
-	$q=new mysql_squid_builder();
-	$tpl=new templates();
-	$zmd5=$_GET["zmd5"];
-	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	$MAIN=unserialize(base64_decode($values));
-	
-	$html[]="<table style='width:100%'>";
-	$html[]=$tpl->_ENGINE_parse_body("<tr><th style='font-size:18px;padding:8px'>{members}</td>
-			<th style='font-size:18px'>{size}</td></tr>");
-	while (list ($site, $size) = each ($MAIN["GRAPH3"]) ){
-		$size=FormatBytes($size);
-		$html[]="<tr><td style='font-size:18px;padding:8px'>$site</a></td>
-		<td style='font-size:18px'>$size</td></tr>";
-	}
-	
-	$html[]="</table>";
-	$html[]="<script>";
-	//$html[]="Loadjs('$page?graph0=yes&zmd5={$_GET["zmd5"]}&t={$_GET["t"]}')";
-	$html[]="Loadjs('$page?graph3=yes&zmd5={$_GET["zmd5"]}&t={$_GET["t"]}')";
-	$html[]="</script>";
-	echo @implode("", $html);	
-	
-	
-}
 
 function remove_cache_button(){
 	$page=CurrentPageName();
@@ -529,45 +397,62 @@ function remove_cache_button(){
 }
 
 function graph3(){
-	$page=CurrentPageName();
+	$q=new postgres_sql();
 	$tpl=new templates();
-	
-	$q=new mysql_squid_builder();
 	$zmd5=$_GET["zmd5"];
 	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
+	$page=CurrentPageName();
+	$time=time();
+	$table="{$zmd5}report";
 	
-	if(strlen($values)==0){echo "alert('NO data...{$ligne["values"]}');UnlockPage();";$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");return;}
-	$MAIN=unserialize(base64_decode($values));
+	$results=$q->QUERY_SQL("SELECT SUM(rqs) as rqs, category FROM \"$table\" GROUP BY category order by rqs DESC LIMIT 15");
 	
-	$PieData=$MAIN["GRAPH4"];
+	
+
+	
+	while($ligne=@pg_fetch_assoc($results)){
+		$size=$ligne["rqs"];
+		$category=$ligne["category"];
+		if($category==null){$category="Unknown";}
+		$PieData[$category]=$size;
+	}
+	
+	
 	$highcharts=new highcharts();
 	$highcharts->container="graph3-$zmd5";
 	$highcharts->PieDatas=$PieData;
 	$highcharts->ChartType="pie";
-	$highcharts->PiePlotTitle="{members}";
+	$highcharts->PiePlotTitle="{categories}";
 	$highcharts->Title=$tpl->_ENGINE_parse_body("TOP {categories}/{requests}");
 	echo $highcharts->BuildChart();
 	echo "\n";
+	echo "if(!document.getElementById('graph3-$zmd5')){alert('graph3-$zmd5 no such id');}";
 	echo "if(document.getElementById('websites-button-area')){document.getElementById('websites-button-area').innerHTML='';}\n";
 	echo "LoadAjax('table3-$zmd5','$page?table3=yes&zmd5=$zmd5&t={$_GET["t"]}');\n";
 	
 }
 function graph4(){
-	$page=CurrentPageName();
+	$q=new postgres_sql();
 	$tpl=new templates();
-
-	$q=new mysql_squid_builder();
 	$zmd5=$_GET["zmd5"];
 	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
+	$page=CurrentPageName();
+	$time=time();
+	$table="{$zmd5}report";
+	
+	$results=$q->QUERY_SQL("SELECT SUM(size) as size, category FROM \"$table\" GROUP BY category order by size DESC LIMIT 15");
+	
+	
 
-	if(strlen($values)==0){echo "alert('NO data...{$ligne["values"]}');UnlockPage();";$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");return;}
-	$MAIN=unserialize(base64_decode($values));
-
-	$PieData=$MAIN["GRAPH5"];
+	
+	while($ligne=@pg_fetch_assoc($results)){
+		$size=($ligne["size"]/1024);
+		$category=$ligne["category"];
+		if($category==null){$category="Unknown";}
+		$PieData[$category]=$size;
+	}
+	
+	
 	$highcharts=new highcharts();
 	$highcharts->container="graph4-$zmd5";
 	$highcharts->PieDatas=$PieData;
@@ -581,28 +466,70 @@ function graph4(){
 
 }
 
+function graph5(){
+	$q=new postgres_sql();
+	$tpl=new templates();
+	$zmd5=$_GET["zmd5"];
+	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
+	$page=CurrentPageName();
+	$time=time();
+	$table="{$zmd5}report";
 
+	$results=$q->QUERY_SQL("SELECT SUM(size) as size, familysite FROM \"$table\" WHERE category='' GROUP BY familysite order by size DESC LIMIT 15");
+
+
+
+
+	while($ligne=@pg_fetch_assoc($results)){
+		$size=($ligne["size"]/1024);
+		$category=$ligne["familysite"];
+		
+		$PieData[$category]=$size;
+	}
+
+
+	$highcharts=new highcharts();
+	$highcharts->container="graph5-$zmd5";
+	$highcharts->PieDatas=$PieData;
+	$highcharts->ChartType="pie";
+	$highcharts->PiePlotTitle="Unknown";
+	$highcharts->Title=$tpl->_ENGINE_parse_body("TOP Unknown {websites}/{size} (KB)");
+	echo $highcharts->BuildChart();
+	echo "\n";
+	echo "if(document.getElementById('websites-button-area')){document.getElementById('websites-button-area').innerHTML='';}\n";
+	echo "LoadAjax('table5-$zmd5','$page?table5=yes&zmd5=$zmd5&t={$_GET["t"]}');\n";
+
+}
 
 
 
 
 function table3(){
 	$page=CurrentPageName();
-	$q=new mysql_squid_builder();
+	$q=new postgres_sql();
 	$tpl=new templates();
 	$zmd5=$_GET["zmd5"];
 	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	$MAIN=unserialize(base64_decode($values));
+	$table="{$zmd5}report";
+	
+	$results=$q->QUERY_SQL("SELECT SUM(rqs) as rqs, category FROM \"$table\" GROUP BY category order by rqs DESC LIMIT 15");
 	
 	$html[]="<table style='width:100%'>";
 	$html[]=$tpl->_ENGINE_parse_body("<tr><th style='font-size:18px;padding:8px'>{categories}</td>
-			<th style='font-size:18px'>{hits}</td></tr>");
-	while (list ($site, $size) = each ($MAIN["GRAPH4"]) ){
-		$size=FormatNumber($size);
+			<th style='font-size:18px'>{hits}</th></tr>");
+
+	
+	while($ligne=@pg_fetch_assoc($results)){
+		$siteENC=urlencode($ligne["category"]);
+		
+		$href="<a href=\"javascript:blur();\" 
+		OnClick=\"javascript:Loadjs('squid.statistics.report.category.php?from-zmd5=$zmd5&USER_DATA=$siteENC');\"
+		style='font-size:18px;text-decoration:underline'>";
+				
+		$site=$ligne["category"];
+		if($site==null){$site="unknown";}
+		$size=FormatNumber($ligne["rqs"]);
 		//$js="Loadjs('squid.statistics.report.member.php?from-zmd5=$zmd5&USER_DATA=".urlencode($site)."');";
-		//$href="<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='font-size:18px;text-decoration:underline'>";
 		$html[]="<tr><td style='font-size:18px;padding:8px'>$href$site</a></td>
 		<td style='font-size:18px'>". FormatNumber($size)."</td></tr>";
 	}
@@ -613,21 +540,36 @@ function table3(){
 	$html[]="</script>";
 	echo @implode("", $html);
 }
+
+
 function table4(){
 	$page=CurrentPageName();
-	$q=new mysql_squid_builder();
+	$q=new postgres_sql();
 	$tpl=new templates();
 	$zmd5=$_GET["zmd5"];
 	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	$MAIN=unserialize(base64_decode($values));
+	$table="{$zmd5}report";
+	
+	$sql="SELECT SUM(size) as size, category FROM \"$table\" GROUP BY category order by size DESC LIMIT 15";
+	
+	if($GLOBALS["VERBOSE"]){echo $sql."<br>\n";}
+	$results=$q->QUERY_SQL($sql);
+	if(!$q->ok){
+		if($GLOBALS["VERBOSE"]){echo $q->mysql_error."<br>\n";}
+	}
 
 	$html[]="<table style='width:100%'>";
 	$html[]=$tpl->_ENGINE_parse_body("<tr><th style='font-size:18px;padding:8px'>{categories}</td>
-			<th style='font-size:18px'>{size}</td></tr>");
-	while (list ($site, $size) = each ($MAIN["GRAPH5"]) ){
-		$size=FormatBytes($size);
+			<th style='font-size:18px'>{size}</th></tr>");
+	while($ligne=@pg_fetch_assoc($results)){
+		$siteENC=urlencode($ligne["category"]);
+		$size=FormatBytes($ligne["size"]/1024);
+		$site=$ligne["category"];
+		if($site==null){$site="unknown";}
+		
+		$href="<a href=\"javascript:blur();\" OnClick=\"javascript:Loadjs('squid.statistics.report.category.php?from-zmd5=$zmd5&USER_DATA=$siteENC');\"
+		style='font-size:18px;text-decoration:underline'>";
+		
 		//$js="Loadjs('squid.statistics.report.member.php?from-zmd5=$zmd5&USER_DATA=".urlencode($site)."');";
 		//$href="<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='font-size:18px;text-decoration:underline'>";
 		$html[]="<tr><td style='font-size:18px;padding:8px'>$href$site</a></td>
@@ -636,34 +578,43 @@ function table4(){
 
 	$html[]="</table>";
 	$html[]="<script>";
-	$html[]="Loadjs('$page?graph0=yes&zmd5={$_GET["zmd5"]}&t={$_GET["t"]}')";
+	$html[]="Loadjs('$page?graph5=yes&zmd5={$_GET["zmd5"]}&t={$_GET["t"]}')";
 	$html[]="</script>";
 	echo @implode("", $html);
 }
-function table1(){
+function table5(){
 	$page=CurrentPageName();
-	$q=new mysql_squid_builder();
+	$q=new postgres_sql();
 	$tpl=new templates();
 	$zmd5=$_GET["zmd5"];
 	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	$MAIN=unserialize(base64_decode($values));
+	$table="{$zmd5}report";
+
+	$results=$q->QUERY_SQL("SELECT SUM(size) as size, familysite FROM \"$table\" WHERE category='' GROUP BY familysite order by size DESC LIMIT 15");
+
 	
+	
+	if(!$q->ok){
+		if($GLOBALS["VERBOSE"]){echo $q->mysql_error."<br>\n";}
+	}
+
 	$html[]="<table style='width:100%'>";
-	$html[]=$tpl->_ENGINE_parse_body("<tr><th style='font-size:18px;padding:8px'>{websites}</td><th style='font-size:18px'>{size}</td></tr>");
-	while (list ($site, $size) = each ($MAIN["GRAPH2"]) ){
-		$size=FormatBytes($size);
-		$html[]="<tr><td style='font-size:18px;padding:8px'>$site</a></td>
+	$html[]=$tpl->_ENGINE_parse_body("<tr><th style='font-size:18px;padding:8px'>{website}</td>
+			<th style='font-size:18px'>{size}</th></tr>");
+	while($ligne=@pg_fetch_assoc($results)){
+		$size=FormatBytes($ligne["size"]/1024);
+		$site=$ligne["familysite"];
+		if($site==null){$site="unknown";}
+		//$js="Loadjs('squid.statistics.report.member.php?from-zmd5=$zmd5&USER_DATA=".urlencode($site)."');";
+		//$href="<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='font-size:18px;text-decoration:underline'>";
+		$html[]="<tr><td style='font-size:18px;padding:8px'>$href$site</a></td>
 		<td style='font-size:18px'>$size</td></tr>";
 	}
-		
+
 	$html[]="</table>";
 	$html[]="<script>";
-	$html[]="Loadjs('$page?graph2=yes&zmd5={$_GET["zmd5"]}&t={$_GET["t"]}')";
+	//$html[]="Loadjs('$page?graph5=yes&zmd5={$_GET["zmd5"]}&t={$_GET["t"]}')";
 	$html[]="</script>";
 	echo @implode("", $html);
-	
-	
 }
 function FormatNumber($number, $decimals = 0, $thousand_separator = '&nbsp;', $decimal_point = '.'){$tmp1 = round((float) $number, $decimals); while (($tmp2 = preg_replace('/(\d+)(\d\d\d)/', '\1 \2', $tmp1)) != $tmp1)$tmp1 = $tmp2; return strtr($tmp1, array(' ' => $thousand_separator, '.' => $decimal_point));}

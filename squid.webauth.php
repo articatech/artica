@@ -14,6 +14,8 @@ if(!$usersmenus->AsHotSpotManager){
 	echo "alert('$alert');";
 	die();	
 }
+	
+	if(isset($_POST["EnableMaintenanceHotSpot2"])){EnableMaintenanceHotSpot2();exit;}
 	if(isset($_GET["status"])){status();exit;}
 	if(isset($_GET["cas"])){cas_auth();exit;}
 	if(isset($_GET["popup"])){popup();exit;}
@@ -29,6 +31,7 @@ if(!$usersmenus->AsHotSpotManager){
 	if(isset($_GET["radius"])){radius_config();exit;}
 	if(isset($_POST["RAD_SERVER"])){xSaveOptions();exit;}
 	if(isset($_GET["hostspot-status"])){services_status();exit;}
+	if(isset($_GET["download-debug"])){download_debug();exit;}
 
 js();
 
@@ -56,7 +59,15 @@ function status(){
 	$page=CurrentPageName();
 	$sock=new sockets();
 	$EnableArticaHotSpot=intval($sock->GET_INFO("EnableArticaHotSpot"));
-	
+	$HotSpotArticaDebug=intval($sock->GET_INFO("HotSpotArticaDebug"));
+	$HotSpotWhiteWhatsApp=intval($sock->GET_INFO("HotSpotWhiteWhatsApp"));
+	$EnableMaintenanceHotSpot=intval($sock->GET_INFO("EnableMaintenanceHotSpot"));
+	$ArticaHotSpotEmergency=intval($sock->GET_INFO("ArticaHotSpotEmergency"));
+	$error=null;
+	if($ArticaHotSpotEmergency==1){
+		$emergency_bt="<center style='margin:30px'>". button("{disable_emergency_mode}","Loadjs('squid.hostspot.emergency.disable.progress.php')",40)."</center>";
+		$error=$emergency_bt.FATAL_ERROR_SHOW_128("{hotspot_in_emergency_mode_explain}");
+	}
 	
 	if($EnableArticaHotSpot==0){
 		$html="<div id='$t' class=explain style='font-size:20px;margin-bottom:30px'>{captive_portal_explain}</div>
@@ -74,18 +85,43 @@ function status(){
 	<table style='width:100%'>
 	<tr>
 		<td valign='top'>
-		<div style='width:370px'>
+		<div style='width:480px'>
 		<div style='width:98%' class=form id='hostspot-status'></div>
 		</div>
 		</td>
 		<td valign='top' style='padding-left:15px'>		
 			<div style='font-size:30px;margin-bottom:20px'>{captive_portal} ( revision 4.0 )</div>
 			<div style='width:98%' class=form>
-			
+			$error
 			".Paragraphe_switch_img("{activate_hostpot}","{activate_hostpot_explain}",
 					"EnableArticaHotSpot",$EnableArticaHotSpot,null,"650")."
+			<table style='width:100%'>
+			<tr>
+				<td class=legend style='font-size:22px'>{whitelist}: WhatsApp</td>
+				<td>". Field_checkbox_design("HotSpotWhiteWhatsApp", 1,$HotSpotWhiteWhatsApp)."</td>
+			</tr>							
+							
+			<tr>
+				<td class=legend style='font-size:22px'>{debug}:</td>
+				<td>". Field_checkbox_design("HotSpotArticaDebug", 1,$HotSpotArticaDebug)."</td>
+			</tr>
+			<tr>
+				<td colspan=2 align='right'><a href=\"javascript:blur();\"
+						OnClick=\"javascript:YahooWin2('650','$page?download-debug=yes','Debug file');\"
+						style='font-size:22px;text-decoration:underline'>hotspot.debug.gz</a>
+				</td>
+			</tr>
+			</table>				
+							
 				<div style='text-align:right;margin:15px;font-size:22px'>". button("{reconfigure}", "Loadjs('squid.hostspot.reconfigure.php')",28)."&nbsp;|&nbsp;". button("{apply}", "Save$t()",28)."</div>
 			</div>
+			<p>&nbsp;</p>
+			<div style='width:98%' class=form>
+			".Paragraphe_switch_img("{activate_maintenance_page}","{EnableMaintenanceHotSpot}",
+					"EnableMaintenanceHotSpot",$EnableMaintenanceHotSpot,null,"650")."
+			
+			<div style='text-align:right;margin:15px;font-size:22px'>". button("{apply}", "Save2$t()",28)."</div>
+			
 			</td>
 	</tr>
 	</table>
@@ -96,13 +132,33 @@ function status(){
 		Loadjs('squid.hostspot.reconfigure.php');
 		
 	}
-
+	var xsave2$t= function (obj) {
+		var results=obj.responseText;
+		if(results.length>3){alert(results);}
+		RefreshTab('squid_hotspot');
+		
+	}
 
 function Save$t(){
 		var XHR = new XHRConnection();
+		var HotSpotWhiteWhatsApp=0;
+		var HotSpotArticaDebug=0;
+		
+		if(document.getElementById('HotSpotWhiteWhatsApp').checked){HotSpotWhiteWhatsApp=1;}
+		if(document.getElementById('HotSpotArticaDebug').checked){HotSpotArticaDebug=1;}
+		
 		XHR.appendData('EnableArticaHotSpot',document.getElementById('EnableArticaHotSpot').value);
+		XHR.appendData('HotSpotArticaDebug',HotSpotArticaDebug);
+		XHR.appendData('EnableMaintenanceHotSpot',document.getElementById('EnableMaintenanceHotSpot').value);
+		XHR.appendData('HotSpotWhiteWhatsApp',HotSpotWhiteWhatsApp);
 		XHR.sendAndLoad('$page', 'POST',xsave$t);
 	}
+	
+function Save2$t(){
+	var XHR = new XHRConnection();
+	XHR.appendData('EnableMaintenanceHotSpot2',document.getElementById('EnableMaintenanceHotSpot').value);
+	XHR.sendAndLoad('$page', 'POST',xsave2$t);
+}
 
 LoadAjax('hostspot-status','$page?hostspot-status=yes');	
 </script>						
@@ -132,6 +188,9 @@ function options(){
 	$EnableKerbAuth=$sock->GET_INFO("EnableKerbAuth");
 	if(!is_numeric($EnableKerbAuth)){$EnableKerbAuth=0;}
 	$HospotHTTPServerName=trim($sock->GET_INFO("HospotHTTPServerName"));
+	
+	
+	
 	
 	$Timez[5]="5 {minutes}";
 	$Timez[15]="15 {minutes}";
@@ -414,9 +473,11 @@ function tabs(){
 		$array["sessions"]='{sessions}';
 		$array["members"]='{local_members}';
 		$array["rules"]='{rules}';
+		$array["hotspot_whitelist"]='{trusted_websites}';
 		$array["popup"]='{service_parameters}';
 		$array["hotspot"]='{networks}';
 		$array["events"]='{events}';
+		
 	}
 	
 	
@@ -480,7 +541,7 @@ function tabs(){
 		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=$t$YahooWinUri\" style='font-size:$fontsize'><span>$ligne</span></a></li>\n");
 	}
 	
-	echo build_artica_tabs($html, "squid_hotspot")."<script>LeftDesign('wifi-white-256-opac20.png');</script>";
+	echo build_artica_tabs($html, "squid_hotspot",1490)."<script>LeftDesign('wifi-white-256-opac20.png');</script>";
 	
 	
 	
@@ -553,7 +614,7 @@ function popup(){
 	$WifidogClientTimeout=intval($sock->GET_INFO("WifidogClientTimeout"));
 	if($WifidogClientTimeout<5){$WifidogClientTimeout=30;}
 	$HospotHTTPServerName=trim($sock->GET_INFO("HospotHTTPServerName"));
-	
+	$HotSpotDenySSL=intval($sock->GET_INFO("HotSpotDenySSL"));
 	
 	
 	$ArticaHotSpotInterface=$sock->GET_INFO("ArticaHotSpotInterface");
@@ -593,6 +654,19 @@ function popup(){
 	if(!is_numeric($ArticaSplashHotSpotPortSSL)){$ArticaSplashHotSpotPortSSL=16443;}
 	
 	
+	$Params=unserialize($sock->GET_INFO("HotSpotEvasive"));
+	$ApacheEvasiveInstalled=intval($sock->GET_INFO("ApacheEvasiveInstalled"));
+	
+	if(!is_numeric($Params["DOSEnable"])){$Params["DOSEnable"]=1;}
+	if(!is_numeric($Params["DOSHashTableSize"])){$Params["DOSHashTableSize"]=1024;}
+	if(!is_numeric($Params["DOSPageCount"])){$Params["DOSPageCount"]=3;}
+	if(!is_numeric($Params["DOSSiteCount"])){$Params["DOSSiteCount"]=20;}
+	if(!is_numeric($Params["DOSPageInterval"])){$Params["DOSPageInterval"]=1;}
+	if(!is_numeric($Params["DOSSiteInterval"])){$Params["DOSSiteInterval"]=10;}
+	if(!is_numeric($Params["DOSBlockingPeriod"])){$Params["DOSBlockingPeriod"]=5;}
+	$HotSpotErrorRedirect=$sock->GET_INFO("HotSpotErrorRedirect");
+	
+	
 	$ArticaSplashHotSpotTitle=$sock->GET_INFO("ArticaSplashHotSpotTitle");
 	if($ArticaSplashHotSpotTitle==null){$ArticaSplashHotSpotTitle="HotSpot system";}
 	
@@ -627,14 +701,18 @@ function popup(){
 	}
 	
 	
+	$HotSpotUseSSL=1;
+	$HospotNoSSL=intval($sock->GET_INFO("HospotNoSSL"));
 	
+	if($HospotNoSSL==1){$HotSpotUseSSL=0;}
+	if($HotSpotDenySSL==1){$HotSpotUseSSL=0;}
 	
 	
 	$interfaces[null]="{none}";
 	include_once(dirname(__FILE__)."/ressources/class.squid.reverse.inc");
 	$squid_reverse=new squid_reverse();
 	$sslcertificates=$squid_reverse->ssl_certificates_list();
-	
+	if($HotSpotErrorRedirect==null){$HotSpotErrorRedirect="http://www.bing.com";}
 	
 	$t=time();
 	$html="
@@ -679,8 +757,47 @@ function popup(){
 		<td class=legend style='font-size:22px'>". texttooltip("{HospotHTTPServerName}","{HospotHTTPServerName_explain}").":</td>
 		<td>". Field_text("HospotHTTPServerName",$HospotHTTPServerName,"font-size:22px;width:300px")."</td>
 	</tr>
-				
-				
+
+	<tr><td  style='font-size:42px' colspan=2>&nbsp;</td></tr>
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{FreeWebsEnableModEvasive}","{mod_evasive_explain}").":</td>
+		<td style='font-size:22px'>". Field_checkbox_design("DOSEnable",1,$Params["DOSEnable"],"EvasiveDisabled()")."</td>
+	</tr>
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{DOSHashTableSize}","{DOSHashTableSize_explain}").":</td>
+		<td style='font-size:22px'>". Field_text("DOSHashTableSize",$Params["DOSHashTableSize"],"font-size:22px;width:110px")."&nbsp;MB</td>
+	</tr>	
+	
+	
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{threshold}","{DOSPageCount_explain}").":</td>
+		<td style='font-size:22px'>". Field_text("DOSPageCount",$Params["DOSPageCount"],"font-size:22px;width:110px")."</td>
+	</tr>
+
+	
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{total_threshold}","{DOSSiteCount_explain}").":</td>
+		<td style='font-size:22px'>". Field_text("DOSSiteCount",$Params["DOSSiteCount"],"font-size:22px;width:110px")."</td>
+	</tr>
+
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{page_interval}","{DOSPageInterval_explain}").":</td>
+		<td style='font-size:22px'>". Field_text("DOSPageInterval",$Params["DOSPageInterval"],"font-size:22px;width:110px")."&nbsp;{seconds}</td>
+	</tr>	
+	
+
+
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{site_interval}","{DOSSiteInterval_explain}").":</td>
+		<td style='font-size:22px'>". Field_text("DOSSiteInterval",$Params["DOSSiteInterval"],"font-size:22px;width:110px")."&nbsp;{seconds}</td>
+	</tr>
+
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{Blocking_period}","{DOSBlockingPeriod_explain}").":</td>
+		<td style='font-size:22px'>". Field_text("DOSBlockingPeriod",$Params["DOSBlockingPeriod"],"font-size:22px;width:110px")."&nbsp;{seconds}</td>
+		
+	</tr>
+	<tr><td  style='font-size:42px' colspan=2>&nbsp;</td></tr>	
 	<tr>
 		<td class=legend style='font-size:22px'>{listen_authentication_http_port}:</td>
 		<td>". Field_text("ArticaSplashHotSpotPort",$ArticaSplashHotSpotPort,"font-size:22px;width:110px")."</td>
@@ -689,6 +806,21 @@ function popup(){
 		<td class=legend style='font-size:22px'>{listen_authentication_https_port}:</td>
 		<td>". Field_text("ArticaSplashHotSpotPortSSL",$ArticaSplashHotSpotPortSSL,"font-size:22px;width:110px")."</td>
 	</tr>
+	<tr>
+		<td class=legend style='font-size:22px'>".texttooltip("{http_error_redirect}","{wifidog_http_error_redirect_explain}").":</td>
+		<td>". Field_text("HotSpotErrorRedirect",$HotSpotErrorRedirect,"font-size:22px;width:400px")."</td>
+	</tr>				
+				
+				
+	<tr>
+		<td class=legend style='font-size:22px'>". texttooltip("{ssl_redirection}","{wifidog_use_ssl_explain}").":</td>
+		<td>". Field_checkbox_design("HotSpotUseSSL",1,$HotSpotUseSSL)."</td>
+	</tr>				
+	<tr>
+		<td class=legend style='font-size:22px'>". texttooltip("{deny_ssl}","{wifidog_deny_ssl_explain}").":</td>
+		<td>". Field_checkbox_design("HotSpotDenySSL",1,$HotSpotDenySSL)."</td>
+	</tr>				
+				
 	<tr>
 		<td class=legend nowrap style='font-size:22px;'>{certificate}:</td>
 		<td >". Field_array_Hash($sslcertificates, "ArticaSplashHotSpotCertificate",
@@ -751,11 +883,34 @@ function SaveHotSpot(){
 		XHR.appendData('WifidogClientTimeout',document.getElementById('WifidogClientTimeout').value);
 		
 		
+		if(document.getElementById('DOSEnable').checked){XHR.appendData('DOSEnable',1);}else{XHR.appendData('DOSEnable',0);}
+		XHR.appendData('DOSHashTableSize',document.getElementById('DOSHashTableSize').value);
+		XHR.appendData('DOSPageCount',document.getElementById('DOSPageCount').value);
+		XHR.appendData('DOSSiteCount',document.getElementById('DOSSiteCount').value);
+		XHR.appendData('DOSPageInterval',document.getElementById('DOSPageInterval').value);
+		XHR.appendData('DOSSiteInterval',document.getElementById('DOSSiteInterval').value);
+		XHR.appendData('DOSBlockingPeriod',document.getElementById('DOSBlockingPeriod').value);
+		
+		
 		if(document.getElementById('ArticaHotSpotEnableMIT').checked){
 			XHR.appendData('ArticaHotSpotEnableMIT',1);
 		}else{
 			XHR.appendData('ArticaHotSpotEnableMIT',0);
 		}
+		if(document.getElementById('HotSpotUseSSL').checked){
+			XHR.appendData('HospotNoSSL',0);
+		}else{
+			XHR.appendData('HospotNoSSL',1);
+		}
+		if(document.getElementById('HotSpotDenySSL').checked){
+			XHR.appendData('HotSpotDenySSL',1);
+		}else{
+			XHR.appendData('HotSpotDenySSL',0);
+		}
+		
+		
+		
+		
 		if(document.getElementById('ArticaHotSpotEnableProxy').checked){
 			XHR.appendData('ArticaHotSpotEnableProxy',1);
 		}else{
@@ -763,7 +918,36 @@ function SaveHotSpot(){
 		}	
 	
 		XHR.sendAndLoad('$page', 'POST',x_SaveHotSpot);
-	}		
+	}	
+
+	
+	
+	function EvasiveDisabled(){
+		document.getElementById('DOSHashTableSize').disabled=true;
+		document.getElementById('DOSPageCount').disabled=true;
+		document.getElementById('DOSSiteCount').disabled=true;
+		document.getElementById('DOSPageInterval').disabled=true;
+		document.getElementById('DOSSiteInterval').disabled=true;
+		document.getElementById('DOSBlockingPeriod').disabled=true;
+		
+		var ApacheEvasiveInstalled=$ApacheEvasiveInstalled;
+		if(ApacheEvasiveInstalled==0){
+			document.getElementById('DOSEnable').checked=false;
+			document.getElementById('DOSEnable').disabled=true;
+			return;
+		}
+	
+		if(document.getElementById('DOSEnable').checked){	
+			document.getElementById('DOSHashTableSize').disabled=false;
+			document.getElementById('DOSPageCount').disabled=false;
+			document.getElementById('DOSSiteCount').disabled=false;
+			document.getElementById('DOSPageInterval').disabled=false;
+			document.getElementById('DOSSiteInterval').disabled=false;
+			document.getElementById('DOSBlockingPeriod').disabled=false;	
+			}		
+	}	
+	
+EvasiveDisabled();	
 	</script>
 	";
 	
@@ -772,9 +956,19 @@ function SaveHotSpot(){
 	
 }
 
+function EnableMaintenanceHotSpot2(){
+	$sock=new sockets();
+	$sock->SET_INFO("EnableMaintenanceHotSpot", $_POST["EnableMaintenanceHotSpot2"]);
+	
+}
+
 function SaveEnable(){
 	$sock=new sockets();
 	$sock->SET_INFO("EnableArticaHotSpot", $_POST["EnableArticaHotSpot"]);
+	$sock->SET_INFO("HotSpotArticaDebug", $_POST["HotSpotArticaDebug"]);
+	$sock->SET_INFO("HotSpotWhiteWhatsApp", $_POST["HotSpotWhiteWhatsApp"]);
+	$sock->SET_INFO("EnableMaintenanceHotSpot", $_POST["EnableMaintenanceHotSpot"]);
+	 
 	$sock->getFrameWork("hotspot.php?restart-wifidog=yes");
 	$sock->getFrameWork("hotspot.php?restart-web=yes");
 	if($_POST["EnableArticaHotSpot"]==0){
@@ -822,6 +1016,8 @@ function EnableArticaHotSpot(){
 	}
 	
 	
+	$sock->SET_INFO("HospotNoSSL", $_POST["HospotNoSSL"]);
+	
 	$sock->SET_INFO("SquidHotSpotPort", $_POST["SquidHotSpotPort"]);
 	
 	$sock->SET_INFO("ArticaHotSpotPort", $_POST["ArticaHotSpotPort"]);
@@ -839,6 +1035,10 @@ function EnableArticaHotSpot(){
 	$sock->SET_INFO("ArticaHotSpotNowPassword", $_POST["ArticaHotSpotNowPassword"]);
 	$sock->SET_INFO("WifidogClientTimeout", $_POST["WifidogClientTimeout"]);
 	$sock->SET_INFO("HospotHTTPServerName", $_POST["HospotHTTPServerName"]);
+	$sock->SET_INFO("HotSpotDenySSL", $_POST["HotSpotDenySSL"]);
+	
+	$sock->SaveConfigFile(serialize($_POST), "HotSpotEvasive");
+	
 	
 }
 
@@ -922,30 +1122,57 @@ function services_status(){
 	$ini=new Bs_IniHandler();
 	$q=new mysql_squid_builder();
 	$data=base64_decode($sock->getFrameWork("hotspot.php?services-status=yes"));
-	$ARRAY=unserialize(file_get_contents("/usr/share/artica/postfix/ressources/logs/web/wifidog.status"));
+	$ARRAY=unserialize(@file_get_contents("/usr/share/artica/postfix/ressources/logs/web/wifidog.status"));
 	$genrate=$q->time_to_date($ARRAY["TIME"],true) ;
 	$uptime=$ARRAY["UPTIME"];
 	
 	$ini->loadString($data);
-	$f[]="<table style='width:80%'>
+	$f[]="<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:14px'>{uptime}:</td>
-		<td><strong style='font-size:14px'>$uptime</strong>
+		<td class=legend style='font-size:16px' nowrap>{uptime}:</td>
+		<td><strong style='font-size:16px' nowrap>$uptime</strong>
 	</tr>		
 	<tr>
-		<td class=legend style='font-size:14px'>{sessions}:</td>
-		<td><strong style='font-size:14px'>{$ARRAY["CLIENTS"]}</strong>
+		<td class=legend style='font-size:16px' nowrap>{sessions}:</td>
+		<td><strong style='font-size:16px'>{$ARRAY["CLIENTS"]}</strong>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:14px'>{generated_on}:</td>
-		<td><strong style='font-size:14px'>$genrate</strong>
+		<td class=legend style='font-size:16px' nowrap>{generated_on}:</td>
+		<td><strong style='font-size:16px' nowrap>$genrate</strong>
 	</tr>		
 	</table><hr>		
 	";
 	$f[]=DAEMON_STATUS_ROUND("HOTSPOT_WWW", $ini);
 	$f[]=DAEMON_STATUS_ROUND("HOTSPOT_SERVICE", $ini);
 	$f[]="<div style='text-align:right'>".imgtootltip("refresh-32.png","{refresh}","LoadAjax('hostspot-status','$page?hostspot-status=yes');")."</div>";
+	$f[]="<center style='margin:10px'>".button("{maintenance}","Loadjs('squid.webauth.maintenance.php');",18)."</center>";
+	
 	echo $tpl->_ENGINE_parse_body(@implode("<p>&nbsp;</p>", $f));
+	
+}
+
+function download_debug(){
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?compress-debug=yes");
+	
+	if(is_file("/usr/share/artica-postfix/ressources/logs/web/hotspot.debug.gz")){
+		$size=@filesize("/usr/share/artica-postfix/ressources/logs/web/hotspot.debug.gz");
+		$size=FormatBytes($size/1024);
+		echo "
+			<center style='margin:60px'>
+				<a href=\"ressources/logs/web/hotspot.debug.gz\">
+				<img src='img/download-64.png'>
+				<center style='margin-top:15px;font-size:22px;color:black;font-weigth:bold'>hotspot.debug.gz ($size)</center>
+				</a>
+			</center>	
+				
+				
+			";
+		
+		return;
+	}
+	
+	echo FATAL_ERROR_SHOW_128("{compress} {failed}");
 	
 }
 

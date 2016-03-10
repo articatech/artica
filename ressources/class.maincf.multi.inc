@@ -286,18 +286,34 @@ public function relayhost(){
 		}
 		
 		
+		$sql="SELECT * FROM postfix_whitelist_con";
+		$results=$q->QUERY_SQL($sql,"artica_backup");
+		if(!$q->ok){echo "$q->mysql_error\n";}
+		
+		while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
+			$ligne["hostname"]=trim(strtolower($ligne["hostname"]));
+			
+			if($ipClass->isIPAddressOrRange($ligne["ipaddr"])){
+				$cdir[]="{$ligne["ipaddr"]}\tOK postfix_whitelist_con {$ligne["ID"]}";
+				continue;
+			}
+		}
+		
+		
 		if($EnableMilterGreylistExternalDB==1){
 			if(is_file("/etc/mail/milter-greylist-database.conf")){
 				$greylist=explode("\n",@file_get_contents("/etc/mail/milter-greylist-database.conf"));
 				while (list ($index, $line) = each ($greylist) ){
 					if(!preg_match("#acl whitelist addr\s+(.+?)\s+#",$line,$re)){continue;}
 					if(!$ipClass->isIPAddressOrRange($re[1])){continue;}
+					if($re[1]=="127.0.0.1/8"){$re[1]="127.0.0.0/8";}
 					$cdir[]="{$re[1]}\tOK Artica CDIR";
 				}
 				reset($greylist);
 				while (list ($index, $line) = each ($greylist) ){
 					if(!preg_match("#acl blacklist addr\s+(.+?)\s+#",$line,$re)){continue;}
 					if(!$ipClass->isIPAddressOrRange($re[1])){continue;}
+					if($re[1]=="127.0.0.1/8"){$re[1]="127.0.0.0/8";}
 					$cdir[]="{$re[1]}\tREJECT Go Away! Artica CDIR";
 				}	
 	
@@ -320,13 +336,13 @@ public function relayhost(){
 				echo "Starting......: ".date("H:i:s")." Postfix \"$this->myhostname\" check_client_access: bad pattern `$ipaddr` in line:".__LINE__."\n";
 				continue;
 			}
+			if($ipaddr=="127.0.0.1/8"){$ipaddr="127.0.0.0/8";}
 			$cdir[]="$ipaddr\tREJECT Go Away! rule id {$ligne["ID"]}";
 			
 		}
 		
 		if(count($cdir)>0){
 			echo "Starting......: ".date("H:i:s")." Postfix \"$this->myhostname\" check_client_access: cidr ". count($cdir)." entries\n";
-			print_r($cdir);
 			@file_put_contents($target_cdir_file,@implode("\n",$cdir));
 			echo "Starting......: ".date("H:i:s")." Postfix \"$this->myhostname\" check_client_access: $target_cdir_file done\n";
 			$check_client_acces_final[]="cidr:$target_cdir_file";
@@ -653,6 +669,8 @@ private function restrict_relay_domains(){
 		if(!$q->ok){system_admin_events("hostname:$hostname $q->mysql_error", __FUNCTION__, __FILE__, __LINE__, "postfix");return;}
 		while ($ligne = mysql_fetch_assoc($results)) {
 			$email=trim($ligne["recipient"]);
+			$email=str_replace("\n", "", $email);
+			$email=str_replace("\r", "", $email);
 			if($email==null){continue;}
 			$f[]=$email;
 		}
@@ -670,13 +688,30 @@ private function restrict_relay_domains(){
 		$results = $q->QUERY_SQL($sql,"artica_backup"); 
 		if(!$q->ok){system_admin_events("hostname:$hostname $q->mysql_error", __FUNCTION__, __FILE__, __LINE__, "postfix");return;}
 		while ($ligne = mysql_fetch_assoc($results)) {
-			$addresses=$this->mailling_list_mysql_items($ligne["recipient"],$hostname);
+			$addresses=trim($this->mailling_list_mysql_items($ligne["recipient"],$hostname));
+			$addresses=str_replace("\n","",$addresses);
+			$addresses=str_replace("\r","",$addresses);
+			
+			
+			$ligne["recipient"]=trim($ligne["recipient"]);
+			$ligne["recipient"]=str_replace("\n","",$ligne["recipient"]);
+			$ligne["recipient"]=str_replace("\r","",$ligne["recipient"]);
 			if($addresses<>null){
-				$f[]=$ligne["recipient"]."\t$addresses";
+				$f[$ligne["recipient"]]=$addresses;
 			}
 		}
 		
-		if(count($f)>0){return $f;}
+		if(count($f==0)){return array();}
+		$final=array();
+		while (list ($num, $params) = each ($f) ){
+			$params=trim($params);
+			if($params==null){continue;}
+			$final[]="$num\t$params";
+		}
+		
+		if(count($final)>0){return $final;}
+		
+	
 		
 	}	
 	
@@ -858,7 +893,8 @@ private function restrict_relay_domains(){
 		$nets=unserialize($this->GET_BIGDATA("mynetworks"));
 		if($PostfixMultiCreateBubble==1){$nets=$this->NetWorksBubble();}
 		if($this->myhostname=="master"){
-			$target_file="/etc/postfix/header_checks";$ldap=new clladp();
+			$target_file="/etc/postfix/header_checks";
+			$ldap=new clladp();
 			$nets=$ldap->load_mynetworks();
 		}
 		
@@ -2033,7 +2069,7 @@ private function smtp_sasl_password_map(){
 	$conf[]="postscreen_dnsbl_action= $postscreen_dnsbl_action";
 	$conf[]="postscreen_dnsbl_ttl= $postscreen_dnsbl_ttl";
 	$conf[]="postscreen_dnsbl_threshold= $postscreen_dnsbl_threshold";
-	$conf[]="postscreen_cache_map= btree:\$data_directory/postscreen_{$this->myhostname}_cache";
+	$conf[]="postscreen_cache_map= btree:/var/lib/postfix/postscreen_{$this->myhostname}_cache";
 	
 	
 	
@@ -3142,7 +3178,16 @@ private function smtp_sasl_password_map(){
 				$greylistdb=explode("\n",@file_get_contents("/etc/mail/milter-greylist-database.conf"));
 				while (list ($to, $line) = each ($greylistdb)){
 					if(preg_match("#dacl blacklist body\s+\/(.+?)\/#", $line,$re)){
-						$regex[]="/{$re[1]}/ REJECT Go Away Artica DB";
+						$pattern=trim($re[1]);
+						if($pattern==null){continue;}
+						if(strlen($pattern)<5){continue;}
+						$pattern=str_replace(".", "\.", $pattern);
+						$pattern=str_replace("\\\\", "\\", $pattern);
+						$pattern=str_replace("\.*", ".*", $pattern);
+						$pattern=str_replace("\.+", ".+", $pattern);
+						if(substr($pattern, strlen($pattern)-1,1)=="\\"){$pattern=substr($pattern, 0,strlen($pattern)-1);}
+						$re[1]=str_replace("\\", "\/", $re[1]);
+						$regex[]="/{$pattern}/ REJECT Go Away Artica DB";
 					}
 				}
 			}
@@ -3356,7 +3401,7 @@ private function smtp_sasl_password_map(){
 			
 			$artica[]="";
 			$artica[]="$this->ip_addr:33559	inet	n	-	n	-	-	smtpd";
-			$artica[]=" -o notify_clases=protocol,resource,software";
+			$artica[]=" -o notify_classes=protocol,resource,software";
 			$artica[]=" -o header_checks=";
 			$artica[]=" -o content_filter=";
 			$artica[]=" -o smtpd_restriction_classes=";

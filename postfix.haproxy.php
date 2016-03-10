@@ -27,7 +27,7 @@ function js(){
 	$page=CurrentPageName();
 	$tpl=new templates();
 	$title=$tpl->_ENGINE_parse_body("{$_GET["hostname"]}::{load_balancing_compatibility}");
-	$html="YahooWin5('501','$page?popup=yes&hostname={$_GET["hostname"]}&ou={$_GET["ou"]}','$title')";
+	$html="YahooWin5('890','$page?popup=yes&hostname={$_GET["hostname"]}&ou={$_GET["ou"]}','$title')";
 	echo $html;
 }
 
@@ -52,7 +52,8 @@ function popup(){
 	$EnablePostfixHaProxy=$main->GET("EnablePostfixHaProxy");
 	if(!is_numeric($EnablePostfixHaProxy)){$EnablePostfixHaProxy=0;}
 	
-	$p=Paragraphe_switch_img("{enable_smtp_haproxy}", "{enable_smtp_haproxy_explain}", "EnablePostfixHaProxy-$t", $EnablePostfixHaProxy,null,450);
+	$p=Paragraphe_switch_img("{enable_smtp_haproxy}", "{enable_smtp_haproxy_explain}",
+			 "EnablePostfixHaProxy-$t", $EnablePostfixHaProxy,null,880);
 	
 	$html="
 	<div id='$t'>

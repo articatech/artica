@@ -283,7 +283,7 @@ function items_js(){
 		$title=$ligne["cachename"];
 	}
 	
-	echo "YahooWin2('940','$page?item-popup=yes&ID=$ID&t={$_GET["t"]}','$ID:$title',true)";
+	echo "YahooWin2('1010','$page?item-popup=yes&ID=$ID&t={$_GET["t"]}','$ID:$title',true)";
 	
 	
 }
@@ -339,7 +339,7 @@ function CacheTypeExplain(){
 	if($ID>0){$js=null;}
 	
 	echo $tpl->_ENGINE_parse_body("
-	<div class=explain style='font-size:16px'>
+	<div class=explain style='font-size:18px'>
 			<strong style='font-size:18px'>$type:</strong><hr>$explain</div>")."<script>$js</script>";
 	
 }
@@ -412,24 +412,25 @@ function items_popup(){
 	$DisableAnyCache=intval($sock->GET_INFO("DisableAnyCache"));
 	$SquidForceCacheTypes=$sock->GET_INFO("SquidForceCacheTypes");
 	if($SquidForceCacheTypes==null){$SquidForceCacheTypes="aufs";}
-	
+	$SquidSimpleConfig=intval($sock->GET_INFO("SquidSimpleConfig"));
+
 	if($DisableAnyCache==1){
 		FATAL_ERROR_SHOW_128("{DisableAnyCache_enabled_warning}");
 		return;
 	}
-	
+
 	$cpunumber=$users->CPU_NUMBER-1;
 	if($cpunumber<1){$cpunumber=1;}
 	for($i=1;$i<$cpunumber+1;$i++){
 		$CPUZ[$i]="{process} $i";
 	}
-	
+
 	$t=time();
 	$bt="{add}";
-	
+
 	$cpu=1;
 	$cachename=time();
-	
+
 	$squid=new squidbee();
 	if(preg_match("#([0-9]+)#",$squid->global_conf_array["minimum_object_size"],$re)){
 		$minimum_object_size=$re[1];
@@ -438,9 +439,9 @@ function items_popup(){
 		if(!is_numeric($minimum_object_size)){$minimum_object_size=0;}
 		if($minimum_object_size_unit=="MB"){$minimum_object_size=$minimum_object_size*1024;}
 	}
-	
-	
-	
+
+
+
 	if(preg_match("#([0-9]+)#",$squid->global_conf_array["maximum_object_size"],$re)){
 		$maximum_object_size=$re[1];
 		if(preg_match("#([A-Z]+)#",$squid->global_conf_array["maximum_object_size"],$re)){$maximum_object_size_unit=$re[1];}
@@ -453,10 +454,10 @@ function items_popup(){
 			$maximum_object_size=$maximum_object_size*1024;
 		}
 	}
-	
+
 	$min_size=$minimum_object_size;
 	$max_size=$maximum_object_size;
-	
+
 	if($ID>0){
 		$q=new mysql();
 		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT * FROM squid_caches_center WHERE ID='$ID'","artica_backup"));
@@ -475,193 +476,199 @@ function items_popup(){
 		$max_size=intval($ligne["max_size"]);
 		$bt="{apply}";
 	}
-	
+
 	if($max_size==0){$max_size_explain="<u style='font-size:11px'>{default}: $maximum_object_size KB</u>";}
-	
+
 	//default
 	if($cache_directory==null){$cache_directory="/home/squid/caches/cache-".time();}
 	if(!is_numeric($cache_size)){$cache_size=5000;}
 	if(!is_numeric($cache_dir_level1)){$cache_dir_level1=16;}
 	if(!is_numeric($cache_dir_level2)){$cache_dir_level2=256;}
 	if(!is_numeric($enabled)){$enabled=1;}
-	
+
 	if($cache_size<1){$cache_size=5000;}
 	if($cache_dir_level1<16){$cache_dir_level1=16;}
 	if($cache_dir_level2<64){$cache_dir_level2=64;}
 	if($cache_type==null){$cache_type=$SquidForceCacheTypes;}
-	
+
 	$caches_types=unserialize(base64_decode($sock->getFrameWork("squid.php?caches-types=yes")));
 	$caches_types[null]='{select}';
 	$caches_types["tmpfs"]="{squid_cache_memory}";
 	$caches_types["Cachenull"]="{without_cache}";
-	
+
 	unset($caches_types["rock"]);
-	
-	
-	
-	$type=$tpl->_ENGINE_parse_body(Field_array_Hash($caches_types,"cache_type-$t",$cache_type,"CheckCachesTypes$t()",null,0,"font-size:16px;padding:3px"));
-	$cpus=$tpl->_ENGINE_parse_body(Field_array_Hash($CPUZ,"CPU-$t",$cpu,"blur()",null,0,"font-size:16px;padding:3px"));
-	
-	$browse=button("{browse}...", "Loadjs('SambaBrowse.php?no-shares=yes&field=cache_directory-$t')",16);
-	if($ID>0){$browse=null;
-	$perr="<p class=text-error>{cannot_modify_a_created_cache}</p>";
+
+
+
+	$type=$tpl->_ENGINE_parse_body(Field_array_Hash($caches_types,"cache_type-$t",$cache_type,"CheckCachesTypes$t()",null,0,"font-size:22px;padding:3px"));
+	$cpus=$tpl->_ENGINE_parse_body(Field_array_Hash($CPUZ,"CPU-$t",$cpu,"blur()",null,0,"font-size:22px;padding:3px"));
+
+	$CPU_FIELD="<tr>
+	<td class=legend style='font-size:22px' nowrap>{process}:</td>
+	<td>$cpus</td>
+	<td>&nbsp;</td>
+	</tr>";
+
+
+	if($SquidSimpleConfig==1){
+	$CPU_FIELD="<tr>
+	<td class=legend style='font-size:22px' nowrap>{process}:</td>
+	<td style='font-size:22px'><input type='hidden' id='CPU-$t' value='1'>#1</td>
+	<td>&nbsp;</td>
+	</tr>";
 	}
-	
+
+
+	$browse=button("{browse}...", "Loadjs('SambaBrowse.php?no-shares=yes&field=cache_directory-$t')",16);
+			if($ID>0){$browse=null;
+			$perr="<p class=text-error>{cannot_modify_a_created_cache}</p>";
+	}
+
 	$html="
 	<div id='waitcache-$t'></div>
 	<div style='width:98%' class=form>
 	$perr
 	<table style='width:99%'>
 	<tr>
-		<td class=legend style='font-size:16px' nowrap>{enabled}:</td>
-		<td style='font-size:16px'>" . Field_checkbox("enabled-$t",1,$enabled,"EnableCheck$t()")."</td>
+		<td class=legend style='font-size:22px' nowrap>{enabled}:</td>
+		<td style='font-size:22px'>" . Field_checkbox_design("enabled-$t",1,$enabled,"EnableCheck$t()")."</td>
 		<td>&nbsp;</td>
-		<td>&nbsp;</td>
+		
 	</tr>
 	<tr>
-		<td class=legend style='font-size:16px' nowrap>{name}:</td>
-		<td>" . Field_text("cachename-$t",$cachename,"width:350px;font-size:16px;padding:3px")."</td>
+		<td class=legend style='font-size:22px' nowrap>{name}:</td>
+		<td>" . Field_text("cachename-$t",$cachename,"width:350px;font-size:22px;padding:3px")."</td>
 		<td></td>
-		<td>&nbsp;</td>
-	</tr>	
-				
+	</tr>
+	$CPU_FIELD
 	<tr>
-		<td class=legend style='font-size:16px' nowrap>{process}:</td>
-		<td>$cpus</td>
-		<td>&nbsp;</td>
-		<td>&nbsp;</td>
-	</tr>				
-	
-	<tr>
-		<td class=legend style='font-size:16px' nowrap>{directory}:</td>
-		<td>" . Field_text("cache_directory-$t",$cache_directory,"width:350px;font-size:16px;padding:3px")."</td>
+		<td class=legend style='font-size:22px' nowrap>{directory}:</td>
+		<td>" . Field_text("cache_directory-$t",$cache_directory,"width:350px;font-size:22px;padding:3px")."</td>
 		<td>$browse</td>
-		<td>&nbsp;</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:16px' nowrap>{type}:</td>
+	<td class=legend style='font-size:22px' nowrap>{type}:</td>
 		<td>$type</td>
 		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td class=legend style='font-size:22px' nowrap>".texttooltip("{cache_size}","{cache_size_text}").":</td>
+		<td style='font-size:22px'>" . Field_text("squid-cache-size-$t",$cache_size,"width:220px;font-size:22px;padding:3px;text-align:right")."&nbsp;MB</td>
+		<td style='font-size:22px'>&nbsp;</td>
+	</tr>
+		<tr>
+		<td class=legend nowrap style='font-size:22px'>".texttooltip("{cache_dir_level1}","{cache_dir_level1_text}").":</td>
+		<td>" . Field_text("cache_dir_level1-$t",$cache_dir_level1,'width:110px;font-size:22px;padding:3px')."</td>
 		<td>&nbsp;</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:16px' nowrap>{cache_size}:</td>
-		<td style='font-size:16px'>" . Field_text("squid-cache-size-$t",$cache_size,"width:60px;font-size:16px;padding:3px")."&nbsp;MB</td>
+		<td class=legend nowrap style='font-size:22px'>".texttooltip("{cache_dir_level2}","{cache_dir_level2_text}").":</td>
+		<td>" . Field_text("cache_dir_level2-$t",$cache_dir_level2,'width:110px;font-size:22px;padding:3px')."</td>
 		<td>&nbsp;</td>
-		<td>" . help_icon('{cache_size_text}',false,'squid.index.php')."</td>
 	</tr>
+	<tr><td colspan=3><hr></td></tr>
+
 	<tr>
-		<td class=legend nowrap style='font-size:16px'>{cache_dir_level1}:</td>
-		<td>" . Field_text("cache_dir_level1-$t",$cache_dir_level1,'width:50px;font-size:16px;padding:3px')."</td>
-		<td>&nbsp;</td>
-		<td>" . help_icon('{cache_dir_level1_text}',false,'squid.index.php')."</td>
+		<td class=legend nowrap style='font-size:22px'>".texttooltip("{min_size}","{cache_dir_min_size_text}").":</td>
+		<td width=1% nowrap style='font-size:22px'>" . Field_text("min_size-$t",$min_size,'width:220px;font-size:22px;padding:3px;text-align:right')."&nbsp;KB&nbsp;</td>
+		<td style='font-size:22px' width=1% nowrap></td>
 	</tr>
-	<tr>
-		<td class=legend nowrap style='font-size:16px'>{cache_dir_level2}:</td>
-		<td>" . Field_text("cache_dir_level2-$t",$cache_dir_level2,'width:50px;font-size:16px;padding:3px')."</td>
-		<td>&nbsp;</td>
-		<td>" . help_icon('{cache_dir_level2_text}',false,'squid.index.php')."</td>
-	</tr>
-	<tr><td colspan=4><hr></td></tr>
-				
-	<tr>
-		<td class=legend nowrap style='font-size:16px'>{min_size}:</td>
-		<td width=1% nowrap>" . Field_text("min_size-$t",$min_size,'width:120px;font-size:16px;padding:3px')."</td>
-		<td style='font-size:16px' width=1% nowrap>&nbsp;KB</td>
-		<td>" . help_icon('{cache_dir_min_size_text}',false,'squid.index.php')."</td>
-	</tr>				
-	<tr>
-		<td class=legend nowrap style='font-size:16px'>{max_size}:</td>
-		<td width=1% nowrap>" . Field_text("max_size-$t",$max_size,'width:120px;font-size:16px;padding:3px')."</td>
-		<td style='font-size:16px' width=1% nowrap>&nbsp;KB&nbsp;$max_size_explain</td>
-		<td>" . help_icon('{cache_dir_max_size_text}',false,'squid.index.php')."</td>
-	</tr>				
-				
-	<tr>
-		<td align='right' colspan=4><hr>". button($bt,"AddNewCacheSave$t()",22)."</td>
-	</tr>
-	</table>
-	<p>&nbsp;</p>
-	<div id='CacheTypeExplain-$t'></div>
-	<div style='font-size:12px'><i>{warn_calculate_nothdsize}</i></div>
-	<script>
-function CheckCachesTypes$t(){
-	cachetypes=document.getElementById('cache_type-$t').value;
-	CacheTypeExplain$t();
+		<tr>
+			<td class=legend nowrap style='font-size:22px'>".texttooltip("{max_size}","{cache_dir_max_size_text}").":</td>
+			<td width=1% nowrap style='font-size:22px'>" . Field_text("max_size-$t",$max_size,'width:220px;font-size:22px;padding:3px;text-align:right')."&nbsp;KB&nbsp;</td>
+			<td style='font-size:22px' width=1% nowrap>$max_size_explain</td>
+		</tr>
+
+				<tr>
+				<td align='right' colspan=3><hr>". button($bt,"AddNewCacheSave$t()",36)."</td>
+				</tr>
+				</table>
+				<p>&nbsp;</p>
+				<div id='CacheTypeExplain-$t'></div>
+				<div style='font-size:12px'><i>{warn_calculate_nothdsize}</i></div>
+				<script>
+				function CheckCachesTypes$t(){
+				cachetypes=document.getElementById('cache_type-$t').value;
+				CacheTypeExplain$t();
 }
 
 function CacheTypeExplain$t(){
-	cachetype=document.getElementById('cache_type-$t').value;
-	LoadAjaxTiny('CacheTypeExplain-$t','$page?t=$t&ID=$ID&CacheTypeExplain='+cachetype);
+cachetype=document.getElementById('cache_type-$t').value;
+LoadAjaxTiny('CacheTypeExplain-$t','$page?t=$t&ID=$ID&CacheTypeExplain='+cachetype);
 }
-	
+
 var x_AddNewCacheSave$t= function (obj) {
-	var cacheid=$ID;
-	var results=obj.responseText;
-	document.getElementById('waitcache-$t').innerHTML='';
-	if(results.length>3){ alert(results); return; }
-	if(cacheid==0){YahooWin2Hide();}
-	if(document.getElementById('proxy-store-caches')){
-		LoadAjaxRound('proxy-store-caches','admin.dashboard.proxy.caches.php');
-	}
-	if(document.getElementById('flexRT{$_GET["t"]}')){
-		$('#flexRT{$_GET["t"]}').flexReload();
-	}
+var cacheid=$ID;
+var results=obj.responseText;
+document.getElementById('waitcache-$t').innerHTML='';
+if(results.length>3){ alert(results); return; }
+if(cacheid==0){YahooWin2Hide();}
+if(document.getElementById('proxy-store-caches')){
+LoadAjaxRound('proxy-store-caches','admin.dashboard.proxy.caches.php');
 }
-	
+if(document.getElementById('flexRT{$_GET["t"]}')){
+$('#flexRT{$_GET["t"]}').flexReload();
+}
+}
+
 function AddNewCacheSave$t(){
-	var enabled=1;
-	var XHR = new XHRConnection();
-	if(!document.getElementById('enabled-$t').checked){enabled=0;}
-	XHR.appendData('cache_directory',document.getElementById('cache_directory-$t').value);
-	XHR.appendData('cache_type',document.getElementById('cache_type-$t').value);
-	XHR.appendData('size',document.getElementById('squid-cache-size-$t').value);
-	XHR.appendData('cache_dir_level1',document.getElementById('cache_dir_level1-$t').value);
-	XHR.appendData('cache_dir_level2',document.getElementById('cache_dir_level2-$t').value);
-	XHR.appendData('CPU',document.getElementById('CPU-$t').value);
-	XHR.appendData('cachename',document.getElementById('cachename-$t').value);
-	XHR.appendData('min_size',document.getElementById('min_size-$t').value);
-	XHR.appendData('max_size',document.getElementById('max_size-$t').value);
-	
-	XHR.appendData('ID','$ID');
-	XHR.appendData('enabled',enabled);
-	AnimateDiv('waitcache-$t');
-	XHR.sendAndLoad('$page', 'POST',x_AddNewCacheSave$t);
+var enabled=1;
+var XHR = new XHRConnection();
+if(!document.getElementById('enabled-$t').checked){enabled=0;}
+XHR.appendData('cache_directory',document.getElementById('cache_directory-$t').value);
+XHR.appendData('cache_type',document.getElementById('cache_type-$t').value);
+XHR.appendData('size',document.getElementById('squid-cache-size-$t').value);
+XHR.appendData('cache_dir_level1',document.getElementById('cache_dir_level1-$t').value);
+XHR.appendData('cache_dir_level2',document.getElementById('cache_dir_level2-$t').value);
+XHR.appendData('CPU',document.getElementById('CPU-$t').value);
+XHR.appendData('cachename',document.getElementById('cachename-$t').value);
+XHR.appendData('min_size',document.getElementById('min_size-$t').value);
+XHR.appendData('max_size',document.getElementById('max_size-$t').value);
+
+		XHR.appendData('ID','$ID');
+		XHR.appendData('enabled',enabled);
+		AnimateDiv('waitcache-$t');
+		XHR.sendAndLoad('$page', 'POST',x_AddNewCacheSave$t);
 }
-	
+
 function CheckCacheid(){
-	var cacheid=$ID;
-	if(cacheid>0){
-		document.getElementById('cache_type-$t').disabled=true;
-		document.getElementById('cache_directory-$t').disabled=true;
-		document.getElementById('squid-cache-size-$t').disabled=true;
-		document.getElementById('cache_type-$t').disabled=true;
-		document.getElementById('cache_dir_level1-$t').disabled=true;
-		document.getElementById('cache_dir_level2-$t').disabled=true;
-	}
+var cacheid=$ID;
+var SquidSimpleConfig=$SquidSimpleConfig;
+if(cacheid>0){
+document.getElementById('cache_type-$t').disabled=true;
+document.getElementById('cache_directory-$t').disabled=true;
+document.getElementById('squid-cache-size-$t').disabled=true;
+document.getElementById('cache_type-$t').disabled=true;
+document.getElementById('cache_dir_level1-$t').disabled=true;
+document.getElementById('cache_dir_level2-$t').disabled=true;
 }
-	
+
+if(SquidSimpleConfig==1){
+document.getElementById('CPU-$t').disabled=true;
+}
+}
+
 function EnableCheck$t(){
-	var enabled=1;
-	var cacheid=$ID;
-	if(!document.getElementById('enabled-$t').checked){enabled=0;}
-	
-	document.getElementById('cache_directory-$t').disabled=true;
-	document.getElementById('squid-cache-size-$t').disabled=true;
-	document.getElementById('cache_type-$t').disabled=true;
-	document.getElementById('cache_dir_level1-$t').disabled=true;
-	document.getElementById('cache_dir_level2-$t').disabled=true;
-	
-	if(enabled==1){
-		if(cacheid==0){
-			document.getElementById('cache_directory-$t').disabled=false;
-			document.getElementById('squid-cache-size-$t').disabled=false;
-			document.getElementById('cache_type-$t').disabled=false;
-			document.getElementById('cache_dir_level1-$t').disabled=false;
-			document.getElementById('cache_dir_level2-$t').disabled=false;
-		}
-	}
-	
+var enabled=1;
+var cacheid=$ID;
+if(!document.getElementById('enabled-$t').checked){enabled=0;}
+
+document.getElementById('cache_directory-$t').disabled=true;
+document.getElementById('squid-cache-size-$t').disabled=true;
+document.getElementById('cache_type-$t').disabled=true;
+document.getElementById('cache_dir_level1-$t').disabled=true;
+document.getElementById('cache_dir_level2-$t').disabled=true;
+
+if(enabled==1){
+if(cacheid==0){
+document.getElementById('cache_directory-$t').disabled=false;
+document.getElementById('squid-cache-size-$t').disabled=false;
+document.getElementById('cache_type-$t').disabled=false;
+document.getElementById('cache_dir_level1-$t').disabled=false;
+document.getElementById('cache_dir_level2-$t').disabled=false;
+}
+}
+
 }
 
 
@@ -670,7 +677,7 @@ EnableCheck$t();
 CheckCacheid();
 </script>
 ";
-	
+
 echo $tpl->_ENGINE_parse_body($html);
 }
 
@@ -724,6 +731,9 @@ function items_save(){
 	}
 	
 	
+	if(substr($cache_directory, 0,1)<>'/'){$cache_directory="/$cache_directory";}
+	
+	
 	if($ID==0){
 		$q->QUERY_SQL("INSERT IGNORE INTO squid_caches_center 
 		(cachename,cpu,cache_dir,cache_type,cache_size,cache_dir_level1,cache_dir_level2,enabled,percentcache,usedcache,zOrder,min_size,max_size)
@@ -752,6 +762,7 @@ $page=CurrentPageName();
 $tpl=new templates();
 $users=new usersMenus();
 $sock=new sockets();
+$SquidSimpleConfig=intval($sock->GET_INFO("SquidSimpleConfig"));
 $tt=time();
 $t=$_GET["t"];
 $_GET["ruleid"]=$_GET["ID"];
@@ -798,20 +809,22 @@ $q->CheckTablesSquid();
 
 
 $bts[]="{name: '<strong style=font-size:18px>$new_cache</strong>', bclass: 'add', onpress : NewRule$tt}";
-$bts[]="{name: '<strong style=font-size:18px>$all</strong>', bclass: 'cpu', onpress : Bycpu0}";
-
-$CPUZ[]="function Bycpu0(){
-$('#flexRT$tt').flexOptions({url: '$page?items=yes&t=$tt&tt=$tt&cpu=0'}).flexReload();
-}";
-
-for($i=1;$i<$cpunumber+1;$i++){
-	$bts[]="{name: '<strong style=font-size:18px>Proc. $i</strong>', bclass: 'cpu', onpress : Bycpu$i}";
-	$CPUZ[]="function Bycpu$i(){
-		$('#flexRT$tt').flexOptions({url: '$page?items=yes&t=$tt&tt=$tt&cpu=$i'}).flexReload(); 
+if($SquidSimpleConfig==0){
+	$bts[]="{name: '<strong style=font-size:18px>$all</strong>', bclass: 'cpu', onpress : Bycpu0}";
+	
+	$CPUZ[]="function Bycpu0(){
+	$('#flexRT$tt').flexOptions({url: '$page?items=yes&t=$tt&tt=$tt&cpu=0'}).flexReload();
 	}";
+	
+	for($i=1;$i<$cpunumber+1;$i++){
+		$bts[]="{name: '<strong style=font-size:18px>Proc. $i</strong>', bclass: 'cpu', onpress : Bycpu$i}";
+		$CPUZ[]="function Bycpu$i(){
+			$('#flexRT$tt').flexOptions({url: '$page?items=yes&t=$tt&tt=$tt&cpu=$i'}).flexReload(); 
+		}";
+	}
+	
+	$bts[]="{name: '<strong style=font-size:18px>$cpu_affinity</strong>', bclass: 'Settings', onpress : CpuAff$tt}";
 }
-
-$bts[]="{name: '<strong style=font-size:18px>$cpu_affinity</strong>', bclass: 'Settings', onpress : CpuAff$tt}";
 $bts[]="{name: '<strong style=font-size:18px>$refresh</strong>', bclass: 'Reload', onpress : Refresh$tt}";
 $bts[]="{name: '<strong style=font-size:18px>$reconstruct_caches</strong>', bclass: 'recycle', onpress : ReconstructCaches$tt}";
 $bts[]="{name: '<strong style=font-size:18px>$apply</strong>', bclass: 'Reconf', onpress : Apply$tt}";
@@ -969,7 +982,39 @@ function items(){
 	if(!is_numeric($SquidCacheLevel)){$SquidCacheLevel=4;}
 	if($SquidCacheLevel==0){$DisableAnyCache=1;$SquidBoosterEnable=0;}
 	$DisableSquidSMP=intval($sock->GET_INFO("DisableSquidSMP"));
+	$SquidSimpleConfig=intval($sock->GET_INFO("SquidSimpleConfig"));
 	$squid_caches_infos=unserialize(base64_decode($sock->getFrameWork("squid.php?squid_get_caches_infos=yes")));
+	
+	
+	$squid=new squidbee();
+	if(preg_match("#([0-9]+)#",$squid->global_conf_array["minimum_object_size"],$re)){
+		$minimum_object_size=$re[1];
+		if(preg_match("#([A-Z]+)#",$squid->global_conf_array["minimum_object_size"],$re)){$minimum_object_size_unit=$re[1];}
+		if($minimum_object_size_unit==null){$minimum_object_size_unit="KB";}
+		if(!is_numeric($minimum_object_size)){$minimum_object_size=0;}
+		if($minimum_object_size_unit=="MB"){$minimum_object_size=$minimum_object_size*1024;}
+	}
+	
+	
+	
+	if(preg_match("#([0-9]+)#",$squid->global_conf_array["maximum_object_size"],$re)){
+		$maximum_object_size=$re[1];
+		if(preg_match("#([A-Z]+)#",$squid->global_conf_array["maximum_object_size"],$re)){$maximum_object_size_unit=$re[1];}
+		if($maximum_object_size_unit==null){$maximum_object_size_unit="KB";}
+		if($maximum_object_size_unit=="KB"){
+			if($maximum_object_size<4096){$maximum_object_size=4096;}
+		}
+		if($maximum_object_size_unit=="MB"){
+			if($maximum_object_size<4){$maximum_object_size=4;}
+			$maximum_object_size=$maximum_object_size*1024;
+		}
+	}
+	
+
+	
+	
+	
+	
 
 	$t=$_GET["t"];
 	$search='%';
@@ -1031,7 +1076,8 @@ function items(){
 	$caches_disabled="<br>".$tpl->_ENGINE_parse_body("{caches_are_disabled}");
 	$muliproc_disabled="<br>".$tpl->javascript_parse_text("{muliproc_disabled}");
 	$fontsize="20";
-
+	$files=$tpl->javascript_parse_text("{files}");
+	$to=$tpl->javascript_parse_text("{to}");
 	while ($ligne = mysql_fetch_assoc($results)) {
 		$color="black";
 		$options_text=null;
@@ -1043,6 +1089,13 @@ function items(){
 		$cache_type=$ligne["cache_type"];
 		$cache_size=abs($ligne["cache_size"]);
 		$percentcache=$ligne["percenttext"];
+		$min_size=intval($ligne["min_size"]);
+		$max_size=intval($ligne["max_size"]);
+		
+		
+		if($max_size==0){$max_size=$maximum_object_size;}
+		
+		
 		$cpu=$ligne["cpu"];
 		$icon_status="ok32.png";
 		$explainSMP=null;
@@ -1106,6 +1159,8 @@ function items(){
 		}
 		$CPUAF_TEXT=null;
 		
+		if($SquidSimpleConfig==1){$cpu="-";}
+		
 		if($cache_type<>"rock"){
 			$CPUAF=$ligne["CPUAF"];
 			if($CPUAF>0){
@@ -1120,11 +1175,13 @@ function items(){
 				'cell' => array(
 						"<img src='img/$icon_status'>",
 						"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>{$ligne["zOrder"]}</a></span>",
-						"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$link$cpu</a></span>",
+						"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$cpu</a></span>",
 						"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$link$cachename</a>$CPUAF_TEXT</span>",
 						"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$link$cache_dir</a></span>$infos<i>$explainSMP</i></strong>",
 						"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$link$cache_type</a></span>",
-						"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$link$usedcache/$cache_size</a></span>",
+						"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$link$usedcache/$cache_size</a></span><br>
+						<i style='font-size:14px'>$files: ".FormatBytes($min_size)." $to ".FormatBytes($max_size)."</i>
+						",
 						"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$link{$percentcache}%</a></span>",$enable,
 						"<center>$up</center>",
 						"<center>$down</center>",

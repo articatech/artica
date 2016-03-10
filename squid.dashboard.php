@@ -44,13 +44,14 @@ function page(){
 		}
 	}
 	
-	$filter_file="/usr/share/artica-postfix/ressources/logs/web/cache/".md5("FILTERSECTION".$tpl->language.$_SESSION["uid"]);
+/*	$filter_file="/usr/share/artica-postfix/ressources/logs/web/cache/".md5("FILTERSECTION".$tpl->language.$_SESSION["uid"]);
 	if(is_file($filter_file)){
 		$filter_content=@file_get_contents($filter_file);
 		if(trim($filter_content)<>null){
 			$js_filtersection=null;
 		}
 	}	
+*/
 	
 	$control_file="/usr/share/artica-postfix/ressources/logs/web/cache/".md5("CONTROLSECTION".$tpl->language.$_SESSION["uid"]);
 	if(is_file($control_file)){
@@ -95,9 +96,16 @@ function page(){
 	}
 	
 	
+	$SquidVersion=@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidVersion");
+	
 	$html="
 	<input type='hidden' id='thisIsTheSquidDashBoard' value='1'>
-	<div style='margin-top:30px;margin-bottom:30px;font-size:45px;passing-left:30px;'>{your_proxy} &laquo;&nbsp;".texttooltip($visible_hostname,"{visible_hostname}", "Loadjs('squid.popups.php?script=visible_hostname')")."&nbsp;&raquo;</div>
+	<div style='margin-top:30px;margin-bottom:30px;font-size:45px;passing-left:30px;'>{your_proxy} &laquo;&nbsp;".texttooltip($visible_hostname,"{visible_hostname}", "Loadjs('squid.popups.php?script=visible_hostname')")."&nbsp;&raquo;
+	&nbsp;".texttooltip("v$SquidVersion","{update_proxy_service}", "LoadProxyUpdate()")."
+	
+	
+	
+	</div>
 	<div style='padding-left:30px;padding-right:30px'>			
 	<table style='width:100%'>
 	<tr>
@@ -149,7 +157,7 @@ function page(){
 			<tr>
 			<td valign='top' style='width:96px'><img src='img/graph-96.png' style='width:96px'></td>
 			<td valign='top' style='width:99%'>
-				<div style='font-size:30px;margin-bottom:20px'>{monitor}</div>
+				<div style='font-size:30px;margin-bottom:20px'>{monitor} & {logs}</div>
 				<div id='monitor-section' style='padding-left:15px'>$monitor_content</div>
 			</td>
 			</tr>
@@ -212,11 +220,18 @@ function monitor_section(){
 	$tpl=new templates();
 	$OKStats=true;
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
+	$UfdbguardSMTPNotifs=unserialize(base64_decode($sock->GET_INFO("UfdbguardSMTPNotifs")));
+	if(!isset($UfdbguardSMTPNotifs["ENABLED_SQUID_WATCHDOG"])){$UfdbguardSMTPNotifs["ENABLED_SQUID_WATCHDOG"]=0;}
+	
 	if($SquidPerformance>1){
 		$OKStats=false;
 	}
-	
+	$color="black";
 	$icon="arrow-right-24.png";
+	$icon_smtp="arrow-right-24.png";
+	$color_smtp="black";
+	$text_smtp=null;
+	
 	$icon_stats=$icon;
 	$tr[]="<table style='width:100%'>";
 	
@@ -228,6 +243,23 @@ function monitor_section(){
 		
 	}
 	
+	if($UfdbguardSMTPNotifs["ENABLED_SQUID_WATCHDOG"]==0){
+		$icon_smtp="arrow-right-24-grey.png";
+		$text_smtp="&nbsp;({disabled})";
+		$color_smtp="#898989";
+	}
+	
+	$tr[]="
+	<tr>
+	<td valign='middle' style='width:25px'><img src='img/$icon_smtp'></td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$color_smtp'>".texttooltip("{smtp_notifications}{$text_smtp}","position:top:{smtp_notifications}","GotoSquidSMTP()")."</td>
+	</tr>";	
+	
+	$tr[]="
+	<tr>
+	<td valign='middle' style='width:25px'><img src='img/$icon'></td>
+	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("SNMP","position:top:{squid_snmp_explain}","GotoSquidSNMP()")."</td>
+	</tr>";	
 	
 	$tr[]="
 	<tr>
@@ -244,7 +276,11 @@ function monitor_section(){
 	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{performance_monitor}",null,"GotoSquidPerfMonitor()")."</td>
 	</tr>";
 	
-		
+	$tr[]="
+	<tr style='height:20px'>
+	<td colspan=2>&nbsp;</td>
+	
+	</tr>";
 	
 	$tr[]="
 	<tr>
@@ -252,6 +288,9 @@ function monitor_section(){
 	<td valign='middle' style='font-size:18px;width:99%;color:$color'>".texttooltip("{statistics_engine}$WebFiltering_text","position:top:{dashboard_statistics_options_explain}","LoadStatisticsOptions()")."</td>
 	</tr>";
 
+	
+	
+	
 	
 	
 	$tr[]="
@@ -272,6 +311,12 @@ function monitor_section(){
 	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{legal_logs} <strong style='font-size:14px'>$BackupMaxDays</strong>","position:top:{squid_backuped_logs_explain}","LoadSquidRotate()")."</td>
 	</tr>";	
 	
+	$tr[]="
+	<tr>
+	<td valign='middle' style='width:25px'><img src='img/$icon'></td>
+	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("Syslog","position:top:{squid_syslog_text}","GotoSquidSyslog()")."</td>
+	</tr>";
+	
 
 	$tr[]="
 	<tr>
@@ -279,11 +324,7 @@ function monitor_section(){
 	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{autoconfiguration}: {events}","position:top:{autoconfiguration}: {events}","ProxyPacEvents()")."</td>
 	</tr>";	
 	
-	$tr[]="
-	<tr>
-	<td valign='middle' style='width:25px'><img src='img/$icon'></td>
-	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("SNMP","position:top:{squid_snmp_explain}","GotoSquidSNMP()")."</td>
-	</tr>";
+
 	
 	
 	
@@ -328,6 +369,10 @@ function infra_section(){
 	$SquidCacheLevel=$sock->GET_INFO("SquidCacheLevel");
 	if(!is_numeric($SquidCacheLevel)){$SquidCacheLevel=4;}
 	$HyperCacheStoreID=intval($sock->GET_INFO("HyperCacheStoreID"));
+	$EnableSS5=intval($sock->GET_INFO("EnableSS5"));
+	$EnableRDPProxy=intval($sock->GET_INFO("EnableRDPProxy"));
+	$PrivoxyEnabled=intval($sock->GET_INFO("PrivoxyEnabled"));
+	$EnableParentProxy=intval($sock->GET_INFO("EnableParentProxy"));
 
 	if(!$q->FIELD_EXISTS("proxy_ports", "UseSSL")){
 		$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `UseSSL` smallint(1) NOT NULL DEFAULT '0'");
@@ -459,6 +504,20 @@ function infra_section(){
 	</tr>";	
 	
 	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>&nbsp;</td>
+	<td valign='middle' style='font-size:18px;width:99%;color:black'>
+			<table style='width:100%'>
+			<tr>
+			<td valign='middle' style='width:16px'>
+			<img src='img/arrow-right-16.png'></td>
+			<td valign='middle' style='font-size:16px;width:99%;color:black'>".texttooltip("{ftp_template}","{ftp_template_error_explain}","GotoSquidTemplateFTP()")."</td>
+			</tr>
+			</table>
+			
+			</td>
+	</tr>";
+	
+	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
 	<img src='img/arrow-right-24.png'></td>
 	<td valign='middle' style='font-size:18px;width:99%;color:black'>".texttooltip("{timeouts}",null,"GotoSquidTimeOuts()")."</td>
@@ -473,11 +532,29 @@ function infra_section(){
 
 	
 	$tr[]="<tr><td colspan=2>&nbsp;</td></tr>";
+	
+	$squid_parent_proxy_color="black";
+	$squid_parent_proxy_icon="arrow-right-24.png";
+	$squid_parent_proxy_js="GotoSquidParentProxy()";
+	
+	if($EnableParentProxy==0){
+		$squid_parent_proxy_icon="arrow-right-24-grey.png";
+		$squid_parent_proxy_color="#898989";
+		$squid_parent_proxy_text=" <span style='font-size:14px'>({disabled})</span>";
+	}
+	
+	
+	if($PrivoxyEnabled==1){
+		$squid_parent_proxy_icon="arrow-right-24-grey.png";
+		$squid_parent_proxy_color="#898989";
+		$squid_parent_proxy_text=" <span style='font-size:14px'>({disabled} - {APP_PRIVOXY})</span>";		
+		$squid_parent_proxy_js="blur()";
+	}
 
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
-	<img src='img/arrow-right-24.png'></td>
-	<td valign='middle' style='font-size:18px;width:99%;color:black'>".texttooltip("{squid_parent_proxy}","{squid_parent_proxy_explain}","GotoSquidParentProxy()")."</td>
+	<img src='img/$squid_parent_proxy_icon'></td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$squid_parent_proxy_color'>".texttooltip("{squid_parent_proxy}$squid_parent_proxy_text","{squid_parent_proxy_explain}",$squid_parent_proxy_js)."</td>
 	</tr>";	
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
@@ -508,22 +585,35 @@ function infra_section(){
 	
 	
 
-	
+	$SLAVE_IP=null;
 	$icon_failover="arrow-right-24.png";
 	$js_failover="GotoFailover()";
 	$color_failover="black";
+	$MAIN=unserialize(base64_decode($sock->GET_INFO("HASettings")));
+	if(isset($MAIN["SLAVE"])){
+		$SLAVE_IP=$MAIN["SLAVE"];
+	}
+	
+	if($SLAVE_IP==null){
+		$icon_failover="arrow-right-24-grey.png";
+		$color_failover="#898989";
+		$text_failover=" <span style='font-size:12px'>({disabled})</span>";
+	}else{
+		$text_failover=" <span style='font-size:12px'>({slave_ip} $SLAVE_IP)</span>";
+	}
 	
 	if(!$users->CORP_LICENSE){
 		$icon_failover="arrow-right-24-grey.png";
 		$js_failover="blur()";
 		$color_failover="#898989";
+		$text_failover=" <span style='font-size:12px'>({no_license})</span>";
 	}
 	
 	
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
 	<img src='img/$icon_failover'></td>
-	<td valign='middle' style='font-size:18px;width:99%;color:$color_failover'>".texttooltip("{failover}",
+	<td valign='middle' style='font-size:18px;width:99%;color:$color_failover'>".texttooltip("{failover}$text_failover",
 			"{failover_explain}","$js_failover")."</td>
 	</tr>";
 
@@ -551,7 +641,7 @@ function infra_section(){
 		$color_hotspot="#898989";
 	}
 	
-	$net=
+	
 	
 	$tr[]="
 <tr>
@@ -560,6 +650,8 @@ function infra_section(){
 	<td valign='middle' style='font-size:18px;width:99%;color:$color_hotspot'>".
 		texttooltip("HotSpot",$explain_hostpot,$js_hostpot)."</td>
 </tr>";
+
+	
 	
 	
 	
@@ -685,9 +777,18 @@ function infra_section(){
 			$icon_rock="Database24-grey.png";
 			$Color_rock="#898989";
 			$icon_rock_explain="<span style='font-size:12px'> ({disabled})</span>";
-			$icon_caches_rules_explain="<span style='font-size:12px'> ({disabled})</span>";
+			
 			
 		}
+	}
+	
+	if($SquidCacheLevel==0){
+		$icon_rock="Database24-grey.png";
+		$Color_rock="#898989";
+		$icon_rock_explain="<span style='font-size:12px'> ({disabled})</span>";
+		$icon_caches_rules_explain="<span style='font-size:12px'> ({disabled})</span>";
+		$icon_caches_rules="arrow-right-24-grey.png";
+		$Color_caches_rules="#898989";
 	}
 	
 	
@@ -706,18 +807,21 @@ function infra_section(){
 	$icon="arrow-right-24.png";
 	$Color="black";
 	$icon="arrow-right-24.png";
+	
+
+	$SquidVersion=@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidVersion");
+	
+	
+	if(preg_match("#^3\.5#", $SquidVersion)){$HyperCacheCompatible=true;}
+	if(preg_match("#^4\.#", $SquidVersion)){$HyperCacheCompatible=true;}
+	
 
 	if($HyperCacheStoreID==0){$icon="arrow-right-24-grey.png";$Color="#898989";}
 	$explain="{HyperCache_explain}";
 	$js_hypercache="GoToHyperCache()";
-	if(!$users->HYPERCACHE_STOREID){
-		$icon="arrow-right-24-grey.png";
-		$js_hypercache="blur()";
-		$Color="#898989";
-		$hypercache_explain="{NOT_INSTALLED}";
-		
-	}
-	if(!$squid->IS_35){
+	
+	
+	if(!$HyperCacheCompatible){
 		$icon="arrow-right-24-grey.png";
 		$js_hypercache="blur()";
 		$Color="#898989";
@@ -742,6 +846,8 @@ function infra_section(){
 	$js_caches_rules="GotoSquidCachesRules()";
 	$Color_caches_rules="black";
 	$icon_caches_rules="arrow-right-24.png";
+	
+	
 	if(!$users->CORP_LICENSE){
 		$icon_caches_rules="arrow-right-24-grey.png";
 		$Color_caches_rules="#898989";
@@ -755,6 +861,60 @@ function infra_section(){
 	</td>
 	<td valign='middle' style='font-size:18px;width:99%;color:$Color_caches_rules'>".
 	texttooltip("{caches_rules}$icon_caches_rules_explain","{refresh_pattern_intro}","$js_caches_rules")."</td>
+	</tr>";	
+	
+	$WindowsUpdateCacher_icon="arrow-right-24.png";
+	$WindowsUpdateCacher_explain=null;
+	$WindowsUpdateCacher_color="black";
+	$EnableUfdbGuard=intval($sock->GET_INFO("EnableUfdbGuard"));
+	$WindowsUpdateCaching=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/WindowsUpdateCaching"));
+	if($EnableUfdbGuard==0){$WindowsUpdateCaching=0;}
+	
+	if($WindowsUpdateCaching==0){
+		$WindowsUpdateCacher_icon="arrow-right-24-grey.png";
+		$WindowsUpdateCacher_color="#898989";
+		$WindowsUpdateCacher_explain="&nbsp;<span style='font-size:12px'> ({disabled})</span>";
+	}
+	
+	$webcopy_color="black";
+	$webcopy_icon="arrow-right-24.png";
+	$webcopy_explain=null;
+	$webcopy_js="GotoWebCopy()";
+	
+	$HTTrackInSquid=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/HTTrackInSquid"));
+	
+	
+	if($HTTrackInSquid==0){
+		$webcopy_icon="arrow-right-24-grey.png";
+		$webcopy_color="#898989";
+		$webcopy_explain="&nbsp;<span style='font-size:12px'> ({disabled})</span>";
+				
+		
+	}
+	
+	if(!is_file("/usr/bin/httrack")){
+		$webcopy_icon="arrow-right-24-grey.png";
+		$webcopy_color="#898989";
+		$webcopy_explain="&nbsp;<span style='font-size:12px'> ({not_installed})</span>";
+		
+	}
+	
+	$tr2[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$webcopy_icon'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$webcopy_color'>".
+	texttooltip("WebCopy$webcopy_explain","{WebCopy_task_explain}",$webcopy_js)."</td>
+	</tr>";	
+	
+	
+	
+	$tr2[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$WindowsUpdateCacher_icon'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$WindowsUpdateCacher_color'>".
+	texttooltip("Windows Updates$WindowsUpdateCacher_explain","{enable_windows_updates_cache_enforcement_explain}","GotoWindowsUpdate()")."</td>
 	</tr>";	
 	
 	
@@ -786,6 +946,80 @@ function infra_section(){
 	<td valign='middle' colspan=2 style='font-size:22px;font-weight:bold'>{gateway_services}:</td>
 	</tr>";
 	
+	
+
+	$img_ss5="arrow-right-24.png";
+	$explain_ss5="{APP_SS5_ABOUT}";
+	$js_ss5="GoToSS5()";
+	$color_ss5="black";
+	
+	$img_rdp="arrow-right-24.png";
+	$explain_rdp="{APP_RDPPROXY}";
+	$js_rdp="GotToRDPPROX()";
+	$color_rdp="black";
+	
+	if($EnableSS5==0){
+		$img_ss5="arrow-right-24-grey.png";
+		$explain_ss5="{APP_SS5_ABOUT}";
+		$error_ss5="&nbsp;<span style='font-size:12px'>{disabled}</span>";
+		$js_ss5="GoToSS5()";
+		$color_ss5="#898989";
+	
+	}
+	
+	if(!is_file("/usr/sbin/ss5")){
+		$img_ss5="arrow-right-24-grey.png";
+		$explain_ss5="{APP_SS5_ABOUT}";
+		$error_ss5="&nbsp;<span style='font-size:12px'>{not_installed}</span>";
+		$js_ss5=null;
+		$color_ss5="#898989";
+	}
+	
+	if(!is_file("/var/lib/ss5/ss5/mod_socks4.so")){
+		$img_ss5="arrow-right-24-grey.png";
+		$explain_ss5="{APP_SS5_ABOUT}";
+		$error_ss5="&nbsp;<span style='font-size:12px'>{not_installed}</span>";
+		$js_ss5=null;
+		$color_ss5="#898989";
+	}
+	
+	
+	if($EnableRDPProxy==0){
+		$img_rdp="arrow-right-24-grey.png";
+		$explain_rdp="{APP_SS5_ABOUT}";
+		$error_rdp="&nbsp;<span style='font-size:12px'>{disabled}</span>";
+		$js_rdp="GotToRDPPROX()";
+		$color_rdp="#898989";
+	
+	}
+	
+	if(!$users->RDPPROXY_INSTALLED){
+		$img_rdp="arrow-right-24-grey.png";
+		$explain_rdp="{APP_SS5_ABOUT}";
+		$error_rdp="&nbsp;<span style='font-size:12px'>{not_installed}</span>";
+		$js_rdp=null;
+		$color_rdp="#898989";
+	
+	}
+	
+	$tr2[]="
+	<tr>
+	<td valign='middle' style='width:25px'><img src='img/$img_ss5'></td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$color_ss5'>".
+	texttooltip("{APP_SS5}$error_ss5",$explain_ss5,$js_ss5)."</td>
+	</tr>";
+	
+	
+	$tr2[]="<tr>
+	<td valign='middle' style='width:25px'><img src='img/$img_rdp'></td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$color_rdp'>".
+	texttooltip("{APP_RDPPROXY}$error_rdp",
+			"position:right:{APP_RDPPROXY}",$js_rdp)."</td>
+	</tr>";
+	
+	
+	
+	
 	$EnableSecureGateway=intval($sock->GET_INFO("EnableSecureGateway"));
 	$icon_secure_gateway="arrow-right-24.png";
 	$color_secure_gateway="black";
@@ -806,10 +1040,16 @@ function infra_section(){
 	<td valign='middle' style='font-size:18px;width:99%;color:$color_secure_gateway'>".texttooltip("{secure_gateway}$text_secure_gateway","{secure_gateway_explain}","GotoGatewaySecure()")."</td>
 	</tr>";
 	
+	
+	
+	
+	
+	
 	$Transmission_icon="arrow-right-24.png";
 	$Transmission_Color="black";
 	$Transmission_js="GoToTransmissionDaemon()";
 	$EnableTransMissionDaemon=intval($sock->GET_INFO("EnableTransMissionDaemon"));
+	$UpdateUtilityWizard=intval($sock->GET_INFO("UpdateUtilityWizard"));
 	
 	if(!is_file("/usr/bin/transmission-daemon")){
 		$Transmission_icon="arrow-right-24-grey.png";
@@ -823,12 +1063,35 @@ function infra_section(){
 		
 	}
 	
+	$UpdateUtilityIcon="arrow-right-24.png";
+	$UpdateUtilityColor="black";
+	
+	if($UpdateUtilityWizard==0){
+		$UpdateUtilityIcon="arrow-right-24-grey.png";
+		$UpdateUtilityColor="#898989";		
+	}
+	
+	if(!is_file("/etc/UpdateUtility/UpdateUtility-Console")){
+		$UpdateUtilityIcon="arrow-right-24-grey.png";
+		$UpdateUtilityColor="#898989";
+	}
+	
+	
 	$tr2[]="
 	<tr>
 	<td valign='middle' style='width:25px'>
 	<img src='img/$Transmission_icon'>
 	</td>
 	<td valign='middle' style='font-size:18px;width:99%;color:$Transmission_Color'>".texttooltip("{bittorrent_service}","{bittorrent_service_explain}","GoToTransmissionDaemon()")."</td>
+	</tr>";
+	
+	
+	$tr2[]="
+	<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$UpdateUtilityIcon'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$UpdateUtilityColor'>".texttooltip("{APP_KASPERSKY_UPDATE_UTILITY}","{APP_KASPERSKY_UPDATE_UTILITY}","GoToUpdateUtility()")."</td>
 	</tr>";
 	
 	$tr2[]="</table>";
@@ -856,6 +1119,22 @@ function control_section(){
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
 	$EnableKerbAuth=intval($sock->GET_INFO("EnableKerbAuth"));
 	$SquidAllow80Port=intval($sock->GET_INFO("SquidAllow80Port"));
+	$EnableArticaHotSpot=intval($sock->GET_INFO("EnableArticaHotSpot"));
+	$EnableSquidQuotasBandwidth=intval($sock->GET_INFO("EnableSquidQuotasBandwidth"));
+	$InfluxUseRemote=intval($sock->GET_INFO("InfluxUseRemote"));
+	$EnableYoutubeLocker=intval($sock->GET_INFO("EnableYoutubeLocker"));
+	$InfluxSyslogRemote=0;
+	if($InfluxUseRemote==1){$InfluxSyslogRemote=intval($sock->GET_INFO("InfluxSyslogRemote"));}
+	
+	$SquidDisableAllFilters=intval($sock->GET_INFO("SquidDisableAllFilters"));
+	$SquidUrgency=intval($sock->GET_INFO("SquidUrgency"));
+	$EnableeCapClamav=intval($sock->GET_INFO("EnableeCapClamav"));
+	$EnableeCapGzip=intval($sock->GET_INFO("EnableeCapGzip"));
+	$eCAPClamavMaxSize=intval($sock->GET_INFO("eCAPClamavMaxSize"));
+	$eCAPClamavEmergency=intval($sock->GET_INFO("eCAPClamavEmergency"));
+	
+	
+	
 	$EnableIntelCeleron=$sock->EnableIntelCeleron;
 	$squid=new squidbee();
 	$users=new usersMenus();
@@ -883,8 +1162,9 @@ function control_section(){
 	$tr[]="<table style='width:100%'>";
 	
 	
-	
+	$ad_text=null;
 	$ad_icon="arrow-right-24.png";
+	$ad_analyze_icon="arrow-right-16.png";
 	$ad_script="GoToActiveDirectory()";
 	$ad_color="black";
 	$ad_explain="{dashboard_activedirectory_explain}";
@@ -900,6 +1180,7 @@ function control_section(){
 	
 	
 	if($squid->LDAP_EXTERNAL_AUTH==1){
+		$EnableKerbAuth=0;
 		$ad_icon="arrow-right-24-grey.png";
 		$remote_ldap_icon="arrow-right-24.png";
 		$ad_script="blur()";
@@ -908,7 +1189,7 @@ function control_section(){
 		$ad_explain="{dashboard_activedirectory_disabled_explain}";
 	}else{
 		if($EnableKerbAuth==0){
-			$ad_icon="arrow-right-24.png";
+			$ad_icon="arrow-right-24-grey.png";
 			$ad_color="#898989";
 		}
 	}
@@ -941,8 +1222,79 @@ function control_section(){
 		$remote_ldap_icon="arrow-right-24.png";
 	}
 	
+	
+	$youtubelocker_icon="arrow-right-24.png";
+	$youtubelocker_color="black";
+	$youtubelocker_text=null;	
+	
+	
+	$QuotasBand_icon="arrow-right-24.png";
+	$QuotasBand_color="black";
+	$QuotasBand_text=null;
+	
+	if($EnableSquidQuotasBandwidth==0){
+		$QuotasBand_icon="arrow-right-24-grey.png";
+		$QuotasBand_color="#898989";
+		$QuotasBand_text=" <span style='font-size:12px'>{disabled}</span>";
+		
+	}
+	
+	if($InfluxSyslogRemote==1){
+		$QuotasBand_icon="arrow-right-24-grey.png";
+		$QuotasBand_color="#898989";
+		$QuotasBand_text=" <span style='font-size:12px'>{not_available}</span>";
+	}
+	
+	if($EnableYoutubeLocker==0){
+		$youtubelocker_icon="arrow-right-24-grey.png";
+		$youtubelocker_color="#898989";
+		$youtubelocker_text=" <span style='font-size:12px'>{disabled}</span>";
+	}
+	
+	if($SquidDisableAllFilters==1){
+		$youtubelocker_icon="arrow-right-24-grey.png";
+		$youtubelocker_color="#898989";
+		$youtubelocker_text=" <span style='font-size:12px'>{all_filters_are_disabled}</span>";
+		
+		$QuotasBand_icon="arrow-right-24-grey.png";
+		$QuotasBand_color="#898989";
+		$QuotasBand_text=" <span style='font-size:12px'>{all_filters_are_disabled}</span>";
+		
+	}
+	
+	if($EnableKerbAuth==0){
+		$ad_text=" <span style='font-size:12px'>{disabled}</span>";
+	}
+	
+	if($SquidUrgency==1){
+		$youtubelocker_icon="alert-24.png";
+		$youtubelocker_color="#898989";
+		$youtubelocker_text=" <span style='font-size:12px'>{emergency_mode}</span>";
+		
+		$QuotasBand_icon="alert-24.png";
+		$QuotasBand_color="#898989";
+		$QuotasBand_text=" <span style='font-size:12px'>{emergency_mode}</span>";
+		
+		if($EnableKerbAuth==1){
+			$ad_icon="alert-24.png";
+			$ad_analyze_icon="error-16.png";
+			$ad_text=" <span style='font-size:12px'>{emergency_mode}</span>";
+		}
+		
+	}
+	
 	//<APP_PHPLDAPADMIN>phpLDAPadmin</APP_PHPLDAPADMIN>
 	//<APP_PHPLDAPADMIN_TEXT>Browse the LDAP directory using phpLDAPAdmin front-end</APP_PHPLDAPADMIN_TEXT>
+	
+	$tr[]="
+	<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$youtubelocker_icon'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$youtubelocker_color'>".texttooltip("{youtube_locker}$youtubelocker_text",
+			"position:right:{youtube_locker_explain}","GotoYoutubeLocker()")."</td>
+	</tr>";	
+	
 	
 	$tr[]="
 	<tr>
@@ -953,24 +1305,58 @@ function control_section(){
 			"position:right:{limit_rate}","GotoSquidBandwG()")."</td>
 	</tr>";
 	
+	
+	$tr[]="
+	<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$QuotasBand_icon'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%;color:{$QuotasBand_color}'>".texttooltip("{quotas_bandwidth}$QuotasBand_text",
+			"position:right:{quotas_bandwidth_explain}","GotoQuotasBand()")."</td>
+	</tr>";	
+	
+
+	
+	
+if($EnableArticaHotSpot==0){
 	$tr[]="
 	<tr>
 	<td valign='middle' style='width:25px'>
 	<img src='img/$ad_icon'>
 	</td>
 	<td valign='middle' style='font-size:18px;width:99%;color:$ad_color'>".
-	texttooltip("Active Directory","position:right:$ad_explain",$ad_script)."</td>
+	texttooltip("Active Directory$ad_text","position:right:$ad_explain",$ad_script)."</td>
 	</tr>";
-
-	$tr[]="
-	<tr>
-	<td valign='middle' style='width:25px'>
-	<img src='img/$remote_ldap_icon'>
-	</td>
-	<td valign='middle' style='font-size:18px;width:99%;color:$remote_ldap_color'>".texttooltip("{APP_LDAP_DB}",
-			"position:right:{authenticate_users_ldap_text}","GotoOpenldap()")."</td>
-	</tr>";	
+	if($EnableKerbAuth==1){
+		
+		$tr[]="<tr>
+		<td valign='middle' style='width:25px'>&nbsp;</td>
+		<td><table style='width:100%'>
+		<tr>
+			<td valign='middle' style='width:25px'>&nbsp,</td>
+			<td style='width:25px'><img src='img/$ad_analyze_icon'></td>
+			<td style='font-size:16px;width:100%'> ".texttooltip("{analyze}","position:right:Active Directory {analyze}","Loadjs('squid.adker.php?test-js=yes')")."</td>
+		</tr>
+		</table>
+		</td>
+	</tr>";
+		
+	}
 	
+}
+
+if($EnableArticaHotSpot==0){	
+	if($EnableKerbAuth==0){	
+		$tr[]="
+		<tr>
+		<td valign='middle' style='width:25px'>
+		<img src='img/$remote_ldap_icon'>
+		</td>
+		<td valign='middle' style='font-size:18px;width:99%;color:$remote_ldap_color'>".texttooltip("{APP_LDAP_DB}",
+				"position:right:{authenticate_users_ldap_text}","GotoOpenldap()")."</td>
+		</tr>";	
+	}
+}	
 
 	
 	
@@ -1008,14 +1394,16 @@ function control_section(){
 		
 	}
 	
-$tr[]="
+if($EnableArticaHotSpot==0){	
+	$tr[]="
 	<tr>
-	<td valign='middle' style='width:25px'>
-	<img src='img/$itchart_icon'>
-	</td>
-	<td valign='middle' style='font-size:18px;width:99%;color:$itchart_color'>".texttooltip("{it_charters}",
+		<td valign='middle' style='width:25px'>
+			<img src='img/$itchart_icon'>
+		</td>
+		<td valign='middle' style='font-size:18px;width:99%;color:$itchart_color'>".texttooltip("{it_charters}",
 			"position:right:{IT_charter_explain}",$itchart_script)."</td>
 	</tr>";	
+	}
 
 
 	$tr[]="
@@ -1044,13 +1432,14 @@ $tr[]="
 	$text_autoconfiguration="{autoconfiguration_explain}";
 	$color_autoconfiguration="#000000";
 	$js_autoconfiguration="GoToProxyPac()";
+	$mtext_autoconfiguration=null;
 	
 	if($SquidPerformance>2){
 		$icon_autoconfiguration="arrow-right-24-grey.png";
 		$text_autoconfiguration="<strong style='color:white'>{ERROR_FEATURE_MINIMAL_PERFORMANCES}</strong><br>{autoconfiguration_explain}";
 		$color_autoconfiguration="#898989";
 		$js_autoconfiguration="blur()";		
-	
+		$mtext_autoconfiguration=" <span style='font-size:14px'>{ERROR_FEATURE_MINIMAL_PERFORMANCES}</span>";
 	
 	}
 	if($EnableIntelCeleron==1){
@@ -1058,13 +1447,14 @@ $tr[]="
 		$text_autoconfiguration="<strong style='color:white'>{ERROR_FEATURE_CELERON}</strong><br>{autoconfiguration_explain}";
 		$color_autoconfiguration="#898989";
 		$js_autoconfiguration="blur()";
+		$mtext_autoconfiguration=" <span style='font-size:14px'>{ERROR_FEATURE_CELERON}</span>";
 	}
 	
 	if($SquidAllow80Port==1){
 		$icon_autoconfiguration="arrow-right-24-grey.png";
 		$color_autoconfiguration="#898989";
 		$js_autoconfiguration="blur()";
-		
+		$mtext_autoconfiguration=" <span style='font-size:14px'>{allow_80443_port}</span>";
 	}
 	
 	
@@ -1074,7 +1464,7 @@ $tr[]="
 	<img src='img/$icon_autoconfiguration'>
 	</td>
 	<td valign='middle' style='font-size:18px;width:99%;color:$color_autoconfiguration'>".
-			texttooltip("{autoconfiguration}",
+			texttooltip("{autoconfiguration}$mtext_autoconfiguration",
 			"position:right:$text_autoconfiguration",$js_autoconfiguration)."</td>
 	</tr>";	
 	
@@ -1096,13 +1486,13 @@ $tr[]="
 	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{restricted_members}","position:right:{restricted_members}","GoToSquidRestrictedMembers()")."</td>
 	</tr>";	
 	
-	$tr[]="<tr>
+/*	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
 	<img src='img/$icon_quota'>
 	</td>
 	<td valign='middle' style='font-size:18px;width:99%;color:$color_quota'>".texttooltip("{squid_quota_member}","position:right:{squid_quota_member_explain}","$js_quota")."</td>
 	</tr>";	
-	
+*/	
 	
 	
 	
@@ -1134,6 +1524,7 @@ function filter2_section(){
 	$SquidDisableAllFilters=intval($sock->GET_INFO("SquidDisableAllFilters"));
 	$SquidUrgency=intval($sock->GET_INFO("SquidUrgency"));
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
+	$SquidUFDBUrgency=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidUFDBUrgency"));
 	
 	$OKStats=true;
 	$icon="arrow-right-24.png";
@@ -1142,6 +1533,7 @@ function filter2_section(){
 	$tr[]="<table style='width:100%'>";
 	
 	$explain_category="{your_categories_explain}";
+	$js_categories="GotoYourcategories();";
 	
 	
 	if($SquidPerformance>1){
@@ -1192,12 +1584,16 @@ function filter2_section(){
 		$icon_ufdb="arrow-right-24.png";
 		$WebFiltering_text="{enabled}";
 		
+		if($SquidUFDBUrgency==1){
+			$icon_ufdb="alert-24.png";
+		}
+		
 	}else{
-		$icon_category="arrow-right-24-grey.png";;
+		//$icon_category="arrow-right-24-grey.png";;
 		$icon_ufdb="arrow-right-24-grey.png";
 		$WebFiltering_text="{disabled}";
 		$color="#898989";
-		$color_category="#898989";
+		//$color_category="#898989";
 	}
 	
 	$explain_av="{web_antivirus_explain}";
@@ -1255,7 +1651,16 @@ function filter2_section(){
 		$icon_category="arrow-right-24-grey.png";
 		$color_category="#898989";
 		$explain_category="{this_feature_is_disabled_corp_license}";
+		$js_categories="blur()";
 	}
+	
+	if(!$users->AsDansGuardianAdministrator){
+		$icon_category="arrow-right-24-grey.png";
+		$color_category="#898989";
+		$explain_category="{ERROR_NO_PRIVS}";
+		$js_categories="blur()";
+	}
+	
 	
 	if($SquidUrgency==1){
 		$ecap_clamav_icon="arrow-right-24-grey.png";
@@ -1272,7 +1677,69 @@ function filter2_section(){
 		
 	}
 	
-
+	$EnableGoogleSafeSearch=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableGoogleSafeSearch"));
+	$EnableGoogleSafeBrowsing=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableGoogleSafeBrowsing"));
+	$EnableSquidPhishTank=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableSquidPhishTank"));
+	$EnableHTTPSURBL=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableHTTPSURBL"));
+	$WebFilteringRansomware=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/WebFilteringRansomware"));
+	
+	$EnableGoogleSafeSearch_icon="arrow-right-16.png";
+	$EnableGoogleSafeSearch_color="#000000";
+	$EnableGoogleSafeBrowsing=null;	
+	
+	$EnableGoogleSafeBrowsing_icon="arrow-right-16.png";
+	$EnableGoogleSafeBrowsing_color="#000000";
+	$EnableGoogleSafeBrowsing_text=null;
+	
+	$EnableSquidPhishTank_icon="arrow-right-16.png";
+	$EnableSquidPhishTank_color="#000000";
+	$EnableSquidPhishTank_text=null;
+	
+	$EnableHTTPSURBL_icon="arrow-right-16.png";
+	$EnableHTTPSURBL_color="#000000";
+	$EnableHTTPSURBL_text=null;
+	
+	$WebFilteringRansomware_icon="arrow-right-16.png";
+	$WebFilteringRansomware_color="#000000";
+	$WebFilteringRansomware_text=null;
+	
+	
+	if($EnableUfdbGuard==0){
+		$EnableGoogleSafeSearch=0;
+		$EnableGoogleSafeBrowsing=0;
+		$EnableSquidPhishTank=0;
+		$EnableHTTPSURBL=0;
+		$WebFilteringRansomware=0;
+	}
+	
+	if($EnableGoogleSafeSearch==0){
+		$EnableGoogleSafeSearch_icon="arrow-right-16-grey.png";
+		$EnableGoogleSafeSearch_color="#898989";
+		$EnableGoogleSafeSearch_text=" <span style='font-size:12px'>({disabled})</span>";
+	}
+	
+	if($EnableGoogleSafeBrowsing==0){
+		$EnableGoogleSafeBrowsing_icon="arrow-right-16-grey.png";
+		$EnableGoogleSafeBrowsing_color="#898989";
+		$EnableGoogleSafeBrowsing_text=" <span style='font-size:12px'>({disabled})</span>";
+	}	
+	
+	if($EnableSquidPhishTank==0){
+		$EnableSquidPhishTank_icon="arrow-right-16-grey.png";
+		$EnableSquidPhishTank_color="#898989";
+		$EnableSquidPhishTank_text=" <span style='font-size:12px'>({disabled})</span>";
+	}	
+	if($EnableHTTPSURBL==0){
+		$EnableHTTPSURBL_icon="arrow-right-16-grey.png";
+		$EnableHTTPSURBL_color="#898989";
+		$EnableHTTPSURBL_text=" <span style='font-size:12px'>({disabled})</span>";
+	}	
+	if($WebFilteringRansomware==0){
+		$WebFilteringRansomware_icon="arrow-right-16-grey.png";
+		$WebFilteringRansomware_color="#898989";
+		$WebFilteringRansomware_text=" <span style='font-size:12px'>({disabled})</span>";
+	}	
+	
 	
 	$tr[]="
 	<tr>
@@ -1283,7 +1750,61 @@ function filter2_section(){
 	<tr>
 	<td valign='middle' style='width:25px'><img src='img/$icon_ufdb'></td>
 	<td valign='middle' style='font-size:18px;width:99%;color:$color'>".texttooltip("{service_status}: $WebFiltering_text","position:right:{dashboard_webfiltering_explain}","GoToUfdbguardMain()")."</td>
-	</tr>";
+	</tr>
+	<tr>
+	<td valign='middle' style='width:25px'>&nbsp;</td>
+	<td valign='middle'>
+			<table style='width:100%'>
+				<tr>
+					<td valign='middle' style='width:16px'>
+						<img src='img/$EnableGoogleSafeSearch_icon'>
+					</td>
+					<td valign='middle' style='font-size:14px;width:99%;color:$EnableGoogleSafeBrowsing_color'>".
+						texttooltip("{EnableGoogleSafeSearch} $EnableGoogleSafeSearch_text",
+						"position:right:Google SafeSearch","GoToUfdbguardMain()")."</td>
+				</tr>
+				<tr>
+					<td valign='middle' style='width:14px'>
+						<img src='img/$EnableGoogleSafeBrowsing_icon'>
+					</td>
+					<td valign='middle' style='font-size:14px;width:99%;color:$EnableGoogleSafeBrowsing_color'>".
+						texttooltip("Google SafeBrowsing $EnableGoogleSafeBrowsing_text",
+						"position:right:Google SafeBrowsing","GoToUfdbguardMain()")."</td>
+				</tr>			
+				<tr>
+					<td valign='middle' style='width:14px'>
+						<img src='img/$EnableSquidPhishTank_icon'>
+					</td>
+					<td valign='middle' style='font-size:14px;width:99%;color:$EnableSquidPhishTank_color'>".
+						texttooltip("PhishTank $EnableSquidPhishTank_text",
+						"position:right:PhishTank","GoToUfdbguardMain()")."</td>
+				</tr>		
+				<tr>
+					<td valign='middle' style='width:14px'>
+						<img src='img/$EnableHTTPSURBL_icon'>
+					</td>
+					<td valign='middle' style='font-size:14px;width:99%;color:$EnableHTTPSURBL_color'>".
+						texttooltip("SURBLs $EnableHTTPSURBL_text",
+						"position:right:SURBLs","GoToUfdbguardMain()")."</td>
+				</tr>		
+				<tr>
+					<td valign='middle' style='width:14px'>
+						<img src='img/$WebFilteringRansomware_icon'>
+					</td>
+					<td valign='middle' style='font-size:14px;width:99%;color:$WebFilteringRansomware_color'>".
+						texttooltip("Ransomares $WebFilteringRansomware_text",
+						"position:right:Ransomares","GoToUfdbguardMain()")."</td>
+				</tr>	
+				</table>
+		</td>								
+	</tr>			
+			
+";
+	
+
+	
+	
+	
 	
 
 	
@@ -1297,7 +1818,7 @@ function filter2_section(){
 		
 		if($UfdbEnableParanoidMode==0){
 			$icon_ParanoidMode="arrow-right-24-grey.png";
-			$text_ParanoidMode=" ({disabled})";
+			$text_ParanoidMode=" <span style='font-size:12px'>({disabled})</span>";
 			$colorParanoidMode="#898989";
 			$explain_ParanoidMode="{paranoid_squid_mode_explain}";
 		}
@@ -1355,7 +1876,7 @@ function filter2_section(){
 		<tr>
 		<td valign='middle' style='width:25px'><img src='img/$icon_category'></td>
 		<td valign='middle' style='font-size:18px;width:99%;color:$color_category'>".
-		texttooltip("{your_categories}","position:right:$explain_category","GotoYourcategories()")."</td>
+		texttooltip("{your_categories}","position:right:$explain_category",$js_categories)."</td>
 		</tr>";	
 		
 		
@@ -1364,6 +1885,13 @@ function filter2_section(){
 		<tr>
 		<td valign='middle' style='width:25px'><img src='img/$icon_stats'></td>
 			<td valign='middle' style='font-size:18px;width:99%;color:$color_stats'>".texttooltip("{statistics}$stats_text","position:right:{dashboard_webfilteringstats_explain}","GoToUfdb()")."</td>
+		</tr>";
+	}else{
+		$tr[]="
+		<tr>
+		<td valign='middle' style='width:25px'><img src='img/$icon_category'></td>
+		<td valign='middle' style='font-size:18px;width:99%;color:$color_category'>".
+		texttooltip("{your_categories}","position:right:$explain_category","$js_categories")."</td>
 		</tr>";
 	}
 	
@@ -1497,8 +2025,45 @@ function filter2_section(){
 
 	}
 	
+	$tr2[]="
+		<tr>
+		<td valign='middle' colspan=2 style='font-size:22px;font-weight:bold'>&nbsp;</td>
+	</tr>";
 	
 	
+	$tr2[]="
+	<tr>
+	<td valign='middle' colspan=2 style='font-size:22px;font-weight:bold;color:black'>{ads_protection}:</td>
+	</tr>";
+	
+	
+	$PrivoxyEnabled=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/PrivoxyEnabled"));
+	$PrivoxyInstalled=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/PrivoxyInstalled"));
+	
+	$icon_privoxy="arrow-right-24.png";
+	$colorprivoxy="black";
+	$js_privoxy="GotoPrivoxy()";
+	$text_privoxy=null;
+	$explain_privoxy="{privoxy_explain}";
+	
+	if($PrivoxyEnabled==0){
+		$icon_privoxy="arrow-right-24-grey.png";
+		$text_privoxy=" <span style='font-size:12px'>({disabled})</span>";
+		$colorprivoxy="#898989";
+		
+	}
+	if($PrivoxyInstalled==0){
+		$icon_privoxy="arrow-right-24-grey.png";
+		$text_privoxy=" <span style='font-size:12px'>({not_installed})</span>";
+		$js_privoxy="blur()";
+		$colorprivoxy="#898989";		
+	}
+	
+	$tr2[]="
+	<tr>
+		<td valign='middle' style='width:25px'><img src='img/$icon_privoxy'></td>
+		<td valign='middle' style='font-size:18px;width:99%;color:$colorprivoxy'>".texttooltip("{APP_PRIVOXY}$text_privoxy","position:right:$explain_privoxy","$js_privoxy")."</td>
+	</tr>";
 	
 	$tr2[]="</table>";
 	
@@ -1601,7 +2166,21 @@ function debug_section(){
 		<td valign='middle' style='font-size:18px;width:99%'>".
 		texttooltip("{performance}","position:top:{performance_squid_explain}",
 				"GotoSquidPerformances()")."</td>
-		</tr>";
+		</tr>
+		<tr>
+			<td valign='middle' style='width:25px'>&nbsp;</td>
+			<td valign='middle' style='font-size:16px;width:99%'>
+			<table style='width:100%'>
+				<tr>
+					<td valign='middle' style='width:25px'><img src='img/arrow-right-16.png'></td>	
+					<td valign='middle' style='font-size:16px;width:99%'>".		
+						texttooltip("{file_descriptors}","position:top:{file_descriptors_squid_explain}",
+				"javascript:Loadjs('squid.file_desc.php')")."</td>
+				</tr>
+				</table>
+			</td>
+		</tr>
+		";
 		
 		
 		$tr[]="

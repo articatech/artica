@@ -29,8 +29,8 @@ function install(){
 	$unix=new unix();
 	$php5=$unix->LOCATE_PHP5_BIN();
 	$nohup=$unix->find_program("nohup");
-	$GLOBALS["PROGRESS_FILE"]="/usr/share/artica-postfix/ressources/logs/wordpress.export.{$_REQUEST["servername"]}.progress";
-	$GLOBALS["LOG_FILE"]="/usr/share/artica-postfix/ressources/logs/web/wordpress.export.{$_REQUEST["servername"]}.progress.txt";
+	$GLOBALS["PROGRESS_FILE"]="/usr/share/artica-postfix/ressources/logs/wordpress.reconfigure.progress";
+	$GLOBALS["LOG_FILE"]="/usr/share/artica-postfix/ressources/logs/web/wordpress.reconfigure.progress.txt";
 	
 	@unlink($GLOBALS["PROGRESS_FILE"]);
 	@unlink($GLOBALS["LOG_FILE"]);
@@ -38,7 +38,9 @@ function install(){
 	@touch($GLOBALS["LOG_FILE"]);
 	@chmod($GLOBALS["PROGRESS_FILE"], 0755);
 	@chmod($GLOBALS["LOG_FILE"], 0755);
-	shell_exec("$nohup $php5 /usr/share/artica-postfix/exec.wordpress.download.php >{$GLOBALS["LOG_FILE"]} 2>&1 &");
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.wordpress.download.php >{$GLOBALS["LOG_FILE"]} 2>&1 &";
+	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
 	
 	
 }

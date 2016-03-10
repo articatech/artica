@@ -99,6 +99,7 @@ function PostfixLogs(){
 }
 
 function getPopupLogs(){
+	include_once(dirname(__FILE__)."/ressources/class.status.logs.inc");
 		$sock=new sockets();
 		if(isset($_GET["filter"])){
 			$tbl=unserialize(base64_decode($sock->getFrameWork("cmd.php?postfix-tail=yes&filter={$_GET["filter"]}")));

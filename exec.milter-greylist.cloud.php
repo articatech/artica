@@ -22,9 +22,35 @@ $GLOBALS["FORCE"]=false;
 if(preg_match("#--verbose#",@implode(" ", $argv))){$GLOBALS["FORCE"]=true;}
 $GLOBALS["WHOPROCESS"]="daemon";
 
+if(!is_file("/root/ftp-hostname")){
+	echo "/root/ftp-hostname No such file...\n";
+	die();
+}
+
+
+$unix=new unix();
 
 
 
+if(is_file("/etc/artica-postfix/spamassassin-rules1.cf")){
+	@unlink("/etc/artica-postfix/spamassassin-rules1.gz");
+	if(!$unix->compress("/etc/artica-postfix/spamassassin-rules1.cf", "/etc/artica-postfix/spamassassin-rules1.gz")){die();}
+	$MAIN["SPAMASS_1"]["TIME"]=time();
+	$MAIN["SPAMASS_1"]["MD5"]=md5_file("/etc/artica-postfix/spamassassin-rules1.gz");
+}
+if(is_file("/etc/artica-postfix/spamassassin-rules3.cf")){
+	@unlink("/etc/artica-postfix/spamassassin-rules3.gz");
+	if(!$unix->compress("/etc/artica-postfix/spamassassin-rules3.cf", "/etc/artica-postfix/spamassassin-rules3.gz")){die();}
+	$MAIN["SPAMASS_2"]["TIME"]=time();
+	$MAIN["SPAMASS_2"]["MD5"]=md5_file("/etc/artica-postfix/spamassassin-rules3.gz");
+}
+
+if(is_file("/etc/artica-postfix/spamassassin-rules4.cf")){
+	@unlink("/etc/artica-postfix/spamassassin-rules4.gz");
+	if(!$unix->compress("/etc/artica-postfix/spamassassin-rules4.cf", "/etc/artica-postfix/spamassassin-rules4.gz")){die();}
+	$MAIN["SPAMASS_3"]["TIME"]=time();
+	$MAIN["SPAMASS_3"]["MD5"]=md5_file("/etc/artica-postfix/spamassassin-rules4.gz");
+}
 $f=explode("\n",@file_get_contents("/etc/mail/greylist.conf"));
 
 
@@ -32,19 +58,37 @@ while (list ($num, $ligne) = each ($f) ){
 	if(!preg_match("#^(acl|dacl)\s+(blacklist|whitelist)#", $ligne)){continue;}
 	if(preg_match("#(blacklist|whitelist)\s+list\s+#", $ligne)){continue;}
 	if(preg_match("#acl whitelist from#", $ligne)){if(strpos($ligne, "*")==0){continue;}}
-	
-	
 	echo "$ligne\n";
 	$T[]=$ligne;
 	
 }
-
-
-
-
-
 @file_put_contents("/root/milter-greylist-database.txt", @implode("\n", $T));
-$unix=new unix();
+
+
+
+
+
+
+@unlink("/root/postfixcdir.gz");
+@unlink("/root/postfixdoms.gz");
+@file_put_contents("/root/postfixcdir.cdir", @implode("\n", $cdir));
+@file_put_contents("/root/postfixdoms.db", @implode("\n", $PostDomains));
+if(!$unix->compress("/root/postfixcdir.cdir", "/root/postfixcdir.gz")){die();}
+if(!$unix->compress("/root/postfixdoms.db", "/root/postfixdoms.gz")){die();}
+@unlink("/root/postfixcdir.cdir");
+@unlink("/root/postfixdoms.db");
+
+$md5=md5_file("/root/postfixcdir.gz");
+$MAIN["POSTFIX_CIDR"]["TIME"]=time();
+$MAIN["POSTFIX_CIDR"]["MD5"]=$md5;
+
+$md5=md5_file("/root/postfixdoms.gz");
+$MAIN["POSTFIX_DOMS"]["TIME"]=time();
+$MAIN["POSTFIX_DOMS"]["MD5"]=$md5;
+
+
+
+@unlink("/root/milter-greylist-database.gz");
 if(!$unix->compress("/root/milter-greylist-database.txt", "/root/milter-greylist-database.gz")){die();}
 @unlink("/root/milter-greylist-database.txt");
 
@@ -64,6 +108,28 @@ echo $cmdline."\n";
 shell_exec("$curl -T /root/milter-greylist-database.txt ftp://mirror.articatech.net/www.artica.fr/WebfilterDBS/ --user $ftp_passw");
 shell_exec("$curl -T /root/milter-greylist-database.gz ftp://mirror.articatech.net/www.artica.fr/WebfilterDBS/ --user $ftp_passw");
 echo "*****************************************************\n";
+
+if(is_file("/etc/artica-postfix/spamassassin-rules1.gz")){
+	shell_exec("$curl -T /etc/artica-postfix/spamassassin-rules1.gz ftp://mirror.articatech.net/www.artica.fr/WebfilterDBS/ --user $ftp_passw");
+}
+if(is_file("/etc/artica-postfix/spamassassin-rules3.gz")){
+	shell_exec("$curl -T /etc/artica-postfix/spamassassin-rules3.gz ftp://mirror.articatech.net/www.artica.fr/WebfilterDBS/ --user $ftp_passw");
+}
+if(is_file("/etc/artica-postfix/spamassassin-rules4.gz")){
+	shell_exec("$curl -T /etc/artica-postfix/spamassassin-rules4.gz ftp://mirror.articatech.net/www.artica.fr/WebfilterDBS/ --user $ftp_passw");
+}
+if(is_file("/root/postfixcdir.gz")){
+	shell_exec("$curl -T /root/postfixcdir.gz ftp://mirror.articatech.net/www.artica.fr/WebfilterDBS/ --user $ftp_passw");
+}
+if(is_file("/root/postfixdoms.gz")){
+	shell_exec("$curl -T /root/postfixdoms.gz ftp://mirror.articatech.net/www.artica.fr/WebfilterDBS/ --user $ftp_passw");
+}
+
+echo "*****************************************************\n";
+	
+	
+
+
 
 
 $q=new mysql();

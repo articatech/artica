@@ -463,6 +463,7 @@ function main_switch_op(){
 
 
 function main_logs(){
+	include_once(dirname(__FILE__)."/ressources/class.status.logs.inc");
 	$page=CurrentPageName();
 	$sock=new sockets();
 	$datas=$sock->getfile('ArticaBackupLogs');

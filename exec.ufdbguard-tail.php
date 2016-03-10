@@ -3,6 +3,7 @@ include_once(dirname(__FILE__).'/ressources/class.templates.inc');
 include_once(dirname(__FILE__).'/ressources/class.ufdbguard-tools.inc');
 include_once(dirname(__FILE__).'/framework/frame.class.inc');
 include_once(dirname(__FILE__)."/ressources/class.influx.inc");
+include_once(dirname(__FILE__)."/ressources/class.squid.familysites.inc");
 if(!isset($GLOBALS["ARTICALOGDIR"])){
 	$GLOBALS["ARTICALOGDIR"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/ArticaLogDir"); 
 	if($GLOBALS["ARTICALOGDIR"]==null){ $GLOBALS["ARTICALOGDIR"]="/var/log/artica-postfix"; } 
@@ -10,6 +11,7 @@ if(!isset($GLOBALS["ARTICALOGDIR"])){
 if(posix_getuid()<>0){die("Cannot be used in web server mode\n\n");}
 $GLOBALS["CLASS_UNIX"]=new unix();
 $GLOBALS["CLASS_SOCKET"]=new sockets();
+$GLOBALS["CLASS_FAMILY"]=new squid_familysite();
 
 $pidfile="/etc/artica-postfix/".basename(__FILE__).".pid";
 $pid=getmypid();
@@ -32,8 +34,19 @@ $GLOBALS["SQUID_PERFORMANCE"]=intval(@file_get_contents("/etc/artica-postfix/set
 $GLOBALS["UfdbEnableParanoidMode"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/UfdbEnableParanoidMode"));
 $GLOBALS["UfdbEnableParanoidBlockW"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/UfdbEnableParanoidBlockW"));
 $GLOBALS["UfdbEnableParanoidBlockC"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/UfdbEnableParanoidBlockC"));
+$GLOBALS["UfdbEnableParanoidBlockU"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/UfdbEnableParanoidBlockU"));
 
+
+$GLOBALS["UfdbguardSMTPNotifs"]=unserialize(base64_decode(@file_get_contents("/etc/artica-postfix/settings/Daemons/UfdbguardSMTPNotifs")));
 if(!isset($GLOBALS["UfdbguardSMTPNotifs"]["ENABLED"])){$GLOBALS["UfdbguardSMTPNotifs"]["ENABLED"]=0;}
+if(!isset($GLOBALS["UfdbguardSMTPNotifs"]["BLOCK_NOTIFS"])){$GLOBALS["UfdbguardSMTPNotifs"]["BLOCK_NOTIFS"]=0;}
+
+if($GLOBALS["UfdbguardSMTPNotifs"]["ENABLED"]==0){$GLOBALS["UfdbguardSMTPNotifs"]["BLOCK_NOTIFS"]=0;}
+events("SMTP Notification: {$GLOBALS["UfdbguardSMTPNotifs"]["ENABLED"]}");
+events("Threats Notifications: {$GLOBALS["UfdbguardSMTPNotifs"]["BLOCK_NOTIFS"]}");
+events("SQUID_PERFORMANCE: {$GLOBALS["SQUID_PERFORMANCE"]}");
+
+
 
 $GLOBALS["RELOADCMD"]="{$GLOBALS["nohup"]} {$GLOBALS["PHP5_BIN"]} ".dirname(__FILE__)."/exec.squidguard.php --reload-ufdb";
 if($argv[1]=='--date'){echo date("Y-m-d H:i:s")."\n";}
@@ -141,7 +154,17 @@ if(strpos($buffer,'execdomainlist for')>0){return ;}
 if(strpos($buffer,'dynamic_domainlist_updater_main')>0){return ;}
 
 
-
+if(preg_match("#FATAL ERROR: connection queue is full#",$buffer)){
+	$TimeFile="/etc/artica-postfix/pids/webfiltering-connection.queue.full";
+	if(!IfFileTime($TimeFile,5)){return;}
+	$Threads=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/UfdbGuardThreads"));
+	$ThreadNew=$Threads+5;
+	if($ThreadNew>128){$ThreadNew=128;}
+	squid_admin_mysql(0, "Webfiltering Service connection queue is full increase Threads from $Threads to $ThreadNew [action=restart]", $buffer,__FILE__,__LINE__);
+	@file_put_contents("/etc/artica-postfix/settings/Daemons/UfdbGuardThreads", $ThreadNew);
+	shell_exec("{$GLOBALS["nohup"]} /etc/init.d/ufdb restart --force >/dev/null 2>&1 &");
+	return;
+}
 
 if(stripos(" $buffer","HUP signal received to reload the configuration")>0){
 	squid_admin_mysql(1, "Webfiltering Service was reloaded - reloading databases [action=notify]", $buffer,__FILE__,__LINE__);
@@ -183,6 +206,12 @@ if(preg_match("#Changing daemon status to \"error\"#",$buffer,$re)){
 if(preg_match("#FATAL ERROR: cannot open configuration file\s+\/etc\/squid3\/ufdbGuard\.conf#i",$buffer,$re)){
 	squid_admin_mysql(0, "Webfiltering error, Open Configuration File failed [action=restart service]", $buffer,__FILE__,__LINE__);
 	shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.ufdb.php --restart --force --ufdbtail --fatal-error >/dev/null 2>&1 &");
+	return;
+}
+
+if(preg_match("#FATAL.*?read failed on \"(.+?)\".*?Bad address#i",$buffer,$re)){
+	squid_admin_mysql(0, "Webfiltering service error on database: {$re[1]}  [action=Webfiltering Emergency]", $buffer,__FILE__,__LINE__);
+	shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.ufdb.emergency.php --ufdb-on >/dev/null 2>&1 &");
 	return;
 }
 
@@ -288,10 +317,8 @@ if(preg_match("#There are no sources and there is no default ACL#i", $buffer)){
 	
 	if(preg_match("#FATAL ERROR: cannot bind daemon socket: Address already in use#", $buffer)){
 		events_ufdb_exec("ERROR DETECTED : $buffer `cannot bind daemon socket`");
-		squid_admin_mysql(0, "Fatal ERROR: cannot bind daemon socket: Address already in use", $buffer,__FILE__,__LINE__);
+		squid_admin_mysql(1, "Fatal ERROR: cannot bind daemon socket: Address already in use [action=restart]", $buffer,__FILE__,__LINE__);
 		ufdbguard_admin_events("Fatal ERROR: cannot bind daemon socket: Address already in use",__FUNCTION__,__FILE__,__LINE__,"ufdbguard-service");
-		$GLOBALS["CLASS_UNIX"]->send_email_events("ufdbguard: service Error; Address already in use","Ufdbguard 
-		: $buffer\n","ufdbguard-service");
 		xsyslog("Restarting ufdb service...");
 		shell_exec("{$GLOBALS["nohup"]} /etc/init.d/ufdb restart >/dev/null 2>&1 &");
 		return;
@@ -400,15 +427,23 @@ if(preg_match("#There are no sources and there is no default ACL#i", $buffer)){
 	}
 	
 	if(preg_match("#BLOCK (.*?)\s+(.+?)\s+(.+?)\s+(.+?)\s+(|http|https|ftp|ftps)://(.+?)myip=(.+)$#",$buffer,$re)){
-		if($GLOBALS["SQUID_PERFORMANCE"]>2){return;}
+		
+		
+		
+		
 		$user=trim($re[1]);
 		$local_ip=$re[2];
 		$rulename=$re[3];
 		$category=$re[4];
 		$www=$re[6];
 		$public_ip=$re[7];
+		
+		//events("BLOCK[".__LINE__."]: $user/$local_ip - $www");
+		
+		
 		if(strpos($www,"/")>0){$tb=explode("/",$www);$www=$tb[0];}
 		if(preg_match("#^www\.(.+)#", $www,$re)){$www=$re[1];}
+		if(preg_match("#([0-9]+)\.addr#", $www)){$www=long2ip($re[1]);}
 		
 		if(preg_match("#^([0-9\.]+)#", $local_ip,$re)){$local_ip=$re[1];}
 		$date=time();
@@ -417,7 +452,7 @@ if(preg_match("#There are no sources and there is no default ACL#i", $buffer)){
 		if($user=="-"){$user=null;}
 		$MAC=$GLOBALS["CLASS_UNIX"]->IpToMac($local_ip);
 		$time=time();
-		if(!is_dir("{$GLOBALS["ARTICALOGDIR"]}/pagepeeker")){@mkdir("{$GLOBALS["ARTICALOGDIR"]}/pagepeeker",600,true);}
+		
 		if(preg_match("#^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$#", $www)){$public_ip=$www;$www=$GLOBALS["CLASS_UNIX"]->IpToHostname($www);}
 		
 		
@@ -425,26 +460,47 @@ if(preg_match("#There are no sources and there is no default ACL#i", $buffer)){
 		if($Clienthostname==null){$Clienthostname=$local_ip;}
 		
 		paranoidmode($local_ip,$www);
+		
+		
 		$q=new influx();
+		if($GLOBALS["UfdbguardSMTPNotifs"]["BLOCK_NOTIFS"]==1){
+			events("Write notif");
+			$line_notif=date("H:i:s")." [$www]: blocked domain: User: $user/$local_ip/$Clienthostname, Category: $category, Rule: $rulename";
+			$q->insert_ufdb_notif($line_notif);
+		}
+		
+		if($GLOBALS["SQUID_PERFORMANCE"]>2){return;}
+		
+		
+		
 		$line="$time:::$user:::$category:::$rulename:::$public_ip:::blocked domain:::blocked domain:::$Clienthostname:::$www:::$local_ip";
+		
+		
 		$q->insert_ufdb($line);
+		
+
+		
 		return;
 		
 	}
 	
 	if(preg_match("#BLOCK\s+(.*?)\s+(.+?)\s+(.*?)\s+(.+?)\s+(.+?)\s+[A-Z]+#", $buffer,$re)){
-		if($GLOBALS["SQUID_PERFORMANCE"]>2){return;}
+		
 		$date=time();
 		$user=trim($re[1]);
 		$local_ip=$re[2];
 		$rulename=$re[3];
 		$category=$re[4];
 		$uri=$re[5];
+		
+		//events("BLOCK[".__LINE__."]: $user/$local_ip - $www Notif:{$GLOBALS["UfdbguardSMTPNotifs"]["BLOCK_NOTIFS"]}");
+		
 		if(preg_match("#^([0-9\.]+)#", $local_ip,$re)){$local_ip=$re[1];}
 		$time=time();
 		$array=parse_url($uri);	
 		$www=$array["host"];
 		if(strpos($www, ":")>0){$t=explode(":", $www);$www=$t[0];}
+		if(preg_match("#([0-9]+)\.addr#", $www)){$www=long2ip($re[1]);}
 		
 		$category=CategoryCodeToCatName($category);
 		$MAC=$GLOBALS["CLASS_UNIX"]->IpToMac($local_ip);
@@ -454,8 +510,17 @@ if(preg_match("#There are no sources and there is no default ACL#i", $buffer)){
 		if($Clienthostname==null){$Clienthostname=$local_ip;}
 		if($user=="-"){$user=null;}
 		
-		
+	
+		CreateCounter($www,$local_ip,$user,$category);
 		paranoidmode($local_ip,$www);
+		$q=new influx();
+		
+		if($GLOBALS["UfdbguardSMTPNotifs"]["BLOCK_NOTIFS"]==1){
+			$line_notif=date("H:i:s")." [$www]: blocked domain: User: $user/$local_ip/$Clienthostname, Category: $category, Rule: $rulename";
+			$q->insert_ufdb_notif($line_notif);
+		}
+		
+		if($GLOBALS["SQUID_PERFORMANCE"]>2){return;}
 		
 		$q=new influx();
 		$line="$time:::$user:::$category:::$rulename:::$public_ip:::blocked domain:::blocked domain:::$Clienthostname:::$www:::$local_ip";
@@ -476,93 +541,219 @@ function HostnameToIp($hostname){
 	return $GLOBALS["IPNAMES2"][$hostname];
 }
 
+function CreateCounter($domain,$ip,$userid,$category){
+	$category=str_replace("/", "_", $category);
+	if(count($GLOBALS["MEMORY_FAMILY"])>1000){$GLOBALS["MEMORY_FAMILY"]=array();}
+	
+	if(!isset($GLOBALS["MEMORY_FAMILY"][$domain])){
+		$f=new squid_familysite();
+		$GLOBALS["MEMORY_FAMILY"][$domain]=$f->GetFamilySites($domain);
+	}
+	
+	$domain=$GLOBALS["MEMORY_FAMILY"][$domain];
+	
+	$Y=date("Y");
+	$M=date("M");
+	$D=date("d");
+	$H=date("H");
+	$dirCreate="/home/artica/ufdbcounters/$Y/$M/$D/$H";
+	if(!is_dir($dirCreate)){@mkdir($dirCreate,0755,true);}
+	
+	$YearC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/TOT"));
+	$YearC=$YearC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/TOT", $YearC);
+	
+	$MONTHC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/TOT"));
+	$MONTHC=$MONTHC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/TOT", $MONTHC);	
+	
+	
+	$DAYC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/TOT"));
+	$DAYC=$DAYC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$D/TOT", $DAYC);
+	
+	$HOURC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/TOT"));
+	$HOURC=$HOURC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/TOT", $HOURC);
+	
 
+	if(!is_dir("/home/artica/ufdbcounters/$Y/$M/$D/$H/$domain")){@mkdir("/home/artica/ufdbcounters/$Y/$M/$D/$H/$domain",0755,true);}
+	$YearC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$domain/TOT"));
+	$YearC=$YearC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$domain/TOT", $YearC);
+	
+	$MONTHC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$domain/TOT"));
+	$MONTHC=$MONTHC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$domain/TOT", $MONTHC);
+	
+	$DAYC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$domain/TOT"));
+	$DAYC=$DAYC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$D/$domain/TOT", $DAYC);
+	
+	$HOURC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$domain/TOT"));
+	$HOURC=$HOURC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$domain/TOT", $HOURC);
+	
+	
+	if($userid<>null){
+		$YearC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$userid"));
+		$YearC=$YearC+1;
+		@file_put_contents("/home/artica/ufdbcounters/$Y/$userid", $YearC);
+		
+		$MONTHC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$userid"));
+		$MONTHC=$MONTHC+1;
+		@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$userid", $MONTHC);
+		
+		
+		$DAYC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$userid"));
+		$DAYC=$DAYC+1;
+		@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$D/$userid", $DAYC);
+		
+		$HOURC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$userid"));
+		$HOURC=$HOURC+1;
+		@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$userid", $HOURC);
+		
+	}
+
+	
+	$YearC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$ip"));
+	$YearC=$YearC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$ip", $YearC);
+	
+	$MONTHC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$ip"));
+	$MONTHC=$MONTHC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$ip", $MONTHC);
+	
+	$DAYC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$ip"));
+	$DAYC=$DAYC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$D/$ip", $DAYC);
+
+	$HOURC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$ip"));
+	$HOURC=$HOURC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$ip", $HOURC);
+	
+	
+	$YearC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$category"));
+	$YearC=$YearC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$category", $YearC);
+	
+	$MONTHC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$category"));
+	$MONTHC=$MONTHC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$category", $MONTHC);
+	
+	$DAYC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$category"));
+	$DAYC=$DAYC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$D/$category", $DAYC);
+	
+	$HOURC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$category"));
+	$HOURC=$HOURC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$category", $HOURC);	
+	
+	
+	
+	
+	$YearC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$domain/$ip"));
+	$YearC=$YearC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$domain/$ip", $YearC);
+	
+	$MONTHC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$domain/$ip"));
+	$MONTHC=$MONTHC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$domain/$ip", $MONTHC);
+	
+	$DAYC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$domain/$ip"));
+	$DAYC=$DAYC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$D/$domain/$ip", $DAYC);
+	
+	$HOURC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$domain/$ip"));
+	$HOURC=$HOURC+1;
+	@file_put_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$domain/$ip", $HOURC);	
+	
+	
+	
+}
 
 function paranoidmode($local_ip,$www){
 	if($GLOBALS["UfdbEnableParanoidMode"]==0){return;}
-	if(intval($GLOBALS["UfdbEnableParanoidBlockW"])==0){$GLOBALS["UfdbEnableParanoidBlockW"]=500;}
-	if(intval($GLOBALS["UfdbEnableParanoidBlockC"])==0){$GLOBALS["UfdbEnableParanoidBlockW"]=1000;}
-	$today=date("Ymd");
+	if(intval($GLOBALS["UfdbEnableParanoidBlockW"])<1000){$GLOBALS["UfdbEnableParanoidBlockW"]=5000;}
+	if(intval($GLOBALS["UfdbEnableParanoidBlockC"])<1000){$GLOBALS["UfdbEnableParanoidBlockW"]=5000;}
+	if(intval($GLOBALS["UfdbEnableParanoidBlockU"])==0){$GLOBALS["UfdbEnableParanoidBlockU"]=100;}
 	
-	if(!isset($GLOBAL["PARANOID"])){
-		if(is_file("/etc/squid3/ufdbgclient.paranoid")){
-			$GLOBAL["PARANOID"]=unserialize(@file_get_contents("/etc/squid3/ufdbgclient.paranoid"));
-		}
+	if(isset($GLOBALS["UfdbEnableParanoidModeCounter"])){$GLOBALS["UfdbEnableParanoidModeCounter"]=0;}
+	$GLOBALS["UfdbEnableParanoidModeCounter"]=$GLOBALS["UfdbEnableParanoidModeCounter"]+1;
+
+	
+	if(!isset($GLOBALS["MEMORY_FAMILY"][$www])){
+		$f=new squid_familysite();
+		$GLOBALS["MEMORY_FAMILY"][$www]=$f->GetFamilySites($www);
 	}
 	
+	$www=$GLOBALS["MEMORY_FAMILY"][$www];
 	
-	if(!isset($GLOBAL["PARANOID"][$today])){
-		$GLOBAL["PARANOID"][$today]=array();
-		if(count($GLOBAL["PARANOID"])>1){
-			unset($GLOBAL["PARANOID"]);
-			$GLOBAL["PARANOID"][$today]=array();
-		}
+	$Y=date("Y");
+	$M=date("M");
+	$D=date("d");
+	$H=date("H");
 	
-	}
-	
-	
-	if(!isset($GLOBAL["PARANOID"][$today][$www])){
-		$GLOBAL["PARANOID"][$today][$www]=1;
-	}else{
-		$GLOBAL["PARANOID"][$today][$www]=$GLOBAL["PARANOID"][$today][$www]+1;
-	}
+	$DAYC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$www/$local_ip"));
+//	$HOURC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$www/$local_ip"));
 	
 	
-	
-	
-	if(!isset($GLOBAL["PARANOID"][$today][$local_ip]["COUNT"])){
-		$GLOBAL["PARANOID"][$today][$local_ip]["COUNT"]=1;
-		$GLOBAL["PARANOID"][$today][$local_ip]["WWW"][$www]=1;
-	}else{
-		$GLOBAL["PARANOID"][$today][$local_ip]["COUNT"]=$GLOBAL["PARANOID"][$today][$local_ip]["COUNT"]+1;
-		
-		if(!isset($GLOBAL["PARANOID"][$today][$local_ip]["WWW"][$www])){
-			$GLOBAL["PARANOID"][$today][$local_ip]["WWW"][$www]=1;
-		}else{
-			$GLOBAL["PARANOID"][$today][$local_ip]["WWW"][$www]=$GLOBAL["PARANOID"][$today][$local_ip]["WWW"][$www]+1;
-		}
-	}
-		
-	
-	
-	
-	if($GLOBAL["PARANOID"][$today][$www]>$GLOBALS["UfdbEnableParanoidBlockW"]-1){
-		
-		$sql="INSERT IGNORE INTO `webfilters_paranoid` (pattern,object,zDate) VALUES ('$www','dstdomain',NOW())";
-		$q=new mysql_squid_builder();
-		$q->QUERY_SQL($sql);
-		if(!$q->ok){
-			squid_admin_mysql(0, "Paranoid mode FATAL! $q->mysql_error", null,__FILE__,__LINE__);
-			
-		}else{
-			squid_admin_mysql(0, "Paranoid mode $www is banned! after {$GLOBAL["PARANOID"][$today][$www]} events", null,__FILE__,__LINE__);
+	if($DAYC>$GLOBALS["UfdbEnableParanoidBlockU"]){
+		$pattern="$local_ip/$www";
+		$sql="INSERT IGNORE INTO `webfilters_paranoid` (pattern,object,zDate) VALUES ('$pattern','dstdomainsrc',NOW())";
+		$md5=md5($sql);
+		if(!isset($GLOBALS["SQLSAVED"][$md5])){
+			$q=new mysql_squid_builder();
+			$q->QUERY_SQL($sql);
+			if(!$q->ok){squid_admin_mysql(0, "Paranoid mode FATAL! $q->mysql_error", null,__FILE__,__LINE__);return;}
+			$GLOBALS["SQLSAVED"][$md5]=true;
+			squid_admin_mysql(0, "Paranoid mode bann $local_ip to $www  after $DAYC events", null,__FILE__,__LINE__);
 			shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.squid.paranoid.php >/dev/null 2>&1 &");
 		}
-		$GLOBAL["PARANOID"][$today][$www]=0;
 	}
 	
+	$DAYC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$www/TOT"));
+//	$HOURC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$www/TOT"));
 	
-	if($GLOBAL["PARANOID"][$today][$local_ip]["COUNT"]>$GLOBALS["UfdbEnableParanoidBlockC"]-1){
+	if($DAYC>$GLOBALS["UfdbEnableParanoidBlockW"]-1){
+		$sql="INSERT IGNORE INTO `webfilters_paranoid` (pattern,object,zDate) VALUES ('$www','dstdomain',NOW())";
+		$md5=md5($sql);
+		if(!isset($GLOBALS["SQLSAVED"][$md5])){
+			$q=new mysql_squid_builder();
+			$q->QUERY_SQL($sql);
+			if(!$q->ok){squid_admin_mysql(0, "Paranoid mode FATAL! $q->mysql_error", null,__FILE__,__LINE__);return;}
+			$GLOBALS["SQLSAVED"][$md5]=true;
+			squid_admin_mysql(0, "Paranoid mode $www is banned! after $DAYC events", null,__FILE__,__LINE__);
+			shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.squid.paranoid.php >/dev/null 2>&1 &");
+		}
+
+	}
+	
+	$DAYC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$local_ip/TOT"));
+//	$HOURC=intval(@file_get_contents("/home/artica/ufdbcounters/$Y/$M/$D/$H/$local_ip/TOT"));
+	
+	
+	if($DAYC>$GLOBALS["UfdbEnableParanoidBlockC"]-1){
 		$sql="INSERT IGNORE INTO `webfilters_paranoid` (pattern,object,zDate) VALUES ('$local_ip','src',NOW())";
-		$q=new mysql_squid_builder();
-		$q->QUERY_SQL($sql);
-		if(!$q->ok){
-			squid_admin_mysql(0, "Paranoid mode FATAL! $q->mysql_error", null,__FILE__,__LINE__);
-				
-		}else{
+		$md5=md5($sql);
+		if(!isset($GLOBALS["SQLSAVED"][$md5])){
+			$q=new mysql_squid_builder();
+			$q->QUERY_SQL($sql);
+			if(!$q->ok){squid_admin_mysql(0, "Paranoid mode FATAL! $q->mysql_error", null,__FILE__,__LINE__);return;}
 			$DZ=array();
-			while (list ($domains, $events) = each ($GLOBAL["PARANOID"][$today][$local_ip]["WWW"])){
-				$DZ[]="$domains $events time(s)";
-			}
-			
-			squid_admin_mysql(0, "Paranoid mode $local_ip is banned! after {$GLOBAL["PARANOID"][$today][$local_ip]["COUNT"]} events", @implode("\n", $DZ),__FILE__,__LINE__);
+			squid_admin_mysql(0, "Paranoid mode $local_ip is banned! after $DAYC events", null,__FILE__,__LINE__);
+			$GLOBALS["SQLSAVED"][$md5]=true;
 			shell_exec("{$GLOBALS["nohup"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.squid.global.access.php >/dev/null 2>&1 &");
 		}
-		$GLOBAL["PARANOID"][$today][$local_ip]=array();
 	}
 	
-	
-	@file_put_contents("/etc/squid3/ufdbgclient.paranoid", serialize($GLOBAL["PARANOID"]));
+	if($GLOBALS["UfdbEnableParanoidModeCounter"]>5){
+
+		if(isset($GLOBALS["MEMORY_FAMILY"])){
+			if(count($GLOBALS["MEMORY_FAMILY"])>5000){$GLOBALS["MEMORY_FAMILY"]=array();}
+		}
+		$GLOBALS["UfdbEnableParanoidModeCounter"]=0;
+	}
 	
 }
 

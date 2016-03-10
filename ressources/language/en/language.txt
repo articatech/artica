@@ -196,10 +196,10 @@ Specify an empty value (address_verify_sender =) or <> if you want to use the nu
 <antispam_text>Anti-spam parameters in order to block unwanted mails</antispam_text>
 <antispam_user_rules>Your SPAM settings</antispam_user_rules>
 <antispam_user_rules_text>Define actions used when a SPAM to you is detected.</antispam_user_rules_text>
-<antivirus>antivirus</antivirus>
-<antivirus daemon>antivirus daemon</antivirus daemon>
+<antivirus>Antivirus</antivirus>
+<antivirus daemon>Antivirus daemon</antivirus daemon>
 <antivirus settings>Antivirus Settings</antivirus settings>
-<antivirus_database>antivirus database</antivirus_database>
+<antivirus_database>Antivirus database</antivirus_database>
 <antivirus_engine>Antivirus Engine</antivirus_engine>
 <antivirus_group_rules>Group rules</antivirus_group_rules>
 <antivirus_group_rules_text>Set the antivirus rules group according your personal privileges</antivirus_group_rules_text>
@@ -355,10 +355,10 @@ automatically removing malicious and potentially hostile programs from incoming 
 <APP_MIMEDEFANGX>MimeDefang Multiplexor</APP_MIMEDEFANGX>
 <APP_MSMTP>msmtp (SMTP client)</APP_MSMTP>
 <APP_MSMTP_NOT_INSTALLED>You need to install new SMTP engine version in order to use Authentication feature</APP_MSMTP_NOT_INSTALLED>
-<APP_MYSQL>Mysql database server</APP_MYSQL>
+<APP_MYSQL>MySQL database server</APP_MYSQL>
 <APP_MYSQL_ARTICA>MySQL server</APP_MYSQL_ARTICA>
-<APP_MYSQL_CLUSTER_MGMT>Mysql Cluster management</APP_MYSQL_CLUSTER_MGMT>
-<APP_MYSQL_CLUSTER_REPLICA>Mysql Cluster replica</APP_MYSQL_CLUSTER_REPLICA>
+<APP_MYSQL_CLUSTER_MGMT>MySQL Cluster management</APP_MYSQL_CLUSTER_MGMT>
+<APP_MYSQL_CLUSTER_REPLICA>MySQL Cluster replica</APP_MYSQL_CLUSTER_REPLICA>
 <APP_NFS>Network File System server</APP_NFS>
 <APP_NMAP>nMap Security Scanner</APP_NMAP>
 <APP_NTPD>Network Time Protocol</APP_NTPD>
@@ -645,7 +645,7 @@ Examples of such clients are MicroSoft Outlook Express version 4 and MicroSoft E
 <buildSambaSettings>Build profile settings</buildSambaSettings>
 <build_certificate>Build certificate</build_certificate>
 <businessRole>Business Role</businessRole>
-<cached>cached</cached>
+<cached>Cached</cached>
 <calendar>Calendar</calendar>
 <calling_daemon_to_perform_operation>calling artica daemon to perform operations</calling_daemon_to_perform_operation>
 <cancel>cancel</cancel>
@@ -1116,9 +1116,9 @@ If devices or this server is stolen, nobody can use it except your users compute
 <error_module_not_enabled>This module is not enabled</error_module_not_enabled>
 <error_module_not_installed>This module is not installed</error_module_not_installed>
 <error_must_be_ip_address>Error this must be a TCP/IP address</error_must_be_ip_address>
-<ERROR_MYSQL_CONNECTION>Mysql connection failed</ERROR_MYSQL_CONNECTION>
+<ERROR_MYSQL_CONNECTION>MySQL connection failed</ERROR_MYSQL_CONNECTION>
 <error_mysql_user>Error on MYSQL account</error_mysql_user>
-<error_mysql_user_text>It seems that the Mysql account is not set or failed, please set it on GLOBAL SETTINS/Mysql database</error_mysql_user_text>
+<error_mysql_user_text>It seems that the MySQL account is not set or failed, please set it on GLOBAL SETTINS/Mysql database</error_mysql_user_text>
 <error_need_smbmount_feature>To enable this feature, you need smbmount application</error_need_smbmount_feature>
 <ERROR_NEED_TO_SAVEAPPLY>You need to perform a Save & Apply to apply these parameters on production mode</ERROR_NEED_TO_SAVEAPPLY>
 <error_network>Network error</error_network>
@@ -1178,7 +1178,7 @@ If devices or this server is stolen, nobody can use it except your users compute
 <error_waiting_sync>Error, waiting synchronization...</error_waiting_sync>
 <error_want_operation>Do you want perform this operation ?</error_want_operation>
 <error_wrong_artica_version>Error wrong Artica version</error_wrong_artica_version>
-<ERR_MYSQL_IS_REMOTE>Error: Mysql has been set has remote server (not local) this feature cannot be performed</ERR_MYSQL_IS_REMOTE>
+<ERR_MYSQL_IS_REMOTE>Error: MySQL has been set has remote server (not local) this feature cannot be performed</ERR_MYSQL_IS_REMOTE>
 <ERR_NO_DOC_FOUND>No document match your query</ERR_NO_DOC_FOUND>
 <ERR_NO_PASS>Error: please input password before submiting</ERR_NO_PASS>
 <ERR_NO_PASS_MATCH>Error: passwords fields did not match.</ERR_NO_PASS_MATCH>
@@ -1888,7 +1888,7 @@ and would otherwise be confused with a "type:table" pattern.</mynetworks_text>
 The default is to use the local machine name, $myhostname, which defaults to the name of the machine.[br] Unless you are running a really small site, you probably want to change that into $mydomain, which defaults to the parent domain of the machine name.
 [br]For the sake of consistency between sender and recipient addresses, myorigin also specifies the domain name that is appended to an unqualified recipient address.</myorigin_text>
 <myorigin_title>What domain name to use in outbound mail ?</myorigin_title>
-<MYSQL_CLUSTER>Mysql cluster</MYSQL_CLUSTER>
+<MYSQL_CLUSTER>MySQL cluster</MYSQL_CLUSTER>
 <MYSQL_CLUSTER_TEXT>Increase mysql Database high availability by build a set of mysql clusters nodes</MYSQL_CLUSTER_TEXT>
 <my_address_book>My Address Book</my_address_book>
 <name>Name</name>
@@ -2142,18 +2142,18 @@ but it shares all Postfix program and documentation files with other instances</
 [br]The real reason for the existence of Postfix restriction classes is more mundane:[br]
 you can't specify a lookup table on the right-hand side of a Postfix access table.[br]
 This is because Postfix needs to open lookup tables ahead of time, but the reader probably does not care about these low-level details.</postfix_restrictions_classes_text>
-<postfix_rules>postfix rules</postfix_rules>
+<postfix_rules>Postfix rules</postfix_rules>
 <postfix_statistics>SMTP Statistics</postfix_statistics>
 <postfix_status>Postfix mail system status</postfix_status>
 <postfix_status_stopped>Postfix mail system is stopped</postfix_status_stopped>
-<postmaster>postmaster</postmaster>
+<postmaster>Postmaster</postmaster>
 <prepend to the subject>Prepend to the Subject</prepend to the subject>
 <PREPEND_help>Prepend  the  specified  message header to the message.
 [br]When more than one PREPEND action  executes,[br]the  first prepended header appears before the second etc. prepended header.
 [br][strong]Note: this action must execute before  the  message content  is received;[br] it cannot execute in the context of "smtpd end of data restrictions"[/strong]</PREPEND_help>
-<prepend_text>prepend the matched text to</prepend_text>
-<previous>previous</previous>
-<privileges>privileges</privileges>
+<prepend_text>Prepend the matched text to</prepend_text>
+<previous>Previous</previous>
+<privileges>Privileges</privileges>
 <privileges_text>Edit privileges and security role of users stored in this group</privileges_text>
 <Process Server Settings>Process Server Settings</Process Server Settings>
 <processes>processes</processes>
@@ -3335,7 +3335,7 @@ Artica will save the UID of this external storage.[br]This means if this storage
 <all_days>All days</all_days>
 <STORAGE_TYPE>storage type</STORAGE_TYPE>
 <BACKUP_TASKS>backup tasks</BACKUP_TASKS>
-<BACKUP_ALL_MEANS>Mysql datas, ldap database, Mailboxes,artica settings</BACKUP_ALL_MEANS>
+<BACKUP_ALL_MEANS>MySQL datas, ldap database, Mailboxes,artica settings</BACKUP_ALL_MEANS>
 <BACKUP_TASK_CONFIRM_DELETE>Delete this backup task ?</BACKUP_TASK_CONFIRM_DELETE>
 <BACKUP_TASK_TEST>Perform tests operation on this task.[br]The backup will be not performed,[br] only a test connection will be executed</BACKUP_TASK_TEST>
 <WIZARD_CONFIGURE_CONTAINER_EXPLAIN>The backup process will create a container (*\artica-backup\servername\"container") a container is a directory that store for a defined time backup files.[br]
@@ -3668,7 +3668,7 @@ Note that unwriteable directories are shown as usual.</hide_unwriteable_files_te
 <left_menu_internal_hard_drives>Hard drives</left_menu_internal_hard_drives>
 <main_settings_samba>Global configuration</main_settings_samba>
 <APP_PHPMYADMIN>PhpMyAdmin</APP_PHPMYADMIN>
-<APP_PHPMYADMIN_TEXT>Manage, display and browse Mysql databases</APP_PHPMYADMIN_TEXT> 
+<APP_PHPMYADMIN_TEXT>Manage, display and browse MySQL databases</APP_PHPMYADMIN_TEXT> 
 <squid_filter_stats_text>Create filter in order to display specifics events</squid_filter_stats_text>
 <last_24_h>last 24 hours</last_24_h>
 <last_48_h>last 48 hours</last_48_h>
@@ -4886,10 +4886,10 @@ In fact it is shorthand for a regular expression with the following differences:
 <enable_redirection_service_text>This feature will enable redirection service.[br]
 Redirection service will forward mails to other external specified recipients.[br]In this case, this server will not handle mails, mails will be forwarded.[br]
 Typically this feature can be used to forward all incoming mails to your ISPs such has hotmail, yahoo...[br]
-redirection rules database are not stored in the LDAP database but in Mysql Database.[br]
-You can use an external Mysql server for redirection checking process. </enable_redirection_service_text>
+redirection rules database are not stored in the LDAP database but in MySQL Database.[br]
+You can use an external MySQL server for redirection checking process. </enable_redirection_service_text>
 
-<mysql_username>Mysql username</mysql_username>
+<mysql_username>MySQL username</mysql_username>
 <use_external_database>Use external database</use_external_database>
 <redirect_messages>Redirect messages to</redirect_messages>
 <redirect_messages_text>Forward incoming messages to an external or Internal address, mails will not be delivered to the original recipient</redirect_messages_text>
@@ -4954,10 +4954,10 @@ Dropbox works on both Mac and Windows.[br]
 <NEW_NIGHTLYBUILD>New nightly</NEW_NIGHTLYBUILD>
 <NEW_NIGHTLYBUILD_TEXT>A new Artica nightly build is available, you can upgrade to it.[br]A Nightly Build is a version that is not updated automatically by your current Artica, it is designed to answer features requests, bugs fix before any tests and QA operations by our support team.</NEW_NIGHTLYBUILD_TEXT>
 <load_balancing>Load balancing</load_balancing>
-<add_backend_server>add a back end server</add_backend_server>
+<add_backend_server>Add a back end server</add_backend_server>
 <add_backend_server_loadb_text>Dispatch traffic to a back end server</add_backend_server_loadb_text>
-<backend-timout>backend timout</backend-timout>
-<backend-timout-xr>timeout for back ends connections.[br]When Load Balancer is trying to connect to a back end, and this value is exceeded, then the connection is
+<backend-timout>Backend timout</backend-timout>
+<backend-timout-xr>Timeout for back ends connections.[br]When Load Balancer is trying to connect to a back end, and this value is exceeded, then the connection is
 terminated, and the back end is marked dead</backend-timout-xr>
 <client-timout-xr>timeout for data transfers. Within this period clients must send data, or the connection is terminated</client-timout-xr>
 <xr_check_explain>verify each back end, to see if the back end is still up. If the back end accepts connections, then Load balancer marks it as "alive". Using this flag, simple TCP-style health checks are implemented.

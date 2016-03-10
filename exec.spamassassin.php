@@ -21,6 +21,7 @@ if(posix_getuid()<>0){die("Cannot be used in web server mode\n\n");}
 	$user=new usersMenus();
 	$unix=new unix();
 	$spamd=$unix->find_program("spamd");
+	if(is_file("/usr/local/bin/spamd")){$spamd="/usr/local/bin/spamd";}
 	
 	if(!is_file($spamd)){ die();}
 	if($argv[1]=='--sa-update'){sa_update();die();}
@@ -38,16 +39,24 @@ if(posix_getuid()<>0){die("Cannot be used in web server mode\n\n");}
 	if($argv[1]=='--spam-tests'){SpamTests($argv[2]);die();}
 	
 	
+	
 echo "Starting......: ".date("H:i:s")." spamassassin starting building configuration\n";	
 SaveConf();
+echo "Starting......: ".date("H:i:s")." Patching binaries...\n";
+patch_deamons();
 echo "Starting......: ".date("H:i:s")." Check Relay Country plugin\n";	
 RelayCountryPlugin();
+echo "Starting......: ".date("H:i:s")." Check Mime Validator plugin\n";
+MimeValidator();
+echo "Starting......: ".date("H:i:s")." Check DNSBL plugin\n";
+dnsbl();
 echo "Starting......: ".date("H:i:s")." Check Decode Short urls\n";
 DecodeShortURLs();
 echo "Starting......: ".date("H:i:s")." Check Trusted networks\n";
 TrustedNetworks();
 WrongMX();
 FuzzyOcr();
+SPAMASSASSIN_V320();
 CheckSecuritiesFolders();
 
 
@@ -56,6 +65,10 @@ function amavis_reload(){
 	$unix=new unix();
 	$EnableAmavisDaemon=intval($sock->GET_INFO("EnableAmavisDaemon"));
 	$SpamAssMilterEnabled=intval($sock->GET_INFO("SpamAssMilterEnabled"));
+	$MimeDefangEnabled=intval($sock->GET_INFO("MimeDefangEnabled"));
+	$MimeDefangSpamAssassin=intval($sock->GET_INFO("MimeDefangSpamAssassin"));
+	if($MimeDefangEnabled==0){$MimeDefangSpamAssassin=0;}
+	if($MimeDefangSpamAssassin==1){$SpamAssMilterEnabled=0;}
 	$PHP=$unix->LOCATE_PHP5_BIN();
 	SPAMASSASSIN_V320();
 	PhishTag();
@@ -78,6 +91,7 @@ function amavis_reload(){
 	if($SpamAssMilterEnabled==1){
 		echo "Starting......: ".date("H:i:s")." Restarting SpamAssassin milter edition\n";
 		shell_exec("$PHP /usr/share/artica-postfix/exec.initslapd.php --spamass-milter");
+		shell_exec("/etc/init.d/spamass-milter restart");
 		shell_exec("/etc/init.d/spamass-milter restart");
 	}
 	
@@ -110,7 +124,7 @@ function CheckSecuritiesFolders(){
 
 
 function SaveConf(){
-	
+	include_once(dirname(__FILE__)."/ressources/class.maincf.multi.inc");
 	shell_exec("export LC_CTYPE=C");
 	shell_exec("export LC_ALL=C");
 	shell_exec("export LANG=C");
@@ -119,6 +133,25 @@ function SaveConf(){
 	
 	$user=new usersMenus();
 	$spam=new spamassassin();
+	$unix=new unix();
+	
+	$postfix_multi=new maincf_multi("master");
+	$postfix_multi->check_client_access();
+	
+	
+	$spamd=$unix->find_program("spamd");
+	if(is_file("/usr/local/bin/spamd")){$spamd="/usr/local/bin/spamd";}
+	
+	$content=@file_get_contents($spamd);
+	if(strpos($content, "/etc/mail/spamassassin")>0){
+		$content=str_replace("/etc/mail/spamassassin", "/etc/spamassassin", $content);
+		@file_put_contents($spamd, $content);
+	
+	}
+	
+	
+	
+	
 	$datas=$spam->BuildConfig();
 	$datas=str_replace("Array","",$datas);
 
@@ -319,8 +352,8 @@ $f[]="loadplugin Mail::SpamAssassin::Plugin::Bayes";
 $f[]="loadplugin Mail::SpamAssassin::Plugin::BodyEval";
 $f[]="loadplugin Mail::SpamAssassin::Plugin::MIMEHeader";
 $f[]="loadplugin Mail::SpamAssassin::Plugin::DNSEval";
-
-
+$f[]="loadplugin Mail::SpamAssassin::Plugin::FreeMail";
+@copy("/usr/share/artica-postfix/bin/install/spamassassin/20_freemail_domains.cf", "/etc/spamassassin/20_freemail_domains.cf");
 
 if($EnableSPF==1){$f[]="loadplugin Mail::SpamAssassin::Plugin::SPF";}
 if($enable_dkim_verification==1){$f[]="loadplugin Mail::SpamAssassin::Plugin::DKIM";}
@@ -358,6 +391,7 @@ if($spam->main_array["use_pyzor"]==1){
 
 $f[]="#loadplugin Mail::SpamAssassin::Plugin::SpamCop";
 $f[]="#loadplugin Mail::SpamAssassin::Plugin::AccessDB";
+$f[]="loadplugin  Mail::SpamAssassin::Plugin::SPF";
 
 
  @file_put_contents("/etc/spamassassin/v320.pre",@implode("\n",$f));
@@ -914,10 +948,11 @@ echo "Starting......: ".date("H:i:s")." spamassassin writing dkim.pre done ($cou
 
 function dnsbl(){
 	$sock=new sockets();
-	$EnableSpamassassinURIDNSBL=$sock->GET_INFO("EnableSpamassassinURIDNSBL");
+	$EnableSpamassassinURIDNSBL=intval($sock->GET_INFO("EnableSpamassassinURIDNSBL"));
 	$datas=unserialize(base64_decode($sock->GET_INFO("SpamassassinDNSBL")));
 	
-	if($EnableSpamassassinURIDNSBL<>1){
+	if($EnableSpamassassinURIDNSBL==0){
+		echo "Starting......: ".date("H:i:s")." spamassassin EnableSpamassassinURIDNSBL -> FALSE!\n";
 		@file_put_contents("/etc/spamassassin/dnsbl.pre","#");
 		if(is_dir("/etc/mail/spamassassin")){@file_put_contents("/etc/mail/spamassassin/dnsbl.pre","#");}
 		return ;			
@@ -925,21 +960,13 @@ function dnsbl(){
 	}
 	
 	$count=0;
-	if(!is_array($datas)){
-		@file_put_contents("/etc/spamassassin/dnsbl.pre","#");
-		if(is_dir("/etc/mail/spamassassin")){@file_put_contents("/etc/mail/spamassassin/dnsbl.pre","#");}
-		return ;	
-	}
-	
-	while (list ($key, $vlue) = each ($datas)){
-		if($vlue==null){continue;}
-		if($vlue==0){continue;}	
-		$count=$count+1;
-	}
-	if($count==0){
-		@file_put_contents("/etc/spamassassin/dnsbl.pre","#");
-		if(is_dir("/etc/mail/spamassassin")){@file_put_contents("/etc/mail/spamassassin/dnsbl.pre","#");}
-		return;	
+	if(is_array($datas)){
+		
+		while (list ($key, $vlue) = each ($datas)){
+			if($vlue==null){continue;}
+			if($vlue==0){continue;}	
+			$count=$count+1;
+		}
 	}
 	
 	
@@ -972,6 +999,63 @@ $conf[]="";
 $conf[]="# See the Mail::SpamAssassin::Conf manual page for details of how to use";
 $conf[]="# check_rbl().";
 $conf[]="";
+
+$conf[]="# Spam sources";
+$conf[]="header __RCVD_IN_MSPIKE eval:check_rbl('mspike-lastexternal', 'bl.mailspike.net.') tflags __RCVD_IN_MSPIKE net";
+$conf[]="";
+$conf[]="# Bad senders";
+$conf[]="header __RCVD_IN_MSPIKE_Z eval:check_rbl_sub('mspike-lastexternal', '^127\.0\.0\.2$')";
+$conf[]="describe __RCVD_IN_MSPIKE_Z Spam wave participant";
+$conf[]="tflags __RCVD_IN_MSPIKE_Z net";
+$conf[]="header RCVD_IN_MSPIKE_L5 eval:check_rbl_sub('mspike-lastexternal', '^127\.0\.0\.10$')";
+$conf[]="describe RCVD_IN_MSPIKE_L5 Very bad reputation (-5)";
+$conf[]="tflags RCVD_IN_MSPIKE_L5 net";
+$conf[]="header RCVD_IN_MSPIKE_L4 eval:check_rbl_sub('mspike-lastexternal', '^127\.0\.0\.11$')";
+$conf[]="describe RCVD_IN_MSPIKE_L4 Bad reputation (-4)";
+$conf[]="tflags RCVD_IN_MSPIKE_L4 net";
+$conf[]="header RCVD_IN_MSPIKE_L3 eval:check_rbl_sub('mspike-lastexternal', '^127\.0\.0\.12$')";
+$conf[]="describe RCVD_IN_MSPIKE_L3 Low reputation (-3)";
+$conf[]="tflags RCVD_IN_MSPIKE_L3 net";
+$conf[]="header RCVD_IN_MSPIKE_L2 eval:check_rbl_sub('mspike-lastexternal', '^127\.0\.0\.13$')";
+$conf[]="describe RCVD_IN_MSPIKE_L2 Suspicious reputation (-2)";
+$conf[]="tflags RCVD_IN_MSPIKE_L2 net";
+$conf[]="";
+$conf[]="# Good senders";
+$conf[]="header RCVD_IN_MSPIKE_H5 eval:check_rbl_sub('mspikeg-firsttrusted', '^127\.0\.0\.20$')";
+$conf[]="describe RCVD_IN_MSPIKE_H5 Excellent reputation (+5)";
+$conf[]="tflags RCVD_IN_MSPIKE_H5 nice net";
+$conf[]="header RCVD_IN_MSPIKE_H4 eval:check_rbl_sub('mspikeg-firsttrusted', '^127\.0\.0\.19$')";
+$conf[]="describe RCVD_IN_MSPIKE_H4 Very Good reputation (+4)";
+$conf[]="tflags RCVD_IN_MSPIKE_H4 nice net";
+$conf[]="header RCVD_IN_MSPIKE_H3 eval:check_rbl_sub('mspikeg-firsttrusted', '^127\.0\.0\.18$')";
+$conf[]="describe RCVD_IN_MSPIKE_H3 Good reputation (+3)";
+$conf[]="tflags RCVD_IN_MSPIKE_H3 nice net";
+$conf[]="header RCVD_IN_MSPIKE_H2 eval:check_rbl_sub('mspikeg-firsttrusted', '^127\.0\.0\.17$')";
+$conf[]="describe RCVD_IN_MSPIKE_H2 Average reputation (+2)";
+$conf[]="tflags RCVD_IN_MSPIKE_H2 nice net";
+$conf[]="";
+$conf[]="# *_L and *_Z may overlap, so account for that";
+$conf[]="meta __RCVD_IN_MSPIKE_LOW RCVD_IN_MSPIKE_L5 || RCVD_IN_MSPIKE_L4 || RCVD_IN_MSPIKE_L3 || RCVD_IN_MSPIKE_L2";
+$conf[]="meta RCVD_IN_MSPIKE_ZBI __RCVD_IN_MSPIKE_Z && !__RCVD_IN_MSPIKE_LOW";
+$conf[]="";
+$conf[]="# Scores";
+$conf[]="score RCVD_IN_MSPIKE_ZBI 4.1";
+$conf[]="score RCVD_IN_MSPIKE_L5 5.2";
+$conf[]="score RCVD_IN_MSPIKE_L4 4.2";
+$conf[]="score RCVD_IN_MSPIKE_L3 3.9";
+$conf[]="score RCVD_IN_MSPIKE_L2 0.8";
+$conf[]="score RCVD_IN_MSPIKE_H2 -0.5";
+$conf[]="score RCVD_IN_MSPIKE_H3 -1.5";
+$conf[]="score RCVD_IN_MSPIKE_H4 -2.5";
+$conf[]="score RCVD_IN_MSPIKE_H5 -3.5";
+$conf[]="";
+$conf[]="header RCVD_IN_MSPIKE_BL eval:check_rbl('mspike-lastexternal', 'bl.mailspike.net.')";
+$conf[]="tflags RCVD_IN_MSPIKE_BL net";
+$conf[]="score RCVD_IN_MSPIKE_BL 3.5";
+$conf[]="header RCVD_IN_MSPIKE_WL eval:check_rbl('mspike-lastexternal', 'wl.mailspike.net.')";
+$conf[]="tflags RCVD_IN_MSPIKE_WL net";
+$conf[]="score RCVD_IN_MSPIKE_WL -2.1";
+
 $conf[]="# ---------------------------------------------------------------------------";
 $conf[]="# Multizone / Multi meaning BLs first.";
 $conf[]="#";
@@ -979,6 +1063,7 @@ $conf[]="# Note that currently TXT queries cannot be used for these, since the";
 $conf[]="# DNSBLs do not return the A type (127.0.0.x) as part of the TXT reply.";
 $conf[]="# Well, at least NJABL doesn't, it seems, as of Apr 7 2003.";
 $conf[]="";
+
 if($datas["njabl"]==1){
 	$conf[]="# ---------------------------------------------------------------------------";
 	$conf[]="# NJABL";
@@ -1087,47 +1172,6 @@ if($datas["Spamhaus"]==1){
 	$conf[]="";
 }
 
-if($datas["RFC-Ignorant"]==1){
-	$conf[]="# ---------------------------------------------------------------------------";
-	$conf[]="# RFC-Ignorant blacklists (both name and IP based)";
-	$conf[]="";
-	$conf[]="header __RFC_IGNORANT_ENVFROM	eval:check_rbl_envfrom('rfci_envfrom', 'fulldom.rfc-ignorant.org.')";
-	$conf[]="tflags __RFC_IGNORANT_ENVFROM	net";
-	$conf[]="";
-	$conf[]="header DNS_FROM_RFC_DSN		eval:check_rbl_sub('rfci_envfrom', '127.0.0.2')";
-	$conf[]="describe DNS_FROM_RFC_DSN	Envelope sender in dsn.rfc-ignorant.org";
-	$conf[]="tflags DNS_FROM_RFC_DSN		net";
-	$conf[]="";
-	$conf[]="header DNS_FROM_RFC_POST	eval:check_rbl_sub('rfci_envfrom', '127.0.0.3')";
-	$conf[]="describe DNS_FROM_RFC_POST	Envelope sender in postmaster.rfc-ignorant.org";
-	$conf[]="tflags DNS_FROM_RFC_POST	net";
-	$conf[]="";
-	$conf[]="header DNS_FROM_RFC_ABUSE	eval:check_rbl_sub('rfci_envfrom', '127.0.0.4')";
-	$conf[]="describe DNS_FROM_RFC_ABUSE	Envelope sender in abuse.rfc-ignorant.org";
-	$conf[]="tflags DNS_FROM_RFC_ABUSE	net";
-	$conf[]="";
-	$conf[]="header DNS_FROM_RFC_WHOIS	eval:check_rbl_sub('rfci_envfrom', '127.0.0.5')";
-	$conf[]="describe DNS_FROM_RFC_WHOIS	Envelope sender in whois.rfc-ignorant.org";
-	$conf[]="tflags DNS_FROM_RFC_WHOIS	net";
-	$conf[]="";
-	$conf[]="# this is 127.0.0.6 if querying fullip.rfc-ignorant.org, but since there";
-	$conf[]="# is only one right now, we might as well get the TXT record version";
-	$conf[]="# 2004-10-21: disabled since ipwhois is going away";
-	$conf[]="#header RCVD_IN_RFC_IPWHOIS	eval:check_rbl_txt('ipwhois-notfirsthop', 'ipwhois.rfc-ignorant.org.')";
-	$conf[]="#describe RCVD_IN_RFC_IPWHOIS	Sent via a relay in ipwhois.rfc-ignorant.org";
-	$conf[]="#tflags RCVD_IN_RFC_IPWHOIS	net";
-	$conf[]="";
-	$conf[]="# 127.0.0.7 is the response for an entire TLD in whois.rfc-ignorant.org,";
-	$conf[]="# but it has too many false positives.";
-	$conf[]="";
-	$conf[]="header DNS_FROM_RFC_BOGUSMX	eval:check_rbl_sub('rfci_envfrom', '127.0.0.8')";
-	$conf[]="describe DNS_FROM_RFC_BOGUSMX	Envelope sender in bogusmx.rfc-ignorant.org";
-	$conf[]="tflags DNS_FROM_RFC_BOGUSMX	net";
-}
-
-
-
-
 
 
 if($datas["sa-hil.habeas.com"]==1){
@@ -1226,6 +1270,56 @@ if(is_dir("/etc/mail/spamassassin")){
 @file_put_contents("/etc/spamassassin/x-headers.pre",@implode("\n",$conf));
 
 	
+}
+
+
+function MimeValidator(){
+	$f[]="# MIME validation";
+	$f[]="# Some simple rules to find MIME errors common in messages";
+	$f[]="# created by bulk mail programs.";
+	$f[]="# Typically spam, but may also trap newsletters.";
+	$f[]="# Version 1.2";
+	$f[]="#   by Byteplant GmbH";
+	$f[]="#   http://www.byteplant.com";
+	$f[]="# download latest version here:";
+	$f[]="#   http://antispam.byteplant.com/download/mime_validate.cf";
+	$f[]="# --------------------------------------------------------";
+	$f[]="# Learn more about the CleanMail Anti Spam Filter here:";
+	$f[]="# http://antispam.byteplant.com/CleanMail";
+	$f[]="# --------------------------------------------------------";
+	$f[]="";
+	$f[]="# ASCII-0 can crash mail clients. This is an absolute NO!";
+	$f[]="rawbody     MIME_ASCII0             /\0/";
+	$f[]="describe    MIME_ASCII0             Message body contains ASCII-0 character";
+	$f[]="score       MIME_ASCII0             1.5";
+	$f[]="";
+	$f[]="# RFC-2822: max message line size is 998 chars + CRLF.";
+	$f[]="# This test does not work, because SA seems to break the lines internally.";
+	$f[]="#rawbody     MIME_LINE_TOO_LONG      /.{998}.+/";
+	$f[]="#describe    MIME_LINE_TOO_LONG      Message body violates RFC-2822 (line too long)";
+	$f[]="#score       MIME_LINE_TOO_LONG      1.0";
+	$f[]="";
+	$f[]="# Message body contains single CR or LF character";
+	$f[]="# RFC-2822 is a bit ambiguous here, but mail like this";
+	$f[]="# usually originates from people that did not read it.";
+	$f[]="rawbody     __MIME_BAD_CR           /\x0D[^\x0A]/";
+	$f[]="# This test always matches, probably because of the newline handling in SA";
+	$f[]="#rawbody     __MIME_BAD_LF           /[^\x0D]\x0A/";
+	$f[]="meta        MIME_BAD_LINEBREAK      __MIME_BAD_CR";
+	$f[]="describe    MIME_BAD_LINEBREAK      Message body with fishy line breaks";
+	$f[]="score       MIME_BAD_LINEBREAK      0.5";
+	$f[]="";
+	$f[]="# Message header contains 8 bit characters.";
+	$f[]="# This is a common MIME violation, but even more common for spammers.";
+	$f[]="# 8-bit chars are most commonly encountered in From/Subject/To headers.";
+	$f[]="header      __MIME_8BIT_FROM        From:raw =~ /[\x80-\xFF]/";
+	$f[]="header      __MIME_8BIT_SUBJECT     Subject:raw =~ /[\x80-\xFF]/";
+	$f[]="header      __MIME_8BIT_TO          To:raw =~ /[\x80-\xFF]/";
+	$f[]="meta        MIME_8BIT_HEADER        (__MIME_8BIT_TO || __MIME_8BIT_SUBJECT || __MIME_8BIT_FROM)";
+	$f[]="describe    MIME_8BIT_HEADER        Message header contains 8-bit character";
+	$f[]="score       MIME_8BIT_HEADER        0.3";
+	$f[]="";
+	@file_put_contents("/etc/spamassassin/mime_validate.cf",@implode("\n",$f));
 }
 
 
@@ -1563,6 +1657,8 @@ function TrustedNetworks(){
 	$q=new mysql();
 	$sql="SELECT * FROM postfix_whitelist_con";
 	$results=$q->QUERY_SQL($sql,"artica_backup");
+	$sock=new sockets();
+	$NotTrustLocalNet=intval($sock->GET_INFO("NotTrustLocalNet"));
 	if(!$q->ok){echo "$q->mysql_error\n";}
 	
 	while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
@@ -1603,20 +1699,17 @@ function TrustedNetworks(){
 	 
 		
 	
+	$f[]="trusted_networks 127.0.0.0/8";
+		if($NotTrustLocalNet==0){
+		$ldap=new clladp();
+		$nets=$ldap->load_mynetworks();
+		while (list ($num, $network) = each ($nets) ){$cleaned[$network]=$network;}
+		unset($nets);
+		while (list ($network, $network2) = each ($cleaned) ){$nets[]=$network;}
+		while (list ($a, $b) = each ($nets) ){
+			$f[]="trusted_networks $b";
+		}
 	
-	
-	$ldap=new clladp();
-	$nets=$ldap->load_mynetworks();
-	if(!is_array($nets)){
-		$f[]="trusted_networks 127.0.0.0/8";
-	}
-	
-
-	while (list ($num, $network) = each ($nets) ){$cleaned[$network]=$network;}
-	unset($nets);
-	while (list ($network, $network2) = each ($cleaned) ){$nets[]=$network;}
-	while (list ($a, $b) = each ($nets) ){
-		$f[]="trusted_networks $b";
 	}
 	
 	
@@ -1631,12 +1724,15 @@ function TrustedNetworks(){
 	
 	
 	
+	
+	
 	$count=count($f);
 	echo "Starting......: ".date("H:i:s")." spamassassin Whitelisted ($count rows) done\n";	
 	$user=new usersMenus();
 	$init_pre=dirname($user->spamassassin_conf_path)."/trusted_nets.pre";
 	$final=@implode("\n",$f)."\n";
 	@file_put_contents($init_pre,$final);	
+	echo "Starting......: ".date("H:i:s")." spamassassin $init_pre done\n";
 	
 	
 }
@@ -1783,12 +1879,14 @@ function _SpamTestsPerformSpamassassin($ID){
 	@file_put_contents("/tmp/$ID.txt",$ligne["message"]);
 	$unix=new unix();
 	$spamassassin=$unix->find_program("spamassassin");
+	if(is_file("/usr/local/bin/spamassassin")){$spamassassin="/usr/local/bin/spamassassin";}
 	
 	$cmd="$spamassassin -t -D </tmp/$ID.txt 2>&1";
 	if($GLOBALS["VERBOSE"]){echo "$cmd\n";}
 	exec($cmd,$results);
 	@unlink("/tmp/$ID.txt");
 	$datas=@implode("\n",$results);
+	if($GLOBALS["VERBOSE"]){echo $datas."\n";}
 	if(preg_match("#<< begin content Filter(.+?)end content filter report >>#is",$datas,$re)){
 		$report=base64_encode($re[1]);
 		echo "\n$report\n";
@@ -1835,6 +1933,103 @@ function sa_update_check(){
 	
 }
 
+
+function patch_deamons(){
+	$unix=new unix();
+	$spamassassin=$unix->find_program("spamassassin");
+	if(is_file("/usr/local/bin/spamassassin")){$spamassassin="/usr/local/bin/spamassassin";}
+	$spamd=$unix->find_program("spamd");
+	if(is_file("/usr/local/bin/spamd")){$spamd="/usr/local/bin/spamd";}
+	$sa_update=$unix->find_program("sa-update");
+	if(is_file("/usr/local/bin/sa-update")){$sa_update="/usr/local/bin/sa-update";}
+	$sa_learn=$unix->find_program("sa-learn");
+	if(is_file("/usr/local/bin/sa-learn")){$sa_learn="/usr/local/bin/sa-learn";}
+	
+	
+	
+	$f=explode("\n",@file_get_contents($spamassassin));
+	
+	while (list ($index, $line) = each ($f)){
+		if(preg_match("#DEF_RULES_DIR\s+=#", $line)){
+			echo "Starting......: ".date("H:i:s")." spamassassin $spamassassin -> DEF_RULES_DIR\n";
+			$f[$index]="my \$DEF_RULES_DIR   = '/usr/share/spamassassin';";
+		}
+		if(preg_match("#LOCAL_RULES_DIR\s+=#", $line)){
+			echo "Starting......: ".date("H:i:s")." spamassassin $spamassassin -> LOCAL_RULES_DIR\n";
+			$f[$index]="my \$LOCAL_RULES_DIR   = '/etc/spamassassin';";
+		}	
+		if(preg_match("#LOCAL_STATE_DIR\s+=#", $line)){
+			echo "Starting......: ".date("H:i:s")." spamassassin $spamassassin -> LOCAL_STATE_DIR\n";
+			$f[$index]="my \$LOCAL_STATE_DIR   = '/var/lib/spamassassin';";
+			break;
+		}	
+	}
+	echo "Starting......: ".date("H:i:s")." spamassassin $spamassassin -> DONE\n";
+	@file_put_contents($spamassassin, @implode("\n", $f));
+
+	$f=explode("\n",@file_get_contents($spamd));
+	
+	while (list ($index, $line) = each ($f)){
+		if(preg_match("#DEF_RULES_DIR\s+=#", $line)){
+			echo "Starting......: ".date("H:i:s")." spamassassin $spamd -> DEF_RULES_DIR\n";
+			$f[$index]="my \$DEF_RULES_DIR   = '/usr/share/spamassassin';";
+		}
+		if(preg_match("#LOCAL_RULES_DIR\s+=#", $line)){
+			echo "Starting......: ".date("H:i:s")." spamassassin $spamd -> LOCAL_RULES_DIR\n";
+			$f[$index]="my \$LOCAL_RULES_DIR   = '/etc/spamassassin';";
+		}
+		if(preg_match("#LOCAL_STATE_DIR\s+=#", $line)){
+			echo "Starting......: ".date("H:i:s")." spamassassin $spamd -> LOCAL_STATE_DIR\n";
+			$f[$index]="my \$LOCAL_STATE_DIR   = '/var/lib/spamassassin';";
+			break;
+		}
+	}
+	echo "Starting......: ".date("H:i:s")." spamassassin $spamd -> DONE\n";
+	@file_put_contents($spamd, @implode("\n", $f));	
+	
+	
+	
+	$f=explode("\n",@file_get_contents($sa_update));
+	while (list ($index, $line) = each ($f)){
+		if(preg_match("#DEF_RULES_DIR\s+=#", $line)){
+			echo "Starting......: ".date("H:i:s")." spamassassin $sa_update -> DEF_RULES_DIR\n";
+			$f[$index]="my \$DEF_RULES_DIR   = '/usr/share/spamassassin';";
+		}
+		if(preg_match("#LOCAL_RULES_DIR\s+=#", $line)){
+			echo "Starting......: ".date("H:i:s")." spamassassin $sa_update -> LOCAL_RULES_DIR\n";
+			$f[$index]="my \$LOCAL_RULES_DIR   = '/etc/spamassassin';";
+		}
+		if(preg_match("#LOCAL_STATE_DIR\s+=#", $line)){
+			echo "Starting......: ".date("H:i:s")." spamassassin $sa_update -> LOCAL_STATE_DIR\n";
+			$f[$index]="my \$LOCAL_STATE_DIR   = '/var/lib/spamassassin';";
+			break;
+		}
+	}
+	echo "Starting......: ".date("H:i:s")." spamassassin $sa_update -> DONE\n";
+	@file_put_contents($sa_update, @implode("\n", $f));	
+	
+	$f=explode("\n",@file_get_contents($sa_learn));
+	while (list ($index, $line) = each ($f)){
+		if(preg_match("#DEF_RULES_DIR\s+=#", $line)){
+			echo "Starting......: ".date("H:i:s")." spamassassin $sa_learn -> DEF_RULES_DIR\n";
+			$f[$index]="my \$DEF_RULES_DIR   = '/usr/share/spamassassin';";
+		}
+		if(preg_match("#LOCAL_RULES_DIR\s+=#", $line)){
+			echo "Starting......: ".date("H:i:s")." spamassassin $sa_learn -> LOCAL_RULES_DIR\n";
+			$f[$index]="my \$LOCAL_RULES_DIR   = '/etc/spamassassin';";
+		}
+		if(preg_match("#LOCAL_STATE_DIR\s+=#", $line)){
+			echo "Starting......: ".date("H:i:s")." spamassassin $sa_learn -> LOCAL_STATE_DIR\n";
+			$f[$index]="my \$LOCAL_STATE_DIR   = '/var/lib/spamassassin';";
+			break;
+		}
+	}
+	echo "Starting......: ".date("H:i:s")." spamassassin $sa_learn -> DONE\n";
+	@file_put_contents($sa_learn, @implode("\n", $f));	
+	
+	
+}
+
 function sa_update(){
 	
 	if(system_is_overloaded(basename(__FILE__))){
@@ -1845,6 +2040,9 @@ function sa_update(){
 	$unix=new unix();
 	$saupdate=$unix->find_program("sa-update");
 	$sacompile=$unix->find_program("sa-compile");
+	if(is_file("/usr/local/bin/sa-update")){$saupdate="/usr/local/bin/sa-update";}
+	if(is_file("/usr/local/bin/sa-compile")){$sacompile="/usr/local/bin/sa-compile";}
+	
 	if(!is_file($saupdate)){return null;}
 	$statusFileContent="/usr/share/artica-postfix/ressources/logs/sa-update-status.txt";	
 	$statusFile="/usr/share/artica-postfix/ressources/logs/sa-update-status.html";
@@ -1852,13 +2050,25 @@ function sa_update(){
 	
 	
 	$wget=$unix->find_program("wget");
+	
+	
 	shell_exec("$wget http://yerp.org/rules/GPG.KEY -O /root/GPG.KEY");
 	shell_exec("$saupdate sa-update --import /root/GPG.KEY");
-
+	shell_exec("$wget http://spamassassin.apache.org/updates/GPG.KEY -O /root/GPG.KEY");
+	shell_exec("$saupdate sa-update --import /root/GPG.KEY");
+	
+	
+	$content=@file_get_contents("$saupdate");
+	if(strpos($content, "/etc/mail/spamassassin")>0){
+		$content=str_replace("/etc/mail/spamassassin", "/etc/spamassassin", $content);
+		@file_put_contents($saupdate, $content);
+		
+	}
 	
 	
 	
-	$cmd="$saupdate --nogpg -D --gpgkey 6C6191E3 --channel sought.rules.yerp.org --channel updates.spamassassin.org >$statusFileContent$sacompile 2>&1";
+	
+	$cmd="$saupdate --nogpg -D --channel sought.rules.yerp.org --channel updates.spamassassin.org >$statusFileContent$sacompile 2>&1";
 	if($GLOBALS["VERBOSE"]){echo "sa-update:: $cmd\n";}
 	shell_exec($cmd);
 	shell_exec("/bin/chmod 777 $statusFileContent");
@@ -1867,7 +2077,7 @@ function sa_update(){
 		if(preg_match("updates complete, exiting with code [0-9]+", $line)){
 			if($GLOBALS["VERBOSE"]){echo "sa-update:: $line\n";}
 			$unix->send_email_events("Spamassassin success update databases", @implode("\n", $f), "postfix");
-			shell_exec("$sacompile");
+			shell_exec("$sacompile --siteconfigpath=/etc/spamassassin");
 			@unlink($statusFile);
 			shell_exec("/etc/init.d/spamassassin reload");
 			return;

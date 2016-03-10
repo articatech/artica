@@ -17,21 +17,32 @@ page();
 function page(){
 	$page=CurrentPageName();
 	$tpl=new templates();
+	$sock=new sockets();
 	$t=time();
 	$Green="#005447";
+	$ForceDefaultGreenColor=$sock->GET_INFO("ForceDefaultGreenColor");
+	if($ForceDefaultGreenColor<>null){$Green=$ForceDefaultGreenColor;}
 	$skinf=dirname(__FILE__) . "/ressources/templates/{$_COOKIE["artica-template"]}/top-bar-color.conf";
 	if(is_file($skinf)){$Green=@file_get_contents($skinf);}
-	
+	$ldap=new clladp();
+	$IsKerbAuth=$ldap->IsKerbAuth();
 	$default_search="*";
 	if(isset($_SESSION["SEARCH_MEMBER_MEMORY"])){$default_search=$_SESSION["SEARCH_MEMBER_MEMORY"];}
 	
 	$field_search=Field_autocomplete("search-users-$t","shadow:".$tpl->_ENGINE_parse_body("{search_members}"),"font-size:28px;width:99%","$page","SearchEnter$t(event)","Search$t");
 			
+	$add_icon="
+	<div style='float:right;margin-top:3px;margin-right:5px;'>
+	<table>
+	<tr><td style='vertical-align:middle;font-size:18px;color:white;'>	
+	&laquo;&nbsp;<a href=\"javascript:blur();\"
+	OnClick=\"javascript:GotoGroupsSearch();\"
+	style='font-size:18px;text-decoration:underline;color:white'>{search_groups}</a>&nbsp;&raquo;</td>";
 	
-	$ldap=new clladp();
-	$add_icon="<div style='float:right;margin-top:3px;margin-right:5px;'>". imgtootltip("add-42-white.png","{new_member}","Loadjs('create-user.php?CallBackFunction=Search$t')")."</div>";
-	$IsKerbAuth=$ldap->IsKerbAuth();
-	if($IsKerbAuth){$add_icon=null;}
+	if($IsKerbAuth==0){
+		$add_icon=$add_icon."<td style='vertical-align:middle'>" .imgtootltip("add-42-white.png","{new_member}","Loadjs('create-user.php?CallBackFunction=Search$t')")."</td>";
+	}
+	
 	
 	$html="
 	<div style='width:100%;padding:5px;'>$field_search</div>
@@ -41,7 +52,7 @@ function page(){
   -moz-border-radius: 5px 5px 0 0;
   border-radius: 5px 5px 0 0;vertical-align:middle
 	'>
-		$add_icon
+		$add_icon</td></table></div>
 		{members}&nbsp;&nbsp;<span id='title-$t'></span>
 	</div>
 	<div id='search-$t' style='width:99.8%;margin-top:2px;border:1px solid #CCCCCC;-webkit-border-radius: 5px 5px 0 0;
@@ -87,6 +98,7 @@ function page(){
 
 function search(){
 	$t=$_GET["t"];
+	$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
 	$_SESSION["SEARCH_MEMBER_MEMORY"]=$_GET["search"];
 	$stringtofind=url_decode_special_tool($_GET["search"]);
 	if(preg_match("#(.+?)\s+\(#", $stringtofind,$re)){$stringtofind=trim($re[1]);}
@@ -97,8 +109,10 @@ function search(){
 	
 	$IsKerbAuth=$ldap->IsKerbAuth();
 	
-	if(!$IsKerbAuth){
-		$hash_full=$ldap->UserSearch(null,$stringtofind,50);
+	if($IsKerbAuth==0){
+		if($EnableOpenLDAP==1){
+			$hash_full=$ldap->UserSearch(null,$stringtofind,50);
+		}
 		$hash1=$hash_full[0];
 		$hash2=$hash_full[1];
 		$MAIN_HASH=array_merge($hash1, $hash2);

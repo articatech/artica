@@ -1,6 +1,6 @@
 <?php
 if(is_file("/usr/bin/cgclassify")){if(is_dir("/cgroups/blkio/php")){shell_exec("/usr/bin/cgclassify -g cpu,cpuset,blkio:php ".getmypid());}}
-$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 if($EnableIntelCeleron==1){die("EnableIntelCeleron==1\n");}
 $GLOBALS["BYPASS"]=true;
 $GLOBALS["DEBUG_INFLUX_VERBOSE"]=true;

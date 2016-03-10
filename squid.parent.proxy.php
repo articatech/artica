@@ -744,7 +744,7 @@ function popup_list(){
 			if(count($arrayT)>0){
 				$opts=array();
 				while (list($num,$val)=each($arrayT)){ $opts[]=$num; }
-				if(count($opts)>0){ $options="<div style='font-size:14px'>".@implode(", ", $opts)."</div>"; }
+				if(count($opts)>0){ $options="<br><span style='font-size:18px;font-style:italic;color:$color'>".@implode(", ", $opts)."</span>"; }
 			}
 		}
 		
@@ -779,7 +779,7 @@ function popup_list(){
 		}
 		
 		$CELLS=array();
-		$CELLS[]="<center><img src='img/$img'><br><span style='font-size:18px'>{$STATUS[$STATUS_KEY]["STATUS"]}</span></center>";
+		$CELLS[]="<center><img src='img/$img'><br><span style='font-size:18px;color:$color'>{$STATUS[$STATUS_KEY]["STATUS"]}</span></center>";
 		$CELLS[]="$ahref{$ligne["servername"]}</a>$explainadd$domainsInfos$options";
 		$CELLS[]="$ahref{$ligne["server_port"]}</a>";
 		$CELLS[]="$ahref{$ligne["server_type"]}</a>";
@@ -985,14 +985,14 @@ $('#parent-options-$t').flexigrid({
 		],
 		
 buttons : [
-		{name: '$new_option', bclass: 'add', onpress : add_a_parent_option},
+		{name: '<strong style=font-size:18px>$new_option</strong>', bclass: 'add', onpress : add_a_parent_option},
 		],			
 	
 
 	sortname: 'servername',
 	sortorder: 'asc',
 	usepager: true,
-	title: '$title',
+	title: '<span style=font-size:22px>$title</span>',
 	useRp: false,
 	rp: 50,
 	showTableToggleBtn: false,
@@ -1094,7 +1094,7 @@ function parent_options_popup(){
 			XHR.appendData('key',document.getElementById('squid_parent_options_f').value);
 			XHR.appendData('ID',$ID);
 			if(document.getElementById('parent_proxy_add_value')){
-				XHR.appendData('value',document.getElementById('parent_proxy_add_value').value);
+				XHR.appendData('value',encodeURIComponent(document.getElementById('parent_proxy_add_value').value));
 			}
 			
 			XHR.sendAndLoad('$page', 'POST',x_AddSquidOption$tt);
@@ -1239,7 +1239,7 @@ function construct_options(){
 	
 	
 	if(!is_array($based)){
-		$based[$key]=$_POST["value"];
+		$based[$key]=url_decode_special_tool($_POST["value"]);
 		writelogs("$ID]send ". serialize($based),__FUNCTION__,__FILE__,__LINE__);
 		$NewOptions=base64_encode(serialize($based));
 		$q->QUERY_SQL("UPDATE squid_parents SET options='$NewOptions' WHERE ID='$ID'","artica_backup");

@@ -17,6 +17,7 @@ if(isset($_GET["tabs"])){tabs();exit;}
 if(isset($_GET["sessions"])){sessions();exit;}
 if(isset($_GET["sessions-items"])){sessions_items();exit;}
 if(isset($_POST["delete-session"])){sessions_remove();exit;}
+if(isset($_POST["DeleteAllSessions"])){sessions_all_remove();exit;}
 
 if(isset($_GET["members"])){members();exit;}
 if(isset($_GET["members-items"])){members_items();exit;}
@@ -31,6 +32,7 @@ if(isset($_GET["ttl-js"])){ttl_js();exit;}
 
 if(isset($_GET["delete-session-js"])){delete_session_js();exit;}
 if(isset($_POST["HotSpotAutoRegisterWebMail"])){mysql_settings_save();exit;}
+if(isset($_GET["export-members"])){export_members();exit;}
 
 
 main_page();
@@ -145,6 +147,7 @@ function members(){
 	$created=$tpl->javascript_parse_text("{created}");
 	$smtp=$tpl->_ENGINE_parse_body("{self_register}");
 	$import=$tpl->javascript_parse_text("{import}");
+	$export=$tpl->javascript_parse_text("{export}");
 	$disable_account_in=$tpl->javascript_parse_text("{disable_account_in}");
 	$button_parameters="{name: '<strong style=font-size:18px>$parameters</strong>', bclass: 'Settings', onpress : Settings$t},";
 	$button_parameters=null;
@@ -152,6 +155,7 @@ function members(){
 	buttons : [
 	{name: '<strong style=font-size:18px>$new_account</strong>', bclass: 'Add', onpress : NewAccount$t},
 	{name: '<strong style=font-size:18px;>$import</strong>', bclass: 'Settings', onpress : Import$t},
+	{name: '<strong style=font-size:18px;>$export</strong>', bclass: 'xls', onpress : Export$t},
 	$button_parameters
 	],";	
 	
@@ -207,6 +211,10 @@ function DeleteSession$t(md){
 	XHR.appendData('DeleteSession',md);	
 	XHR.sendAndLoad('$page', 'POST',x_DeleteSession$t);	
 
+}
+
+function Export$t(){
+	YahooWin4('520','$page?export-members=yes&t=$t','$export');
 }
 
 function Settings$t(){
@@ -329,6 +337,28 @@ function SaveTTLHotspot(){
 	
 	echo $tpl->_ENGINE_parse_body($html);	
 	
+	
+}
+
+function export_members(){
+	$q=new mysql_squid_builder();
+	$filename=dirname(__FILE__)."/ressources/conf/upload/hotspot_members.csv";
+	@chmod($filename=dirname(__FILE__)."/ressources/conf/upload", 0777);
+	
+	if(is_file($filename)){@unlink($filename);}
+	$sql="SELECT * FROM hotspot_members 
+	INTO OUTFILE '$filename' FIELDS ENCLOSED BY '\\\"' TERMINATED BY ';' ESCAPED BY '\\\"' LINES TERMINATED BY '\r\n';";
+	$q->QUERY_SQL($sql);
+	if(!$q->ok){echo $q->mysql_error_html();return;}
+	
+	$filesize=@filesize($filename);
+	echo "<div style='margin:10px' class=form>
+	<center style='font-size:18px;margin:20px'>hotspot_members.csv (".FormatBytes($filesize/1024).")</center>
+	<center><a href='/ressources/conf/upload/hotspot_members.csv'><img src='img/csv-256.png'></a></center>
+	</div>
+	
+	";
+	echo "</center>";
 	
 }
 
@@ -525,6 +555,14 @@ function sessions(){
 	$q=new mysql_squid_builder();
 	$q->QUERY_SQL("DELETE FROM hotspot_sessions WHERE `md5`=''");
 	$hostname=$tpl->_ENGINE_parse_body("{hostname}");
+	$remove_all_sessions=$tpl->javascript_parse_text("{remove_all_sessions}");
+	$remove_all_sessions_explain=$tpl->javascript_parse_text("{remove_all_sessions_explain}");
+	$buttons="
+	buttons : [
+	{name: '<strong style=font-size:18px>$remove_all_sessions</strong>', bclass: 'Delz', onpress : DeleteAll$t},
+	],";
+	
+	
 	$html="
 	<div id='query-explain'></div>
 	<table class='flexRT$t' style='display: none' id='flexRT$t' style='width:99%'></table>
@@ -580,6 +618,14 @@ function DeleteMember$t(md){
 
 }
 
+function DeleteAll$t(){
+	if(!confirm('$remove_all_sessions_explain')){return;}	
+	var XHR = new XHRConnection();
+	XHR.appendData('DeleteAllSessions','yes');	
+	XHR.sendAndLoad('$page', 'POST',x_DeleteSession$t);	
+
+}
+
 function DeleteSession$t(md){
 	mem$t=md;
 	var XHR = new XHRConnection();
@@ -602,6 +648,12 @@ function sessions_remove(){
 	$q->QUERY_SQL("DELETE FROM hotspot_sessions WHERE md5='{$_POST["delete-session"]}'");
 	if(!$q->ok){echo $q->mysql_error;}
 	
+}
+
+function sessions_all_remove(){
+	$q=new mysql_squid_builder();
+	$q->QUERY_SQL("TRUNCATE TABLE hotspot_sessions");
+	if(!$q->ok){echo $q->mysql_error;}
 }
 
 
@@ -727,13 +779,17 @@ function sessions_items(){
 		$nextcheck=$ligne["nextcheck"];
 		
 		
+		$nextcheckS=$nextcheck-time();
+		$nextcheckM=$tpl->javascript_parse_text(distanceOfTimeInWords(time(),$nextcheck));
+		
 		//$subject=mime_decode($subject);
 		$data['rows'][] = array(
 				'id' => $ligne["md5"],
 				'cell' => array(
 					"<span style='font-size:18px;color:$color'>{$ligne["uid"]}<br>$rulename<br><i style='font-size:16px'>".
 					$tpl->javascript_parse_text("{disable_account}").":$ArticaSplashHotSpotEndTime_text<br>".
-					$tpl->javascript_parse_text("{remove_account}").":$ArticaSplashHotSpotRemoveAccount_text</i><br>".
+					$tpl->javascript_parse_text("{remove_account}").":$ArticaSplashHotSpotRemoveAccount_text</i><br><i style='font-size:16px'>".
+					$tpl->javascript_parse_text("{nextcheck}").": {$nextcheckS}s ({$nextcheckM})</i>".
 					"<i style='font-size:18px'>$hostname</i></a></span>",
 					"<span style='font-size:18px;color:$color'>{$ligne["MAC"]}</a><br><i style='font-size:18px'>$ipaddr</i></span>",
 					"<span style='font-size:18px;color:$color'>$Start</a></span>",
@@ -822,7 +878,7 @@ function members_items(){
 		$ttl=intval($ligne["ttl"]);
 		$EnOfLife = strtotime("+{$ttl} minutes", $ligne["creationtime"]);
 		$delete=imgsimple("delete-42.png",null,"DeleteMember$t('{$ligne["uid"]}','$md5')");
-		
+		$MAC_text=null;
 		$creationtime=$q->time_to_date($ligne["creationtime"],true);
 		$End=$q->time_to_date($EnOfLife,true);
 		$hostname=$ligne["hostname"];
@@ -868,14 +924,14 @@ function members_items(){
 			}
 		}
 		
-		
+		if($MAC<>null){$MAC_text= " <span style='font-size:12px'>($MAC)</span>";}
 		
 		//$subject=mime_decode($subject);
 		$data['rows'][] = array(
 				'id' => $md5,
 				'cell' => array(
 					"<span style='font-size:22px;color:$color'>{$creationtime}</a></span>",
-					"<span style='font-size:22px;color:$color'>$urljs{$ligne["uid"]}</a></span>$activedirectory_text",
+					"<span style='font-size:22px;color:$color'>$urljs{$ligne["uid"]}</a>$MAC_text</span>$activedirectory_text",
 					"<span style='font-size:22px;color:$color'>$ttl</a></span>",
 					"<span style='font-size:22px;color:$color'>$urlend$End</a></span>",
 					"<span style='font-size:22px;color:$color'>$enabled</a></span>",

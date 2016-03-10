@@ -26,45 +26,13 @@ WhiteListed();
 function WhiteListed(){
 	$ldap=new clladp();
 	
-	$whites=$ldap->WhitelistsFromDomain();
+	$unix=new unix();
+	$SPAMASSASSIN_LOCAL_CF=$unix->SPAMASSASSIN_LOCAL_CF();
+	$spammassDirectory=dirname($SPAMASSASSIN_LOCAL_CF);
+	$assp=array();
+	$spamassassin=array();
+	$miltergrey=array();
 
-$unix=new unix();
-$SPAMASSASSIN_LOCAL_CF=$unix->SPAMASSASSIN_LOCAL_CF();
-$spammassDirectory=dirname($SPAMASSASSIN_LOCAL_CF);
-$assp=array();
-$spamassassin=array();
-$miltergrey=array();
-
-if(is_array($whites)){
-	while (list ($to, $array) = each ($whites)){
-		$spamassassin[]="#rcpt :$to";
-		while (list ($index, $from) = each ($array)){
-			if($from=="*@*"){continue;}
-			if(preg_match("#(.+?)@(.+)#",$from,$re)){
-				$first_part=$re[1];
-				$domain=$re[2];
-			}else{
-				$first_part="*";
-				$domain=$from;
-			}
-			
-			$s="$first_part@$domain";
-			$s=str_replace("*@",'',$s);
-			$s=str_replace("@*",'',$s);
-			
-			$asspwbl_string="$first_part@$domain";
-			$asspwbl_string=str_replace('.','\.',$asspwbl_string);
-			$asspwbl_string=str_replace('*','.*?',$asspwbl_string);
-			
-			$assp[]=$asspwbl_string;
-			$sender_scores_sitewide[]="$s\t-7.0";
-			$spamassassin[]="whitelist_from\t$first_part@$domain";
-			$domain=str_replace("@", "", $domain);
-			
-		}
-		
-	}
-}
 
 $blacks=$ldap->BlackListFromDomain();
 if(is_array($blacks)){

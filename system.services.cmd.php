@@ -76,7 +76,8 @@ function popup(){
 				document.getElementById('title-$t').innerHTML='';
 				refreshidStatus$t();GetInfos$t();
 				Finish$t();
-				return;}
+				return;
+			}
 			if(timez$t==1){GetInfos$t();}
 			if(timez$t==5){GetInfos$t();}
 			if(timez$t==10){refreshidStatus$t();GetInfos$t();}
@@ -98,6 +99,7 @@ function popup(){
 		}
 		
 		function Finish$t(){
+			document.getElementById('title-$t').innerHTML='$finish_text';
 			if(document.getElementById('squid_main_svc')){RefreshTab('squid_main_svc');}
 			if(document.getElementById('main_kav4proxy_config')){RefreshTab('main_kav4proxy_config');}
 			if(document.getElementById('main_config_openssh')){RefreshTab('main_config_openssh');}
@@ -110,13 +112,14 @@ function popup(){
 			if(document.getElementById('main_failover_tabs')){RefreshTab('main_failover_tabs');}
 			if(document.getElementById('tabs_networktrack')){RefreshTab('tabs_networktrack');}
 			if(document.getElementById('freshclam-status')){ LoadAjax('freshclam-status','clamav.updates.php?freshclam-status=yes'); }
+			if(document.getElementById('health-monit-here')){ LoadAjaxRound('health-monit','system.monit.health.php'); }
 			if(document.getElementById('admin_perso_tabs-ID')){
 				var id=document.getElementById('admin_perso_tabs-ID').value;
 				RefreshTab(id);
 			}
-			document.getElementById('title-$t').innerHTML='$finish_text';
 			
-			if(document.getElementById('sequence-proxy')){
+			
+			if( document.getElementById('sequence-proxy') ){
 				LoadAjaxSilent('sequence-proxy','admin.dashboard.proxy.php?sequence-proxy=yes&nofw=yes&sequence=yes&ForceCache=yes');
 				
 			}

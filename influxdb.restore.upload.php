@@ -31,11 +31,11 @@ function manual_update(){
 	$page=CurrentPageName();
 	$tpl=new templates();
 	$UploadAFile=$tpl->javascript_parse_text("{upload_a_file}");
-	//$allowedExtensions="allowedExtensions: ['tgz'],";
+	$allowedExtensions="allowedExtensions: ['gz'],";
 	$UploadAFile=str_replace(" ", "&nbsp;", $UploadAFile);
 	$html="
 	<div style='font-size:30px'>{restore}</div>
-	<div class=explain style='font-size:18px'>{influxdb_restore_snap_explain}</div>
+	<div class=explain style='font-size:18px'>{containers} (*.gz)</div>
 		
 	<center style='margin:10px;width:99%'>
 		<center id='file-uploader-demo-$t' style='width:100%;text-align:center'></center>
@@ -149,7 +149,7 @@ function upload_artica_final(){
 	$fileNameEnc=urlencode($fileName);
 	$text=$tpl->_ENGINE_parse_body("<div style='font-size:16px'>{moving} $fileName</div>");
 	$sock=new sockets();
-	$sock->getFrameWork("influx.php?move-restore=yes&filename=$fileNameEnc");
+	$sock->getFrameWork("prostgres.php?move-restore=yes&filename=$fileNameEnc");
 	
 }
 

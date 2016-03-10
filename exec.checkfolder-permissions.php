@@ -250,6 +250,9 @@ $unix->chmod_func(0777,"/var/lib/php5/*");
 $unix->chmod_func(0755,"/usr/local/share/artica");
 
 
+$chown=$unix->find_program("chown");
+writeprogress(5,"/home/ArticaStatsDB");
+shell_exec("$chown -R ArticaStats:ArticaStats /home/ArticaStatsDB");
 
 if(is_file('/var/run/memcached.sock')){@chmod("/var/run/memcached.sock",0777);}
 if(is_dir("/etc/ssh")){$unix->chmod_func(0640,"etc/ssh");}
@@ -332,49 +335,8 @@ if($MySQLTMPDIR<>null){
 	}
 }
 
-if(is_file($squidbin)){
-	$GLOBALS["LogFileDeamonLogDir"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/LogFileDeamonLogDir");
-	if($GLOBALS["LogFileDeamonLogDir"]==null){$GLOBALS["LogFileDeamonLogDir"]="/home/artica/squid/realtime-events";}
-	$fSquidDirs[]="/var/log/squid/squid_admin_mysql";
-	$fSquidDirs[]="/usr/share/squid3";
-	$fSquidDirs[]=$GLOBALS["LogFileDeamonLogDir"];
+	CheckArticaFolderSecurity($username,$groupname);
 
-	
-	while (list ($num, $directory) = each ($fSquidDirs)){
-		if(!is_dir($directory)){@mkdir($directory,0755,true);}
-		@chown($directory, "squid");
-		@chgrp($directory, "squid");
-	}
-	
-	$squidfiles["exec.logfile_daemon.php"]=true;
-	$squidfiles["external_acl_squid_ldap.php"]=true;
-	$squidfiles["external_acl_dynamic.php"]=true;
-	$squidfiles["external_acl_quota.php"]=true;
-	$squidfiles["external_acl_basic_auth.php"]=true;
-	$squidfiles["external_acl_restrict_access.php"]=true;
-	$squidfiles["external_acl_squid.php"]=true;
-	$squidfiles["ufdbgclient.php"]=true;
-	
-	$files=$unix->DirFiles($artica_path);
-	while (list ($filename,$line) = each ($files)){
-		
-		if(is_numeric($filename)){@unlink("$artica_path/$filename");continue;}
-		
-		if(isset($squidfiles[$filename])){
-			$unix->chown_func("squid", "squid","$artica_path/$filename");
-			@chmod("$artica_path/$filename",0755);
-			continue;
-		}
-		
-		$unix->chown_func($username, $groupname,"$artica_path/$filename");
-		$unix->chmod_func(0755, "$artica_path/$filename");
-		
-	}
-	
-	$unix->chmod_func(0755,"/var/log/squid/access.log");
-	$unix->chmod_func(0777,"/var/log/squid/QUOTADB.db");
-
-}
 
 $files=$unix->DirFiles("/usr/share/artica-postfix/bin");
 while (list ($filename,$line) = each ($files)){
@@ -382,6 +344,10 @@ while (list ($filename,$line) = each ($files)){
 	@chmod("/usr/share/artica-postfix/bin/$filename",0755);
 	@chown("/usr/share/artica-postfix/bin/$filename","root");
 }
+
+
+
+
 
 writeprogress(6,"{done}");
 
@@ -409,4 +375,59 @@ function writeprogress($perc,$text){
 	$unix->events("$perc} $text","/var/log/artica-wizard.log",$sourcefunction,$sourceline,$sourcefile);
 
 }
+
+
+
+function CheckArticaFolderSecurity($username,$groupname){
+	$unix=new unix();
+	$artica_path="/usr/share/artica-postfix";
+	$GLOBALS["LogFileDeamonLogDir"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/LogFileDeamonLogDir");
+	if($GLOBALS["LogFileDeamonLogDir"]==null){$GLOBALS["LogFileDeamonLogDir"]="/home/artica/squid/realtime-events";}
+	
+	if(is_file("/usr/local/ArticaStats/bin/postgres")){
+		$GLOBALS["LogFileDeamonLogDir"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/LogFileDeamonLogPostGresDir");
+		if($GLOBALS["LogFileDeamonLogDir"]==null){$GLOBALS["LogFileDeamonLogDir"]="/home/artica/squid-postgres/realtime-events";}
+	}
+	
+	$fSquidDirs[]="/var/log/squid/squid_admin_mysql";
+	$fSquidDirs[]="/usr/share/squid3";
+	$fSquidDirs[]=$GLOBALS["LogFileDeamonLogDir"];
+	
+	
+	while (list ($num, $directory) = each ($fSquidDirs)){
+		if(!is_dir($directory)){@mkdir($directory,0755,true);}
+		@chown($directory, "squid");
+		@chgrp($directory, "squid");
+	}
+	
+
+	$squidfiles=$unix->SquidPHPFiles();
+	
+	$files=$unix->DirFiles($artica_path);
+	while (list ($filename,$line) = each ($files)){
+	
+		if(is_numeric($filename)){
+			@unlink("$artica_path/$filename");
+			continue;
+		}
+	
+		if(isset($squidfiles[$filename])){
+			@chmod("$artica_path/$filename",0755);
+			@chgrp("$artica_path/$filename", "squid");
+			@chown("$artica_path/$filename", "squid");
+			continue;
+		}
+	
+		$unix->chown_func($username, $groupname,"$artica_path/$filename");
+		$unix->chmod_func(0755, "$artica_path/$filename");
+	
+	}
+	
+	$unix->chmod_func(0755,"/var/log/squid/access.log");
+	$unix->chmod_func(0777,"/var/log/squid/QUOTADB.db");
+	
+}
+
+
+
 ?>

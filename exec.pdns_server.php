@@ -154,6 +154,12 @@ function start($aspid=false){
 	}
 		
 	
+	if(!is_file("/usr/lib/libboost_serialization.so.1.49.0")){
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}: Please wait, installing libboost-serialization1.49.0\n";}
+		$unix->DEBIAN_INSTALL_PACKAGE("libboost-serialization1.49.0");
+		
+	}
+	
 	$php5=$unix->LOCATE_PHP5_BIN();
 	$sysctl=$unix->find_program("sysctl");
 	$echo=$unix->find_program("echo");

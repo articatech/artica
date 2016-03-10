@@ -183,6 +183,11 @@ class nginx_certificate{
 				$this->crt_content="$this->crt_content\n$this->bundle";
 			}
 			
+			if(strlen($this->privkey_content)<20){
+				$f[]="# Private key field is empty, using the server one.[".__CLASS__."/".__LINE__."]";
+				$this->privkey_content=@file_get_contents("/etc/openssl/private-key/privkey.key");
+			}
+			
 			@file_put_contents("$Directory/certificate.pem", $this->crt_content);
 			
 			@file_put_contents("$Directory/private_key.key", $this->privkey_content);

@@ -519,10 +519,13 @@ function search(){
 				
 		}
 		
+		$link_hostname="<a href=\"javascript:blur();\"
+		Onclick=\"javascript:Loadjs('artica-meta.menus.php?js=yes&uuid=$uuid');\"
+		style='text-decoration:underline;font-size:18px;color:black !important'>";
 		
 		
 		$cell[]="<center><img src=\"img/$icon\"></center>";
-		$cell[]="$style$hostname$hostag</a></span>";
+		$cell[]="$link_hostname$hostname</a>$style$hostag</a></span>";
 		$cell[]="$link_ip$public_ip</a></span>";
 		$cell[]="<center>".imgsimple($icon_performance,null,null)."</center>";
 		$cell[]="<center>".imgsimple($icon_disk,null,null)."</center>";

@@ -94,41 +94,41 @@ function network_bridge_popup(){
 	if(!is_numeric($ligne["enabled"])){$ligne["enabled"]=1;}
 	if(!is_numeric($ligne["STP"])){$ligne["STP"]=1;}
 $html="
-<div style='font-size:32px;margin-bottom:20px'>$title</div>
+<div style='font-size:32px;margin-bottom:28px'>$title</div>
 	<div style='width:98%' class=form>
 	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:18px' nowrap>{name}:</td>
-		<td>". Field_text("name-$t",$ligne["name"],"font-size:18px;width:250px")."</td>
+		<td class=legend style='font-size:22px' nowrap>{name}:</td>
+		<td>". Field_text("name-$t",$ligne["name"],"font-size:22px;width:250px")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px' nowrap>Spanning Tree Protocol:</td>
-		<td>". Field_checkbox("STP-$t",1,$ligne["STP"])."</td>
+		<td class=legend style='font-size:22px' nowrap>Spanning Tree Protocol:</td>
+		<td>". Field_checkbox_design("STP-$t",1,$ligne["STP"])."</td>
 	</tr>				
 				
 				
 	<tr>
-		<td class=legend style='font-size:18px' nowrap>{tcp_address}:</td>
-		<td>". field_ipv4("ipaddr-$t",$ligne["ipaddr"],"font-size:18px;width:250px")."</td>
+		<td class=legend style='font-size:22px' nowrap>{tcp_address}:</td>
+		<td>". field_ipv4("ipaddr-$t",$ligne["ipaddr"],"font-size:22px;width:250px")."</td>
 	</tr>	
 	<tr>
-		<td class=legend style='font-size:18px' nowrap>{netmask}:</td>
-		<td>". field_ipv4("netmask-$t",$ligne["netmask"],"font-size:18px;width:250px")."</td>
+		<td class=legend style='font-size:22px' nowrap>{netmask}:</td>
+		<td>". field_ipv4("netmask-$t",$ligne["netmask"],"font-size:22px;width:250px")."</td>
 	</tr>		
 	<tr>
-		<td class=legend style='font-size:18px' nowrap>{cdir}:</td>
-		<td>". Field_text("cdir-$t",$ligne["cdir"],"font-size:18px;width:250px")."</td>
+		<td class=legend style='font-size:22px' nowrap>{cdir}:</td>
+		<td>". Field_text("cdir-$t",$ligne["cdir"],"font-size:22px;width:250px")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px' nowrap>{broadcast}:</td>
-		<td>". field_ipv4("broadcast-$t",$ligne["broadcast"],"font-size:18px;width:250px")."</td>
+		<td class=legend style='font-size:22px' nowrap>{broadcast}:</td>
+		<td>". field_ipv4("broadcast-$t",$ligne["broadcast"],"font-size:22px;width:250px")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px' nowrap>{gateway}:</td>
-		<td>". field_ipv4("gateway-$t",$ligne["gateway"],"font-size:18px;width:250px")."</td>
+		<td class=legend style='font-size:22px' nowrap>{gateway}:</td>
+		<td>". field_ipv4("gateway-$t",$ligne["gateway"],"font-size:22px;width:250px")."</td>
 	</tr>																			
 <tr>
-	<td colspan=2 align='right'><hr>". button($but,"Save$t();","24")."</td>
+	<td colspan=2 align='right'><hr>". button($but,"Save$t();","30")."</td>
 </tr>
 </table>
 <script>
@@ -321,8 +321,8 @@ function Bridge_table(){
 	$add=$tpl->_ENGINE_parse_body("{new_net_bridge}");
 	$delete=$tpl->javascript_parse_text("{delete}");
 	$reconstruct=$tpl->javascript_parse_text("{build_the_network}");
-	$bts[]="{name: '$add', bclass: 'add', onpress :RuleAdd$t},";
-	$bts[]="{name: '$reconstruct', bclass: 'apply', onpress : BuildVLANs$t},";
+	$bts[]="{name: '<strong style=font-size:18px>$add</strong>', bclass: 'add', onpress :RuleAdd$t},";
+	$bts[]="{name: '<strong style=font-size:18px>$reconstruct</strong>', bclass: 'apply', onpress : BuildVLANs$t},";
 	
 	if(!$users->APP_EBTABLES_INSTALLED){
 		$error="<p class=text-error>{APP_EBTABLES_NOT_INSTALLED}</p>";
@@ -338,9 +338,8 @@ function Bridge_table(){
 	if(count($bts)>0){
 			$buttons="buttons : [".@implode("\n", $bts)." ],";
 		}
-		$reboot_network_explain=$tpl->_ENGINE_parse_body("{interface_bridges_explain}<p>&nbsp;</p>{reboot_network_explain}");
+		$reboot_network_explain=$tpl->javascript_parse_text("{reboot_network_explain}");
 		$html="$error
-		<div class=explain style='font-size:16px'>$reboot_network_explain</div>
 		<table class='flexRT$t' style='display: none' id='flexRT$t' style='width:99%'></table>
 	
 		<script>
@@ -350,12 +349,12 @@ function Bridge_table(){
 		url: '$page?bridge-list=yes&t=$t',
 		dataType: 'json',
 		colModel : [
-		{display: 'ID', 	      name : 'ID', width : 31, sortable : true, align: 'center'},
-		{display: '-', 		      name : 'nic', width : 45, sortable : false, align: 'center'},
-		{display: '$bridge', 	  name : 'name', width : 400, sortable : false, align: 'left'},
-		{display: '$tcp_address', name : 'ipaddr', width : 180, sortable : false, align: 'left'},
-		{display: '$netmask', 	  name : 'netmask', width : 180, sortable : false, align: 'left'},
-		{display: '-', 	  		  name : 'delete', width : 50, sortable : false, align: 'center'},
+		{display: '<span style=font-size:22px>ID</span>', 	      name : 'ID', width : 65, sortable : true, align: 'center'},
+		{display: '<span style=font-size:22px>-</span>', 		      name : 'nic', width : 65, sortable : false, align: 'center'},
+		{display: '<span style=font-size:22px>$bridge</span>', 	  name : 'name', width : 518, sortable : false, align: 'left'},
+		{display: '<span style=font-size:22px>$tcp_address</span>', name : 'ipaddr', width : 222, sortable : false, align: 'right'},
+		{display: '<span style=font-size:22px>$netmask</span>', 	  name : 'netmask', width : 222, sortable : false, align: 'right'},
+		{display: '<span style=font-size:22px>-</span>', 	  		  name : 'delete', width : 65, sortable : false, align: 'center'},
 		],$buttons
 		searchitems : [
 		{display: '$bridge', name : 'name'},
@@ -365,12 +364,12 @@ function Bridge_table(){
 		sortname: 'ID',
 		sortorder: 'desc',
 		usepager: true,
-		title: '$network_bridges',
+		title: '<span style=font-size:30px>$network_bridges</span>',
 		useRp: true,
 		rp: 25,
 		showTableToggleBtn: false,
 		width: '99%',
-		height: 400,
+		height: 550,
 		singleSelect: true
 	
 	});
@@ -572,7 +571,7 @@ function bridge_list(){
 		$delete=imgsimple("delete-32.png",null,"Loadjs('$MyPage?network-bridge-delete-js={$ligne['ID']}&t=$t',true)");
 		
 		$js="Loadjs('$MyPage?network-bridge-js=yes&ID={$ligne['ID']}&t=$t',true);";
-		$href="<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='font-size:18px;color:$color;font-weight:normal;text-decoration:underline'>";
+		$href="<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='font-size:22px;color:$color;font-weight:normal;text-decoration:underline'>";
 	
 		
 		$a=$ip->parseCIDR($cdir);
@@ -583,27 +582,27 @@ function bridge_list(){
 		$delete=imgsimple("delete-32.png",null,"Loadjs('$MyPage?network-bridge-delete-js={$ligne['ID']}&t=$t',true)");
 	
 		$js="Loadjs('$MyPage?network-bridge-js=yes&ID={$ligne['ID']}&t=$t',true);";
-		$href="<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='font-size:18px;color:$color;font-weight:normal;text-decoration:underline'>";
+		$href="<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='font-size:22px;color:$color;font-weight:normal;text-decoration:underline'>";
 		$bridgedTo=bridgedTo($ligne["ID"]);
 		$data['rows'][] = array(
 			'id' => $ligne['ID'],
 			'cell' => array(
-				"<span style='font-size:18px;font-weight:bold;color:$color'>{$ligne['ID']}</span>",
-				"<span style='font-size:18px;font-weight:normal;color:$color'>$href$eth_text</a></span>",
+				"<center style='font-size:22px;font-weight:bold;color:$color'>{$ligne['ID']}</center>",
+				"<center style='font-size:22px;font-weight:normal;color:$color'>$href$eth_text</a></center>",
 				"
 				<span style='margin:5px;float:right'>
-					<a href=\"javascript:blur();\" OnClick=\"javascript:Loadjs('$MyPage?network-bridge-associates-js=yes&ID={$ligne['ID']}&t=$t',true);\">
+					<a href=\"javascript:blur();\" style=\"font-size:18px\" OnClick=\"javascript:Loadjs('$MyPage?network-bridge-associates-js=yes&ID={$ligne['ID']}&t=$t',true);\">
 					<img src='img/add-32.png'></a>
 				</span>		
-				<span style='font-size:18px;font-weight:normal;color:$color'>
+				<span style='font-size:22px;font-weight:normal;color:$color'>
 
 				{$ligne["name"]}
 				$bridgedTo
 				
 				</span>",
-				"<span style='font-size:18px;font-weight:normal;color:$color'>{$ligne["ipaddr"]}</span>",
-				"<span style='font-size:18px;font-weight:normal;color:$color'>{$ligne["netmask"]}</span>",
-				$delete
+				"<span style='font-size:22px;font-weight:normal;color:$color'>{$ligne["ipaddr"]}</span>",
+				"<span style='font-size:22px;font-weight:normal;color:$color'>{$ligne["netmask"]}</span>",
+				"<center>$delete</center>"
 			)
 		);
 	}
@@ -615,29 +614,31 @@ echo json_encode($data);
 
 function bridgedTo($ID){
 	$MyPage=CurrentPageName();
+
 	$t=$_GET["t"];
 	$q=new mysql();
 	$tpl=new templates();
 	$sql="SELECT `Interface` FROM `nics` WHERE `BridgedTo`='br{$ID}'";
+$delete_t=$tpl->javascript_parse_text("{delete}");
+	
 	$results = $q->QUERY_SQL($sql,"artica_backup");
 	if(mysql_num_rows($results)==0){
 		return $tpl->_ENGINE_parse_body("<br><i style=\"font-size:12px\">{click_on_plus_to_link_interface}</i>");
 	}
 	
-	$html[]="<ul style=\"border:0px;margin-top:10px\">";
+	
 	while ($ligne = mysql_fetch_assoc($results)) {
 		
-		$delete=imgsimple("22-delete.png",null,"Loadjs('$MyPage?network-associates-delete-js=$ID&t=$t&nic={$ligne["Interface"]}',true)");
+		$delete="<a href=\"javascript:blur();\" 
+		OnClick=\"Loadjs('$MyPage?network-associates-delete-js=$ID&t=$t&nic={$ligne["Interface"]}',true)\" style=text-decoration:underline>";
 		
 		$nic=new system_nic($ligne["Interface"]);
 		$html[]="
-		<li style=\"font-size:14px;list-style-image:url(/img/arrow-right-16.png);\">
-			{$ligne["Interface"]} $nic->IPADDR - $nic->NICNAME $delete</li>
-		</li>";
+		<span style=\"font-size:18px;border:0px;vertical-align:middle\">{$ligne["Interface"]} $nic->IPADDR - $nic->NICNAME&nbsp;[$delete$delete_t</a>]</span>";
 				
 		
 	}
-	$html[]="</ul>";
-	return @implode("", $html);
+	if(count($html)>0){
+	return "<br>".@implode("<br>", $html);}
 
 }

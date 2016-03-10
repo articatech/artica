@@ -66,14 +66,20 @@ function popup(){
 	$TB2_WIDTH=551;
 	$all=$tpl->_ENGINE_parse_body("{all}");
 	$t=time();
+	
+	if(isset($_GET["important-only"])){
+		$critical="&critical=0&important-only=yes";
+		$TB2_WIDTH="955";
+		$zdate_width="256";
+	}
 
 	$buttons="
 	buttons : [
-	{name: '$empty', bclass: 'Delz', onpress : EmptyEvents},
-	{name: 'Warn', bclass: 'Warn', onpress :  Warn$t},
-	{name: 'Info', bclass: 'Help', onpress :  info$t},
-	{name: 'Crit.', bclass: 'Err', onpress :  Err$t},
-	{name: '$all', bclass: 'Statok', onpress :  All$t},
+	{name: '<strong style=font-size:18px>$empty</strong>', bclass: 'Delz', onpress : EmptyEvents},
+	{name: '<strong style=font-size:18px>Warn</strong>', bclass: 'Warn', onpress :  Warn$t},
+	{name: '<strong style=font-size:18px>Info</strong>', bclass: 'Help', onpress :  info$t},
+	{name: '<strong style=font-size:18px>Crit.</strong>', bclass: 'Err', onpress :  Err$t},
+	{name: '<strong style=font-size:18px>$all</strong>', bclass: 'Statok', onpress :  All$t},
 	
 	
 
@@ -84,13 +90,13 @@ function popup(){
 
 function BuildTable$t(){
 	$('#events-table-$t').flexigrid({
-		url: '$page?events-table=yes&text-filter={$_GET["text-filter"]}',
+		url: '$page?events-table=yes&text-filter={$_GET["text-filter"]}$critical',
 		dataType: 'json',
 		colModel : [
-		{display: '', name : 'severity', width :31, sortable : true, align: 'center'},
-		{display: '$date', name : 'zDate', width :127, sortable : true, align: 'left'},
-		{display: '$events', name : 'subject', width : $TB2_WIDTH, sortable : false, align: 'left'},
-		{display: '$daemon', name : 'filename', width :145, sortable : true, align: 'left'},
+		{display: '', name : 'severity', width :40, sortable : true, align: 'center'},
+		{display: '<span style=font-size:18px>$date</span>', name : 'zDate', width :180, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$events</span>', name : 'subject', width : 961, sortable : false, align: 'left'},
+		{display: '<span style=font-size:18px>$daemon</span>', name : 'filename', width :206, sortable : true, align: 'left'},
 		],
 		$buttons
 	
@@ -228,6 +234,7 @@ function events_table(){
 	$data['rows'] = array();
 
 	$CurrentPage=CurrentPageName();
+	$spanON="<span style='font-size:18px'>";
 
 	if(mysql_num_rows($results)==0){json_error_show("no data",2);}
 
@@ -236,16 +243,20 @@ function events_table(){
 		$hostname=$ligne["hostname"];
 		$ligne["zDate"]=str_replace($currentdate, "", $ligne["zDate"]);
 		$severity_icon=$severity[$ligne["severity"]];
-		$link="<a href=\"javascript:blur();\" OnClick=\"javascript:Loadjs('$CurrentPage?ShowID-js={$ligne["ID"]}')\" style='text-decoration:underline'>";
-		$text=$link.$tpl->_ENGINE_parse_body($ligne["subject"]."</a><div style='font-size:10px'>{host}:$hostname {function}:{$ligne["function"]}, {line}:{$ligne["line"]}</div>");
+		$link="<a href=\"javascript:blur();\" 
+		OnClick=\"javascript:Loadjs('$CurrentPage?ShowID-js={$ligne["ID"]}')\" 
+		style='text-decoration:underline'>";
+		$text=$link.$tpl->_ENGINE_parse_body($ligne["subject"]."</a><br><span style='font-size:10px'>{host}:$hostname {function}:{$ligne["function"]}, {line}:{$ligne["line"]}</span>");
 		
 		
 		$data['rows'][] = array(
 				'id' => $ligne['ID'],
 				'cell' => array(
-						"<img src='img/$severity_icon'>",
+						"<center><img src='img/$severity_icon'></center>",
 						
-						$ligne["zDate"],$text,$ligne["filename"] )
+						"$spanON{$ligne["zDate"]}</span>",
+						"$spanON$text</span>",
+						"$spanON{$ligne["filename"]}</span>" )
 		);
 	}
 

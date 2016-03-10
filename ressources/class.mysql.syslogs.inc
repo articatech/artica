@@ -1349,7 +1349,7 @@ class mysql_storelogs{
 		if($GLOBALS["VERBOSE"]){echo "Injecting $basenameFF Task:$taskid ($filesize bytes) $sourceDate (MySQLSyslogType:$this->MySQLSyslogType)\n";}
 		$this->events("Injecting $basenameFF Task:$taskid ($filesize bytes) $sourceDate (MySQLSyslogType:$this->MySQLSyslogType)");
 		
-		$fcontent=mysql_escape_string2(file_get_contents($DestinationFile));
+		$fcontent=mysql_escape_string2(@file_get_contents($DestinationFile));
 		$sql = "INSERT INTO `files_store` (`filecontent`) VALUES( '$fcontent' )";
 		$this->events("Info:INSERTING INTO files_store $this->mysql_server:$this->mysql_port ($this->SocketName)");
 		
@@ -1480,7 +1480,7 @@ class mysql_storelogs{
 		}
 		
 		
-		$fcontent=mysql_escape_string2(file_get_contents($filepath));
+		$fcontent=mysql_escape_string2(@file_get_contents($filepath));
 		$sql = "INSERT INTO `access_store` (`filecontent`) VALUES( '$fcontent' )";
 		$this->QUERY_SQL($sql);
 		$fcontent=null;

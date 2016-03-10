@@ -13,6 +13,7 @@ if(posix_getuid()<>0){die("Cannot be used in web server mode\n\n");}
 
 
 if($argv[1]="--spamass-milter"){CheckSpamassassinMilter();die();}
+if($argv[1]="--policies-daemons"){EnablePolicyd();die();}
 
 
 if(systemMaxOverloaded()){
@@ -20,10 +21,8 @@ if(systemMaxOverloaded()){
 	die();
 }
 
-$sock=new sockets();
-$EnablePolicydWeight=$sock->GET_INFO('EnablePolicydWeight');
 
-if($EnablePolicydWeight<>1){RemovePolicydWeight();}else{EnablePolicyd();}
+EnablePolicyd();
 CheckSpamassassinMilter();
 CheckCLamavMilter();
 CheckAmavis();
@@ -32,63 +31,12 @@ CheckAmavis();
 die();
 
 function EnablePolicyd(){
+$unix=new unix();
+$php=$unix->LOCATE_PHP5_BIN();
+system("$php ". dirname(__FILE__)."/exec.postfix.maincf.php--smtpd-client-restrictions");
 	
-RemovePolicydWeight();
-	$sock=new sockets();
-	$users=new usersMenus();
-	$POLICYD_WEIGHT_PORT=trim($users->POLICYD_WEIGHT_PORT);
-	if($POLICYD_WEIGHT_PORT==null){$POLICYD_WEIGHT_PORT=12525;}
-	$TrustMyNetwork=$sock->GET_INFO("TrustMyNetwork");
-	if(!is_numeric($TrustMyNetwork)){$TrustMyNetwork=1;}	
-
-events("Enabling policyd-weight on port $POLICYD_WEIGHT_PORT");
-
-$datas=exec('postconf -h smtpd_recipient_restrictions');
-
-if($datas==null){
-		events("Warning postconf return null string...");
-}else{
-	$tbl=explode(",",$datas);
-	events("EnablePolicyd():: ". count($tbl)." lines");
-	while (list ($num, $ligne) = each ($tbl) ){
-		if(trim($ligne)==null){continue;}
-		$ARRAY[trim($ligne)]=true;
-	}	
-}
-
-reset($tbl);
-if($TrustMyNetwork==1){
-	array_unshift($tbl,"permit_mynetworks","permit_sasl_authenticated","reject_unauth_destination");
-}else{
-	array_unshift($tbl,"permit_sasl_authenticated","reject_unauth_destination");
-}
-
-	while (list ($num, $ligne) = each ($tbl) ){
-		if(trim($ligne)==null){continue;}
-		$ARRAY2[trim($ligne)]=true;
-	}
 	
-	unset($tbl);
-	while (list ($num, $ligne) = each ($ARRAY2) ){
-		if(trim($num)==null){continue;}
-		$tbl[]=$num;
-	}	
-
-
-
-$tbl[]="check_client_access hash:/etc/postfix/wbl_connections";
-$tbl[]="check_recipient_access hash:/etc/postfix/wbl_connections";
-$tbl[]="check_policy_service inet:127.0.0.1:$POLICYD_WEIGHT_PORT";
-$finalstring=implode(",",$tbl);
-
-$cmd="postconf -e \"smtpd_recipient_restrictions = $finalstring\"";
-events($cmd);
-system($cmd);
-if(!is_file("/etc/postfix/whitelist_connections")){exec("/bin/touch /etc/postfix/whitelist_connections");}
-
-// REJECT OR OK
-
-
+	
 	$q=new mysql();
 	$sql="SELECT * FROM postfix_whitelist_con";
 	$results=$q->QUERY_SQL($sql,"artica_backup");
@@ -386,7 +334,7 @@ function events($text){
 		if($size>1000000){unlink($logFile);}
 		$f = @fopen($logFile, 'a');
 		$line="[$pid/".basename(__FILE__)."] $date $text\n";
-		if($GLOBALS["VERBOSE"]){echo $line;}
+		echo $line;
 		@fwrite($f, "[$pid/".basename(__FILE__)."] $date $text\n");
 		@fclose($f);	
 		}

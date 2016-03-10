@@ -348,6 +348,360 @@ function UpdateUtilityHttpd(){
 	
 }
 
+function UpdateUtility_alls(){
+	$f[]="[ComponentSettings]";
+	$f[]="DownloadAllDatabases=false";
+	$f[]="DownloadSelectedComponents=false";
+	$f[]="ApplicationsOs=1";
+	$f[]="KasperskyAntiVirus_13_0=false";
+	$f[]="KasperskyAntiVirus_14_0=false";
+	$f[]="KasperskyAntiVirus_15_0=false";
+	$f[]="KasperskyInternetSecurrity_13_0=false";
+	$f[]="KasperskyInternetSecurrity_14_0=false";
+	$f[]="KasperskyInternetSecurrity_15_0=false";
+	$f[]="KasperskyPure_12_0_1_288=false";
+	$f[]="KasperskyPure_3_0=false";
+	$f[]="KasperskyTotalSecurity_15=false";
+	$f[]="Kaspersky_Security_13_0_2_458=false";
+	$f[]="Kaspersky_Security_14_0_0_177=false";
+	$f[]="Kaspersky_Security_15_0_0_226=false";
+	$f[]="KasperskyRescueDisk_10_0_29_6=false";
+	$f[]="KasperskyRescueDisk_10_0_31_4=false";
+	$f[]="KasperskyEndpointSecurityForWinWKS_8=true";
+	$f[]="KasperskyEndpointSecurityForWinWKS_10=true";
+	$f[]="KasperskyEndpointSecurityForWinWKS_10_SP1=true";
+	$f[]="KasperskyEndpointSecurityForMacOSX_8=true";
+	$f[]="KasperskyEndpointSecurityForLinux_8=true";
+	$f[]="KasperskySmallOfficeSecurityPC_9_1_0_59=false";
+	$f[]="KasperskySmallOfficeSecurityPC_3=false";
+	$f[]="KasperskySmallOfficeSecurityPC_15_2=false";
+	$f[]="KasperskyAntiVirusWindowsWorkstation_6_0_4_1611=false";
+	$f[]="KasperskyEndpointSecurityForWinFS_8=true";
+	$f[]="KasperskyEndpointSecurityForWinFS_10=true";
+	$f[]="KasperskyEndpointSecurityForWinFS_10_SP1=true";
+	$f[]="KasperskySmallOfficeSecurityFS_9_1_0_59=true";
+	$f[]="KasperskySmallOfficeSecurityFS_3=true";
+	$f[]="KasperskySmallOfficeSecurityFS_15_2=true";
+	$f[]="KasperskyAntiVirusWindowsServer_6_0_4_1611=true";
+	$f[]="KasperskyAntiVirusWindowsServerEE_8_0=true";
+	$f[]="KasperskyAntiVirusWindowsServerEE_8_0_MR1=true";
+	$f[]="KasperskyAntiVirusStorage_8_0=true";
+	$f[]="KasperskyAntiVirusLinuxFileServerWorkstation_8=true";
+	$f[]="KasperskySecurityforVirtualization_1_1=true";
+	$f[]="KasperskySecurityforVirtualization_2_0=true";
+	$f[]="KasperskySecurityforVirtualization_2_0_69=true";
+	$f[]="KasperskySecurityforVirtualization_3_0=true";
+	$f[]="KasperskySecurityforVirtualization_3_1=true";
+	$f[]="KasperskySecurityforVirtualization_LA_3_0=true";
+	$f[]="KasperskyLinuxMailSecurity_8_0=true";
+	$f[]="KasperskyLinuxMailSecurity_8_0_mp1=true";
+	$f[]="KasperskyLinuxMailSecurity_8_0_mp1_cf1=true";
+	$f[]="KasperskyAntiVirusLotusNotesDomino_8_0=true";
+	$f[]="KasperskyAntiVirusLotusNotesDomino_8_0_1=true";
+	$f[]="KasperskyAntiVirusMicrosoftIsaServers_8_0_3586=true";
+	$f[]="KasperskyAntiVirusMicrosoftIsaServers_8_5=true";
+	$f[]="KasperskyAntiVirusProxyServer_5_5=true";
+	$f[]="KasperskyAdministrationKit_8_0_2048_2090=false";
+	$f[]="KasperskySecurityCenter_9=true";
+	$f[]="KasperskySecurityCenter_10=true";
+	$f[]="KasperskySecurityCenter_10_sp1=true";
+	$f[]="KasperskySecurityMobile_10_mobile=false";
+	$f[]="KasperskySecurityMicrosoftExchangeServer_8_3=true";
+	$f[]="KasperskySecurityMicrosoftExchangeServer_8_6=true";
+	$f[]="KasperskySecurityMicrosoftExchangeServer_9_0=true";
+	$f[]="KasperskySecuritySharePointServer_8_2=true";
+	$f[]="KasperskySecuritySharePointServer_8_3=true";
+	$f[]="KasperskySecuritySharePointServer_9_0=true";
+	return @implode("\n", $f);
+}
+
+
+function UpdateUtility_gateways(){
+
+$f[]="[ComponentSettings]";
+$f[]="DownloadAllDatabases=false";
+$f[]="DownloadSelectedComponents=false";
+$f[]="ApplicationsOs=1";
+$f[]="KasperskyAntiVirus_13_0=false";
+$f[]="KasperskyAntiVirus_14_0=false";
+$f[]="KasperskyAntiVirus_15_0=false";
+$f[]="KasperskyInternetSecurrity_13_0=false";
+$f[]="KasperskyInternetSecurrity_14_0=false";
+$f[]="KasperskyInternetSecurrity_15_0=false";
+$f[]="KasperskyPure_12_0_1_288=false";
+$f[]="KasperskyPure_3_0=false";
+$f[]="KasperskyTotalSecurity_15=false";
+$f[]="Kaspersky_Security_13_0_2_458=false";
+$f[]="Kaspersky_Security_14_0_0_177=false";
+$f[]="Kaspersky_Security_15_0_0_226=false";
+$f[]="KasperskyRescueDisk_10_0_29_6=false";
+$f[]="KasperskyRescueDisk_10_0_31_4=false";
+$f[]="KasperskyEndpointSecurityForWinWKS_8=false";
+$f[]="KasperskyEndpointSecurityForWinWKS_10=false";
+$f[]="KasperskyEndpointSecurityForWinWKS_10_SP1=false";
+$f[]="KasperskyEndpointSecurityForMacOSX_8=false";
+$f[]="KasperskyEndpointSecurityForLinux_8=false";
+$f[]="KasperskySmallOfficeSecurityPC_9_1_0_59=false";
+$f[]="KasperskySmallOfficeSecurityPC_3=false";
+$f[]="KasperskySmallOfficeSecurityPC_15_2=false";
+$f[]="KasperskyAntiVirusWindowsWorkstation_6_0_4_1611=false";
+$f[]="KasperskyEndpointSecurityForWinFS_8=false";
+$f[]="KasperskyEndpointSecurityForWinFS_10=false";
+$f[]="KasperskyEndpointSecurityForWinFS_10_SP1=false";
+$f[]="KasperskySmallOfficeSecurityFS_9_1_0_59=false";
+$f[]="KasperskySmallOfficeSecurityFS_3=false";
+$f[]="KasperskySmallOfficeSecurityFS_15_2=false";
+$f[]="KasperskyAntiVirusWindowsServer_6_0_4_1611=false";
+$f[]="KasperskyAntiVirusWindowsServerEE_8_0=false";
+$f[]="KasperskyAntiVirusWindowsServerEE_8_0_MR1=false";
+$f[]="KasperskyAntiVirusStorage_8_0=false";
+$f[]="KasperskyAntiVirusLinuxFileServerWorkstation_8=false";
+$f[]="KasperskySecurityforVirtualization_1_1=false";
+$f[]="KasperskySecurityforVirtualization_2_0=false";
+$f[]="KasperskySecurityforVirtualization_2_0_69=false";
+$f[]="KasperskySecurityforVirtualization_3_0=false";
+$f[]="KasperskySecurityforVirtualization_3_1=false";
+$f[]="KasperskySecurityforVirtualization_LA_3_0=false";
+$f[]="KasperskyLinuxMailSecurity_8_0=true";
+$f[]="KasperskyLinuxMailSecurity_8_0_mp1=true";
+$f[]="KasperskyLinuxMailSecurity_8_0_mp1_cf1=true";
+$f[]="KasperskyAntiVirusLotusNotesDomino_8_0=true";
+$f[]="KasperskyAntiVirusLotusNotesDomino_8_0_1=true";
+$f[]="KasperskyAntiVirusMicrosoftIsaServers_8_0_3586=true";
+$f[]="KasperskyAntiVirusMicrosoftIsaServers_8_5=true";
+$f[]="KasperskyAntiVirusProxyServer_5_5=true";
+$f[]="KasperskyAdministrationKit_8_0_2048_2090=false";
+$f[]="KasperskySecurityCenter_9=false";
+$f[]="KasperskySecurityCenter_10=false";
+$f[]="KasperskySecurityCenter_10_sp1=false";
+$f[]="KasperskySecurityMobile_10_mobile=false";
+$f[]="KasperskySecurityMicrosoftExchangeServer_8_3=true";
+$f[]="KasperskySecurityMicrosoftExchangeServer_8_6=true";
+$f[]="KasperskySecurityMicrosoftExchangeServer_9_0=true";
+$f[]="KasperskySecuritySharePointServer_8_2=true";
+$f[]="KasperskySecuritySharePointServer_8_3=true";
+$f[]="KasperskySecuritySharePointServer_9_0=true";
+$f[]="";
+return @implode("\n", $f);
+}
+
+function UpdateUtility_servers(){
+	
+	$f[]="[ComponentSettings]";
+	$f[]="DownloadAllDatabases=false";
+	$f[]="DownloadSelectedComponents=false";
+	$f[]="ApplicationsOs=1";
+	$f[]="KasperskyAntiVirus_13_0=false";
+	$f[]="KasperskyAntiVirus_14_0=false";
+	$f[]="KasperskyAntiVirus_15_0=false";
+	$f[]="KasperskyInternetSecurrity_13_0=false";
+	$f[]="KasperskyInternetSecurrity_14_0=false";
+	$f[]="KasperskyInternetSecurrity_15_0=false";
+	$f[]="KasperskyPure_12_0_1_288=false";
+	$f[]="KasperskyPure_3_0=false";
+	$f[]="KasperskyTotalSecurity_15=false";
+	$f[]="Kaspersky_Security_13_0_2_458=false";
+	$f[]="Kaspersky_Security_14_0_0_177=false";
+	$f[]="Kaspersky_Security_15_0_0_226=false";
+	$f[]="KasperskyRescueDisk_10_0_29_6=false";
+	$f[]="KasperskyRescueDisk_10_0_31_4=false";
+	$f[]="KasperskyEndpointSecurityForWinWKS_8=false";
+	$f[]="KasperskyEndpointSecurityForWinWKS_10=false";
+	$f[]="KasperskyEndpointSecurityForWinWKS_10_SP1=false";
+	$f[]="KasperskyEndpointSecurityForMacOSX_8=false";
+	$f[]="KasperskyEndpointSecurityForLinux_8=false";
+	$f[]="KasperskySmallOfficeSecurityPC_9_1_0_59=false";
+	$f[]="KasperskySmallOfficeSecurityPC_3=false";
+	$f[]="KasperskySmallOfficeSecurityPC_15_2=false";
+	$f[]="KasperskyAntiVirusWindowsWorkstation_6_0_4_1611=false";
+	$f[]="KasperskyEndpointSecurityForWinFS_8=true";
+	$f[]="KasperskyEndpointSecurityForWinFS_10=true";
+	$f[]="KasperskyEndpointSecurityForWinFS_10_SP1=true";
+	$f[]="KasperskySmallOfficeSecurityFS_9_1_0_59=true";
+	$f[]="KasperskySmallOfficeSecurityFS_3=true";
+	$f[]="KasperskySmallOfficeSecurityFS_15_2=true";
+	$f[]="KasperskyAntiVirusWindowsServer_6_0_4_1611=true";
+	$f[]="KasperskyAntiVirusWindowsServerEE_8_0=true";
+	$f[]="KasperskyAntiVirusWindowsServerEE_8_0_MR1=true";
+	$f[]="KasperskyAntiVirusStorage_8_0=true";
+	$f[]="KasperskyAntiVirusLinuxFileServerWorkstation_8=true";
+	$f[]="KasperskySecurityforVirtualization_1_1=true";
+	$f[]="KasperskySecurityforVirtualization_2_0=true";
+	$f[]="KasperskySecurityforVirtualization_2_0_69=true";
+	$f[]="KasperskySecurityforVirtualization_3_0=true";
+	$f[]="KasperskySecurityforVirtualization_3_1=true";
+	$f[]="KasperskySecurityforVirtualization_LA_3_0=true";
+	$f[]="KasperskyLinuxMailSecurity_8_0=false";
+	$f[]="KasperskyLinuxMailSecurity_8_0_mp1=false";
+	$f[]="KasperskyLinuxMailSecurity_8_0_mp1_cf1=false";
+	$f[]="KasperskyAntiVirusLotusNotesDomino_8_0=false";
+	$f[]="KasperskyAntiVirusLotusNotesDomino_8_0_1=false";
+	$f[]="KasperskyAntiVirusMicrosoftIsaServers_8_0_3586=false";
+	$f[]="KasperskyAntiVirusMicrosoftIsaServers_8_5=false";
+	$f[]="KasperskyAntiVirusProxyServer_5_5=false";
+	$f[]="KasperskyAdministrationKit_8_0_2048_2090=false";
+	$f[]="KasperskySecurityCenter_9=false";
+	$f[]="KasperskySecurityCenter_10=false";
+	$f[]="KasperskySecurityCenter_10_sp1=false";
+	$f[]="KasperskySecurityMobile_10_mobile=false";
+	$f[]="KasperskySecurityMicrosoftExchangeServer_8_3=false";
+	$f[]="KasperskySecurityMicrosoftExchangeServer_8_6=false";
+	$f[]="KasperskySecurityMicrosoftExchangeServer_9_0=false";
+	$f[]="KasperskySecuritySharePointServer_8_2=false";
+	$f[]="KasperskySecuritySharePointServer_8_3=false";
+	$f[]="KasperskySecuritySharePointServer_9_0=false";
+	$f[]="";
+	
+	return @implode("\n", $f);
+}
+
+
+function UpdateUtility_systems(){
+
+$f[]="[ComponentSettings]";
+$f[]="DownloadAllDatabases=false";
+$f[]="DownloadSelectedComponents=false";
+$f[]="ApplicationsOs=1";
+$f[]="KasperskyAntiVirus_13_0=false";
+$f[]="KasperskyAntiVirus_14_0=false";
+$f[]="KasperskyAntiVirus_15_0=false";
+$f[]="KasperskyInternetSecurrity_13_0=false";
+$f[]="KasperskyInternetSecurrity_14_0=false";
+$f[]="KasperskyInternetSecurrity_15_0=false";
+$f[]="KasperskyPure_12_0_1_288=false";
+$f[]="KasperskyPure_3_0=false";
+$f[]="KasperskyTotalSecurity_15=false";
+$f[]="Kaspersky_Security_13_0_2_458=false";
+$f[]="Kaspersky_Security_14_0_0_177=false";
+$f[]="Kaspersky_Security_15_0_0_226=false";
+$f[]="KasperskyRescueDisk_10_0_29_6=false";
+$f[]="KasperskyRescueDisk_10_0_31_4=false";
+$f[]="KasperskyEndpointSecurityForWinWKS_8=true";
+$f[]="KasperskyEndpointSecurityForWinWKS_10=true";
+$f[]="KasperskyEndpointSecurityForWinWKS_10_SP1=true";
+$f[]="KasperskyEndpointSecurityForMacOSX_8=true";
+$f[]="KasperskyEndpointSecurityForLinux_8=true";
+$f[]="KasperskySmallOfficeSecurityPC_9_1_0_59=false";
+$f[]="KasperskySmallOfficeSecurityPC_3=false";
+$f[]="KasperskySmallOfficeSecurityPC_15_2=false";
+$f[]="KasperskyAntiVirusWindowsWorkstation_6_0_4_1611=false";
+$f[]="KasperskyEndpointSecurityForWinFS_8=false";
+$f[]="KasperskyEndpointSecurityForWinFS_10=false";
+$f[]="KasperskyEndpointSecurityForWinFS_10_SP1=false";
+$f[]="KasperskySmallOfficeSecurityFS_9_1_0_59=false";
+$f[]="KasperskySmallOfficeSecurityFS_3=false";
+$f[]="KasperskySmallOfficeSecurityFS_15_2=false";
+$f[]="KasperskyAntiVirusWindowsServer_6_0_4_1611=false";
+$f[]="KasperskyAntiVirusWindowsServerEE_8_0=false";
+$f[]="KasperskyAntiVirusWindowsServerEE_8_0_MR1=false";
+$f[]="KasperskyAntiVirusStorage_8_0=false";
+$f[]="KasperskyAntiVirusLinuxFileServerWorkstation_8=false";
+$f[]="KasperskySecurityforVirtualization_1_1=false";
+$f[]="KasperskySecurityforVirtualization_2_0=false";
+$f[]="KasperskySecurityforVirtualization_2_0_69=false";
+$f[]="KasperskySecurityforVirtualization_3_0=false";
+$f[]="KasperskySecurityforVirtualization_3_1=false";
+$f[]="KasperskySecurityforVirtualization_LA_3_0=false";
+$f[]="KasperskyLinuxMailSecurity_8_0=false";
+$f[]="KasperskyLinuxMailSecurity_8_0_mp1=false";
+$f[]="KasperskyLinuxMailSecurity_8_0_mp1_cf1=false";
+$f[]="KasperskyAntiVirusLotusNotesDomino_8_0=false";
+$f[]="KasperskyAntiVirusLotusNotesDomino_8_0_1=false";
+$f[]="KasperskyAntiVirusMicrosoftIsaServers_8_0_3586=false";
+$f[]="KasperskyAntiVirusMicrosoftIsaServers_8_5=false";
+$f[]="KasperskyAntiVirusProxyServer_5_5=false";
+$f[]="KasperskyAdministrationKit_8_0_2048_2090=false";
+$f[]="KasperskySecurityCenter_9=false";
+$f[]="KasperskySecurityCenter_10=false";
+$f[]="KasperskySecurityCenter_10_sp1=false";
+$f[]="KasperskySecurityMobile_10_mobile=false";
+$f[]="KasperskySecurityMicrosoftExchangeServer_8_3=false";
+$f[]="KasperskySecurityMicrosoftExchangeServer_8_6=false";
+$f[]="KasperskySecurityMicrosoftExchangeServer_9_0=false";
+$f[]="KasperskySecuritySharePointServer_8_2=false";
+$f[]="KasperskySecuritySharePointServer_8_3=false";
+$f[]="KasperskySecuritySharePointServer_9_0=false";
+$f[]="";
+
+return @implode("\n", $f);
+}
+
+
+function UpdateUtility_security_center(){
+	
+
+	$f[]="[DownloadingSettings]";
+	$f[]="DownloadDataBasesAndModules=true";
+	$f[]="";
+	$f[]="[ComponentSettings]";
+	$f[]="DownloadAllDatabases=false";
+	$f[]="DownloadSelectedComponents=false";
+	$f[]="ApplicationsOs=1";
+	$f[]="KasperskyAntiVirus_13_0=false";
+	$f[]="KasperskyAntiVirus_14_0=false";
+	$f[]="KasperskyAntiVirus_15_0=false";
+	$f[]="KasperskyInternetSecurrity_13_0=false";
+	$f[]="KasperskyInternetSecurrity_14_0=false";
+	$f[]="KasperskyInternetSecurrity_15_0=false";
+	$f[]="KasperskyPure_12_0_1_288=false";
+	$f[]="KasperskyPure_3_0=false";
+	$f[]="KasperskyTotalSecurity_15=false";
+	$f[]="Kaspersky_Security_13_0_2_458=false";
+	$f[]="Kaspersky_Security_14_0_0_177=false";
+	$f[]="Kaspersky_Security_15_0_0_226=false";
+	$f[]="KasperskyRescueDisk_10_0_29_6=false";
+	$f[]="KasperskyRescueDisk_10_0_31_4=false";
+	$f[]="KasperskyEndpointSecurityForWinWKS_8=false";
+	$f[]="KasperskyEndpointSecurityForWinWKS_10=false";
+	$f[]="KasperskyEndpointSecurityForWinWKS_10_SP1=false";
+	$f[]="KasperskyEndpointSecurityForMacOSX_8=false";
+	$f[]="KasperskyEndpointSecurityForLinux_8=false";
+	$f[]="KasperskySmallOfficeSecurityPC_9_1_0_59=false";
+	$f[]="KasperskySmallOfficeSecurityPC_3=false";
+	$f[]="KasperskySmallOfficeSecurityPC_15_2=false";
+	$f[]="KasperskyAntiVirusWindowsWorkstation_6_0_4_1611=false";
+	$f[]="KasperskyEndpointSecurityForWinFS_8=false";
+	$f[]="KasperskyEndpointSecurityForWinFS_10=false";
+	$f[]="KasperskyEndpointSecurityForWinFS_10_SP1=false";
+	$f[]="KasperskySmallOfficeSecurityFS_9_1_0_59=false";
+	$f[]="KasperskySmallOfficeSecurityFS_3=false";
+	$f[]="KasperskySmallOfficeSecurityFS_15_2=false";
+	$f[]="KasperskyAntiVirusWindowsServer_6_0_4_1611=false";
+	$f[]="KasperskyAntiVirusWindowsServerEE_8_0=false";
+	$f[]="KasperskyAntiVirusWindowsServerEE_8_0_MR1=false";
+	$f[]="KasperskyAntiVirusStorage_8_0=false";
+	$f[]="KasperskyAntiVirusLinuxFileServerWorkstation_8=false";
+	$f[]="KasperskySecurityforVirtualization_1_1=false";
+	$f[]="KasperskySecurityforVirtualization_2_0=false";
+	$f[]="KasperskySecurityforVirtualization_2_0_69=false";
+	$f[]="KasperskySecurityforVirtualization_3_0=false";
+	$f[]="KasperskySecurityforVirtualization_3_1=false";
+	$f[]="KasperskySecurityforVirtualization_LA_3_0=false";
+	$f[]="KasperskyLinuxMailSecurity_8_0=false";
+	$f[]="KasperskyLinuxMailSecurity_8_0_mp1=false";
+	$f[]="KasperskyLinuxMailSecurity_8_0_mp1_cf1=false";
+	$f[]="KasperskyAntiVirusLotusNotesDomino_8_0=false";
+	$f[]="KasperskyAntiVirusLotusNotesDomino_8_0_1=false";
+	$f[]="KasperskyAntiVirusMicrosoftIsaServers_8_0_3586=false";
+	$f[]="KasperskyAntiVirusMicrosoftIsaServers_8_5=false";
+	$f[]="KasperskyAntiVirusProxyServer_5_5=false";
+	$f[]="KasperskyAdministrationKit_8_0_2048_2090=true";
+	$f[]="KasperskySecurityCenter_9=true";
+	$f[]="KasperskySecurityCenter_10=true";
+	$f[]="KasperskySecurityCenter_10_sp1=true";
+	$f[]="KasperskySecurityMobile_10_mobile=false";
+	$f[]="KasperskySecurityMicrosoftExchangeServer_8_3=false";
+	$f[]="KasperskySecurityMicrosoftExchangeServer_8_6=false";
+	$f[]="KasperskySecurityMicrosoftExchangeServer_9_0=false";
+	$f[]="KasperskySecuritySharePointServer_8_2=false";
+	$f[]="KasperskySecuritySharePointServer_8_3=false";
+	$f[]="KasperskySecuritySharePointServer_9_0=false";
+
+	return @implode("\n", $f);
+	
+	
+}
+
 function UpdateUtility(){
 	if($GLOBALS["VERBOSE"]){echo "Line: ".__LINE__.":: ".__FUNCTION__."\n";}
 	$unix=new unix();
@@ -368,7 +722,7 @@ function UpdateUtility(){
 	if($unix->process_exists($pid,basename(__FILE__))){
 		$ProcessTime=$unix->PROCCESS_TIME_MIN($pid);
 		if($GLOBALS["VERBOSE"]){echo "Line: ".__LINE__.":: Process $pid  already in memory since $ProcessTime minutes - ".__FUNCTION__."\n";}
-		system_admin_events("Process $pid  already in memory since $ProcessTime minutes","MAIN",__FILE__,__LINE__,"updateutility");
+		system_admin_mysql(1,"Process $pid  already in memory since $ProcessTime minutes",__FILE__,__LINE__,"updateutility");
 		die();
 	}
 	
@@ -376,21 +730,30 @@ function UpdateUtility(){
 	@file_put_contents($pidtime, time());
 	@file_put_contents($pidfile, getmypid());	
 	
-	$UpdateUtility_Console=$unix->find_program("UpdateUtility-Console");
+	$pid=$unix->PIDOF_PATTERN("UpdateUtility-Console");
+	if($unix->process_exists($pid,basename(__FILE__))){
+		$ProcessTime=$unix->PROCCESS_TIME_MIN($pid);
+		system_admin_mysql(1,"Process $pid  already in memory since $ProcessTime minutes",__FILE__,__LINE__,"updateutility");
+		die();
+	}
+	
+	$UpdateUtility_Console="/etc/UpdateUtility/UpdateUtility-Console";
 	if(!is_file($UpdateUtility_Console)){
 		if($GLOBALS["VERBOSE"]){echo "Line: ".__LINE__.":: UpdateUtility-Console no such binary - ".__FUNCTION__."\n";}
-		system_admin_events("UpdateUtility-Console no such binary", __FUNCTION__, __FILE__, __LINE__, "update");
+		system_admin_mysql(0,"UpdateUtility-Console no such binary",  __FILE__, __LINE__, "update");
+		return;
 	}
 	
 	
 	if($GLOBALS["VERBOSE"]){echo "Line: ".__LINE__.":: UpdateUtility_Console - $UpdateUtility_Console".__FUNCTION__."\n";}
-	@copy($UpdateUtility_Console, "/etc/UpdateUtility/UpdateUtility-Console");
+	
 	$UpdateUtilityAllProducts=$sock->GET_INFO("UpdateUtilityAllProducts");
 	$UpdateUtilityOnlyForKav4Proxy=$sock->GET_INFO("UpdateUtilityOnlyForKav4Proxy");
 	$UpdateUtilityUseLoop=$sock->GET_INFO("UpdateUtilityUseLoop");
 	if(!is_numeric($UpdateUtilityAllProducts)){$UpdateUtilityAllProducts=1;}
 	$UpdateUtilityStorePath=$sock->GET_INFO("UpdateUtilityStorePath");
 	if($UpdateUtilityStorePath==null){$UpdateUtilityStorePath="/home/kaspersky/UpdateUtility";}
+	$UpdateUtilityUpdatesType=intval($sock->GET_INFO("UpdateUtilityUpdatesType"));
 	
 	if(is_file("/opt/kaspersky/kav4proxy/sbin/kav4proxy-kavicapserver")){
 		if(!is_numeric($UpdateUtilityOnlyForKav4Proxy)){$UpdateUtilityOnlyForKav4Proxy=1;}
@@ -416,76 +779,155 @@ function UpdateUtility(){
 		return;
 	}	
 	
-	$updateutility=new updateutilityv2();
-	if($UpdateUtilityAllProducts==1){
-		system_admin_events("All products as been set...", __FUNCTION__, __FILE__, __LINE__, "update");
-		while (list ($key, $line) = each ($updateutility->ALL_PKEYS) ){$updateutility->MAIN_ARRAY["ComponentSettings"][$key]="true";}
-		if(!isset($updateutility->MAIN_ARRAY["ComponentSettings"]["DownloadAllDatabases"])){$updateutility->MAIN_ARRAY["ComponentSettings"]["DownloadAllDatabases"]="true";}
-		if(!isset($updateutility->MAIN_ARRAY["ComponentSettings"]["KasperskyAdministrationKit_8_0_2048_2090"])){$updateutility->MAIN_ARRAY["ComponentSettings"]["KasperskyAdministrationKit_8_0_2048_2090"]="true";}
-		if(!isset($updateutility->MAIN_ARRAY["ComponentSettings"]["KasperskySecurityCenter_9"])){$updateutility->MAIN_ARRAY["ComponentSettings"]["KasperskySecurityCenter_9"]="true";}		
-	}
-	if($UpdateUtilityOnlyForKav4Proxy==1){
-		system_admin_events("Kav4Proxy as been set...", __FUNCTION__, __FILE__, __LINE__, "update");
-		reset($updateutility->ALL_PKEYS);
-		while (list ($key, $line) = each ($updateutility->ALL_PKEYS) ){$updateutility->MAIN_ARRAY["ComponentSettings"][$key]="false";}
-		$updateutility->MAIN_ARRAY["ComponentSettings"]["KasperskyAntiVirusProxyServer_5_5"]="true";
-		$updateutility->MAIN_ARRAY["ComponentSettings"]["KasperskyAntiVirusProxyServer_5_5_41_51"]="true";
-		$updateutility->MAIN_ARRAY["ComponentSettings"]["KasperskyAntiVirusProxyServer_5_5_62"]="true";
-		$updateutility->MAIN_ARRAY["ComponentSettings"]["KasperskyAntiVirusProxyServer_5_5_62"]="true";
-		$updateutility->MAIN_ARRAY["ComponentSettings"]["DownloadAllDatabases"]="false";
-	}
-	
-	
-	$updateutility->MAIN_ARRAY["ShedulerSettings"]["LastUpdate"]='@Variant(\0\0\0\x10\0\0\0\0\xff\xff\xff\xff\xff)';
-	$updateutility->MAIN_ARRAY["ShedulerSettings"]["Time"]='@Variant(\0\0\0\xf\0\0\0\0)';
-	$t=time();
-	$ini=new Bs_IniHandler();
-	$ini2=new Bs_IniHandler();
-	$ini->_params=$updateutility->MAIN_ARRAY;
-	$ini->_params["DirectoriesSettings"]["UpdatesFolder"]="$UpdateUtilityStorePath/databases";
-	$ini->_params["DirectoriesSettings"]["TempFolder"]="$UpdateUtilityStorePath/TempFolder";
-	
-	@mkdir("$UpdateUtilityStorePath/databases",0755,true);
-	@mkdir("$UpdateUtilityStorePath/TempFolder",0755,true);
-	
-	
-	
-	
-	$report_file="/var/log/artica-postfix/UpdateUtility-report-".time().".log";
-	$ini->_params["ConnectionSettings"]["UseSpecifiedProxyServerSettings"]="false";
-	$ini->_params["ConnectionSettings"]["UseAuthenticationProxyServer"]="false";
-	$ini->_params["ReportSettings"]["ReportFileName"]="$report_file";
-	
-		
-	
+	$f[]="[ConnectionSettings]";
+	$f[]="TimeoutConnection=60";
+	$f[]="UsePassiveFtpMode=true";
 	
 	$datas=$sock->GET_INFO("ArticaProxySettings");
 	if(trim($datas)<>null){
+		$ini2=new Bs_IniHandler();
 		$ini2->loadString($datas);
 		$ArticaProxyServerEnabled=$ini->_params["PROXY"]["ArticaProxyServerEnabled"];
 		$ArticaProxyServerName=$ini->_params["PROXY"]["ArticaProxyServerName"];
 		$ArticaProxyServerPort=$ini->_params["PROXY"]["ArticaProxyServerPort"];
 		$ArticaProxyServerUsername=trim($ini->_params["PROXY"]["ArticaProxyServerUsername"]);
 		$ArticaProxyServerUserPassword=$ini->_params["PROXY"]["ArticaProxyServerUserPassword"];
+		if(is_numeric($ArticaProxyServerEnabled)){
+			if($ArticaProxyServerEnabled==1){$ArticaProxyServerEnabled="yes";}
+		}
 		if($ArticaProxyServerEnabled=="yes"){
-			$ini->_params["ConnectionSettings"]["UseSpecifiedProxyServerSettings"]="true";
-			$ini->_params["ConnectionSettings"]["AddressProxyServer"]=$ArticaProxyServerName;
-			$ini->_params["ConnectionSettings"]["PortProxyServer"]=$ArticaProxyServerPort;
-			if($ArticaProxyServerUsername<>null){
-				$ini->_params["ConnectionSettings"]["UseAuthenticationProxyServer"]="true";
-				$ini->_params["ConnectionSettings"]["UserNameProxyServer"]="$ArticaProxyServerUsername";
-				$ini->_params["ConnectionSettings"]["PasswordProxyServer"]="$ArticaProxyServerUserPassword";
-			}
+			$f[]="UseProxyServer=true";
+			$f[]="ByPassProxyServer=false";
+			$f[]="AddressProxyServer=$ArticaProxyServerName";
+			$f[]="PortProxyServer=$ArticaProxyServerPort";
 			
+			if($ArticaProxyServerUsername<>null){
+				$f[]="UseAuthenticationProxyServer=true";
+				$f[]="UserNameProxyServer=$ArticaProxyServerUsername";
+				$f[]="PasswordProxyServer=$ArticaProxyServerUserPassword";
+			}
+				
+		}else{
+			$f[]="UseProxyServer=false";
+			$f[]="ByPassProxyServer=true";
 		}
 	}
+	
+
+	@mkdir("$UpdateUtilityStorePath/databases",0755,true);
+	@mkdir("$UpdateUtilityStorePath/TempFolder",0755,true);
+	$t=time();
+	$report_file="/var/log/artica-postfix/UpdateUtility-report-".time().".log";
+	
+	$f[]="AutomaticallyDetectProxyServerSettings=true";
+	$f[]="UseSpecifiedProxyServerSettings=false";
+	$f[]="DownloadPatches=true";
+	$f[]="";
+	$f[]="[AdditionalSettings]";
+	$f[]="CreateCrashDumpFile=false";
+	$f[]="TurnTrace=false";
+	$f[]="AddIconToTray=false";
+	$f[]="MinimizeProgramUponTermination=true";
+	$f[]="AnimateIcon=true";
+	$f[]="ReturnCodeDesc=";
+	$f[]="";
+	$f[]="[ReportSettings]";
+	$f[]="DisplayReportsOnScreen=false";
+	$f[]="SaveReportsToFile=true";
+	$f[]="AppendToPreviousFile=false";
+	$f[]="SizeLogFileValue=1048576";
+	$f[]="ReportFileName=$report_file";
+	$f[]="DeleteIfSize=true";
+	$f[]="DeleteIfNumDay=false";
+	$f[]="NoChangeLogFile=false";
+	$f[]="NumDayLifeLOgFileValue=7";
+	$f[]="";
+	$f[]="[DirectoriesSettings]";
+	$f[]="MoveToCurrentFolder=false";
+	$f[]="MoveToCustomFolder=true";
+	$f[]="UpdatesFolder=$UpdateUtilityStorePath/database";
+	$f[]="TempFolder=$UpdateUtilityStorePath/TempFolder";
+	$f[]="ClearTempFolder=true";
+	$f[]="";
+	$f[]="[UpdatesSourceSettings]";
+	$f[]="SourceCustomPath=";
+	$f[]="SourceCustom=false";
+	$f[]="SourceKlabServer=true";
+	$f[]="";
+	$f[]="[DownloadingSettings]";
+	$f[]="DownloadDataBasesAndModules=true";
+	$f[]="";
+	
 
 	
+	if($UpdateUtilityUpdatesType==0){
+		$f[]=UpdateUtility_security_center();
+	}
+	if($UpdateUtilityUpdatesType==1){
+		$f[]=UpdateUtility_systems();
+	}
+	if($UpdateUtilityUpdatesType==2){
+		$f[]=UpdateUtility_servers();
+	}	
+	if($UpdateUtilityUpdatesType==3){
+		$f[]=UpdateUtility_gateways();
+	}	
+	if($UpdateUtilityUpdatesType==4){
+		$f[]=UpdateUtility_alls();
+	}	
+	$f[]="";
+	$f[]="[ShedulerSettings]";
+	$f[]="LastUpdate=@Variant(\0\0\0\x10\0\0\0\0\xff\xff\xff\xff\xff)";
+	$f[]="ShedulerType=0";
+	$f[]="PeriodValue=1";
+	$f[]="UseTime=true";
+	$f[]="Time=@Variant(\0\0\0\xf\0\0\0\0)";
+	$f[]="Monday=true";
+	$f[]="Tuesday=true";
+	$f[]="Wednesday=true";
+	$f[]="Thursday=true";
+	$f[]="Friday=true";
+	$f[]="Saturday=true";
+	$f[]="Sunday=true";
+	$f[]="";
+	$f[]="[SdkSettings]";
+	$f[]="PrimaryIndexFileName=u0607g.xml";
+	$f[]="PrimaryIndexRelativeUrlPath=index";
+	$f[]="LicensePath=";
+	$f[]="SimpleModeLicensing=true";
 	
-	$ini->saveFile("/etc/UpdateUtility/updater.ini");
+	
+	$cgcreate=$unix->find_program("cgcreate");
+	if(is_file($cgcreate)){
+		$UpdateUtilityCpuShares=intval($sock->GET_INFO("UpdateUtilityCpuShares"));
+		$UpdateUtilityDiskIO=intval($sock->GET_INFO("UpdateUtilityDiskIO"));
+		if($UpdateUtilityCpuShares==0){$UpdateUtilityCpuShares=256;}
+		if($UpdateUtilityDiskIO==0){$UpdateUtilityDiskIO=450;}
+		$unix->CGROUPS_limit_service_structure("kasupt",$UpdateUtilityCpuShares,0,$UpdateUtilityDiskIO);
+	}
+
+	$UpdateUtilityPrefix=null;
+	@file_put_contents("/etc/UpdateUtility/updater.ini", @implode("\n", $f));
+	$f=array();
+	$SH[]="#!/bin/sh";
+	$SH[]="bindir=`dirname \"\$me\$0\"`";
+	$SH[]="libdir=`cd \"\${bindir}/lib\" ; pwd`";
+	$SH[]="LD_LIBRARY_PATH=\"\${libdir}:\${LD_LIBRARY_PATH}\"";
+	$SH[]="export LD_LIBRARY_PATH";
+	$SH[]="cd \${bindir}";
+	
+	if(is_file("/usr/bin/cgexec")){$UpdateUtilityPrefix="/usr/bin/cgexec -g cpu,cpuset,blkio:kasupt ";}
+	
+	
+	$SH[]="{$UpdateUtilityPrefix}./UpdateUtility-Console -u -o /etc/UpdateUtility/updater.ini -r 2>&1\$@";
+	$SH[]="";
+	@file_put_contents("/etc/UpdateUtility/uu-console.sh", @implode("\n", $SH));
+	$SH=array();
+	
 	chdir("/etc/UpdateUtility");
 	@chmod("/etc/UpdateUtility/UpdateUtility-Console", 0755);
-	$cmd="./UpdateUtility-Console -u -o /etc/UpdateUtility/updater.ini -r 2>&1";
+	@chmod("/etc/UpdateUtility/uu-console.sh", 0755);
+	$cmd="./uu-console.sh 2>&1";
 	$Restart1=false;
 	writelogs("Running `$cmd`",__FUNCTION__,__FILE__,__LINE__);
 	exec("$cmd",$results);
@@ -579,33 +1021,34 @@ function ScanUpdateUtilityLogs($force=false){
 		
 		
 		while (list ($key, $line) = each ($f) ){
-			if(preg_match("#New file installed '(.*?)'#", $line,$re)){
+			$nextFile=null;
+			if(preg_match("#File downloaded '(.*?)'#", $line,$re)){
 				$nextFile="$UpdateUtilityStorePath/databases/Updates/{$re[1]}";
 				if(!is_file($nextFile)){
-					if($GLOBALS["VERBOSE"]){
-						echo "$nextFile, no such file\n";
-					}
-					
+					if($GLOBALS["VERBOSE"]){echo "$nextFile, no such file\n";}
 					$nextFile="$UpdateUtilityStorePath/TempFolder/temporaryFolder/{$re[1]}";
 				}
-				if(!is_file($nextFile)){
-					if($GLOBALS["VERBOSE"]){
-						echo "$nextFile, no such file\n";
-					}
-					continue;}
-				$files++;
-				$size=$size+$unix->file_size($nextFile);
-				continue;
 			}
 			
-			if(preg_match("#Segmentation fault#", $line)){$isSuccess=0;continue;$rp_finish=true;}	
-			if(preg_match("#Bus error#", $line)){$isSuccess=0;continue;$rp_finish=true;}	
+			
+			
+			if(preg_match("#Segmentation fault#", $line)){$isSuccess=0;continue;$rp_finish=true;}
+			if(preg_match("#Bus error#", $line)){$isSuccess=0;continue;$rp_finish=true;}
 			if(preg_match("#Report finished at#", $line,$re)){$rp_finish=true;continue;}
 			if(preg_match("#Insufficient disk space#i", $line,$re)){$isSuccess=0;continue;$rp_finish=true;}
-			if(preg_match("#Failed to#i", $line,$re)){$isSuccess=0;continue;}	
-			if(preg_match("#not retranslated#i", $line,$re)){$isSuccess=0;continue;$rp_finish=true;}	
+			if(preg_match("#Failed to#i", $line,$re)){$isSuccess=0;continue;}
+			if(preg_match("#not retranslated#i", $line,$re)){$isSuccess=0;continue;$rp_finish=true;}
 			if(preg_match("#Retranslation operation result 'Success'#i", $line,$re)){$isSuccess=1;continue;}
+			
+				
+			if($nextFile==null){continue;}	
+			if(!is_file($nextFile))	{continue;}	
+			$size=$size+$unix->file_size($nextFile);
+			$files++;
+			continue;
 		}
+			
+			
 	
 		if(!$rp_finish){
 			if($GLOBALS["VERBOSE"]){echo "Not finished {$timefile}Mn/720Mn $filename\n";}
@@ -623,14 +1066,19 @@ function ScanUpdateUtilityLogs($force=false){
 		$q->QUERY_SQL("INSERT INTO updateutilityev (`zDate`,`filesize`,`filesnum`,`details`,`isSuccess`) 
 				VALUES ('$date','$files','$size','$details','$isSuccess')","artica_events");
 		if(!$q->ok){continue;}
+		
+		
+		$q->QUERY_SQL("DELETE FROM updateutilityev WHERE zDate<DATE_SUB(NOW(),INTERVAL 15 DAY) ORDER BY zDate","artica_events");
 		@unlink($filename);
+		UpdateUtilitySize(true);
 		continue;
 		
 	}	
 }
 function UpdateUtilitySize($force=false){
 
-
+	if(isset($GLOBALS["UpdateUtilitySize_EXEC"])){return;}
+	$GLOBALS["UpdateUtilitySize_EXEC"]=true;
 	$unix=new unix();
 	$arrayfile="/usr/share/artica-postfix/ressources/logs/web/UpdateUtilitySize.size.db";
 	$pidfile="/etc/artica-postfix/pids/UpdateUtilitySize.pid";

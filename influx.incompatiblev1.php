@@ -5,7 +5,6 @@ if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;ini_set('display_errors', 1
 	include_once('ressources/class.users.menus.inc');
 	include_once('ressources/class.squid.inc');
 	include_once('ressources/class.status.inc');
-	include_once('ressources/class.artica.graphs.inc');
 	include_once('ressources/class.system.network.inc');
 	
 	$users=new usersMenus();

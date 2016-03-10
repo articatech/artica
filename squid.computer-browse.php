@@ -54,7 +54,7 @@ function popup(){
 	
 
 	if(isset($_GET["callback"])){$callback="&callback={$_GET["callback"]}";}
-	$title=$tpl->javascript_parse_text("{proxy_clients}::{MAC}");
+	$title=$tpl->javascript_parse_text("{clients}::{MAC}");
 	$html="
 	<table class='flexRT$t' style='display:none' id='flexRT$t'></table>
 	<script>
@@ -79,7 +79,7 @@ function popup(){
 	sortname: 'MAC',
 	sortorder: 'desc',
 	usepager: true,
-	title: '$title',
+	title: '<span style=font-size:22px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,

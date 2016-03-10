@@ -34,11 +34,12 @@ function tabs(){
 	
 	if($isProxyAll>0){
 		$array["categories"]='{your_categories}';
+		$array["acls"]='{acls}';
 		
 	}
 	
 	$array["server-params"]="{main_parameters}";
-	$array["uploads"]='{uploads}';
+	//$array["uploads"]='{uploads}';
 	while (list ($num, $ligne) = each ($array) ){
 		
 		if($num=="proxys"){
@@ -75,6 +76,12 @@ function tabs(){
 			continue;
 			
 		}
+		
+		if($num=="acls"){
+			$html[]=$tpl->_ENGINE_parse_body("<li><a href=\"artica-meta.proxy.acls.php\"><span style='font-size:22px'>$ligne</span></a></li>\n");
+			continue;
+				
+		}		
 		
 
 		$html[]=$tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&uuid=".urlencode($_GET["uuid"])."\"><span style='font-size:22px'>$ligne</span></a></li>\n");

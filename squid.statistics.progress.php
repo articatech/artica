@@ -102,9 +102,20 @@ if($prc==100){
 	if(document.getElementById('graph-{$_REQUEST["tt"]}')){
 		document.getElementById('graph-{$_REQUEST["tt"]}').innerHTML='<center><img src=img/loader-big.gif></center>';
 	}
-	LockPage();
+	
 	RTMMailHide();
 	$NextFunction_final
+	if(document.getElementById('SQUID_STATISTICS_MEMBERS_MD5')){
+		var md5=document.getElementById('SQUID_STATISTICS_MEMBERS_MD5').value;
+		LoadAjaxRound('stats-members','squid.statistics.members.php?zmd5='+md5);
+	}
+	if(document.getElementById('POSTFIX_STATISTICS_MEMBERS_MD5')){
+		var md5=document.getElementById('POSTFIX_STATISTICS_MEMBERS_MD5').value;
+		LoadAjaxRound('messaging-stats-members','postfix.statistics.members.php?zmd5='+md5);
+	}
+	
+	
+	
 }
 setTimeout(\"Start$time()\",1000);
 ";
@@ -161,7 +172,7 @@ $html="
 <div id='progress-$t' style='height:50px'></div>
 <p>&nbsp;</p>
 <textarea style='margin-top:5px;font-family:Courier New;
-font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 overflow:auto;font-size:11px' id='text-$t'></textarea>
 	
 <script>

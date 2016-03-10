@@ -8,6 +8,28 @@ class template_simple{
 	public $SquidHTTPTemplateEnablePostmaster=1;
 	public $SquidHTTPTemplateDisableHostname;
 	public $SquidHTTPTemplateLanguage;
+	public $SquidHTTPTemplateNoProxyVersion=0;
+	
+	public $SquidFTPTemplateNoVersion=0;
+	public $SquidFTPTemplateBackgroundColor="#FFFFF";
+	public $SquidFTPTemplateFamily="Calibri, Candara, Segoe, \"Segoe UI\", Optima, Arial, sans-serif";
+	public $SquidFTPTemplateFontColor="#000000";
+	public $SquidFTPTemplateEnablePostmaster=1;
+	public $SquidFTPTemplateDisableHostname;
+	public $SquidFTPTemplateLanguage;	
+	public $SquidFTPTemplateSmiley="0040";
+	
+	
+	public $SquidADSTemplateNoVersion=0;
+	public $SquidADSTemplateBackgroundColor="#8c1919";
+	public $SquidADSTemplateFamily="Calibri, Candara, Segoe, \"Segoe UI\", Optima, Arial, sans-serif";
+	public $SquidADSTemplateFontColor="#FFFFFF";
+	public $SquidADSTemplateEnablePostmaster=1;
+	public $SquidADSTemplateDisableHostname;
+	public $SquidADSTemplateLanguage;
+	public $SquidADSTemplateSmiley="2639";
+	
+	
 	public $TITLE=null;
 	public $BODY=null;
 	public $TEMPLATE_NAME=null;
@@ -185,13 +207,42 @@ class template_simple{
 		$SquidHTTPTemplateFamily="Calibri, Candara, Segoe, \"Segoe UI\", Optima, Arial, sans-serif";
 		$SquidHTTPTemplateFontColor="#FFFFFF";
 		
+		$SquidFTPTemplateNoVersion=0;
+		$SquidFTPTemplateBackgroundColor="#FFFFFF";
+		$SquidFTPTemplateFamily="Calibri, Candara, Segoe, \"Segoe UI\", Optima, Arial, sans-serif";
+		$SquidFTPTemplateFontColor="#000000";
+		$SquidFTPTemplateSmiley="0040";
+		
 		$SquidHTTPTemplateEnablePostmaster=1;
+		$cache_mgr_user=$sock->GET_INFO("cache_mgr_user");
 		$SquidHTTPTemplateNoVersion=intval($sock->GET_INFO("SquidHTTPTemplateNoVersion"));
 		$SquidHTTPTemplateBackgroundColor=$sock->GET_INFO("SquidHTTPTemplateBackgroundColor");
 		$SquidHTTPTemplateDisableHostname=intval($sock->GET_INFO("SquidHTTPTemplateDisableHostname"));
 		$SquidHTTPTemplateEnablePostmaster=$sock->GET_INFO("SquidHTTPTemplateEnablePostmaster");
 		$SquidHTTPTemplateFontColor=$sock->GET_INFO("SquidHTTPTemplateFontColor");
 		$SquidHTTPTemplateFamily=$sock->GET_INFO("SquidHTTPTemplateFamily");
+		$SquidHTTPTemplateNoProxyVersion=intval($sock->GET_INFO("SquidHTTPTemplateNoProxyVersion"));
+		
+		
+		$SquidFTPTemplateEnablePostmaster=1;
+		$SquidFTPTemplateNoVersion=intval($sock->GET_INFO("SquidFTPTemplateNoVersion"));
+		$SquidFTPTemplateBackgroundColor=$sock->GET_INFO("SquidFTPTemplateBackgroundColor");
+		$SquidFTPTemplateDisableHostname=intval($sock->GET_INFO("SquidFTPTemplateDisableHostname"));
+		$SquidFTPTemplateEnablePostmaster=$sock->GET_INFO("SquidFTPTemplateEnablePostmaster");
+		$SquidFTPTemplateFontColor=$sock->GET_INFO("SquidFTPTemplateFontColor");
+		$SquidFTPTemplateFamily=$sock->GET_INFO("SquidFTPTemplateFamily");
+		$SquidFTPTemplateSmiley=trim($sock->GET_INFO("SquidFTPTemplateSmiley"));
+		
+		$SquidADSTemplateEnablePostmaster=1;
+		$SquidADSTemplateNoVersion=intval($sock->GET_INFO("SquidADSTemplateNoVersion"));
+		$SquidADSTemplateBackgroundColor=$sock->GET_INFO("SquidADSTemplateBackgroundColor");
+		$SquidADSTemplateDisableHostname=intval($sock->GET_INFO("SquidADSTemplateDisableHostname"));
+		$SquidADSTemplateEnablePostmaster=$sock->GET_INFO("SquidADSTemplateEnablePostmaster");
+		$SquidADSTemplateFontColor=$sock->GET_INFO("SquidADSTemplateFontColor");
+		$SquidADSTemplateFamily=$sock->GET_INFO("SquidADSTemplateFamily");
+		$SquidADSTemplateSmiley=trim($sock->GET_INFO("SquidADSTemplateSmiley"));
+		
+		
 		
 		if($SquidHTTPTemplateBackgroundColor==null){$SquidHTTPTemplateBackgroundColor="#8c1919";}
 		if($SquidHTTPTemplateFamily==null){$SquidHTTPTemplateFamily="Calibri, Candara, Segoe, \"Segoe UI\", Optima, Arial, sans-serif";}
@@ -200,15 +251,92 @@ class template_simple{
 		if(!preg_match("#^\##", $SquidHTTPTemplateFontColor)){$SquidHTTPTemplateFontColor="#$SquidHTTPTemplateFontColor";}
 		
 		$this->SquidHTTPTemplateNoVersion=$SquidHTTPTemplateNoVersion;
+		$this->SquidHTTPTemplateNoProxyVersion=$SquidHTTPTemplateNoProxyVersion;
 		$this->SquidHTTPTemplateBackgroundColor=$SquidHTTPTemplateBackgroundColor;
 		$this->SquidHTTPTemplateFamily=$SquidHTTPTemplateFamily;
 		$this->SquidHTTPTemplateFontColor=$SquidHTTPTemplateFontColor;
 		$this->SquidHTTPTemplateEnablePostmaster=$SquidHTTPTemplateEnablePostmaster;
 		$this->SquidHTTPTemplateDisableHostname=$SquidHTTPTemplateDisableHostname;
 		
-
+		
+		if($SquidFTPTemplateBackgroundColor==null){$SquidFTPTemplateBackgroundColor="#FFFFF";}
+		if($SquidFTPTemplateFamily==null){$SquidFTPTemplateFamily="Calibri, Candara, Segoe, \"Segoe UI\", Optima, Arial, sans-serif";}
+		if(!is_numeric($SquidFTPTemplateEnablePostmaster)){$SquidFTPTemplateEnablePostmaster=1;}
+		if($SquidFTPTemplateFontColor==null){$SquidFTPTemplateFontColor="#00000";}
+		if(!preg_match("#^\##", $SquidFTPTemplateFontColor)){$SquidFTPTemplateFontColor="#$SquidFTPTemplateFontColor";}
+		if($SquidFTPTemplateSmiley==null){$SquidFTPTemplateSmiley="0040";}
+		
+		
+		if($SquidADSTemplateBackgroundColor==null){$SquidADSTemplateBackgroundColor="#8c1919";}
+		if($SquidADSTemplateFamily==null){$SquidADSTemplateFamily="Calibri, Candara, Segoe, \"Segoe UI\", Optima, Arial, sans-serif";}
+		if(!is_numeric($SquidADSTemplateEnablePostmaster)){$SquidADSTemplateEnablePostmaster=1;}
+		if($SquidADSTemplateFontColor==null){$SquidADSTemplateFontColor="#FFFFFF";}
+		if(!preg_match("#^\##", $SquidADSTemplateFontColor)){$SquidADSTemplateFontColor="#$SquidADSTemplateFontColor";}
+		if($SquidADSTemplateSmiley==null){$SquidADSTemplateSmiley="2639";}
+		
+		
+		$this->SquidFTPTemplateNoVersion=$SquidFTPTemplateNoVersion;
+		$this->SquidFTPTemplateBackgroundColor=$SquidFTPTemplateBackgroundColor;
+		$this->SquidFTPTemplateFamily=$SquidFTPTemplateFamily;
+		$this->SquidFTPTemplateFontColor=$SquidFTPTemplateFontColor;
+		$this->SquidFTPTemplateEnablePostmaster=$SquidFTPTemplateEnablePostmaster;
+		$this->SquidFTPTemplateDisableHostname=$SquidFTPTemplateDisableHostname;
+		$this->SquidFTPTemplateSmiley=$SquidFTPTemplateSmiley;
+		
+		$this->SquidADSTemplateNoVersion=$SquidADSTemplateNoVersion;
+		$this->SquidADSTemplateBackgroundColor=$SquidADSTemplateBackgroundColor;
+		$this->SquidADSTemplateFamily=$SquidADSTemplateFamily;
+		$this->SquidADSTemplateFontColor=$SquidADSTemplateFontColor;
+		$this->SquidADSTemplateEnablePostmaster=$SquidADSTemplateEnablePostmaster;
+		$this->SquidADSTemplateDisableHostname=$SquidADSTemplateDisableHostname;
+		$this->SquidADSTemplateSmiley=$SquidADSTemplateSmiley;
 		
 		$this->TemplateConfig=unserialize($sock->GET_INFO("TemplateConfig"));
+		
+		
+		if(!isset($this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["TITLE"])){$this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["TITLE"]=null;}
+		if(!isset($this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["BODY"])){$this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["BODY"]=null;}
+		
+		
+		$this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["TITLE"]=$sock->GET_INFO("SquidADSTemplateTitle");
+		$this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["BODY"]=$sock->GET_INFO("SquidADSTemplateBody");
+		
+		
+		
+		if($this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["TITLE"]==null){
+			$this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["TITLE"]="Request blocked";
+			
+		}
+		if($this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["BODY"]==null){
+			$this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["BODY"]="
+			<h1>ERROR</h1>
+			<h2>Request blocked</h2>
+			</div>
+			<hr>
+			
+			<div id=\"content\">
+			<p>The following error was encountered while trying to retrieve the URL: <a href=\"@protocol@@hostport@@path@\">@protocol@@hostport@@path@</a></p>
+			
+			<blockquote id=\"error\">
+			<p><b>Access Denied by &laquo;@block-reason@&raquo;</b></p>
+			</blockquote>
+			
+			<p>Access control configuration prevents your request from being allowed at this time.
+			Please contact your service provider if you feel this is incorrect.</p>
+			
+			<p>Your cache administrator is <a href=\"mailto:$cache_mgr_user\">$cache_mgr_user</a>.</p>
+			<br>
+			</div>
+			
+			<hr>
+			<div id=\"footer\">
+			<p>AntiAds Version number @version@</p>
+			<!-- %c -->
+			</div>";
+			
+		}
+
+		
 		
 		if(!isset($this->TemplateConfig[$this->lang][$this->TEMPLATE_NAME])){
 			if($GLOBALS["VERBOSE"]){echo "<span style='color:#d32d2d'>Load default content</span><br>\n";}
@@ -226,6 +354,15 @@ class template_simple{
 				if($GLOBALS["VERBOSE"]){echo "SquidHTTPTemplateNoVersion: $this->SquidHTTPTemplateNoVersion\n";}
 			}
 		}
+		
+		if(isset($TemplateChoose["SquidHTTPTemplateNoProxyVersion"])){
+			if(is_numeric($TemplateChoose["SquidHTTPTemplateNoProxyVersion"])){
+				$this->SquidHTTPTemplateNoVersion=$TemplateChoose["SquidHTTPTemplateNoProxyVersion"];
+				if($GLOBALS["VERBOSE"]){echo "SquidHTTPTemplateNoProxyVersion: $this->SquidHTTPTemplateNoProxyVersion\n";}
+			}
+		}
+		
+		
 		
 		if(isset($TemplateChoose["SquidHTTPTemplateEnablePostmaster"])){
 			if(is_numeric($TemplateChoose["SquidHTTPTemplateEnablePostmaster"])){
@@ -294,8 +431,15 @@ class template_simple{
 		$langs=$this->arrayxLangs;
 		$langs["en-us"]=true;
 		while (list ($lang, $line) = each ($langs)){
+			
+			
+			
+			if(!isset($GLOBALS["XTPL_SQUID_DEFAULT"][$lang]["ERR_BLACKLISTED_SITE"]["TITLE"])){
 				$GLOBALS["XTPL_SQUID_DEFAULT"][$lang]["ERR_BLACKLISTED_SITE"]["TITLE"]="ERROR: Blacklisted Website";
+			}
+			if(!isset($GLOBALS["XTPL_SQUID_DEFAULT"][$lang]["ERR_BLACKLISTED_SITE"]["BODY"])){
 				$GLOBALS["XTPL_SQUID_DEFAULT"][$lang]["ERR_BLACKLISTED_SITE"]["BODY"]="<div id=\"titles\">
+			
 				<h1>ERROR</h1>
 				<h2>Blacklisted Website</h2>
 				</div>
@@ -320,6 +464,7 @@ class template_simple{
 				<p>Generated %T by %h (%s)</p>
 				<!-- %c -->
 				</div>";
+			}
 				
 				$f=array();
 				$GLOBALS["XTPL_SQUID_DEFAULT"][$lang]["ERR_PARANOID"]["TITLE"]="ERROR: Banned access";
@@ -384,6 +529,19 @@ class template_simple{
 		$this->TemplateConfig[$this->lang][$this->TEMPLATE_NAME]["SquidHTTPTemplateFamily"]=$this->SquidHTTPTemplateFamily;
 		$this->TemplateConfig[$this->lang][$this->TEMPLATE_NAME]["SquidHTTPTemplateFontColor"]=$this->SquidHTTPTemplateFontColor;
 		
+		$this->TemplateConfig[$this->lang]["ERR_DIR_LISTING"]["SquidFTPTemplateEnablePostmaster"]=$this->SquidFTPTemplateEnablePostmaster;
+		$this->TemplateConfig[$this->lang]["ERR_DIR_LISTING"]["SquidFTPTemplateBackgroundColor"]=$this->SquidFTPTemplateBackgroundColor;
+		$this->TemplateConfig[$this->lang]["ERR_DIR_LISTING"]["SquidFTPTemplateDisableHostname"]=$this->SquidFTPTemplateDisableHostname;
+		$this->TemplateConfig[$this->lang]["ERR_DIR_LISTING"]["SquidFTPTemplateFamily"]=$this->SquidFTPTemplateFamily;
+		$this->TemplateConfig[$this->lang]["ERR_DIR_LISTING"]["SquidFTPTemplateFontColor"]=$this->SquidFTPTemplateFontColor;
+		
+		$this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["SquidADSTemplateEnablePostmaster"]=$this->SquidADSTemplateEnablePostmaster;
+		$this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["SquidADSTemplateBackgroundColor"]=$this->SquidADSTemplateBackgroundColor;
+		$this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["SquidADSTemplateDisableHostname"]=$this->SquidADSTemplateDisableHostname;
+		$this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["SquidADSTemplateFamily"]=$this->SquidADSTemplateFamily;
+		$this->TemplateConfig[$this->lang]["ERR_ADS_BLOCK"]["SquidADSTemplateFontColor"]=$this->SquidADSTemplateFontColor;
+				
+		
 		if($this->TITLE==null){
 			$MAINDEF=unserialize(@file_get_contents("/usr/share/artica-postfix/ressources/databases/squid.default.templates.db"));
 			$this->TITLE=$MAINDEF[$this->lang][$this->TEMPLATE_NAME]["TITLE"];
@@ -427,10 +585,35 @@ class template_simple{
 	$GlobalFontFamily=$this->SquidHTTPTemplateFamily;
 	$SquidHTTPTemplateSmiley=$sock->GET_INFO("SquidHTTPTemplateSmiley");
 	if(!is_numeric($SquidHTTPTemplateSmiley)){$SquidHTTPTemplateSmiley=2639;}
+	
+	
+	
+	
+	
+	$log1=null;
 	$title=$this->TITLE;
 	$content=$this->BODY;
 	
+	if($this->TEMPLATE_NAME=="ERR_DIR_LISTING"){
+		$GlobalFontColor=$this->SquidFTPTemplateFontColor;
+		$BackGroundColor=$this->SquidFTPTemplateBackgroundColor;
+		$GlobalFontFamily=$this->SquidFTPTemplateFamily;
+		$SquidFTPTemplateSmiley=$this->SquidFTPTemplateSmiley;
+		$SquidHTTPTemplateSmiley=$this->SquidFTPTemplateSmiley;
+		$log1="<!-- Use specific FTP template -->";
+	}
+	if($this->TEMPLATE_NAME=="ERR_ADS_BLOCK"){
+		$GlobalFontColor=$this->SquidADSTemplateFontColor;
+		$BackGroundColor=$this->SquidADSTemplateBackgroundColor;
+		$GlobalFontFamily=$this->SquidADSTemplateFamily;
+		$SquidADSTemplateSmiley=$this->SquidADSTemplateSmiley;
+		$SquidHTTPTemplateSmiley=$this->SquidADSTemplateSmiley;
+		$title=utf8_decode($this->TITLE);
+		$content=utf8_decode($this->BODY);
+		$log1="<!-- Use specific ADS template -->";
+	}	
 	
+
 	if(!$GLOBALS["CORP_LICENSE"]){
 		$FOOTER="
 		<table style='width:75%;border-top:1px solid $GlobalFontColor;margin-top:15px'>
@@ -452,7 +635,8 @@ class template_simple{
 	$content=utf8_decode($content);
 	
 	$f[]="<head>";
-	$f[]="<!-- LANG '$this->SquidHTTPTemplateLanguage' - '$this->TEMPLATE_NAME' ".date("YmdHis") ." -->";
+	$f[]="<!-- LOGO: $SquidHTTPTemplateLogoEnable '$this->SquidHTTPTemplateLanguage' - '$this->TEMPLATE_NAME' ".date("Y-m-d H:i:s") ." -->";
+	$f[]="$log1";
 	$f[]="<title>$title</title>";
 	$f[]="<script type=\"text/javascript\">";
 	$f[]="    function checkIfTopMostWindow()";
@@ -589,7 +773,7 @@ class template_simple{
 	$f[]="</style>";
 	$f[]="</head>";
 	$f[]="<body onLoad='checkIfTopMostWindow()'>";
-	
+	$f[]="<!-- LOGO -->";
 	if($SquidHTTPTemplateLogoEnable==1){
 		$SquidHTTPTemplateLogoPath=$sock->GET_INFO("SquidHTTPTemplateLogoPath");
 		$basename=basename($SquidHTTPTemplateLogoPath);
@@ -615,6 +799,8 @@ class template_simple{
 			$align="text-align:$SquidHTTPTemplateLogoPictureAlign;";
 		}
 		
+		
+		
 		$f[]="<div style='position:{$SquidHTTPTemplateLogoPictureAlign};{$align}width:{$widthDiv};$heightDiv
 		background-image:url(\"/squid-internal-static/icons/silk/$basename\");
 		background-repeat:no-repeat;$background
@@ -629,10 +815,15 @@ class template_simple{
 	
 	
 	
-	
+	$f[]="<!-- LOGO END -->";
 	$f[]="<div id=\"wrapper\">";
 	$f[]="    <h1 class=bad></h1>";
 	$f[]="    <div id=\"info\">";
+	
+	if($this->SquidHTTPTemplateNoProxyVersion==1){
+		$content=str_ireplace("<p>Generated %T by %h (%s)</p>","<!-- <p>Generated %T by %h (%s)</p> -->",$content);
+	}
+	
 	$f[]="$content";
 	
 	
@@ -682,6 +873,11 @@ class template_simple{
 		$title=str_replace("ERROR:", "",$title);
 		$title=str_replace("ERREUR:", "",$title);
 		$content=$this->BODY;
+		
+		if($this->SquidHTTPTemplateNoProxyVersion==1){
+			$content=str_ireplace("<p>Generated %T by %h (%s)</p>","<!-- <p>Generated %T by %h (%s)</p> -->",$content);
+		}
+		
 		
 		$title=utf8_decode($title);
 		$content=utf8_decode($content);

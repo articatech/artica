@@ -49,16 +49,16 @@ function install($filekey=0){
 	$MD5=null;
 	$DebianVersion=DebianVersion();
 	if($DebianVersion<7){
-		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}, influxdb Debian version incompatible!\n";}
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}, PostgreSQL Debian version incompatible!\n";}
 		build_progress_idb("Incompatible system!",110);
 		die();
 	}
 	
-	$filename="influxdb-0.9.0.0.tar.gz";
-	$MD5="4a5cef145fd676cb6752fec4170a32e4";
+	$filename="postgres-debian7-64-9.6.0.tar.gz";
+	$MD5="17cc6a54b750b35de709505520ebd669";
 	
 	
-	$curl=new ccurl("http://mirror.articatech.com/download/InfluxDatabase/$filename");
+	$curl=new ccurl("http://articatech.net/download/postgres-debian7-64-9.6.0.tar.gz");
 	$tmpdir=$unix->TEMP_DIR();
 	$php=$unix->LOCATE_PHP5_BIN();
 	$rm=$unix->find_program("rm");
@@ -89,7 +89,7 @@ function install($filekey=0){
 		if($DESTMD5<>$MD5){
 			echo "$DESTMD5<>$MD5\n";
 			@unlink("$tmpdir/$filename");
-			build_progress_idb("{install_failed} {corrupted_package}",110);
+			build_progress_idb("PostgreSQL: {install_failed} {corrupted_package}",110);
 			return;
 					
 		}
@@ -103,23 +103,19 @@ function install($filekey=0){
 	if(is_dir($InFluxBackupDatabaseDir)){
 		shell_exec("$rm -rf $InFluxBackupDatabaseDir");
 	}
-	build_progress_idb("{stopping_service}",60);
-	system("/etc/init.d/influx-db stop");
-	build_progress_idb("{removing_databases}",70);
+	build_progress_idb("PostgreSQL: {stopping_service}",60);
+	system("/etc/init.d/artica-postgres stop");
+	build_progress_idb("PostgreSQL: {removing_databases}",70);
 	shell_exec("$rm -rf /home/artica/squid/InfluxDB");
-	@mkdir("/home/artica/squid/InfluxDB",0755,true);
 	shell_exec("$rm -rf /etc/artica-postfix/DIRSIZE_MB_CACHE/*");
-	
-	build_progress_idb("{extracting}",80);
+	build_progress_idb("PostgreSQL: {extracting}",80);
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}, extracting....\n";}
 	$tar=$unix->find_program("tar");
 	shell_exec("$tar xvf $tmpdir/$filename -C /");
 	
 	
 	build_progress_idb("{restarting_service} (1/2)",90);
-	system("/etc/init.d/influx-db restart");
-	build_progress_idb("{restarting_service} (2/2)",92);
-	system("/etc/init.d/influx-db restart");
+	system("/etc/init.d/artica-postgres restart");
 	@unlink("/etc/artica-postfix/settings/Daemons/ArticaTechNetInfluxRepo");
 	build_progress_idb("{refresh_status}",95);
 	shell_exec("$php /usr/share/artica-postfix/exec.squid.interface-size.php --force");
@@ -131,7 +127,6 @@ function install($filekey=0){
 	system("/etc/init.d/hypercache-tail restart");
 	build_progress_idb("{refresh_status}",99);
 	system("/etc/init.d/ufdb-tail restart");
-	InfluxDbSize();
 	build_progress_idb("{done}",100);
 	
 	
@@ -175,7 +170,7 @@ function InfluxDbSize(){
 	$percent=round($percent,3);
 	
 	
-	if($GLOBALS["VERBOSE"]){echo "$dir: $size Parition $TOT\n";}
+	if($GLOBALS["VERBOSE"]){echo "$dir: $size Partition $TOT\n";}
 	
 	$ARRAY["PERCENTAGE"]=$percent;
 	$ARRAY["SIZEKB"]=$size;

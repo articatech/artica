@@ -15,6 +15,7 @@ if(is_array($argv)){if(preg_match("#--verbose#",implode(" ",$argv))){
 		$GLOBALS["OUTPUT"]=true;
 		$GLOBALS["debug"]=true;
 		$GLOBALS["DEBUG"]=true;
+		$GLOBALS["VERBOSE"]=true;
 		ini_set('html_errors',0);
 		ini_set('display_errors', 1);
 		ini_set('error_reporting', E_ALL);
@@ -31,9 +32,13 @@ if($argv[1]=="--x509"){x509($argv[2]);exit;}
 if($argv[1]=="--mysql"){exit;}
 if($argv[1]=="--squid-auto"){squid_autosigned($argv[2]);exit;}
 if($argv[1]=="--squid-validate"){squid_validate($argv[2]);exit;}
-if($argv[1]=="--BuildCSR"){BuildCSR($argv[2]);exit;}
+if($argv[1]=="--BuildCSR"){$GLOBALS["OUTPUT"]=true;BuildCSR($argv[2]);exit;}
 if($argv[1]=="--client-server"){autosigned_certificate_server_client($argv[2]);exit;}
 if($argv[1]=="--client-nginx"){build_client_side_certificate($argv[2]);exit;}
+if($argv[1]=="--pvk"){pvk_convert($argv[2]);exit;}
+if($argv[1]=="--pfx-convert"){pfx_convert($argv[2]);exit;}
+if($argv[1]=="--cert-infos"){UpdateCertificateInfos($argv[2]);exit;}
+if($argv[1]=="--pfx"){build_pfx($argv[2]);exit;}
 
 
 
@@ -41,7 +46,7 @@ echo "Cannot understand your commandline {$argv[1]}\n";
 
 function BuildCSR($CommonName){
 	$CommonName=str_replace("_ALL_", "*", $CommonName);
-	buildkey($CommonName);
+	buildkey($CommonName,true);
 	squid_autosigned($CommonName);
 	
 }
@@ -59,7 +64,7 @@ function build_progress_x509($text,$pourc){
 
 
 
-function buildkey($CommonName){
+function buildkey($CommonName,$notparsing=false){
 	$unix=new unix();
 	$openssl=$unix->find_program("openssl");
 	$CommonName=str_replace("_ALL_", "*", $CommonName);
@@ -80,6 +85,10 @@ function buildkey($CommonName){
 	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
 	if($ligne["CommonName"]==null){$ligne["CommonName"]="*";}
 	
+	echo "CommonName..........: $CommonName\n";
+	echo "CountryName.........: {$ligne["CountryName"]}\n";
+	echo "stateOrProvinceName.: {$ligne["stateOrProvinceName"]}\n";
+	echo "OrganizationName....: {$ligne["OrganizationName"]}\n";
 	
 		
 	
@@ -89,6 +98,8 @@ function buildkey($CommonName){
 	if($ligne["emailAddress"]==null){$ligne["emailAddress"]="postmaster@localhost.localdomain";}
 	if($ligne["OrganizationName"]==null){$ligne["OrganizationName"]="MyCompany Ltd";}
 	if($ligne["OrganizationalUnit"]==null){$ligne["OrganizationalUnit"]="IT service";}	
+	
+	
 
 	if($ligne["levelenc"]<1024){$ligne["levelenc"]=1024;}
 	
@@ -98,6 +109,7 @@ function buildkey($CommonName){
 	$L=$ligne["localityName"];
 	$O=$ligne["OrganizationName"];
 	$OU=$ligne["OrganizationalUnit"];
+	if(preg_match("#^.*?_(.+)#", $ligne["CountryName"],$re)){$C=$re[1];}
 	
 	$CommonName_commandline=$CommonName;
 	$AsProxyCertificate=intval($ligne["AsProxyCertificate"]);
@@ -119,6 +131,8 @@ function buildkey($CommonName){
 	$csr=mysql_escape_string2(@file_get_contents("$directory/server.csr"));
 	$privkey=mysql_escape_string2(@file_get_contents("$directory/myserver.key"));
 	
+	if($GLOBALS["OUTPUT"]){echo "Save privkey and csr for $CommonName\n";}
+	
 	$sql="UPDATE sslcertificates SET `privkey`='$privkey',`csr`='$csr' WHERE CommonName='$CommonName'";
 	if($GLOBALS["OUTPUT"]){echo $sql."\n";}
 	$q->QUERY_SQL($sql,"artica_backup");
@@ -127,6 +141,7 @@ function buildkey($CommonName){
 	$php5=$unix->LOCATE_PHP5_BIN();
 	$nohup=$unix->find_program("nohup");	
 	shell_exec("$nohup $php5 /usr/share/artica-postfix/exec.openssl.php --pass >/dev/null 2>&1 &");
+	if(!$notparsing){UpdateCertificateInfos($CommonName,1);}
 	
 	
 }
@@ -585,7 +600,7 @@ $php5=$unix->LOCATE_PHP5_BIN();
 $nohup=$unix->find_program("nohup");
 chdir("/root");
 shell_exec("$nohup $php5 ".__FILE__." --pass >/dev/null 2>&1 &");
-
+UpdateCertificateInfos($CommonName);
 build_progress_x509("{done}",100);
 
 }
@@ -614,13 +629,23 @@ function squid_autosigned($CommonName){
 	$unix=new unix();
 	$ldap=new clladp();	
 	$sql="SELECT *  FROM sslcertificates WHERE CommonName='$CommonName'";
+	
+	
 	if($GLOBALS["OUTPUT"]){echo $sql."\n";}
 	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
+	
 	if($ligne["CommonName"]==null){ 
 		build_progress_x509("Signing auto-signed certificate {failed}",110);
 		echo "CommonName is null, aborting...\n";
 		return;
 	}
+	
+	echo "CommonName..........: $CommonName\n";
+	echo "CountryName.........: {$ligne["CountryName"]}\n";
+	echo "stateOrProvinceName.: {$ligne["stateOrProvinceName"]}\n";
+	echo "OrganizationName....: {$ligne["OrganizationName"]}\n";
+	
+	
 	$openssl=$unix->find_program("openssl");
 	$openssl_size=@filesize($openssl);
 	echo "OpenSSL binary file $openssl_size bytes\n";
@@ -811,7 +836,112 @@ function squid_autosigned($CommonName){
 	if(!build_pkcs12($CommonName)){
 		build_progress_x509("{failed}",110);
 	}
+	UpdateCertificateInfos($CommonName);
 	build_progress_x509("{success}",100);
+}
+
+function build_pfx($CommonName){
+	
+	if($CommonName==null){
+		build_progress_pkcs12("$CommonName No certificate set",110);
+		return;
+	}
+	
+	
+	$unix=new unix();
+	build_progress_pkcs12($CommonName,20);
+	$q=new mysql();
+	if(!$q->FIELD_EXISTS("sslcertificates","DynamicCert","artica_backup")){$sql="ALTER TABLE `sslcertificates` ADD `DynamicCert` TEXT NOT NULL";$q->QUERY_SQL($sql,'artica_backup');}
+	$sql="SELECT `UsePrivKeyCrt`,`crt`,`csr`,`srca`,`clientkey`,`clientcert`,`DynamicCert`,`privkey`,`SquidCert`,`Squidkey`,`bundle`
+	FROM sslcertificates WHERE CommonName='$CommonName'";
+	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
+	
+	if(!$q->ok){
+		echo $q->mysql_error."\n";
+		build_progress_pkcs12("$CommonName MySQL error",110);
+		return;
+	}
+	
+	
+	$UsePrivKeyCrt=$ligne["UsePrivKeyCrt"];
+	echo "UsePrivKeyCrt..........: $UsePrivKeyCrt\n";
+	
+	$private_key_data=$ligne["Squidkey"];
+	$certificate_content=$ligne["SquidCert"];
+	
+	
+	if($UsePrivKeyCrt==1){
+		$private_key_data=$ligne["privkey"];
+		$certificate_content=$ligne["crt"];
+	}
+	
+	echo "Private Key............: ". strlen($private_key_data)."\n";
+	echo "Certificate............: ". strlen($certificate_content)."\n";
+	
+	
+	if(strlen($private_key_data)<20){
+		echo "Use the server pricate key from /etc/openssl/private-key/privkey.key\n";
+		$private_key_data=@file_get_contents("/etc/openssl/private-key/privkey.key");
+	}
+	if(strlen($certificate_content)<20){
+		build_progress_pkcs12("Certificate corrupted",110);
+		return;
+	}	
+	$openssl=$unix->find_program("openssl");
+	$path=$unix->TEMP_DIR();
+	@file_put_contents("$path/server.key", $private_key_data);
+	@file_put_contents("$path/server.crt", $certificate_content);
+	
+	@unlink("$path/no.pwd.server.key");
+	build_progress_pkcs12("RSA KEY",30);
+	system("$openssl rsa -in $path/server.key -out $path/no.pwd.server.key");
+	if(!is_file("$path/no.pwd.server.key")){
+		build_progress_pkcs12("RSA KEY {failed}",110);
+		return;
+	}
+	$certificate_content_no_pass=@file_get_contents("$path/no.pwd.server.key");
+	build_progress_pkcs12("Merging data",50);
+	
+	@file_put_contents("$path/no.pwd.server.pem", $certificate_content_no_pass."\n".$certificate_content);
+	$sock=new sockets();
+	$PfxPassword=$sock->GET_INFO("PfxPassword");
+	
+	
+	$f[]="$openssl pkcs12 -export -in $path/server.crt";
+	$f[]="-inkey $path/no.pwd.server.key -certfile $path/no.pwd.server.pem";
+	$f[]="-passout pass:$PfxPassword";
+	$f[]="-out $path/server.pfx";
+	$cmdline=@implode(" ", $f);
+	echo $cmdline."\n";
+	system($cmdline);
+	if(!is_file("$path/server.pfx")){
+		build_progress_pkcs12("PFX KEY {failed}",110);
+		@unlink("$path/server.key");
+		@unlink("$path/server.crt");
+		@unlink("$path/server.pfx");
+		@unlink("$path/no.pwd.server.key");
+		@unlink("$path/no.pwd.server.pem");
+		return;
+	}
+	$pks12=mysql_escape_string2(@file_get_contents("$path/server.pfx"));
+	build_progress_x509("Save pks12 certificate: ".strlen($pks12),80);
+	$q->QUERY_SQL("UPDATE sslcertificates SET pks12='$pks12' WHERE CommonName='$CommonName'","artica_backup");
+	
+	@unlink("$path/server.key");
+	@unlink("$path/server.crt");
+	@unlink("$path/server.pfx");
+	@unlink("$path/no.pwd.server.key");
+	@unlink("$path/no.pwd.server.pem");
+	
+	
+	if(!$q->ok){
+		build_progress_x509("Save pks12 certificate: ".strlen($pks12) ." {failed}",110);
+		echo $q->mysql_error;
+		return;
+	}
+	build_progress_x509("$CommonName PFX  {success}",100);
+	return true;
+	
 }
 
 function build_pkcs12($CommonName){
@@ -1155,7 +1285,273 @@ build_progress_pkcs12("Create a Certificate Signing Request (CSR)",20);
 }
 
 
+function UpdateCertificateInfos($CommonName,$UseCSR=0){
+	$ADDF=array();
+	
+	if($GLOBALS["VERBOSE"]){echo "Extract from $CommonName\n";}
+	
+	$q=new mysql();
+	$sql="SELECT `crt`,`csr`,`SquidCert`,`UsePrivKeyCrt`,`UseGodaddy`  FROM sslcertificates WHERE CommonName='$CommonName'";
+	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
+	
+	
+	$field="crt";
+	
+	$data=$ligne["crt"];
+	
+	if($UseCSR==1){
+		echo "Update infos: use CSR field\n";
+		$data=$ligne["csr"];
+	}
+	
+	if($ligne["UsePrivKeyCrt"]==0){
+		$data=$ligne["SquidCert"];
+		$button_upload=null;
+		$button_save=null;
+	
+	}
+	
+	if($ligne["UseGodaddy"]==1){
+			$data=$ligne["crt"];
+	}
+	
+	if($GLOBALS["OUTPUT"]){echo "CRT from $CommonName = ".strlen($data)."\n";}
+	
+	$filepath=dirname(__FILE__)."/ressources/conf/upload/Cert.pem";
+	@file_put_contents($filepath, $data);
+	echo "Update infos: $filepath\n";
+	echo "Update infos: /usr/bin/openssl x509 -text -in $filepath\n";
+	exec("/usr/bin/openssl x509 -text -in $filepath 2>&1",$results);
+	$OU=null;
+	$CN=null;
+	$C=null;
+	$ST=null;
+	$L=null;
+	$O=null;
+	$levelenc=0;
+	while (list ($num, $ligne) = each ($results) ){
+		if(preg_match("#Subject:\s+(.+)#", $ligne,$re)){
+			if($GLOBALS["OUTPUT"]){echo "Found Subject = {$re[1]}\n";}
+			$XLINE=$re[1];
+			$XLINES=explode(",",$XLINE);
+			while (list ($a, $b) = each ($XLINES) ){
+				if(preg_match("#(.+?)=(.+)#", $b,$re)){
+					$key=strtoupper(trim($re[1]));
+					$value=trim($re[2]);
+					if($key=="OU"){$OU=$value;}
+					if($key=="CN"){$CN=$value;}
+					if($key=="C"){$C=$value;}
+					if($key=="ST"){$ST=$value;}
+					if($key=="L"){$L=$value;}
+					if($key=="O"){$O=$value;}
+					if($GLOBALS["OUTPUT"]){echo "Subject: '$key' = '$value'\n";}
+				}
+			}
+			continue;
+		}
+			
+		if(preg_match("#Issuer:\s+(.+)#", $ligne,$re)){
+			$XLINE=$re[1];
+			$XLINES=explode(",",$XLINE);
+			while (list ($a, $b) = each ($XLINES) ){
+				if(preg_match("#(.+?)=(.+)#", $b,$re)){
+					$key=strtoupper(trim($re[1]));
+					$value=trim($re[2]);
+					if($C==null){if($key=="C"){$C=$value;}}
+					if($ST==null){if($key=="ST"){$ST=$value;}}
+					if($L==null){if($key=="L"){$L=$value;}}
+					if($O==null){if($key=="O"){$O=$value;}}
+					if($GLOBALS["OUTPUT"]){echo "Issuer: '$key' = '$value'\n";}
+					continue;
+				}
+			}
+			
+		}
+	
+			
+		if(preg_match("#Not Before.*?:(.+)#",$ligne,$re)){
+			$Date1=strtotime($re[1]);
+			$DateFrom=date("Y-m-d",$Date1);
+	
+			$ADDF[]="`DateFrom`='".mysql_escape_string2($DateFrom)."'";
+			continue;
+	
+		}
+		if(preg_match("#Not After.*?:(.+)#",$ligne,$re)){
+			$Date1=strtotime($re[1]);
+			$DateTo=date("Y-m-d",$Date1);
+			$ADDF[]="`DateTo`='".mysql_escape_string2($DateTo)."'";
+			continue;
+				
+		}
+			
+	
+		if(preg_match("#Public-Key:.*?([0-9]+)\s+bit#", $ligne,$re)){
+			$levelenc=$re[1];
+			continue;
+		}
+	}
+	
+	
+	if($C<>null){
+		$ADDF[]="`CountryName`='".mysql_escape_string2($C)."'";
+	}
+	if($ST<>null){
+		$ADDF[]="`stateOrProvinceName`='".mysql_escape_string2($ST)."'";
+	}
+	if($L<>null){
+		$ADDF[]="`localityName`='".mysql_escape_string2($L)."'";
+	}
+	if($O<>null){
+		$ADDF[]="`OrganizationName`='".mysql_escape_string2($O)."'";
+	}
+	if($OU<>null){
+		$ADDF[]="`OrganizationalUnit`='".mysql_escape_string2($OU)."'";
+	}
+	
+	if($levelenc>0){
+		$ADDF[]="`levelenc`='".mysql_escape_string2($levelenc)."'";
+	}
+	
+	if(count($ADDF)>0){
+			
+		if(!$q->FIELD_EXISTS("sslcertificates","DateFrom","artica_backup")){$sql="ALTER TABLE `sslcertificates` ADD `DateFrom` DATE NOT NULL,ADD INDEX ( `DateFrom` )";$q->QUERY_SQL($sql,'artica_backup');}
+		if(!$q->FIELD_EXISTS("sslcertificates","DateTo","artica_backup")){$sql="ALTER TABLE `sslcertificates` ADD `DateTo` DATE NOT NULL,ADD INDEX ( `DateTo` )";$q->QUERY_SQL($sql,'artica_backup');}
+		$sql="UPDATE sslcertificates SET ".@implode(",", $ADDF)." WHERE `CommonName`='$CommonName'";
+		$q=new mysql();
+		$q->QUERY_SQL($sql,"artica_backup");
+		if(!$q->ok){echo $q->mysql_error;return;}
+					
+	}
+}
+function pvk_convert($CommonName){
+	$q=new mysql();
+	$CommonName_source=$CommonName;
+	$sql="SELECT pvk_content  FROM sslcertificates WHERE CommonName='$CommonName'";
+	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
+	$pvk_content=$ligne["pvk_content"];
+	$unix=new unix();
+	$sock=new sockets();
+	$openssl=$unix->find_program("openssl");
 
+	
+	
+	$pv_content_size=strlen($pvk_content);
+	$tmpsource=$unix->FILE_TEMP().".pvk";
+	$pemdest=$unix->FILE_TEMP().".pem";
+	
+	
+	$results[]="Common Name.........: $CommonName";
+	$results[]="PVK content.........: $pv_content_size Bytes";
+	
+	@file_put_contents($tmpsource, $pvk_content);
+	
+	$cmd="$openssl rsa -inform pvk -in $tmpsource -outform pem -out $pemdest 2>&1";
+	exec($cmd,$results);
+	if(!is_file($pemdest)){
+		echo " **** **** FAILED **** ****\n$cmd\n$pemdest no such file\n".@implode("\n", $results);
+		return;
+		
+	}
+	$privkey=mysql_escape_string2(@file_get_contents($pemdest));
+	$sql="UPDATE sslcertificates SET privkey='$privkey' WHERE CommonName='$CommonName'";
+	$q->QUERY_SQL($sql,"artica_backup");
+	if(!$q->ok){
+		echo " **** **** FAILED **** ****\n";
+		echo $q->mysql_error;return;
+	}
+	echo " **** **** SUCCESS **** ****\nPrivate key as imported updated\n";
+}
 
+function pfx_convert($CommonName){
+	$q=new mysql();
+	$CommonName_source=$CommonName;
+	$sql="SELECT pkcs12,pkcs12Pass  FROM sslcertificates WHERE CommonName='$CommonName'";
+	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
+	$pkcs12=$ligne["pkcs12"];
+	$pkcs12Pass=$ligne["pkcs12Pass"];
+	
+	$unix=new unix();
+	$sock=new sockets();
+	$openssl=$unix->find_program("openssl");
+	
+	$content_size=strlen($pkcs12);
+	$tmpsource=$unix->FILE_TEMP().".pfx";
+	$keyEncdest=$unix->FILE_TEMP().".encrypted";
+	$keydest=$unix->FILE_TEMP().".key";
+	$certdest=$unix->FILE_TEMP().".crt";
+	$pkcs12Pass=$unix->shellEscapeChars($pkcs12Pass);
+	
+	$results[]="Common Name.........: $CommonName";
+	$results[]="PFX content.........: $content_size Bytes";
+	
+	@file_put_contents($tmpsource, $pkcs12);
+
+	$cmd="$openssl pkcs12 -in $tmpsource -password pass:$pkcs12Pass -passin pass:$pkcs12Pass -passout pass:$pkcs12Pass -nocerts -out $keyEncdest";
+	exec($cmd,$results);
+	if(!is_file($keyEncdest)){
+		echo " **** **** FAILED **** ****\nCreate the private key file failed\n";
+		return;
+	}
+	
+	
+	
+	
+	$results=array();
+	$cmd="$openssl rsa -in $keyEncdest -passin pass:$pkcs12Pass -out $keydest";
+	exec($cmd,$results);
+	if(!is_file($keydest)){
+		echo " **** **** FAILED **** ****\nDecrypt the key file. failed\n";
+		return;
+	}
+
+	@unlink($keyEncdest);
+	
+	$data=@file_get_contents($keydest);
+	if(!preg_match("#-----BEGIN RSA PRIVATE KEY-----(.*?)-----END RSA PRIVATE KEY-----#is", $data,$re)){
+		echo " **** **** FAILED **** ****\nDecrypt the key file. failed - RSA PRIVATE KEY - expected\n";
+		@unlink($tmpsource);
+		@unlink($keydest);
+		return;
+	}
+	$re[1]=trim($re[1]);
+	$keydata="-----BEGIN RSA PRIVATE KEY-----\n".$re[1]."\n-----END RSA PRIVATE KEY-----\n";
+	
+	$results=array();
+	$cmd="$openssl  pkcs12 -in $tmpsource -clcerts -passin pass:$pkcs12Pass -nokeys -out $certdest";
+	exec($cmd,$results);
+	if(!is_file($certdest)){
+		echo " **** **** FAILED **** ****\nExporting the certificate file. failed\n";
+		return;
+	}
+	@unlink($tmpsource);
+	@unlink($keydest);
+	
+	$data=@file_get_contents($certdest);
+	if(!preg_match("#-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----#is", $data,$re)){
+		echo " **** **** FAILED **** ****\nDecrypt the certificate file. failed - BEGIN CERTIFICATE - expected\n";
+		@unlink($certdest);
+		return;
+		
+	}
+	$re[1]=trim($re[1]);
+	$certdata="-----BEGIN CERTIFICATE-----\n{$re[1]}\n-----END CERTIFICATE-----\n";
+	
+	$certdata=mysql_escape_string2($certdata);
+	$keydata=mysql_escape_string2($keydata);
+	
+	$sql="UPDATE sslcertificates 
+	SET `crt`='$certdata',`privkey`='$keydata' WHERE CommonName='$CommonName'";
+	
+	$q->QUERY_SQL($sql,"artica_backup");
+	if(!$q->ok){
+		echo " **** **** FAILED **** ****\n";
+		echo $q->mysql_error;return;
+	}
+	UpdateCertificateInfos($CommonName);
+	
+	echo " **** **** SUCCESS **** ****\n";
+	
+}
 
 ?>

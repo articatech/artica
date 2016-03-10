@@ -63,6 +63,7 @@ progress_logs(100,"{join_activedirectory_domain}","Unable to understand ".@implo
 
 
 function refresh_ticket($nopid=false){
+	include_once(dirname(__FILE__)."/ressources/class.users.menus.inc");
 	$unix=new unix();
 	$sock=new sockets();
 	$users=new usersMenus();
@@ -119,7 +120,7 @@ function build_kerberos($progress=0){
 	$unix=new unix();
 	$sock=new sockets();
 	$function=__FUNCTION__;
-	if(is_file("/etc/monit/conf.d/winbindd.monitrc")){@unlink("/etc/monit/conf.d/winbindd.monitrc");}
+	
 	$timefile="/etc/artica-postfix/pids/".basename(__FILE__).".time";
 	$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".pid";
 	$pid=$unix->get_pid_from_file($pidfile);
@@ -438,7 +439,7 @@ function msktutil_version(){
 	$t=exec("$msktutil --version 2>&1");
 	if(preg_match("#msktutil version\s+([0-9\.]+)#", $t,$re)){
 		$tr=explode(".", $re[1]);
-		return $tr[1];
+		return intval($tr[1]);
 	}
 }
 
@@ -705,7 +706,7 @@ function build($nopid=false){
 
 	if($EnableKerbAuth==0){
 		progress_logs(110,"{authentication_via_activedirectory_is_disabled}","{authentication_via_activedirectory_is_disabled}");
-		if(is_file("/etc/monit/conf.d/winbindd.monitrc")){@unlink("/etc/monit/conf.d/winbindd.monitrc");}
+		
 		return;
 	}
 	
@@ -896,11 +897,14 @@ function JOIN_ACTIVEDIRECTORY(){
 	$netbin=$unix->LOCATE_NET_BIN_PATH();
 	$nohup=$unix->find_program("nohup");
 	$tar=$unix->find_program("tar");
+	$rm=$unix->find_program("rm");
 	$function=__FUNCTION__;
 	if(!is_file($netbin)){progress_logs(29,"{join_activedirectory_domain}","net, no such binary");return;}
 	if(!$user->SAMBA_INSTALLED){progress_logs(29,"{join_activedirectory_domain}"," Samba, no such software");return;}
 	
 	
+	progress_logs(29,"{remove} /var/lib/samba/*.tdb");
+	shell_exec("$rm /var/lib/samba/*.tdb");
 	
 	
 	$winbindd_version=winbindd_version();
@@ -924,7 +928,7 @@ function JOIN_ACTIVEDIRECTORY(){
 		}
 	}
 	
-	
+	$RECONFIGURE_PROXY=false;
 	$NetADSINFOS=$unix->SAMBA_GetNetAdsInfos();
 	$KDC_SERVER=$NetADSINFOS["KDC server"];
 	$sock=new sockets();
@@ -938,6 +942,7 @@ function JOIN_ACTIVEDIRECTORY(){
 	$ad_server=$array["WINDOWS_SERVER_NETBIOSNAME"];
 	$workgroup=$array["ADNETBIOSDOMAIN"];
 	$ipaddr=trim($array["ADNETIPADDR"]);
+	$ActiveDirectoryEmergency=intval($sock->GET_INFO("ActiveDirectoryEmergency"));
 	$myNetbiosname=$unix->hostname_simple();
 	if(function_exists("WriteToSyslogMail")){WriteToSyslogMail("Trying to relink this server with Active Directory $ad_server.$domain_lower server", basename(__FILE__));}
 	$A2=array();
@@ -954,7 +959,7 @@ function JOIN_ACTIVEDIRECTORY(){
 		@file_put_contents("/etc/artica-postfix/PyAuthenNTLM2_launched", time());
 	}
 	
-	progress_logs(29,"{join_activedirectory_domain}"," Administrator `$adminname`");
+	progress_logs(29,"{join_activedirectory_domain}"," User used: `$adminname`");
 	progress_logs(29,"{join_activedirectory_domain}"," Workgroup `$workgroup`");
 	progress_logs(29,"{join_activedirectory_domain}"," Active Directory `$ad_server` ($ipaddr)");	
 	progress_logs(29,"{join_activedirectory_domain}"," [$adminname 0]: join as netrpc.. (without IP addr and without domain)");	
@@ -1162,6 +1167,11 @@ if(!$JOINEDRES){
 		progress_logs(50,"{join_activedirectory_domain}"," Samba, [$adminname]: unable to join the domain $domain_lower");
 	}else{
 		squid_admin_mysql(2, "NTLM: Success to join the domain $domain_lower", "KDC = $KDC_SERVER",__FILE__,__LINE__);
+		if($ActiveDirectoryEmergency==1){
+			squid_admin_mysql(2, "NTLM: Disable the Active Directory emergency", "KDC = $KDC_SERVER",__FILE__,__LINE__);
+			$RECONFIGURE_PROXY=true;
+		}
+		
 	}	
 
 	progress_logs(50,"{join_activedirectory_domain}"," [$adminname]: Kdc server ads : $KDC_SERVER Create keytap...");
@@ -1184,13 +1194,25 @@ if(!$JOINEDRES){
 	progress_logs(50,"{join_activedirectory_domain}"," [$adminname]: Reload Artica-status");
 	$results=array();
 	shell_exec("$nohup /etc/init.d/artica-status reload >/dev/null 2>&1 &");
+	$restart_winbind=false;
 	if(is_file($smbcontrol)){
 		progress_logs(50,"{join_activedirectory_domain}"," [$adminname]: Reloading winbindd");
 		exec("$smbcontrol winbindd reload-config 2>&1",$results);
 		exec("$smbcontrol winbindd online 2>&1",$results);
-		while (list ($index, $line) = each ($results) ){progress_logs(50,"{join_activedirectory_domain}"," [$adminname]: $line");}
+		while (list ($index, $line) = each ($results) ){
+			progress_logs(50,"{join_activedirectory_domain}"," [$adminname]: $line");
+			if(preg_match("#Cannot open the tdb#", $line)){$restart_winbind=true;break;}
+		}
 	}
 	$results=array();
+	
+	
+	if($restart_winbind){
+		progress_logs(50,"{restarting_service}"," [$adminname] Winbindd");
+		system("/etc/init.d/winbind restart --force");
+	}
+	
+	
 	progress_logs(20,"{join_activedirectory_domain}","[$adminname]: checks nsswitch");
 	exec("/usr/share/artica-postfix/bin/artica-install --nsswitch 2>&1",$results);
 	while (list ($index, $line) = each ($results) ){progress_logs(50,"{join_activedirectory_domain}","[$adminname]: $line");}
@@ -1199,6 +1221,11 @@ if(!$JOINEDRES){
 	$sock->SET_INFO("ActiveDirectoryEmergency", 0);
 	$sock->SET_INFO("ActiveDirectoryEmergencyReboot", 0);
 	$sock->SET_INFO("ActiveDirectoryEmergencyNone", 0);
+	if($RECONFIGURE_PROXY){
+		squid_admin_mysql(2, "NTLM: Reconfigure the proxy service", "KDC = $KDC_SERVER",__FILE__,__LINE__);
+		$php=$unix->LOCATE_PHP5_BIN();
+		system("$php /usr/share/artica-postfix/exec.squid.php --build --force");
+	}
 
 }
 
@@ -1553,7 +1580,7 @@ function SAMBA_OUTPUT_ERRORS($prefix,$line){
 		progress_logs(20,"{join_activedirectory_domain}","");
 		progress_logs(20,"{join_activedirectory_domain}","******************************");
 		progress_logs(20,"{join_activedirectory_domain}","** ERROR NT_STATUS_ACCESS_DENIED");
-		progress_logs(20,"{join_activedirectory_domain}","** Wrong administrator credentials (username or password)"); 
+		progress_logs(20,"{join_activedirectory_domain}","** Wrong credentials (username or password)"); 
 		progress_logs(20,"{join_activedirectory_domain}","******************************");
 		progress_logs(20,"{join_activedirectory_domain}","");
 		
@@ -1917,43 +1944,7 @@ function winbindd_set_acls_mainpart(){
 
 
 function winbindd_monit(){
-	  
-	  if(is_file("/etc/monit/conf.d/winbindd.monitrc")){progress_logs(20,"{join_activedirectory_domain}","winbindd monit: Already set");return;}
-	   $unix=new unix();
-	   $monit=$unix->find_program("monit");
-	   if(!is_file($monit)){
-	   	xsyslog("winbindd monit: no such binary");
-	   	return;
-	   }
-	   
-	   $nohup=$unix->find_program("nohup");
-	   
- 	   $fs[]="#!/bin/sh";
-	   $fs[]="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/X11R6/bin";
-	   $fs[]="/etc/init.d/winbind start";
-	   $fs[]="exit 0\n";	
-	   
-	   $fk[]="#!/bin/sh";
-	   $fk[]="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/X11R6/bin";
-	   $fk[]="/etc/init.d/winbind stop";
-	   $fk[]="exit 0\n"; 
-	
-		@file_put_contents("/usr/sbin/winbindd-monit-start", @implode("\n", $fs));
-		@file_put_contents("/usr/sbin/winbindd-monit-stop", @implode("\n", $fs));
-		@chmod("/usr/sbin/winbindd-monit-start",0777);
-		@chmod("/usr/sbin/winbindd-monit-stop",0777);
-	
-		$fm[]="check process winbindd";
-		$fm[]="with pidfile /var/run/samba/winbindd.pid";
-		$fm[]="start program = \"/usr/sbin/winbindd-monit-start\"";
-		$fm[]="stop program =  \"/usr/sbin/winbindd-monit-stop\"";
-		$fm[]="if totalmem > 900 MB for 5 cycles then alert";
-		$fm[]="if cpu > 95% for 5 cycles then alert";
-		$fm[]="if 5 restarts within 5 cycles then timeout";	
-		progress_logs(20,"{join_activedirectory_domain}","winbindd monit: creating winbindd.monitrc");
-		@file_put_contents("/etc/monit/conf.d/winbindd.monitrc", @implode("\n", $fm));
-		progress_logs(20,"{join_activedirectory_domain}","winbindd monit: restarting monit");
-		shell_exec("$nohup /usr/share/artica-postfix/bin/artica-install --monit-check >/dev/null 2>&1 &");
+	shell_exec("/etc/init.d/monit restart &");	
 }
 
 function build_progress_disconnect($text,$pourc){

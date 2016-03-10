@@ -548,20 +548,7 @@ function ZARAFA_DB_VERSION(){
 
 	return "0.0.0";
 }
-function _MYSQL_VERSION(){
-	if(isset($GLOBALS["SQUID_DB_VERSION"])){return $GLOBALS["SQUID_DB_VERSION"];}
-	$mysqld=$GLOBALS["CLASS_UNIX"]->find_program("mysqld");
 
-	exec("$mysqld --version 2>&1",$results);
-	while (list ($i, $line) = each ($results)){
-		if(preg_match("#Ver\s+([0-9\.]+)#", $line,$re)){
-			$GLOBALS["SQUID_DB_VERSION"]=$re[1];
-			return $re[1];
-		}
-	}
-
-	return "0.0.0";
-}
 //========================================================================================================================================================
 function zarafa_db(){
 
@@ -578,7 +565,7 @@ function zarafa_db(){
 
 	$l[]="[APP_ZARAFA_DB]";
 	$l[]="service_name=APP_ZARAFA_DB";
-	$l[]="master_version=".mysqld_version();
+	$l[]="master_version=".$GLOBALS["CLASS_UNIX"]->MYSQL_VERSION();
 	$l[]="service_cmd=/etc/init.d/zarafa-db";
 	$l[]="service_disabled=$enabled";
 	$l[]="family=mailbox";

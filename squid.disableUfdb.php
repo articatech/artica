@@ -37,6 +37,8 @@ function js(){
 				LoadAjaxTiny('ufdb-main-toolbox-status','dansguardian2.mainrules.php?rules-toolbox-left=yes');
 			}
 			Loadjs('squid.compile.progress.php');
+			LoadMainDashProxy();
+			CacheOff();
 			
 		}				
 	

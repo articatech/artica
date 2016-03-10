@@ -300,7 +300,7 @@ $PostmasterAdress="no-reply-quarantine@$domain";
 $ini=new Bs_IniHandler("/etc/artica-postfix/smtpnotif.conf");
 if($ini->_params["SMTP"]["smtp_sender"]<>null){$PostmasterAdress=$ini->_params["SMTP"]["smtp_sender"];}
 if(file_exists('/etc/artica-postfix/settings/Daemons/PostfixPostmaster')){
-	$PostmasterAdress=trim(file_get_contents('/etc/artica-postfix/settings/Daemons/PostfixPostmaster'));
+	$PostmasterAdress=trim(@file_get_contents('/etc/artica-postfix/settings/Daemons/PostfixPostmaster'));
 }
 
 $unix=new unix();

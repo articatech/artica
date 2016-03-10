@@ -3,6 +3,8 @@
 	include_once(dirname(__FILE__).'/class.nginx-sources.inc');
 	include_once(dirname(__FILE__).'/class.nginx-wordpress.inc');
 	include_once(dirname(__FILE__).'/class.nginx.certificate.inc');
+	include_once(dirname(__FILE__).'/class.nginx.exchange.inc');
+	include_once(dirname(__FILE__).'/class.nginx.tools.inc');
 	include_once(dirname(__FILE__).'/class.tcpip.inc');
 	
 class nginx{
@@ -65,6 +67,7 @@ class nginx{
 	public $proxy_buffers="16 32k";
 	public $file_settings_path;
 	public $BackupBefore=false;
+	public $owa=0;
 	private $EnableArticaDynamicErrors=0;
 	private $mixed_ssl=0;
 	public $WORDPRESS=false;
@@ -175,7 +178,7 @@ class nginx{
 			if($ligne["certificate"]<>null){$this->set_ssl_certificate($ligne["certificate"]);}
 			$this->proxy_max_temp_file_size=intval($ligne["proxy_max_temp_file_size"]);
 			$this->proxy_temp_file_write_size=intval($ligne["proxy_temp_file_write_size"]);
-			
+			$this->owa=$ligne["owa"];
 			
 			
 			
@@ -525,9 +528,28 @@ class nginx{
 			return true;
 		}
 	}
+	
+	private function isOWA(){
+		$q=new mysql_squid_builder();
+		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT owa FROM reverse_www WHERE servername='$this->servername'","artica_backup"));
+		if($ligne["owa"]==1){return true;}
+		return false;
+		
+	}
 
 	
 	public function build_proxy(){
+		
+		if($this->isOWA()){
+			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx, Microsoft Exchange server configuration\n";}
+			$nginx_exchange=new nginx_exchange($this->servername);
+			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx, build MS Exchange configuration...\n";}
+			$nginx_exchange->buildConfig();
+			return true;
+		}else{
+			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx, Microsoft Exchange server FALSE\n";}
+		}
+		
 		
 		@chmod("/etc/nginx/sites-enabled",0755);
 		$this->LoadParams();
@@ -1446,34 +1468,7 @@ class nginx{
 	}
 	
 	
-	private function http_servername_aliases(){
-		$q=new mysql_squid_builder();
-		$sql="SELECT alias FROM nginx_aliases WHERE servername='$this->servername' ORDER BY alias";
-		$results=$q->QUERY_SQL($sql);
-		$f=array();
-		while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
-			$ALI[$ligne["alias"]]=$ligne["alias"];
-		}
-		
-		if(count($this->ServersAliases)>0){
-			while (list ($index, $alias) = each ($this->ServersAliases) ){
-				$ALI[$alias]=$alias;
-			}
-		}
-			
-		if(count($ALI)==0){return null;}
-		
-		while (list ($index, $alias) = each ($ALI) ){
-			$ServersAliasesTMP=trim(strtolower($alias));
-			if(isset($GLOBALS["NGINX_SERVERS_NAME"][$ServersAliasesTMP])){continue;}
-			$GLOBALS["NGINX_SERVERS_NAME"][$ServersAliasesTMP]=true;
-			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx, $this->servername, Alias: $ServersAliasesTMP...\n";}
-			$f[]=$ServersAliasesTMP;
-		}
-		
-		
-		if(count($f)>0){return " ".@implode(" ", $f);}
-	}
+
 	
 	
 	private function translate_destdir($directory){
@@ -1512,9 +1507,8 @@ class nginx{
 		$f[]="server {";
 		$f[]="        server_name $this->servername;";
 		$f[]="        listen $port;";
-		$f[]="        access_log  /var/log/apache2/$this->servername/access.log;";
-		$f[]="        access_log  /var/log/apache2/access-common.log;";
-		$f[]="        error_log   /var/log/apache2/$this->servername/error.log;";
+		$f[]="        access_log  /var/log/apache2/common-access.log;";
+		$f[]="        error_log   /var/log/apache2/error.log;";
 		$f[]="        index index.php;";
 		$f[]="        root $rootdir/;";
 		if($this->ssl==1){
@@ -1843,6 +1837,7 @@ private function http_location_cache_params($ligne){
 	
 	private function http_proxy(){
 		$unix=new unix();
+		$nginx_tools=new nginx_tools($this->servername);
 		$ServersAliases=null;
 		$host_port_ssl=null;
 		$default_server=null;
@@ -1889,16 +1884,9 @@ private function http_location_cache_params($ligne){
 		
 //*********************************** Directive Server Name ********************** EN PREMIER		
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx, $this->servername/".__LINE__." listen {$HostIPADDR}$this->host_port{$default_server}\n";}
-		$server_name_text=$this->CheckServerName($this->servername);
-		if($this->servername_pattern<>null){$server_name_text=$this->servername_pattern;}
-		if($this->BuildFramework){$server_name_text=null; }
-		$ServersAliases=$this->http_servername_aliases();
-		
-		$server_name=trim("$server_name_text{$ServersAliases}");
-		if($server_name<>null){
-				$f[]="\tserver_name $server_name;";
-				$f[]="\tserver_name_in_redirect off;";
-		}
+		if(!$this->BuildFramework){$f[]="\tserver_name ".$this->CheckServerName($this->servername);}
+		$f[]="\tserver_name_in_redirect off;";
+
 //*********************************************************************************************************		
 		
 		
@@ -1932,17 +1920,17 @@ private function http_location_cache_params($ligne){
 		
 		// LOGS
 		$f[]="# Access logs [".__LINE__."]";
-		$access_log="/var/log/apache2/$Logsuffix/nginx.access.log";
+		$access_log="\taccess_log  /var/log/apache2/common-access.log awc_log;";
 		
 		
 		@mkdir("/var/log/apache2/$Logsuffix",0755,true);
 		$unix->chown_func($this->APACHE_USER,$this->APACHE_SRC_GROUP,"/var/log/apache2/$Logsuffix");
 		if(preg_match("#^unix:#", $this->servername)){
-			$access_log="/dev/null";
+			$access_log="\taccess_log /dev/null";
 			$ErrorLogLevel="crit";
 		}
 
-		$f[]="\taccess_log  /var/log/apache2/access-common.log awc_log;";
+		$f[]=$access_log;
 		$f[]="\terror_log  /var/log/apache2/nginx.error.log $ErrorLogLevel;";
 		
 		
@@ -1959,7 +1947,8 @@ private function http_location_cache_params($ligne){
 		}
 		$f[]=$this->general_security();
 		$f[]=$this->error_pages_default();
-		$f[]=$this->AntiExploits();
+		
+		$f[]=$nginx_tools->AntiExploits();
 		
 		if($this->DocumentRoot<>null){
 			$f[]="\troot   $this->DocumentRoot;";
@@ -1995,10 +1984,10 @@ private function http_location_cache_params($ligne){
 	
 	private function CheckServerName($servername){
 		if($this->BuildFramework){return null;}
-		$servername=trim(strtolower($servername));
-		if(preg_match("#^unix:#", $servername)){return null;}
-		if(substr($servername, 0,1)=="."){$servername=substr($servername,1,strlen($servername));}
-		return $servername;
+		$nginx_tools=new nginx_tools($this->servername);
+		if($this->servername_pattern<>null){$nginx_tools->ForceServerName=$this->servername_pattern;}
+		$nginx_tools->ServersAliases=$this->ServersAliases;
+		return $nginx_tools->server_name();
 	}
 	
 	
@@ -2033,12 +2022,7 @@ private function http_location_cache_params($ligne){
 		}
 		if(!isset($GLOBALS["ALL_IPS_GET_ARRAY"])){$IP=new networking();$GLOBALS["ALL_IPS_GET_ARRAY"]=$IP->ALL_IPS_GET_ARRAY();}
 		
-		if(preg_match("#^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+#", $this->servername)){
-			if(isset($GLOBALS["ALL_IPS_GET_ARRAY"][$this->servername])){
-				$HostIPADDR="$this->servername:";
-			}
-			
-		}	
+		
 		if($this->host_ipaddr<>null){
 			if(isset($GLOBALS["ALL_IPS_GET_ARRAY"][$this->host_ipaddr])){
 				$HostIPADDR=$this->host_ipaddr.":";
@@ -2058,44 +2042,7 @@ private function http_location_cache_params($ligne){
 	}
 	
 	
-	private function AntiExploits(){
-		$q=new mysql_squid_builder();
-		$sql="SELECT * FROM nginx_exploits WHERE servername='$this->servername'";
-		if($GLOBALS["VERBOSE"]){echo "$sql\n";}
-		$results=$q->QUERY_SQL($sql);
-		$f=array();
-		if(!$q->ok){echo $q->mysql_error."\n";return;}
-		if(mysql_num_rows($results)==0){return;}
-		while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
-			if($GLOBALS["VERBOSE"]){echo "nginx_exploits: gpid:{$ligne["groupid"]}\n";}
-			$groupid=$ligne["groupid"];
-			$rules=$this->AntiExploits_items($groupid);
-			if($rules<>null){$f[]=$rules;}
-		}
-			
-		if(count($f)>0){return @implode("\n" ,$f);}
-	}
-	
-	private function AntiExploits_items($groupid){
-		$q=new mysql_squid_builder();
-		$A="$";
-		$f=array();
-		$sql="SELECT * FROM nginx_exploits_items WHERE groupid=$groupid AND `enabled`=1";
-		if($GLOBALS["VERBOSE"]){echo "$sql\n";}
-		$results=$q->QUERY_SQL($sql);
-		if(!$q->ok){echo $q->mysql_error."\n";return;}
-		if(mysql_num_rows($results)==0){return;}
-		while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
-			$neg=null;
-			if($ligne["reverse"]==1){$neg="!";}
-			$ligne["pattern"]=str_replace('"', '\"', $ligne["pattern"]);
-			$f[]="\tif ($A{$ligne["token"]} {$neg}~ \"{$ligne["pattern"]}\") {  return 403; }";
-   
-		}
-		
-		if(count($f)>0){return @implode("\n" ,$f);}
-		
-	}
+
 	
 	private function general_security(){
 		$servername=$this->servername;
@@ -2826,9 +2773,11 @@ private function http_location_cache_params($ligne){
 		}
 		
 		$f[]="\tlocation ~ [^/]\.php(/|\$) {";
+		$f[]=$this->php_perso_tokens();
 		if($root<>null){$f[]="\t\troot\t$root;";}
 		$f[]="\t\tindex\t$index;";
 		$f[]="\t\tfastcgi_split_path_info ^(.+?\.php)(/.*)\$;";
+		
 		$f[]="\t\tif (!-f \$document_root\$fastcgi_script_name) {";
 		$f[]="\t\t\treturn 404;";
 		$f[]="\t\t}";
@@ -2843,8 +2792,24 @@ private function http_location_cache_params($ligne){
 		
 		
 	}
+	function php_perso_tokens(){
+		$q=new mysql();
+		$array=array();
+		$sql="SELECT *  FROM freeweb_php WHERE servername='$this->servername'";
+		$results=$q->QUERY_SQL($sql,'artica_backup');
+		while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
+			$array[$ligne["key"]]=$ligne["value"];
+		}
+		while (list ($key, $val) = each ($array) ){
+			$f[]="set \$php_value \"$key $val\";";
+		}
+		
+		$line=@implode("\n", $f);
+		return $line;
+		
 	
 	
+	}
 	private function php5_params($root){
 		$unix=new unix();
 		$sock= new sockets();

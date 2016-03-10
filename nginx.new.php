@@ -78,6 +78,11 @@ function step1(){
 	$html="<div style='width:98%' class=form>
 	<div class=explain style='font-size:18px'>{nginx_welcome_step1}</div>
 	<center style='margin-top:20px'>". Field_text("www_cnx-$t",$_SESSION["NGINX"]["www_cnx"],"font-size:22px;font-weight:bold;padding:20px;width:95%",null,null,null,false,"SaveCheck$t(event)")."
+	
+	<div style='margin-top:15px'>". Paragraphe_switch_img("Microsoft Windows Exchange", 
+	"{nginx_msexch_dedicated_explain}","MSEXCH-$t",$_SESSION["NGINX"]["MSEXCH"],null,775)."</div>
+			
+			
 	<div style='margin-top:20px'>". button("{next}","Save$t()",30)."</div>		
 	</center>
 	<script>
@@ -91,6 +96,7 @@ function step1(){
 	function Save$t(){
 		var XHR = new XHRConnection();
 		XHR.appendData('www_cnx',document.getElementById('www_cnx-$t').value);
+		XHR.appendData('MSEXCH',document.getElementById('MSEXCH-$t').value);
 		XHR.sendAndLoad('$page', 'POST',xSave$t);		
 	
 	}
@@ -110,9 +116,19 @@ function step2(){
 	$page=CurrentPageName();
 	$tpl=new templates();
 	$t=time();
-	if($_SESSION["NGINX"]["www_dest"]==null){$_SESSION["NGINX"]["www_dest"]="http://";}
+	$DefaultDest=$_SESSION["NGINX"]["www_dest"];
+	$SourceDest=$_SESSION["NGINX"]["www_cnx"];
+	if($DefaultDest==null){if($_SESSION["NGINX"]["MSEXCH"]==1){$DefaultDest="https://";}}
+	if($DefaultDest==null){$DefaultDest	="http://";}
+	
 	$nginx_welcome_step2=$tpl->_ENGINE_parse_body("{nginx_welcome_step2}");
-	$nginx_welcome_step2=str_replace("%s", $_SESSION["NGINX"]["www_cnx"], $nginx_welcome_step2);
+	
+	if($_SESSION["NGINX"]["MSEXCH"]==1){
+		$SourceDest=$SourceDest." (Microsoft Exchange Server)";
+		
+	}
+	
+	$nginx_welcome_step2=str_replace("%s", $SourceDest, $nginx_welcome_step2);
 	
 	if($_GET["peer-id"]>0){
 		$usffix=suffix();
@@ -123,9 +139,9 @@ function step2(){
 	
 	$html="
 	<div style='width:98%' class=form>
-	<div style='font-size:18px'>{reverse_proxy}:{$_SESSION["NGINX"]["www_cnx"]}</div>
+	<div style='font-size:24px'>{reverse_proxy}:$SourceDest</div>
 	<div class=explain style='font-size:18px'>$nginx_welcome_step2</div>
-	<center style='margin-top:20px'>". Field_text("www_dest-$t",$_SESSION["NGINX"]["www_dest"],"font-size:22px;font-weight:bold;padding:20px;width:95%",null,null,null,false,"SaveCheck$t(event)")."
+	<center style='margin-top:20px'>". Field_text("www_dest-$t",$DefaultDest,"font-size:22px;font-weight:bold;padding:20px;width:95%",null,null,null,false,"SaveCheck$t(event)")."
 	<div style='margin-top:20px'>". button("{next}","Save$t()",30)."</div>
 	</center>
 	<script>
@@ -156,10 +172,18 @@ function step3(){
 	$page=CurrentPageName();
 	$tpl=new templates();
 	$t=time();
+	
+	$DefaultDest=$_SESSION["NGINX"]["www_dest"];
+	$SourceDest=$_SESSION["NGINX"]["www_cnx"];
+	
+	if($_SESSION["NGINX"]["MSEXCH"]==1){
+		$DefaultDest=$DefaultDest." (Microsoft Exchange Server)";
+	
+	}
 
 	$nginx_welcome_step3=$tpl->_ENGINE_parse_body("{nginx_welcome_step3}");
-	$nginx_welcome_step3=str_replace("%s", $_SESSION["NGINX"]["www_cnx"], $nginx_welcome_step3);
-	$nginx_welcome_step3=str_replace("%d", $_SESSION["NGINX"]["www_dest"], $nginx_welcome_step3);
+	$nginx_welcome_step3=str_replace("%s", $SourceDest, $nginx_welcome_step3);
+	$nginx_welcome_step3=str_replace("%d",$DefaultDest, $nginx_welcome_step3);
 	
 	if($_GET["peer-id"]>0){
 		$q=new mysql_squid_builder();

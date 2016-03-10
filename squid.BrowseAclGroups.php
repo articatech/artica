@@ -370,7 +370,7 @@ function page(){
 
 		$buttons="
 	buttons : [
-	{name: '$new_group', bclass: 'add', onpress : AddGroup$t},
+	{name: '<strong style=font-size:18px>$new_group</strong>', bclass: 'add', onpress : AddGroup$t},
 	],";
 
 	$html=$tpl->_ENGINE_parse_body("")."
@@ -407,7 +407,7 @@ $('#table-$t').flexigrid({
 	});   
 });
 function AddGroup$t() {
-	Loadjs('squid.acls.groups.php?AddGroup-js=yes&ID=-1&table-acls-t=$t&FilterType={$_GET["FilterType"]}$wpad');
+	Loadjs('squid.acls.groups.php?AddGroup-js=yes&ID=-1&table-acls-t=$t&FilterType={$_GET["FilterType"]}&callback={$_GET["callback"]}$wpad');
 	
 }	
 
@@ -583,6 +583,9 @@ function group_list(){
 	$table="webfilters_sqgroups";
 	$page=1;
 	$wpad=false;
+	
+	
+	
 	if(isset($_GET["wpad"])){$_GET["FilterType"]="WPAD";}
 	
 	if($_GET["FilterType"]<>null){
@@ -597,10 +600,10 @@ function group_list(){
 				$FORCE_FILTER="AND GroupType='arp'";
 				break;
 			case "uid":
-				$FORCE_FILTER="AND ( GroupType='ext_user' OR GroupType='proxy_auth_ads' OR GroupType='proxy_auth' OR GroupType='proxy_auth_statad')";
+				$FORCE_FILTER="AND ( GroupType='ext_user' OR GroupType='proxy_auth_ads' OR GroupType='proxy_auth' OR GroupType='proxy_auth_statad' OR GroupType='proxy_auth_tagad')";
 				break;
 			case "ADMBR":
-				$FORCE_FILTER="AND ( GroupType='proxy_auth_ads' OR GroupType='proxy_auth'  OR GroupType='proxy_auth_statad')";
+				$FORCE_FILTER="AND ( GroupType='proxy_auth_ads' OR GroupType='proxy_auth'  OR GroupType='proxy_auth_statad' OR GroupType='proxy_auth_tagad')";
 				break;	
 			case "IPTABLES":
 				$f=$q->acl_GroupType_iptables;

@@ -28,7 +28,11 @@ class SocketsAsRoot{
 			$this->Runned=true;
 			if($this->SquidPerformance>2){return;}
 			if($this->EnableIntelCeleron==1){return;}
-			shell_exec("/etc/init.d/slapd restart --framework=". basename(__FILE__)." &");
+			
+			$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
+			if($EnableOpenLDAP==1){
+				shell_exec("/etc/init.d/slapd restart --framework=". basename(__FILE__)." &");
+			}
 			$this->Runned=true;return;
 		}
 		

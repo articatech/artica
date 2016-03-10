@@ -54,7 +54,6 @@ $datas=unserialize(base64_decode($sock->GET_INFO("SpamassassinDNSBL")));
 $conf["njabl"]="http://www.dnsbl.njabl.org/";
 $conf["SORBS"]="http://www.dnsbl.sorbs.net/";
 $conf["Spamhaus"]="http://www.spamhaus.org/lookup.lasso";
-$conf["RFC-Ignorant"]="http://www.rfc-ignorant.org/";
 $conf["sa-hil.habeas.com"]="http://www.robtex.com/dns/habeas.com.html";
 $conf["sa-hul.habeas.com"]="http://www.robtex.com/dns/habeas.com.html";
 $conf["senderbase.org"]="http://www.senderbase.org/";

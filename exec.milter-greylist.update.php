@@ -27,6 +27,7 @@ function run(){
 	update_milter_greylist();
 	update_milter_regex();
 	
+	
 }
 
 function compile_postfix(){
@@ -64,8 +65,7 @@ if(!is_file("$temppath/milter-greylist-database.txt")){
 $data=@file_get_contents("$temppath/milter-greylist-database.txt");
 $MAIN=unserialize($data);
 
-if($GLOBALS["VERBOSE"]){echo($data)."\n";}
-if($GLOBALS["VERBOSE"]){print_r($MAIN);}
+
 
 @unlink("$temppath/milter-greylist-database.txt");
 $TIME=$MAIN["PATTERN"]["TIME"];

@@ -1,5 +1,6 @@
 <?php
 include_once(dirname(__FILE__)."/class.products-ip-ranges.inc");
+include_once(dirname(__FILE__)."/class.firehole.rules.inc");
 
 class firehol{
 	public $services_array;
@@ -9,11 +10,25 @@ class firehol{
 	private $rp_filter=1;
 	private $ipset_installed=false;
 	private $BUILD_INTERFACE_SERVER_LOGS=array();
-	
+	private $EnableDHCPServer=0;
+	private $DHCPNic=null;
 	
 	public function firehol(){
 		$this->fillServices();
 		$this->isipset_installed();
+		$this->LoadLocalDHCP();
+		
+	}
+	
+	private function LoadLocalDHCP(){
+		$this->EnableDHCPServer=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableDHCPServer"));
+		$EnableArticaAsGateway=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaAsGateway"));
+		if($this->EnableDHCPServer==0){return;}
+		include_once(dirname(__FILE__)."/class.dhcpd.inc");
+		$dhcp=new dhcpd();
+		$this->DHCPNic=$dhcp->listen_nic;
+		if($EnableArticaAsGateway==1){$this->ip_forward=1;}
+		
 	}
 	
 	
@@ -25,12 +40,42 @@ class firehol{
 		
 	}
 	
+	public function check_xt_ndpi(){
+		$unix=new unix();
+		$KERNEL_VERSION=$unix->KERNEL_VERSION();
+		$LOG_PREFIX="Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]}";
+		if(!is_file("/lib/modules/$KERNEL_VERSION/extra/xt_ndpi.ko")){return;}
+		$modinfo=$unix->find_program("modinfo");
+		$depmod=$unix->find_program("depmod");
+		exec("$modinfo xt_ndpi 2>&1",$results);
+		
+		while (list ($index, $line) = each ($results)){
+			if(preg_match("#Error.*?missing#", $line)){
+				echo "$LOG_PREFIX xt_ndpi: Please wait, running depmod\n";
+				system("$depmod -a");
+				return;
+			}
+			
+			if(preg_match("#description:\s+(.+)?#", $line,$re)){
+				echo "$LOG_PREFIX xt_ndpi: {$re[1]} OK\n";
+				return;
+			}
+			
+		}
+		
+		
+		
+		
+	}
+
+	
 	
 	public function build(){
 			$this->CheckDirs();
 			$sock=new sockets();
 			$unix=new unix();
 			$FireHolRouter=intval($sock->GET_INFO("FireHolRouter"));
+			$KERNEL_VERSION=$unix->KERNEL_VERSION();
 			$Interfaces=$unix->NETWORK_ALL_INTERFACES();
 			$this->BUILD_SERVICES();
 			$this->ipset_bumbsslwl();
@@ -38,6 +83,7 @@ class firehol{
 			$MODE_ROUTER=$this->MODE_ROUTER();
 			$FireHolConf=unserialize(base64_decode($sock->GET_INFO("FireHolConf")));
 			$sysctl=$unix->find_program("sysctl");
+			$CONF[]="# DHCP: $this->EnableDHCPServer ($this->DHCPNic)";
 			if(!$this->ipset_compatible()){
 				$CONF[]="#ipset v.".$this->ipset_version()." incompatible turn to old way";
 				$CONF[]="IPSET_SRC_DST_OPTIONS=";
@@ -46,12 +92,23 @@ class firehol{
 			}
 			$CONF[]="version 5";
 			$CONF[]="#Trusted Networks";
+			
+			if(is_file("/lib/modules/$KERNEL_VERSION/extra/xt_ndpi.ko")){
+				$CONF[]="#xt_ndpi installed";
+				$this->check_xt_ndpi();
+			}else{
+				$CONF[]="#xt_ndpi not installed";
+			}
+			
 			$CONF[]="FIREHOL_AUTOSAVE=\"/home/artica/firewall/firehol-saved-ipv4.txt\"";
 			$CONF[]="FIREHOL_LOG_PREFIX=\"FIREHOL:\"";
 			$CONF[]="FIREHOL_TPROXY_MARK=\"0xffff\"";
 			$CONF[]="FIREHOL_TPROXY_IP_ROUTE_TABLE=\"999\"";
 			$CONF[]="FIREHOL_TPROXY_ROUTE_DEVICE=\"eth0\"";
-			$CONF[]="";
+			$CONF[]="MDPI=\"-m  ndpi \"";
+			 
+			
+		
 			if($this->ipset_installed){
 				$CONF[]="ipv4 ipset create proxy_white_ssl hash:ip";
 				$CONF[]="ipv4 ipset addfile proxy_white_ssl ips proxy_ssl_whitelist";
@@ -64,6 +121,8 @@ class firehol{
 			$CONF[]="# * * * * Transparent Proxy * * * *";
 			$CONF[]=$this->transparent_squid($FireHolConf["IF_LAN"]);
 			$CONF[]=$this->transparent_proxy();
+			$CONF[]=$this->transparent_socks();
+			$CONF[]=$this->transparent_ftp();
 			$CONF[]="# * * * * ip_forward =  $this->ip_forward * * * *";
 			$CONF[]="# * * * * rp_filter  =  $this->rp_filter * * * *";
 			$unix->sysctl("net.ipv4.conf.default.rp_filter",$this->rp_filter);
@@ -74,7 +133,7 @@ class firehol{
 			}
 			$CONF[]="$sysctl -w net.ipv4.conf.default.rp_filter=$this->rp_filter >/dev/null 2>&1";
 			$CONF[]="$sysctl -w net.ipv4.conf.all.rp_filter=$this->rp_filter >/dev/null 2>&1";
-			$unix->sysctl("ipv4.ip_forward", $this->ip_forward);
+			$unix->sysctl("net.ipv4.ip_forward", $this->ip_forward);
 			$CONF[]="$sysctl -w net.ipv4.ip_forward=$this->ip_forward >/dev/null 2>&1";
 			$CONF[]="";
 			$CONF[]="# * * * * NAT Rules * * * *";
@@ -189,7 +248,7 @@ class firehol{
 		//$BEHA2[1]="{act_as_lan}";
 		//firewall_behavior[2]= act_as_wan
 		
-		
+		$ipdeny=$this->ipdeny();
 		while (list ($Interface, $dr) = each ($Interfaces)){
 			
 			$NicName="NET{$Interface}";
@@ -215,11 +274,48 @@ class firehol{
 			$CONF[]="\tpolicy $nic->firewall_policy";
 			if($nic->firewall_behavior==2){
 				$CONF[]="\tprotection strong 10/sec 10";
+			}
+			
+			if($nic->firewall_artica==1){
+				$CONF[]="\tserver artica accept";
+			}
+			
+			if($this->EnableDHCPServer==1){
+				if($this->DHCPNic==$Interface){
+					$CONF[]="\tserver dhcp accept";
+				}
+			}
+			
+			$PersonalRules=new firehol_rules($Interface);
+			$CONF[]=$PersonalRules->buildrules();
+			if($GLOBALS["VERBOSE"]){
+				$CONF[]=@implode("\n", $PersonalRules->logs);
+			}			
+			if($nic->DenyCountries==1){
+				if(count($ipdeny["SERVERS"])>0){
+					$CONF[]=@implode("\n", $ipdeny["SERVERS"]);
+				}
+			}
+			
+			
+			if($nic->firewall_behavior==1){
+				$CONF[]="client any accept";
+				$CONF[]="server any accept";
+				
+			}
+			
+			if($nic->firewall_behavior==0){
+				$CONF[]="client any accept";
 				$CONF[]=$BUILD_INTERFACE_SERVER;
-				if($BUILD_INTERFACE_CLIENT==null){$CONF[]="\tclient all accept";}else{$CONF[]=$BUILD_INTERFACE_CLIENT;}
+				
+			}
+			
+			if($nic->firewall_behavior==2){
+				$CONF[]=$BUILD_INTERFACE_SERVER;
+				if($BUILD_INTERFACE_CLIENT==null){$CONF[]="\tclient any accept";}else{$CONF[]=$BUILD_INTERFACE_CLIENT;}
 			}else{
 				$CONF[]=$BUILD_INTERFACE_SERVER;
-				if($BUILD_INTERFACE_CLIENT==null){$CONF[]="\tclient all accept";}else{$CONF[]=$BUILD_INTERFACE_CLIENT;}
+				if($BUILD_INTERFACE_CLIENT==null){$CONF[]="\tclient any accept";}else{$CONF[]=$BUILD_INTERFACE_CLIENT;}
 			}
 			
 			
@@ -242,18 +338,19 @@ class firehol{
 		
 		$CONF[]="";
 		$CONF[]="router4 lo2lo inface lo outface lo";
-		$CONF[]="\troute all accept";
-		$CONF[]="\tclient all accept";
+		$CONF[]="\troute any accept";
+		$CONF[]="\tclient any accept";
 		$CONF[]="\tpolicy accept";
 		$CONF[]="";
 		$EnableSecureGateway=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableSecureGateway"));
 		$policy="accept";
-		$route="\troute all accept";
+		$route="\troute any accept";
+		$ipdeny=$this->ipdeny();
 		$secure_gateway=null;
 		if($EnableSecureGateway==1){
 			$policy="reject";
 			$secure_gateway=$this->secure_gateway();
-			$route="$secure_gateway\n\troute all deny";
+			$route="$secure_gateway\n\troute any deny";
 		}
 		
 		
@@ -266,8 +363,34 @@ class firehol{
 				$nic=new system_nic($Interface);
 				$CONF[]="";
 				$CONF[]="router4 {$Interface}2{$Interface} inface $Interface outface $Interface";
+				
+				if($nic->firewall_artica==1){
+					$CONF[]="\tserver artica accept";
+				}
+				
+				if($this->EnableDHCPServer==1){
+					if($this->DHCPNic==$Interface){
+						$CONF[]="\tserver dhcp accept";
+					}else{
+						$CONF[]="#\tDHCP $this->DHCPNic !=$Interface";
+					}
+				}else{
+					$CONF[]="#\tDHCP disabled";
+				}
+				
+				
+				$PersonalRules=new firehol_rules("{$Interface}2{$Interface}",1);
+				$CONF[]=$PersonalRules->buildrules();
+				
+				if($nic->DenyCountries==1){
+					$CONF[]="#\t$Interface DenyCountries=1";
+					if(count($ipdeny["ROUTERS"])>0){$CONF[]=@implode("\n", $ipdeny["ROUTERS"]);}
+					
+				}
+				
+				
 				$CONF[]=$route;
-				$CONF[]="\tclient all accept";
+				$CONF[]="\tclient any accept";
 				$CONF[]="\tpolicy $policy";
 				if($nic->firewall_masquerade>0){
 					$CONF[]="\t{$masquerade[$nic->firewall_masquerade]}";
@@ -282,7 +405,24 @@ class firehol{
 	
 	private function BUILD_INTERFACE_SERVER($Interface,$act_as_lan){
 		$this->BUILD_INTERFACE_SERVER_LOGS=array();
+		$nic=new system_nic($Interface);
+		
 		$q=new mysql();
+		
+		if($act_as_lan==1){
+			return "\tserver any accept";
+		}
+		
+		if($nic->firewall_artica==1){
+			$CONF[]="\tserver artica accept";
+		}
+		
+		if($this->EnableDHCPServer==1){
+			if($this->DHCPNic==$Interface){
+				$MAIN["dhcp"]="\tserver dhcp accept";
+			}
+			
+		}
 		
 		$allow_type[0]="reject";
 		$allow_type[1]="accept";
@@ -298,13 +438,17 @@ class firehol{
 		if($GLOBALS["VERBOSE"]){echo "BUILD_INTERFACE_SERVER($Interface) ->". mysql_num_rows($results)."\n";}
 		
 		$this->BUILD_INTERFACE_SERVER_LOGS[]="# $Interface: act_as_lan = $act_as_lan";
-		if($act_as_lan==1){
-			$MAIN["all"]="\tserver all accept";
-		}
+		
 		
 		$unifi=$this->unifi_services($Interface);
 		if($act_as_lan<>2){
 			if($unifi<>null){$MAIN["unifi"]="\tserver unifi accept";}
+			if($this->isSquid()){$MAIN["squidports"]="\tserver squidports accept";}
+		}
+		
+		$nginx=$this->nginx_service();
+		if($nginx<>null){
+			$MAIN["nginx"]="\tserver nginx accept";
 		}
 		
 
@@ -324,6 +468,11 @@ class firehol{
 		while (list ($service, $dr) = each ($MAIN)){$CONF[]=$dr;}
 		$this->BUILD_INTERFACE_SERVER_LOGS[]="# $Interface: final services = ".count($CONF);
 		
+		if(count($CONF)==0){
+			if($act_as_lan==0){
+				return "\tserver any accept";
+			}
+		}
 		
 		if(count($CONF)>0){
 			return @implode("\n", $CONF);
@@ -375,7 +524,7 @@ class firehol{
 		$CountOfRows=mysql_num_rows($results);
 		$CONF[]="#\t$Interface: $CountOfRows clients rule(s) ( accept all services )[".__LINE__."]";
 		if($CountOfRows==0){
-			$CONF[]="\tclient all accept";
+			$CONF[]="\tclient any accept";
 			return @implode("\n", $CONF);
 		}
 		
@@ -389,7 +538,7 @@ class firehol{
 		if(count($CONF)>0){
 			return @implode("\n", $CONF);
 		}
-		$CONF[]="\tclient all accept";
+		$CONF[]="\tclient any accept";
 		return @implode("\n", $CONF);
 		
 	
@@ -399,89 +548,125 @@ class firehol{
 	private function MODE_ROUTER(){		
 		$sock=new sockets();
 		$q=new mysql();
-			$FireHolConf=unserialize(base64_decode($sock->GET_INFO("FireHolConf")));
-			if(!isset($FireHolConf["IF_LAN"])){$FireHolConf["IF_LAN"]=null;}
-			if(!isset($FireHolConf["IF_WAN"])){$FireHolConf["IF_WAN"]=null;}
+		$ipdeny=$this->ipdeny();
+		$q=new mysql();
+		$FireHolConf=unserialize(base64_decode($sock->GET_INFO("FireHolConf")));
+		if(!isset($FireHolConf["IF_LAN"])){$FireHolConf["IF_LAN"]=null;}
+		if(!isset($FireHolConf["IF_WAN"])){$FireHolConf["IF_WAN"]=null;}
+		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT ID FROM pnic_bridges WHERE nic_from='{$FireHolConf["IF_LAN"]}' AND nic_to='{$FireHolConf["IF_WAN"]}'","artica_backup"));
+		if(intval($ligne)>0){$FireHolConf["IF_LAN"]=null;$FireHolConf["IF_WAN"]=null;}
+			
+			
 			
 			if($FireHolConf["IF_LAN"]<>null && $FireHolConf["IF_WAN"]<>null){
 				
 				if(!isset($this->InterfaceSet[$FireHolConf["IF_LAN"]])){
 					$CONF[]="interface4 {$FireHolConf["IF_LAN"]} LAN";
 					$CONF[]="\tpolicy accept";
-					$CONF[]="\tclient all accept";
+					$PersonalRules=new firehol_rules("{$FireHolConf["IF_LAN"]}",0);
+					$CONF[]=$PersonalRules->buildrules();
+					$CONF[]="\tclient any accept";
 					$CONF[]="";
 				}
 				
 				if(!isset($this->InterfaceSet[$FireHolConf["IF_WAN"]])){
-					$CONF[]="interface4 {$FireHolConf["IF_WAN"]} WAN src not \"\${UNROUTABLE_IPS}\"";
+					$CONF[]="# Wizard mode.";
+					$nic=new system_nic($FireHolConf["IF_WAN"]);
+					$CONF[]="interface4 {$FireHolConf["IF_WAN"]} WAN src not \"\${UNROUTABLE_IPS}\"";					
+					if($nic->firewall_artica==1){ $CONF[]="\tserver artica accept"; }
+					$PersonalRules=new firehol_rules("{$FireHolConf["IF_WAN"]}",0);
+					$CONF[]=$PersonalRules->buildrules();
 					$CONF[]="\tprotection strong 10/sec 10";
-					$CONF[]="\tclient all accept";
+					$CONF[]="\tclient any accept";
 				}
 				
 				if(!isset($this->InterfaceSet["{$FireHolConf["IF_LAN"]}2{$FireHolConf["IF_WAN"]}"])){
+					$CONF[]="# Lan2Wan - Wizard mode.";
 					$CONF[]="router Lan2Wan inface {$FireHolConf["IF_LAN"]} outface {$FireHolConf["IF_WAN"]}";
 					$CONF[]="\tpolicy accept";
-					$CONF[]="\tclient all accept";
+					$PersonalRules=new firehol_rules("{$FireHolConf["IF_LAN"]}2{$FireHolConf["IF_WAN"]}",1);
+					$CONF[]=$PersonalRules->buildrules();
+					$CONF[]="\tclient any accept";
 					$CONF[]="";
 					$this->InterfaceSet["{$FireHolConf["IF_LAN"]}2{$FireHolConf["IF_LAN"]}"]=true;
 				}				
 			
 				if(!isset($this->InterfaceSet["{$FireHolConf["IF_LAN"]}2{$FireHolConf["IF_LAN"]}"])){
+					$CONF[]="# Lan2Lan - Wizard mode.";
 					$CONF[]="router Lan2Lan inface {$FireHolConf["IF_LAN"]} outface {$FireHolConf["IF_LAN"]}";
 					$CONF[]="\tpolicy accept";
-					$CONF[]="\tclient all accept";
+					$PersonalRules=new firehol_rules("{$FireHolConf["IF_LAN"]}2{$FireHolConf["IF_LAN"]}",1);
+					$CONF[]=$PersonalRules->buildrules();
+					$CONF[]="\tclient any accept";
 					$CONF[]="";
 					$this->InterfaceSet["{$FireHolConf["IF_LAN"]}2{$FireHolConf["IF_LAN"]}"]=true;
 				}
 			
 				if(!isset($this->InterfaceSet["{$FireHolConf["IF_WAN"]}2{$FireHolConf["IF_LAN"]}"])){
+					$nic=new system_nic($FireHolConf["IF_WAN"]);
+					$CONF[]="# Wan2Lan - Wizard mode.";
 					$CONF[]="router4 Wan2Lan inface {$FireHolConf["IF_WAN"]} outface {$FireHolConf["IF_LAN"]}";
-					$CONF[]="\tmasquerade reverse";
-					$CONF[]="\tclient all accept";
+					$CONF[]="\tmasquerade";
+					if($nic->firewall_artica==1){ $CONF[]="\troute artica accept"; }
+					if(count($ipdeny["ROUTERS"])>0){$CONF[]=@implode("\n", $ipdeny["ROUTERS"]);}
+					$CONF[]="\tclient any accept";
+					$PersonalRules=new firehol_rules("{$FireHolConf["IF_WAN"]}2{$FireHolConf["IF_LAN"]}",1);
+					$CONF[]=$PersonalRules->buildrules();
 					$CONF[]="\tserver ident reject with tcp-reset";
 					$CONF[]="";
 					$this->InterfaceSet["{$FireHolConf["IF_WAN"]}2{$FireHolConf["IF_LAN"]}"]=true;
 				}
 			}
 			
-			
-			$sql="SELECT * FROM `pnic_bridges` WHERE `enabled`=1";
-			$results = $q->QUERY_SQL($sql,"artica_backup");
-			$RTRS=0;
-			while ($ligne = mysql_fetch_assoc($results)) {
-				$RTRS++;
-				$nic_from=$ligne["nic_from"];
-				$nic_to=$ligne["nic_to"];
-				$routerid=$ligne["ID"];
-				$opts=array();
-				if($ligne["masquerading"]==1){$opts[]="\tmasquerade";}
-				if($ligne["masquerading_invert"]==1){$opts[]="\tmasquerade reverse";}
-				if($ligne["DenyDHCP"]==1){$opts[]="\tserver dhcp deny";}
+			if($q->TABLE_EXISTS("pnic_bridges", "artica_backup")){
+				$sql="SELECT * FROM `pnic_bridges` WHERE `enabled`=1";
+				$results = $q->QUERY_SQL($sql,"artica_backup");
+				$RTRS=0;
+				while ($ligne = mysql_fetch_assoc($results)) {
+					$RTRS++;
+					$nic_from=$ligne["nic_from"];
+					$nic_to=$ligne["nic_to"];
+					$routerid=$ligne["ID"];
+					$opts=array();
+					
+					if($ligne["masquerading"]==1){$opts[]="\tmasquerade";}
+					if($ligne["masquerading_invert"]==1){$opts[]="\tmasquerade reverse";}
+					if($ligne["DenyDHCP"]==1){$opts[]="\tserver dhcp deny";}
+					$nic=new system_nic($nic_from);
+					
 				
-				
-			
-				$RouterName="{$nic_from}2{$nic_to}";
-				$CONF[]="router4 $RouterName inface $nic_from outface $nic_to";
-				if(count($opts)>0){
-					$CONF[]=@implode("\n", $opts);
+					$RouterName="{$nic_from}2{$nic_to}";
+					$CONF[]="# pnic_bridges: $RouterName; Artica allowed=$nic->firewall_artica;";
+					$CONF[]="router4 $RouterName inface $nic_from outface $nic_to";
+					if($nic->firewall_artica==1){ $CONF[]="\troute artica accept"; }
+					
+					$PersonalRules=new firehol_rules($RouterName,1);
+					$CONF[]=$PersonalRules->buildrules();
+					
+					if($ligne["DenyCountries"]==1){
+						if(count($ipdeny["ROUTERS"])>0){$CONF[]=@implode("\n", $ipdeny["ROUTERS"]);}
+					}
+					
+					if(count($opts)>0){
+						$CONF[]=@implode("\n", $opts);
+					}
+					
+					$services=$this->router_services($routerid);
+					if($services<>null){
+						$CONF[]=$services;
+					}
+					
+					$CONF[]="\troute any accept";
+					$CONF[]="\tclient any accept";
+					$CONF[]="";
 				}
 				
-				$services=$this->router_services($routerid);
-				if($services<>null){
-					$CONF[]=$services;
+				
+				if($RTRS>0){
+					$this->ip_forward=1;
+					
 				}
-				
-				$CONF[]="\troute all accept";
-				$CONF[]="\tclient all accept";
-				$CONF[]="";
 			}
-			
-			
-			if($RTRS>0){
-				$this->ip_forward=1;
-				
-			}
-			
 			
 		
 			$CONF[]="";
@@ -760,6 +945,7 @@ class firehol{
 		$results=$q->QUERY_SQL($sql,"artica_backup");
 		$PROTO[0]="tcp";
 		$PROTO[1]="udp";
+		$EX[]="\tserver ICMP accept";
 		while ($ligne = mysql_fetch_assoc($results)) {
 			$dport=$ligne["dport"];
 			$proto=$PROTO[$ligne["dproto"]];
@@ -783,11 +969,12 @@ class firehol{
 		$q=new mysql();
 		$sock=new sockets();
 		$unix=new unix();
+		$SS5_SOCKS_PORT_TEXT=null;
 		$ArticaHttpsPort=intval($sock->GET_INFO("ArticaHttpsPort"));
 		if($ArticaHttpsPort==0){$ArticaHttpsPort=9000;}
 		if($q->TABLE_EXISTS("firehol_services_def", "artica_backup")){$this->checkTables();}
 		if($q->COUNT_ROWS("firehol_services_def", "artica_backup")==0){$this->checkTables();}
-
+		$LOG_PREFIX="Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]}";
 		
 
 		
@@ -802,7 +989,7 @@ class firehol{
 		$f[]="";
 		@file_put_contents("/etc/firehol/services/webmanagement.conf",@implode("\n", $f));
 		
-		echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} creating service webmanagement\n";
+		echo "$LOG_PREFIX Creating service webmanagement\n";
 		$f=array();
 		$f[]="#FHVER: 1:213";
 		$f[]="server_artica_ports=\"tcp/$ArticaHttpsPort\"";
@@ -818,7 +1005,7 @@ class firehol{
 		$f[]="server_ntopng_ports=\"tcp/{$arrayConf["HTTP_PORT"]}\"";
 		$f[]="client_ntopng_ports=\"default\"";
 		$f[]="";
-		echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} creating service ntopng tcp/{$arrayConf["HTTP_PORT"]}\n";
+		echo "$LOG_PREFIX Creating service ntopng tcp/{$arrayConf["HTTP_PORT"]}\n";
 		@file_put_contents("/etc/firehol/services/ntopng.conf",@implode("\n", $f));
 		$f=array();		
 		
@@ -832,7 +1019,7 @@ class firehol{
 		$f[]="server_ufdbhttp_ports=\"tcp/$SquidGuardApachePort tcp/$SquidGuardApacheSSLPort\"";
 		$f[]="client_ufdbhttp_ports=\"default\"";
 		$f[]="";
-		echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} creating service ufdbhttp tcp/$SquidGuardApachePort tcp/$SquidGuardApacheSSLPort\n";
+		echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} Creating service ufdbhttp tcp/$SquidGuardApachePort tcp/$SquidGuardApacheSSLPort\n";
 		@file_put_contents("/etc/firehol/services/ufdbhttp.conf",@implode("\n", $f));
 		$f=array();
 		
@@ -846,16 +1033,19 @@ class firehol{
 		$f[]="server_ufdbhttp_ports=\"tcp/$SquidGuardApachePort tcp/$SquidGuardApacheSSLPort\"";
 		$f[]="client_ufdbhttp_ports=\"default\"";
 		$f[]="";
+		echo "$LOG_PREFIX Creating service Web filtering page tcp/{$SquidGuardApachePort}\n";
 		@file_put_contents("/etc/firehol/services/ufdbhttp.conf",@implode("\n", $f));
 		$f=array();
 		// Influx Ports **********************************************************************
 		$InfluxAdminPort=intval($sock->GET_INFO("InfluxAdminPort"));
+		$SS5_SOCKS_PORT=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SS5_SOCKS_PORT"));
 		if($InfluxAdminPort==0){$InfluxAdminPort=8083;}
 		$f=array();
 		$f[]="#FHVER: 1:213";
 		$f[]="server_influxdb_ports=\"tcp/$InfluxAdminPort\"";
 		$f[]="client_influxdb_ports=\"default\"";
 		$f[]="";
+		echo "$LOG_PREFIX Creating service InfluxDB tcp/{$InfluxAdminPort}\n";
 		@file_put_contents("/etc/firehol/services/influxdb.conf",@implode("\n", $f));
 		$f=array();
 		
@@ -868,6 +1058,15 @@ class firehol{
 		@file_put_contents("/etc/firehol/services/torrent.conf",@implode("\n", $f));
 		$f=array();
 		
+		// ss5 Ports **********************************************************************
+		if($SS5_SOCKS_PORT>0){$SS5_SOCKS_PORT_TEXT="tcp/$SS5_SOCKS_PORT";}
+		$f[]="#FHVER: 1:213";
+		$f[]="server_ss5_ports=\"tcp/31337 $SS5_SOCKS_PORT_TEXT\"";
+		$f[]="client_ss5_ports=\"default\"";
+		$f[]="";
+		echo "$LOG_PREFIX Creating service Socks Proxy $SS5_SOCKS_PORT_TEXT/31337\n";
+		@file_put_contents("/etc/firehol/services/ss5.conf",@implode("\n", $f));
+		$f=array();
 		
 		
 		@unlink("/etc/firehol/services/squidports.conf");
@@ -886,6 +1085,7 @@ class firehol{
 				$f[]="server_squidports_ports=\"".@implode(" ", $pp)."\"";
 				$f[]="client_squidports_ports=\"default\"";
 				$f[]="";
+				echo "$LOG_PREFIX Creating service HTTP Proxy Ports\n";
 				@file_put_contents("/etc/firehol/services/squidports.conf",@implode("\n", $f));
 				$f=array();
 			}
@@ -1194,7 +1394,7 @@ class firehol{
 		$this->services_array["xbox"]=true;
 		$this->services_array["xdmcp"]=true;
 		$this->services_array["ntopng"]=true;
-		
+		$this->services_array["ss5"]=true;
 		
 		ksort($this->services_array);
 		}
@@ -1231,6 +1431,95 @@ class firehol{
 	
 		
 	}
+	
+	private function transparent_ftp($IF_LAN=null){
+		if(!isset($GLOBALS["NETWORK_ALL_INTERFACES"])){$unix=new unix();$GLOBALS["NETWORK_ALL_INTERFACES"]=$unix->NETWORK_ALL_INTERFACES();}
+		$unix=new unix();
+		$sock=new sockets();
+		$squidbin=$unix->LOCATE_SQUID_BIN();
+		if(!is_file($squidbin)){return;}
+		$SQUIDEnable=$sock->GET_INFO("SQUIDEnable");
+		if(!is_numeric($SQUIDEnable)){$SQUIDEnable=1;}
+		$SquidSSLUrgency=intval($sock->GET_INFO("SquidSSLUrgency"));
+		if($SQUIDEnable==0){return;}
+		$q=new mysql_squid_builder();
+		$sql="SELECT * FROM proxy_ports WHERE enabled=1 AND FTP_TRANSPARENT=1";
+		$results = $q->QUERY_SQL($sql);
+	
+		while ($ligne = mysql_fetch_assoc($results)) {
+			$eth=$ligne["nic"];
+			$ID=$ligne["ID"];
+			$META_PORT=21;
+			$UseSSL=intval($ligne["UseSSL"]);
+			$incoming_port="transparent_proxy 21";
+			if($eth<>null){
+				$inface_text=" inface $eth";
+			}
+				
+			if($UseSSL==1){
+				if($SquidSSLUrgency==1){continue;}
+				$incoming_port="transparent_proxy 21";
+				$META_PORT=21;
+			}
+				
+			$port=$ligne["port"];
+			//dst not ipset:proxy_white_ssl"
+			$this->ip_forward=1;
+			$squid_ports_include=$this->squid_ports_include(1,$ID,$META_PORT);
+			$squid_ports_exclude=$this->squid_ports_include(0,$ID,$META_PORT);
+				
+				
+			$CONF[]="{$incoming_port} $port squid{$inface_text}{$squid_ports_include}{$squid_ports_exclude}";
+	
+				
+		}
+	
+		return @implode("\n",$CONF);
+	}	
+	
+	private function transparent_socks($IF_LAN=null){
+		if(!isset($GLOBALS["NETWORK_ALL_INTERFACES"])){$unix=new unix();$GLOBALS["NETWORK_ALL_INTERFACES"]=$unix->NETWORK_ALL_INTERFACES();}
+		$unix=new unix();
+		$sock=new sockets();
+		$EnableSS5=intval($sock->GET_INFO("EnableSS5"));
+		if($EnableSS5==0){return null;}
+		$q=new mysql_squid_builder();
+		$sql="SELECT * FROM ss5_transparent WHERE enabled=1";
+		$results = $q->QUERY_SQL($sql);
+	
+		while ($ligne = mysql_fetch_assoc($results)) {
+			$eth=$ligne["eth"];
+			$ID=$ligne["ID"];
+			$port=$ligne["dst_port"];
+			$dst=null;
+			$src=null;
+			if($eth<>null){$inface_text=" inface $eth";}
+			
+			
+			$ligne["src_host"]=trim($ligne["src_host"]);
+			if($ligne["src_host"]=="0.0.0.0"){$ligne["src_host"]=null;}
+			if($ligne["src_host"]=="0.0.0.0/0"){$ligne["src_host"]=null;}
+				
+			$ligne["dst_host"]=trim($ligne["dst_host"]);
+			if($ligne["dst_host"]=="0.0.0.0"){$ligne["dst_host"]=null;}
+			if($ligne["dst_host"]=="0.0.0.0/0"){$ligne["dst_host"]=null;}
+				
+			$incoming_port="transparent_proxy $port";
+				
+			if($ligne["dst_host"]<>null){
+				$dst=" dst {$ligne["dst_host"]}";
+			}
+			if($ligne["src_host"]<>null){
+				$src=" src {$ligne["src_host"]}";
+			}
+				
+			$CONF[]="{$incoming_port} 31337 squid{$inface_text}{$src}{$dst}";
+	
+				
+		}
+	
+		return @implode("\n",$CONF);
+	}	
 	
 	private function transparent_squid($IF_LAN=null){
 		if(!isset($GLOBALS["NETWORK_ALL_INTERFACES"])){$unix=new unix();$GLOBALS["NETWORK_ALL_INTERFACES"]=$unix->NETWORK_ALL_INTERFACES();}
@@ -1352,8 +1641,79 @@ class firehol{
 		return @implode("\n",$CONF);
 	}
 	
+	private function nginx_service(){
+		
+		$EnableNginx=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableNginx"));
+		if($EnableNginx==0){return null;}
+		$q=new mysql_squid_builder();
+		$results=$q->QUERY_SQL("SELECT port FROM reverse_www WHERE enabled=1");
+		
+		while ($ligne = mysql_fetch_assoc($results)) {
+			$PORTS["tcp/{$ligne["port"]}"]=true;
+		}
+		
+		while (list ($index, $iptcp) = each ($PORTS)){
+			$t[]=$index;
+		}
+		
+		
+		@unlink("/etc/firehol/services/nginx.conf");
+		$f[]="#FHVER: 1:213";
+		$f[]="server_nginx_ports=\"".@implode(" ", $t)."\"";
+		$f[]="client_nginx_ports=\"default\"";
+		$f[]="";
+		@file_put_contents("/etc/firehol/services/nginx.conf",@implode("\n", $f));
+		$f=array();
+		return "nginx";
+		
+		
+		
+	}
+	
+	private function ipdeny(){
+		if(isset($GLOBALS["IPDENYS"])){return $GLOBALS["IPDENYS"];}
+		$GLOBALS["IPDENYS"]=array();
+		$sock=new sockets();
+		$EnableIpBlocks=$sock->GET_INFO("EnableIpBlocks");
+		if($EnableIpBlocks<>1){return array();}
+		$sql="SELECT * FROM ipblocks_set";
+		$q=new mysql();
+		$list=array("af"=>"afghanistan","al"=>"albania","dz"=>"algeria","as"=>"samoa","ad"=>"andorra","ao"=>"angola","ai"=>"anguilla","ag"=>"barbuda","ar"=>"argentina","am"=>"armenia","aw"=>"aruba","au"=>"australia","at"=>"austria","az"=>"azerbaijan","bs"=>"bahamas","bh"=>"bahrain","bd"=>"bangladesh","bb"=>"barbados","by"=>"belarus","be"=>"belgium","bz"=>"belize","bj"=>"benin","bm"=>"bermuda","bt"=>"bhutan","bo"=>"bolivia","ba"=>"herzegovina","bw"=>"botswana","br"=>"brazil","io"=>"territory","bn"=>"darussalam","bg"=>"bulgaria","bf"=>"faso","bi"=>"burundi","kh"=>"cambodia","cm"=>"cameroon","ca"=>"canada","ky"=>"islands","cf"=>"republic","cl"=>"chile","cn"=>"china","co"=>"colombia","cd"=>"the","ck"=>"islands","cr"=>"rica","ci"=>"ivoire","hr"=>"croatia","cu"=>"cuba","cy"=>"cyprus","cz"=>"republic","dk"=>"denmark","dj"=>"djibouti","do"=>"republic","ec"=>"ecuador","eg"=>"egypt","sv"=>"salvador","er"=>"eritrea","ee"=>"estonia","et"=>"ethiopia","fo"=>"islands","fj"=>"fiji","fi"=>"finland","fr"=>"france","gf"=>"guiana","pf"=>"polynesia","ga"=>"gabon","gm"=>"gambia","ge"=>"georgia","de"=>"germany","gh"=>"ghana","gi"=>"gibraltar","gr"=>"greece","gl"=>"greenland","gd"=>"grenada","gu"=>"guam","gt"=>"guatemala","gw"=>"bissau","gy"=>"guyana","ht"=>"haiti","hn"=>"honduras","hk"=>"kong","hu"=>"hungary","is"=>"iceland","in"=>"india","id"=>"indonesia","ir"=>"of","iq"=>"iraq","ie"=>"ireland","il"=>"israel","it"=>"italy","jm"=>"jamaica","jp"=>"japan","jo"=>"jordan","kz"=>"kazakhstan","ke"=>"kenya","ki"=>"kiribati","kr"=>"of","kw"=>"kuwait","kg"=>"kyrgyzstan","la"=>"republic","lv"=>"latvia","lb"=>"lebanon","ls"=>"lesotho","lr"=>"liberia","ly"=>"jamahiriya","li"=>"liechtenstein","lt"=>"lithuania","lu"=>"luxembourg","mo"=>"macao","mk"=>"of","mg"=>"madagascar","mw"=>"malawi","my"=>"malaysia","mv"=>"maldives","ml"=>"mali","mt"=>"malta","mr"=>"mauritania","mu"=>"mauritius","mx"=>"mexico","fm"=>"of","md"=>"of","mc"=>"monaco","mn"=>"mongolia","ma"=>"morocco","mz"=>"mozambique","mm"=>"myanmar","na"=>"namibia","nr"=>"nauru","np"=>"nepal","nl"=>"netherlands","an"=>"antilles","nc"=>"caledonia","nz"=>"zealand","ni"=>"nicaragua","ne"=>"niger","ng"=>"nigeria","nu"=>"niue","nf"=>"island","mp"=>"islands","no"=>"norway","om"=>"oman","pk"=>"pakistan","pw"=>"palau","ps"=>"occupied","pa"=>"panama","pg"=>"guinea","py"=>"paraguay","pe"=>"peru","ph"=>"philippines","pl"=>"poland","pt"=>"portugal","pr"=>"rico","qa"=>"qatar","ro"=>"romania","ru"=>"federation","rw"=>"rwanda","kn"=>"nevis","lc"=>"lucia","ws"=>"samoa","sm"=>"marino","sa"=>"arabia","sn"=>"senegal","sc"=>"seychelles","sl"=>"leone","sg"=>"singapore","sk"=>"slovakia","si"=>"slovenia","sb"=>"islands","za"=>"africa","es"=>"spain","lk"=>"lanka","sd"=>"sudan","sr"=>"suriname","sz"=>"swaziland","se"=>"sweden","ch"=>"switzerland","sy"=>"republic","tw"=>"china","tj"=>"tajikistan","tz"=>"of","th"=>"thailand","tg"=>"togo","to"=>"tonga","tt"=>"tobago","tn"=>"tunisia","tr"=>"turkey","tm"=>"turkmenistan","tv"=>"tuvalu","ug"=>"uganda","ua"=>"ukraine","ae"=>"emirates","gb"=>"kingdom","us"=>"states","uy"=>"uruguay","uz"=>"uzbekistan","vu"=>"vanuatu","ve"=>"venezuela","vn"=>"nam","vg"=>"british","ye"=>"yemen","zm"=>"zambia","zw"=>"zimbabwe");
+		$results=$q->QUERY_SQL($sql,'artica_backup');
+		if(!$q->ok){echo "$q->mysql_error\n";}
+		while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
+			echo "Ban country {$list[$ligne["country"]]} {$ligne["country"]}\n";
+			$this->ipdeny_perform($ligne["country"]);
+		}
+	}
+	
+	private function ipdeny_perform($country){
+	
+		
+		$sql="SELECT * FROM ipblocks_db WHERE country='$country'";
+		$list=array("af"=>"afghanistan","al"=>"albania","dz"=>"algeria","as"=>"samoa","ad"=>"andorra","ao"=>"angola","ai"=>"anguilla","ag"=>"barbuda","ar"=>"argentina","am"=>"armenia","aw"=>"aruba","au"=>"australia","at"=>"austria","az"=>"azerbaijan","bs"=>"bahamas","bh"=>"bahrain","bd"=>"bangladesh","bb"=>"barbados","by"=>"belarus","be"=>"belgium","bz"=>"belize","bj"=>"benin","bm"=>"bermuda","bt"=>"bhutan","bo"=>"bolivia","ba"=>"herzegovina","bw"=>"botswana","br"=>"brazil","io"=>"territory","bn"=>"darussalam","bg"=>"bulgaria","bf"=>"faso","bi"=>"burundi","kh"=>"cambodia","cm"=>"cameroon","ca"=>"canada","ky"=>"islands","cf"=>"republic","cl"=>"chile","cn"=>"china","co"=>"colombia","cd"=>"the","ck"=>"islands","cr"=>"rica","ci"=>"ivoire","hr"=>"croatia","cu"=>"cuba","cy"=>"cyprus","cz"=>"republic","dk"=>"denmark","dj"=>"djibouti","do"=>"republic","ec"=>"ecuador","eg"=>"egypt","sv"=>"salvador","er"=>"eritrea","ee"=>"estonia","et"=>"ethiopia","fo"=>"islands","fj"=>"fiji","fi"=>"finland","fr"=>"france","gf"=>"guiana","pf"=>"polynesia","ga"=>"gabon","gm"=>"gambia","ge"=>"georgia","de"=>"germany","gh"=>"ghana","gi"=>"gibraltar","gr"=>"greece","gl"=>"greenland","gd"=>"grenada","gu"=>"guam","gt"=>"guatemala","gw"=>"bissau","gy"=>"guyana","ht"=>"haiti","hn"=>"honduras","hk"=>"kong","hu"=>"hungary","is"=>"iceland","in"=>"india","id"=>"indonesia","ir"=>"of","iq"=>"iraq","ie"=>"ireland","il"=>"israel","it"=>"italy","jm"=>"jamaica","jp"=>"japan","jo"=>"jordan","kz"=>"kazakhstan","ke"=>"kenya","ki"=>"kiribati","kr"=>"of","kw"=>"kuwait","kg"=>"kyrgyzstan","la"=>"republic","lv"=>"latvia","lb"=>"lebanon","ls"=>"lesotho","lr"=>"liberia","ly"=>"jamahiriya","li"=>"liechtenstein","lt"=>"lithuania","lu"=>"luxembourg","mo"=>"macao","mk"=>"of","mg"=>"madagascar","mw"=>"malawi","my"=>"malaysia","mv"=>"maldives","ml"=>"mali","mt"=>"malta","mr"=>"mauritania","mu"=>"mauritius","mx"=>"mexico","fm"=>"of","md"=>"of","mc"=>"monaco","mn"=>"mongolia","ma"=>"morocco","mz"=>"mozambique","mm"=>"myanmar","na"=>"namibia","nr"=>"nauru","np"=>"nepal","nl"=>"netherlands","an"=>"antilles","nc"=>"caledonia","nz"=>"zealand","ni"=>"nicaragua","ne"=>"niger","ng"=>"nigeria","nu"=>"niue","nf"=>"island","mp"=>"islands","no"=>"norway","om"=>"oman","pk"=>"pakistan","pw"=>"palau","ps"=>"occupied","pa"=>"panama","pg"=>"guinea","py"=>"paraguay","pe"=>"peru","ph"=>"philippines","pl"=>"poland","pt"=>"portugal","pr"=>"rico","qa"=>"qatar","ro"=>"romania","ru"=>"federation","rw"=>"rwanda","kn"=>"nevis","lc"=>"lucia","ws"=>"samoa","sm"=>"marino","sa"=>"arabia","sn"=>"senegal","sc"=>"seychelles","sl"=>"leone","sg"=>"singapore","sk"=>"slovakia","si"=>"slovenia","sb"=>"islands","za"=>"africa","es"=>"spain","lk"=>"lanka","sd"=>"sudan","sr"=>"suriname","sz"=>"swaziland","se"=>"sweden","ch"=>"switzerland","sy"=>"republic","tw"=>"china","tj"=>"tajikistan","tz"=>"of","th"=>"thailand","tg"=>"togo","to"=>"tonga","tt"=>"tobago","tn"=>"tunisia","tr"=>"turkey","tm"=>"turkmenistan","tv"=>"tuvalu","ug"=>"uganda","ua"=>"ukraine","ae"=>"emirates","gb"=>"kingdom","us"=>"states","uy"=>"uruguay","uz"=>"uzbekistan","vu"=>"vanuatu","ve"=>"venezuela","vn"=>"nam","vg"=>"british","ye"=>"yemen","zm"=>"zambia","zw"=>"zimbabwe");
+		$q=new mysql();
+		$results=$q->QUERY_SQL($sql,'artica_backup');
+		while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
+			$GLOBALS["IPDENYS"]["ROUTERS"][]="\troute all deny src {$ligne["cdir"]} loglimit  'IPDENY {$list["$country"]} - $country DROP:'";
+			$GLOBALS["IPDENYS"]["SERVERS"][]="\tserver all deny src {$ligne["cdir"]} loglimit  'IPDENY {$list["$country"]} - $country DROP:'";
+		}
+
+	
+	}
+	
 	
 	private function ipset_bumbsslwl(){
+		
+		if(is_file("/etc/artica-postfix/settings/Daemons/SQUIDEnable")){
+			$SQUIDEnable=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SQUIDEnable"));
+		}
+		
+		if($SQUIDEnable==0){
+			@file_put_contents("/etc/firehol/proxy_ssl_whitelist", "\n");
+			return null;
+		}
+		
 		$sock=new sockets();
 		@file_put_contents("/etc/firehol/proxy_ssl_whitelist", "\n");
 		$AllowSquidSSLDropBox=intval($sock->GET_INFO('AllowSquidSSLDropBox'));
@@ -1361,9 +1721,16 @@ class firehol{
 		$IPS=array();
 		$FF=array();
 		
-
+	
 		
 		$q=new mysql_squid_builder();
+		
+		if(!$q->FIELD_EXISTS("proxy_ports","UseSSL")){
+			$sql="ALTER TABLE `proxy_ports` ADD `UseSSL` smallint(1) NOT NULL DEFAULT '0' ,ADD INDEX ( `UseSSL` )";
+			$q->QUERY_SQL($sql,'artica_backup');
+		}
+		
+		
 		$sql="SELECT count(*) as tcount FROM proxy_ports WHERE enabled=1 AND Tproxy=1 AND UseSSL=1";
 		$ligne=@mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
 		$tcount1=intval($ligne["tcount"]);

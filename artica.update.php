@@ -765,7 +765,14 @@ function main_artica_update_tabs(){
 		
 	}
 	
-	$array["influx"]='{APP_INFLUXDB}';
+	$array["suricata"]="{IDS}";
+	$array["haproxy"]="{load_balancer}";
+	$array["proftpd"]="{APP_PROFTPD}";
+	if($users->POSTFIX_INSTALLED){
+		
+		$array["MailSecurity"]="{security_package}";
+	}
+	//$array["influx"]='{APP_INFLUXDB}';
 	$array["softwares"]='{softwares}';
 	
 	
@@ -799,6 +806,29 @@ function main_artica_update_tabs(){
 					<span style='font-size:22px'>$ligne</span></a></li>\n");
 			continue;
 		}
+		
+		if($num=="suricata"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"suricata.update.php\">
+					<span style='font-size:22px'>$ligne</span></a></li>\n");
+			continue;
+		}	
+
+		if($num=="haproxy"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"haproxy.update.php\">
+					<span style='font-size:22px'>$ligne</span></a></li>\n");
+			continue;
+		}	
+		if($num=="proftpd"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"proftpd.update.php\">
+					<span style='font-size:22px'>$ligne</span></a></li>\n");
+			continue;
+		}	
+		if($num=="MailSecurity"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"mailsecurity.update.php\">
+					<span style='font-size:22px'>$ligne</span></a></li>\n");
+			continue;
+		}
+		
 		
 		if($num=="vmware"){
 			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"VMWareTools.php?popup=yes\">

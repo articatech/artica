@@ -10,11 +10,17 @@ if(isset($_GET["verbose"])){
 include_once(dirname(__FILE__)."/frame.class.inc");
 include_once(dirname(__FILE__)."/class.unix.inc");
 
-
-
-
-
 if(!isset($GLOBALS["ARTICALOGDIR"])){$GLOBALS["ARTICALOGDIR"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/ArticaLogDir"); if($GLOBALS["ARTICALOGDIR"]==null){ $GLOBALS["ARTICALOGDIR"]="/var/log/artica-postfix"; } }
+
+
+if(isset($_GET["reload-progress"])){reload_progress();exit;}
+if(isset($_GET["dump-hour-progress"])){DUMP_HOUR_PROGRESS();exit;}
+if(isset($_GET["paranoid-progress"])){paranoid_progress();exit;}
+if(isset($_GET["paranoid-emergency-progress"])){paranoid_emergency_progress();exit;}
+if(isset($_GET["windows-update-delete"])){windows_update_delete();exit;}
+if(isset($_GET["not-categorize-progress"])){not_categorized_progress();exit;}
+
+if(isset($_GET["quotarules-status-progress"])){quotarules_status_progress();exit;}
 if(isset($_GET["clean-logs-emergency"])){clean_logs_emergency();exit;}
 if(isset($_GET["rebuild-and-restart"])){rebuild_and_restart();exit;}
 if(isset($_GET["CategoriesRate"])){ufdbcat_check_categories();exit;}
@@ -53,7 +59,7 @@ if(isset($_GET["ecap-progress"])){ecap_progress();exit;}
 
 while (list ($num, $line) = each ($_GET)){$f[]="$num=$line";}
 
-writelogs_framework("unable to understand query !!!!!!!!!!!..." .@implode(",",$f),"main()",__FILE__,__LINE__);
+writelogs_framework("unable to understand query !!!!!!!!!!!...`" .@implode(",",$f)."`","main()",__FILE__,__LINE__);
 die();
 
 //-----------------------------------------------------------------------------------------------------------------------------------
@@ -86,6 +92,7 @@ function squid_templates_background(){
 
 
 
+
 function ufdbcat_check_categories(){
 	$CategoriesRate=$_GET["CategoriesRate"];
 	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/ufdbcat.check.progress";
@@ -103,6 +110,63 @@ function ufdbcat_check_categories(){
 	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
 	shell_exec($cmd);	
 	
+}
+
+function reload_progress(){
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/web/squid.reload.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/squid.reload.progress.log";
+	
+	@unlink($GLOBALS["CACHEFILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);$array["POURC"]=2;$array["TEXT"]="{please_wait}";@file_put_contents($GLOBALS["CACHEFILE"], serialize($array));
+	@chmod($GLOBALS["LOGSFILES"],0777);
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.squid.php --kreconfigure --force --verbose >{$GLOBALS["LOGSFILES"]} 2>&1 &";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);	
+	
+	
+}
+
+function DUMP_HOUR_PROGRESS(){
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/DUMP_HOUR_PROGRESS";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/DUMP_HOUR_PROGRESS.txt";
+	
+	@unlink($GLOBALS["CACHEFILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);$array["POURC"]=2;$array["TEXT"]="{please_wait}";@file_put_contents($GLOBALS["CACHEFILE"], serialize($array));
+	@chmod($GLOBALS["LOGSFILES"],0777);
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.squid.interface-size.php --dump-hour --force >{$GLOBALS["LOGSFILES"]} 2>&1 &";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
+}
+
+
+function not_categorized_progress(){
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/web/squid.statistics.not-categorized.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/squid.statistics.not-categorized.progress.txt";
+	@unlink($GLOBALS["CACHEFILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);$array["POURC"]=2;$array["TEXT"]="{please_wait}";@file_put_contents($GLOBALS["CACHEFILE"], serialize($array));
+	@chmod($GLOBALS["LOGSFILES"],0777);
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.squid.stats.categorize.php --progress >{$GLOBALS["LOGSFILES"]} 2>&1 &";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
 }
 
 function rebuild_and_restart(){
@@ -237,10 +301,46 @@ function wccp_reconfigure(){
 	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
 	shell_exec($cmd);
 	}
+	
+	
+function paranoid_progress(){
+	$GLOBALS["PROGRESS_FILE"]="/usr/share/artica-postfix/ressources/logs/squid.paranoid.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/squid.paranoid.progress.txt";
+	@unlink($GLOBALS["CACHEFILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);$array["POURC"]=2;$array["TEXT"]="{please_wait}";@file_put_contents($GLOBALS["CACHEFILE"], serialize($array));
+	@chmod($GLOBALS["LOGSFILES"],0777);
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.squid.paranoid.php --frame >{$GLOBALS["LOGSFILES"]} 2>&1 &";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
+}
 
+function paranoid_emergency_progress(){
+	$GLOBALS["PROGRESS_FILE"]="/usr/share/artica-postfix/ressources/logs/squid.paranoid.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/squid.paranoid.progress.txt";
+	@unlink($GLOBALS["CACHEFILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);$array["POURC"]=2;$array["TEXT"]="{please_wait}";@file_put_contents($GLOBALS["CACHEFILE"], serialize($array));
+	@chmod($GLOBALS["LOGSFILES"],0777);
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.squid.paranoid.php --emergency >{$GLOBALS["LOGSFILES"]} 2>&1 &";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);	
+}
+	
 function bandwidth_progress(){
 	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/squid.bandwww.progress";
-	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/squid.bandwww.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/squid.bandwww.progress.txt";
+	
 	@unlink($GLOBALS["CACHEFILE"]);
 	@unlink($GLOBALS["LOGSFILES"]);
 	@touch($GLOBALS["CACHEFILE"]);
@@ -253,6 +353,25 @@ function bandwidth_progress(){
 	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.squid.bandwidth.php >{$GLOBALS["LOGSFILES"]} 2>&1 &";
 	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
 	shell_exec($cmd);
+}
+
+function quotarules_status_progress(){
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/squid.quotasband.status.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/squid.quotasband.status.progress.txt";
+	
+	@unlink($GLOBALS["CACHEFILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);$array["POURC"]=2;$array["TEXT"]="{please_wait}";@file_put_contents($GLOBALS["CACHEFILE"], serialize($array));
+	@chmod($GLOBALS["LOGSFILES"],0777);
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.quotaband.php --force >{$GLOBALS["LOGSFILES"]} 2>&1 &";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);	
+	
 }
 
 
@@ -711,9 +830,18 @@ function cached_kerberos_tickets(){
 	
 	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/kerberos-tickets-squid", serialize($array));
 	@chmod("/usr/share/artica-postfix/ressources/logs/web/kerberos-tickets-squid",0755);
-	
-	
+}
+
+function windows_update_delete(){
+	$path=$_GET["windows-update-delete"];
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$cmd="$php5 /usr/share/artica-postfix/exec.windowsupdate.php --delete \"$path\"";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
 	
 }
+
+
 
 ?>

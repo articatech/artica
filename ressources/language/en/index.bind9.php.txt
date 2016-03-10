@@ -48,7 +48,7 @@ Classes other than IN have no built-in defaults hints.</hint_text>
 star caracter (*) is supported.
 if you want to query all computers in all DNS Zones, type your pattern and "all" word after
 Example : PC-10* all</search_explain>
-<slave>slave</slave>
+<slave>Slave</slave>
 <slave_text>A slave zone is a replica of a master zone.[br]
 The masters list specifies one or more IP addresses of master servers that the slave contacts to update its copy of the zone.[br]
 By default, transfers are made from port 53 on the servers;[br]

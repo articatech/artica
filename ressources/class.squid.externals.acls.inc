@@ -6,6 +6,8 @@ class external_acls_squid{
 	private $SQUID_VERSION=null;
 	private $IS_31=false;
 	private $IS_32=false;
+	private $IS_40=false;
+	private $IS_35=false;
 	private $SquidUrgency=0;
 	private $EnableKerbAuth=0;
 	private $LDAP_AUTH=0;
@@ -14,6 +16,8 @@ class external_acls_squid{
 	private $CORP_LICENSE=false;
 	private $SquidUsersNumber=0;
 	private $ActiveDirectoryEmergency=0;
+	private $UfdbEnableParanoidMode=0;
+	private $MacToUidUrgency=0;
 	
 	public function external_acls_squid(){
 		$sock=new sockets();
@@ -25,10 +29,14 @@ class external_acls_squid{
 		$this->SQUID_VERSION=$this->root_squid_version_nocache();
 		$this->SquidUrgency=intval($sock->GET_INFO("SquidUrgency"));
 		$this->EnableKerbAuth=intval($sock->GET_INFO("EnableKerbAuth"));
+		$this->UfdbEnableParanoidMode=intval($sock->GET_INFO("UfdbEnableParanoidMode"));
 		$this->ActiveDirectoryEmergency=intval($sock->GET_INFO("ActiveDirectoryEmergency"));
+		$this->MacToUidUrgency=intval($sock->GET_INFO("MacToUidUrgency"));
 		$ArticaSquidParameters=$sock->GET_INFO('ArticaSquidParameters');
 		if(preg_match("#^3\.[0|1]\.#",$this->SQUID_VERSION)){$this->IS_31=true;}
-		if(preg_match("#^3\.[2|3|4|5]\.#",$this->SQUID_VERSION)){$this->IS_32=true;}
+		if(preg_match("#^3\.[2|3|4|5|6|7|8]\.#",$this->SQUID_VERSION)){$this->IS_32=true;}
+		if(preg_match("#^3\.[5|6|7|8]\.#",$this->SQUID_VERSION)){$this->IS_35=true;}
+		if(preg_match("#^4\.[0|1|2|3|4|5]\.#",$this->SQUID_VERSION)){$this->IS_32=true;$this->IS_40=true;}
 		$ini=new Bs_IniHandler();
 		$ini->loadString($ArticaSquidParameters);
 		$this->LDAP_AUTH=intval($sock->GET_INFO("SquidStandardLDAPAuth"));
@@ -49,9 +57,10 @@ class external_acls_squid{
 		if($this->LDAP_EXTERNAL_AUTH==1){$conf[]="# LDAP_EXTERNAL_AUTH == 1";}
 		if($this->EnableKerbAuth==1){$conf[]="# EnableKerbAuth == 1";}
 		
-		
-		
+		$conf[]=$this->external_acl_helper_categorize();
+		$conf[]=$this->external_acl_paranoid();
 		$conf[]=$this->external_acl_helper_categories();
+		$conf[]=$this->external_acl_helper_sizequota();
 		$conf[]=$this->external_acl_helper_restrict_access();
 		$conf[]=$this->external_acl_helper_MacToUid();
 		$conf[]=$this->external_acl_helper_time_quota_acl();
@@ -123,6 +132,84 @@ class external_acls_squid{
 		@chmod("/usr/share/artica-postfix/external_ufdbunblock.php", 0755);
 		return @implode("\n", $f);
 	
+	
+	}
+	
+	private function external_acl_helper_sizequota(){
+		$GLOBALS["ArtcExtrnQuotaSizeScanner"]=false;
+		if(!$this->CORP_LICENSE){return "# No license set\n";}
+		$sock=new sockets();
+		if($this->SquidUrgency==1){return null;}
+		if(!$this->ASROOT){return;}
+		$array["CACHE_TIME"]=360;
+		$q=new mysql_squid_builder();
+		$sql="SELECT COUNT( * ) as tcount
+			FROM webfilters_sqgroups, webfilters_sqacls, webfilters_sqacllinks
+			WHERE webfilters_sqacllinks.aclid = webfilters_sqacls.ID
+			AND webfilters_sqacllinks.gpid = webfilters_sqgroups.ID
+			AND webfilters_sqgroups.GroupType = 'quota_size'
+			AND webfilters_sqgroups.enabled =1
+			AND webfilters_sqacls.enabled =1";
+		$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
+		if(!$q->ok){if($this->ASROOT){echo "Starting......: ".date("H:i:s")." [CATZ]: quota_size $q->mysql_error\n";}return;}
+		if($this->ASROOT){echo "Starting......: ".date("H:i:s")." [CATZ]: quota_size {$ligne["tcount"]} items\n";}
+		if($ligne["tcount"]==0){return;}
+	
+		$LOGON="%%";
+		$SRCEUI48="%SRCEUI48";
+		if(!$this->ACL_ARP_ENABLED){$SRCEUI48=null;}
+		if($this->IS_31){$SRCEUI48=null;}
+		if($SRCEUI48==null){$SRCEUI48="%%";}
+		$L[]="%EXT_LOG";
+		$L[]="%ACL";
+		if($this->is_auth()){$L[]="%LOGIN";}else{$L[]="%%";}
+		$L[]="%SRC";
+		$L[]=$SRCEUI48;
+		$L[]="%>ha{X-Forwarded-For}";
+		$L[]="%DST";
+		$CMDILES=@implode(" ", $L);
+	
+		$GLOBALS["ArtcExtrnQuotaSizeScanner"]=true;
+	
+		$external_acl_childrens=$this->external_acl_childrens(0);
+		$sql="SELECT webfilters_sqgroups.*,webfilters_sqacls.aclname
+			FROM webfilters_sqgroups, webfilters_sqacls, webfilters_sqacllinks
+			WHERE webfilters_sqacllinks.aclid = webfilters_sqacls.ID
+			AND webfilters_sqacllinks.gpid = webfilters_sqgroups.ID
+			AND webfilters_sqgroups.GroupType = 'quota_size'
+			AND webfilters_sqgroups.enabled =1
+			AND webfilters_sqacls.enabled =1";
+		$results=$q->QUERY_SQL($sql);
+	
+		while ($ligne = mysql_fetch_assoc($results)) {
+			$rulename=$ligne["aclname"];
+			$GLOBALS["LoadingExtrnQuotaSize"][$ligne["ID"]]=true;
+			$count=$this->external_acl_helper_sizequota_items($ligne["ID"]);
+			$f[]="#Group id {$ligne["ID"]} $count item(s)";
+			
+		}
+		
+		$f[]="external_acl_type ArtQuotaSize  $external_acl_childrens $CMDILES /usr/share/artica-postfix/external_acl_size_quota.php\n";
+		@chmod("/usr/share/artica-postfix/external_acl_size_quota.php", 0755);
+		@chown("/usr/share/artica-postfix/external_acl_size_quota.php", "squid");
+		shell_exec("/etc/init.d/squid-tail restart &");
+		return @implode("\n", $f);
+	
+	}
+	
+	private function external_acl_helper_sizequota_items($gpid){
+		$q=new mysql_squid_builder();
+		$sql="SELECT pattern FROM webfilters_sqitems WHERE gpid=$gpid AND enabled=1";
+		$results = $q->QUERY_SQL($sql);
+		while ($ligne = mysql_fetch_assoc($results)) {
+			$rules[]=$ligne["pattern"];
+	
+		}
+	
+		@file_put_contents("/etc/squid3/acls/size_gpid{$gpid}.acl", serialize($rules));
+		@chmod("/etc/squid3/acls/size_gpid{$gpid}.acl", 0755);
+		@chown("/etc/squid3/acls/size_gpid{$gpid}.acl", "squid");
+		return count($rules);
 	
 	}
 	
@@ -253,14 +340,14 @@ class external_acls_squid{
 	
 		if($this->ASROOT){echo "Starting......: ".date("H:i:s")." $logprepend: Dynamic ACLS ({$ligne["TCOUNT"]} item(s))\n";}
 	
-	
-		if($this->is_auth()){$L[]="%LOGIN";}
-	
+		
+		$L[]=$this->LOGIN();
 		$L[]="%SRC";
-		if($this->ACL_ARP_ENABLED){$L[]="%SRCEUI48";}
+		if($this->ACL_ARP_ENABLED){$L[]="%SRCEUI48";}else{$L[]="%%";}
 		$L[]="%>ha{X-Forwarded-For}";
 		if($this->IS_32){$ipv4=" ipv4";}
 		$L[]="%DST";
+		
 	
 	
 		$ForceConf["ttl"]=$ACLS_OPTIONS["DYN_TTL"];
@@ -288,6 +375,39 @@ class external_acls_squid{
 		return $SRCEUI48;
 	}
 	
+	private function external_acl_paranoid(){
+		if($this->SquidUrgency==1){return null;}
+		if($this->UfdbEnableParanoidMode==0){return "\n# Paranoid mode disabled\n"; }
+		$sock=new sockets();
+		if($sock->EnableUfdbGuard()==0){return "\n# Web filtering disabled\n"; }
+		$ParanoidBlockerEmergency=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/ParanoidBlockerEmergency"));
+		if($ParanoidBlockerEmergency==1){return "\n# Paranoid Emergency\n"; }
+		
+		$ipv4=null;
+	
+		$ForceConf["concurrency"]=10;
+		$external_acl_childrens=$this->external_acl_childrens(0,false,$ForceConf);
+		$SRCEUI48=$this->SRCEUI48();
+		
+		$L[]="%EXT_USER";
+		$L[]="%SRC";
+		$L[]=$SRCEUI48;
+		$L[]="%>ha{X-Forwarded-For}";
+		$L[]="%DST";
+		
+
+		$helper="/usr/share/artica-postfix/external_acl_paranoid.php";
+		$f[]="external_acl_type ParanoidBlocker {$external_acl_childrens} ".@implode(" ", $L)." $helper";
+		$f[]="acl IsBlockParanoid external ParanoidBlocker";
+		$f[]="acl IsMgRPort myportname MyManagerPort";
+		$f[]="http_access deny !IsMgRPort IsBlockParanoid all";
+		$f[]="deny_info ERR_PARANOID IsBlockParanoid";
+		@chmod($helper,0755);
+		return @implode("\n", $f);
+	
+	
+	}
+
 	
 	private function external_acl_filewatcher(){
 		if($this->SquidUrgency==1){return null;}
@@ -322,9 +442,28 @@ class external_acls_squid{
 	}
 	
 	
+	private function external_acl_helper_hotspot(){
+		if($this->SquidUrgency==1){return "# external_acl_helper_hotspot() -> Emergency mode !! \n";;}
+		if($this->MacToUidUrgency==1){return "# external_acl_helper_hotspot() -> MacToUidUrgency mode !! \n";;}
+		
+		$SRCEUI48="%SRCEUI48";
+		if(!$this->ACL_ARP_ENABLED){return "# external_acl_helper_hotspot() -> ACL_ARP_ENABLED disabled !! \n";;}
+		$external_acl_childrens=$this->external_acl_childrens();
+		$helper="/usr/share/artica-postfix/external_acl_hotspot.php";
+		$f[]="external_acl_type MacToUid  $external_acl_childrens $SRCEUI48 $helper";
+		$f[]="acl MacToUid_acl external MacToUid\n";
+		$f[]="http_access deny !MacToUid_acl";
+		return @implode("\n", $f);
+		@chmod($helper,0755);
+		
+		
+	}
+	
+	
 	private function external_acl_helper_MacToUid(){
 		@unlink("/etc/squid3/MacToUidEnabled");
 		if($this->SquidUrgency==1){return "# external_acl_helper_MacToUid() -> Emergency mode !! \n";;}
+		if($this->MacToUidUrgency==1){return "# external_acl_helper_MacToUid() -> MacToUidUrgency mode !! \n";;}
 		$sock=new sockets();
 		$EnableArticaHotSpot=intval($sock->GET_INFO("EnableArticaHotSpot"));
 		if($EnableArticaHotSpot==0){
@@ -335,7 +474,8 @@ class external_acls_squid{
 		$q=new mysql();
 		
 		if($EnableArticaHotSpot==1){
-			if(!is_file("/etc/squid3/usersMacs.db")){@touch("/etc/squid3/usersMacs.db");}
+			return $this->external_acl_helper_hotspot();
+			
 		}
 	
 		if(!$this->ASROOT){return;}
@@ -361,6 +501,7 @@ class external_acls_squid{
 		$external_acl_childrens=$this->external_acl_childrens();
 		$f[]="external_acl_type MacToUid  $external_acl_childrens ".@implode(" ", $L)." $helper --mactouid";
 		$f[]="acl MacToUid_acl external MacToUid\n";
+		$f[]="http_access deny !MacToUid_acl";
 		@touch("/etc/squid3/MacToUidEnabled");
 		return @implode("\n", $f);
 	
@@ -463,7 +604,46 @@ class external_acls_squid{
 		return @implode("\n", $f)."\n";
 	}	
 
-	
+	public function external_acl_helper_categorize(){
+		$ScriptFileName="/usr/share/artica-postfix/external_acl_categorize.php";
+		if($this->SquidUrgency==1){return "# external_acl_helper_categorize:: SquidUrgency is enabled, aborting\n";}
+		if(!$this->ASROOT){return;}
+		$array["CACHE_TIME"]=3600;
+		$CategoriesHelperChildrenMax=10;
+		
+		$q=new mysql_squid_builder();
+		$sql="SELECT COUNT( * ) as tcount
+			FROM webfilters_sqgroups, webfilters_sqacls, webfilters_sqacllinks
+			WHERE webfilters_sqacllinks.aclid = webfilters_sqacls.ID
+			AND webfilters_sqacllinks.gpid = webfilters_sqgroups.ID
+			AND webfilters_sqgroups.GroupType = 'tag_categories'
+			AND webfilters_sqgroups.enabled =1
+			AND webfilters_sqacls.enabled =1";
+			$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
+		
+		if(!$q->ok){if($this->ASROOT){echo "Starting......: ".date("H:i:s")." [CATZ]: Categories $q->mysql_error\n";}return;}
+		if($this->ASROOT){echo "Starting......: ".date("H:i:s")." [CATZ]: Categorize {$ligne["tcount"]} items\n";}
+		if($ligne["tcount"]==0){return "# external_acl_helper_categorize:: first query return no item\n";}
+		
+		$ForceConf["ttl"]=3600;
+		$ForceConf["negative_ttl"]=0;
+		$ForceConf["children-startup"]=5;
+		$ForceConf["children-idle"]=1;
+		$ForceConf["concurrency"]=5;
+		
+		$external_acl_childrens=$this->external_acl_childrens($CategoriesHelperChildrenMax,false,$ForceConf);
+		
+		$f[]="external_acl_type CategorizeEngine $external_acl_childrens %DST $ScriptFileName\n";
+		$f[]="acl EtiquetteCategory external CategorizeEngine";
+		$f[]="http_access deny !EtiquetteCategory";
+		
+		@chmod($ScriptFileName, 0755);
+		@chown($ScriptFileName, "squid");
+		return @implode("\n", $f);
+		
+		
+		
+	}
 	
 	public function external_acl_helper_categories(){
 		$ScriptFileName="/usr/share/artica-postfix/external_acl_categories.php";
@@ -484,7 +664,7 @@ class external_acls_squid{
 				return "# external_acl_helper_categories:: No enabled for performance reason\n";;
 			
 		}
-		if($this->SquidUrgency==1){return "# external_acl_helper_categories:: SquidUrgency is enabked, aborting\n";}
+		if($this->SquidUrgency==1){return "# external_acl_helper_categories:: SquidUrgency is enabled, aborting\n";}
 		if(!$this->ASROOT){return;}
 		$array["CACHE_TIME"]=360;
 		$q=new mysql_squid_builder();

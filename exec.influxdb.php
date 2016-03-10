@@ -52,7 +52,7 @@ if($argv[1]=="--install-progress"){$GLOBALS["OUTPUT"]=true;$GLOBALS["PROGRESS"]=
 if($argv[1]=="--restart-progress"){$GLOBALS["OUTPUT"]=true;$GLOBALS["PROGRESS"]=true;restart_progress();die();}
 if($argv[1]=="--backup"){$GLOBALS["OUTPUT"]=true;$GLOBALS["PROGRESS"]=true;backup_database();die();}
 if($argv[1]=="--time"){timeZoneUTC();exit;}
-if($argv[1]=="--config"){Config();exit;}
+if($argv[1]=="--config"){$GLOBALS["OUTPUT"]=true;Config();exit;}
 if($argv[1]=="--restore"){restore_influx();exit;}
 if($argv[1]=="--tests"){tests();exit;}
 if($argv[1]=="--restore-server"){restore_influx_remote($argv[2]);exit;}
@@ -89,7 +89,7 @@ function initd(){
 	$unix=new unix();
 
 	influx_db_service();
-	echo "Influx: [INFO] Writing /etc/init.d/influx-db with new config\n";
+	echo "Influx: [INFO] Writing /etc/init.d/artica-postgres with new config\n";
 }
 
 
@@ -238,9 +238,11 @@ function restart_progress(){
 	@file_put_contents($pidfile, getmypid());
 	build_progress_rs("{stopping_service}",10);
 	if(!stop(true)){return;}
-	sleep(1);
+	build_progress_rs("{reconfigure}",20);
+	Config();
+	sleep(3);
 	build_progress_rs("{starting_service}",30);
-	shell_exec("/etc/init.d/influx-db start");
+	shell_exec("/etc/init.d/artica-postgres start");
 	$pid=PID_NUM();
 	if(!$unix->process_exists($pid)){
 		build_progress_rs("{failed_to_start_service} ",110);
@@ -271,17 +273,28 @@ function refresh_progress(){
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/influxdb_snapshotsize", $size);
 	
 	
-	$q=new influx();
+	
+	
+	$q=new postgres_sql();
+	$ligne=pg_fetch_assoc($q->QUERY_SQL("SELECT MAX(zDate) as MAX, MIN(zDate) as MIN from access_log"));
+	
+
+	
+	
+	
+	$date_start=strtotime($ligne["min"]);
+	$date_end=strtotime($ligne["max"]);
+	
+	
 	build_progress_rs("{last_date}...",50);
-	$data=$q->QUERY_SQL("SELECT MAX(ZDATE) as MAX FROM access_log");
-	$date_end=$data[0]->MAX;
 	echo "* * * END TO {$date_end} ". date("Y-m-d H:i:s",$date_end)."\n";
 	
 	
 	build_progress_rs("{date_start}...",90);
-	$data=$q->QUERY_SQL("SELECT MIN(ZDATE) as MIN FROM access_log");
-	$date_start=$data[0]->MIN;
 	echo "* * * START FROM {$date_start} ". date("Y-m-d H:i:s",$date_start)."\n";
+	
+	sleep(5);
+	
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/DATE_START",$date_start);
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/DATE_END",$date_end);
 	
@@ -397,7 +410,7 @@ function timeZoneUTC(){
 
 
 function ifInitScript(){
-	$f=explode("\n",@file_get_contents("/etc/init.d/influx-db"));
+	$f=explode("\n",@file_get_contents("/etc/init.d/artica-postgres"));
 	
 	while (list ($filepath, $value) = each ($f) ){
 		if(preg_match("#OPEN_FILE_LIMIT#", $value)){return true;}
@@ -442,7 +455,7 @@ function start($aspid=false){
 	$EnableInfluxDB=intval($sock->GET_INFO("EnableInfluxDB"));
 	$InfluxUseRemote=intval($sock->GET_INFO("InfluxUseRemote"));
 	if($InfluxUseRemote==1){$EnableInfluxDB=0;}
-	$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+	$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 	if($EnableIntelCeleron==1){$EnableInflux=0;}
 	if(is_file("/etc/artica-postfix/STATS_APPLIANCE")){$EnableInflux=1;$SquidPerformance=0;$EnableIntelCeleron=0;}
 
@@ -496,7 +509,7 @@ function start($aspid=false){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} patching init script\n";}
 		shell_exec("$php5 /usr/share/artica-postfix/exec.initslapd.php --influx");
 	}
-	$cmd="/etc/init.d/influx-db start";
+	$cmd="/etc/init.d/artica-postgres start";
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} v$influxdb_version service\n";}
 	if($GLOBALS["VERBOSE"]){echo "$cmd\n";}
 	shell_exec($cmd);
@@ -586,7 +599,7 @@ function stop($aspid=false){
 	build_progress_rs("{stopping_service}",15);
 	
 	if(!ifInitScript()){shell_exec("$php5 /usr/share/artica-postfix/exec.initslapd.php --influx");}
-	$cmd="/etc/init.d/influx-db stop";
+	$cmd="/etc/init.d/artica-postgres stop";
 	if($GLOBALS["VERBOSE"]){echo "$cmd\n";}
 	shell_exec($cmd);
 	$pid=PID_NUM();
@@ -709,6 +722,7 @@ $Intervals[60]="45 * * * * *";
 $Intervals[120]="45 0,2,4,6,8,10,12,14,16,18,20,22 * * *";
 $Intervals[240]="45 0,4,6,10,14,18,22 * * *";
 $Intervals[1440]="10 1 * * *";
+$Intervals[10080]="10 0 * * 6";
 
 $CRON[]="MAILTO=\"\"";
 $CRON[]="{$Intervals[$InFluxBackupDatabaseInterval]} root $php ".__FILE__." --backup >/dev/null 2>&1";
@@ -768,6 +782,14 @@ $unix=new unix();
 @mkdir("/home/artica/squid/InfluxDB/hh",0755,true);
 $InfluxListenHosname=$InfluxListenIP;
 if($InfluxListenHosname=="0.0.0.0"){$InfluxListenHosname=$unix->hostname_g();}
+
+if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Building settings\n";}
+if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Building v$influxdb_version\n";}
+if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Building is 0.9.2x: $AS_092\n";}
+if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Building is 0.9.3x: $AS_093\n";}
+if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Listen interface $InfluxListenInterface/$InfluxListenIP/$InfluxApiIP\n";}
+
+
 
 
 $f[]="# Created on ". date("Y-m-d H:i:s");
@@ -960,9 +982,15 @@ $f[]="[monitoring]";
 $f[]="enabled = false";
 $f[]="write-interval = \"1m\"          # Period between writing the data.\n";
 
+
+system("$php /usr/share/artica-postfix/exec.initslapd.php --influx");
+
 if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Saving settings in 0.9x mode\n";}
 build_progress_rs("{starting_service} {configuration_done}",40);
+@mkdir("/etc/opt/influxdb",0755,true);
+@mkdir("/var/log/influxdb",0755,true);
 @file_put_contents("/etc/opt/influxdb/influxdb.conf", @implode("\n", $f));
+if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Building /etc/opt/influxdb/influxdb.conf done\n";}
 		
 }
 
@@ -1094,7 +1122,7 @@ function influxdb_version(){
 }
 
 function InfluxDbSize(){
-	$dir="/home/artica/squid/InfluxDB";
+	$dir="/home/ArticaStatsDB";
 	$unix=new unix();
 	$size=$unix->DIRSIZE_KO_nocache($dir);
 	$partition=$unix->DIRPART_INFO($dir);
@@ -1103,8 +1131,8 @@ function InfluxDbSize(){
 	$percent=($size/$TOT)*100;
 	$percent=round($percent,3);
 	
-	echo "$dir: $size Parition $TOT\n";
-	if($GLOBALS["VERBOSE"]){echo "$dir: $size Parition $TOT\n";}
+	echo "$dir: $size Partition $TOT\n";
+	if($GLOBALS["VERBOSE"]){echo "$dir: $size Partition $TOT\n";}
 	
 	$ARRAY["PERCENTAGE"]=$percent;
 	$ARRAY["SIZEKB"]=$size;
@@ -1289,7 +1317,7 @@ function disconnect_progress(){
 	build_progress_rs("{restarting_services} 5/6",90);
 	system("/etc/init.d/artica-status");
 	build_progress_rs("{restarting_services} 6/6",95);
-	system("/etc/init.d/influx-db restart");
+	system("/etc/init.d/artica-postgres restart");
 	build_progress_rs("{done}",100);
 	
 	
@@ -1388,7 +1416,7 @@ function remote_progress(){
 	build_progress_rs("{restarting_services} 5/6",90);
 	system("/etc/init.d/artica-status");
 	build_progress_rs("{restarting_services} 6/6",95);
-	system("/etc/init.d/influx-db restart");
+	system("/etc/init.d/artica-postgres restart");
 	build_progress_rs("{done}",100);
 
 }

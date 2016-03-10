@@ -2,7 +2,7 @@
 
 include_once(dirname(__FILE__)."/frame.class.inc");
 include_once(dirname(__FILE__)."/class.unix.inc");
-
+if(isset($_GET["ufdbcat-restart-progress"])){ufdbcat_restart_progress();exit;}
 if(isset($_GET["compile-category"])){compile_category();exit;}
 if(isset($_GET["getversion"])){getversion();exit;}
 if(isset($_GET["db-size"])){db_size();exit;}
@@ -19,6 +19,7 @@ if(isset($_GET["databases-percent"])){databases_percent();exit;}
 if(isset($_GET["articawebfilter-database-version"])){artica_webfilter_database_version();exit;}
 if(isset($_GET["apply-restart-progress"])){apply_restart_progress();exit;}
 if(isset($_GET["remove-sessions-caches"])){remove_sessions_caches();exit;}
+if(isset($_GET["ufdbtail-restart"])){ufdbtail_restart();exit;}
 
 
 
@@ -34,6 +35,16 @@ function remove_sessions_caches(){
 	$nohup=$unix->find_program("nohup");
 	shell_exec("$nohup $rm -rf /home/squid/error_page_sessions/* >/dev/null 2>&1 &");
 	shell_exec("$nohup $rm -rf /home/squid/error_page_cache/* >/dev/null 2>&1 &");
+	
+}
+
+function ufdbtail_restart(){
+	$unix=new unix();
+	$nohup=$unix->find_program("nohup");
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$cmd=trim("$nohup /etc/init.d/ufdb-tail restart 2>&1 &");
+	shell_exec($cmd);
+	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
 	
 }
 
@@ -76,6 +87,32 @@ function compile_category(){
 	shell_exec($cmd);
 	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
 }
+
+
+
+function ufdbcat_restart_progress(){
+
+	
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/web/ufdbcat.restart.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/ufdbcat.restart.log";
+	
+
+	@unlink($GLOBALS["CACHEFILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);
+	@chmod($GLOBALS["LOGSFILES"],0777);
+
+	$unix=new unix();
+	$nohup=$unix->find_program("nohup");
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$cmd=trim("$nohup $php5 /usr/share/artica-postfix/exec.ufdbcat.php --restart --ouptut >{$GLOBALS["LOGSFILES"]} 2>&1 &");
+	shell_exec($cmd);
+	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
+
+}
+
 
 function apply_restart_progress(){
 

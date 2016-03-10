@@ -1947,7 +1947,7 @@ function groups_list(){
 						if(preg_match("#^CN=(.+?),.*#i", base64_decode($dnEnc),$re)){
 						$groupname=_ActiveDirectoryToName($re[1]);
 						$CountDeMembers='-';
-						$Debug="&nbsp;<a href=\"javascript:Loadjs('dansguardian2.explodeadgroup.php?rule-id=$KEY_ID_GROUP&groupid=$KEY_ID_GROUP');\"
+						$Debug="&nbsp;<a href=\"javascript:Loadjs('dansguardian2.explodeadgroup.php?rule-id={$_GET["rule-id"]}&groupid=$KEY_ID_GROUP');\"
 						style=\"text-decoration:underline\">$dump_group_text</a>";
 						}
 					}else{

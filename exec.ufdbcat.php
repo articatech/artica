@@ -45,6 +45,7 @@ if($argv[1]=="--rotatelog"){$GLOBALS["OUTPUT"]=true;rotate();die();}
 if($argv[1]=="--build"){$GLOBALS["OUTPUT"]=true;buildconfig();die();}
 if($argv[1]=="--test"){testssocks();exit;}
 if($argv[1]=="--install"){install();exit;}
+if($argv[1]=="--auto-install"){AutoInstall();exit;}
 if($argv[1]=="--checkdirs"){CheckDirectories(true);buildconfig();reload();exit;}
 if($argv[1]=="--delete-databases"){delete_databases();exit;}
 if($argv[1]=="--socket"){echo GetUnixSocketPath()."\n";exit;}
@@ -98,7 +99,7 @@ function restart() {
 	
 	
 	if(!$NOTIFY){
-		squid_admin_mysql(0, "Restart Categories Service$FORCED_TEXT", "nothing",__FILE__,__LINE__);
+		squid_admin_mysql(1, "Restart Categories Service$FORCED_TEXT", "nothing",__FILE__,__LINE__);
 	}
 	
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Restarting...\n";}
@@ -229,7 +230,47 @@ function CheckDirectoriesTLSE(){
 				
 }
 
-
+function AutoInstall(){
+	$unix=new unix();
+	$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
+	$pidTime="/etc/artica-postfix/pids/exec.ufdbcat.php.AutoInstall.time";
+	$pid=$unix->get_pid_from_file($pidfile);
+	if($unix->process_exists($pid,basename(__FILE__))){
+		$time=$unix->PROCCESS_TIME_MIN($pid);
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Already Artica task running PID $pid since {$time}mn\n";}
+		return;
+	}
+	@file_put_contents($pidfile, getmypid());
+	
+	$TimeExec=$unix->file_time_min($pidTime);
+	if($TimeExec<240){
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} {$TimeExec}, need 240mn\n";}
+		die();
+	}
+	
+	@unlink($pidTime);
+	@file_put_contents($pidTime, time());
+	
+	include_once(dirname(__FILE__)."/ressources/class.ccurl.inc");
+	
+	$curl=new ccurl("http://articatech.net/download/ufdbcat-x64-1.31.tar.gz");
+	$tempfile=$unix->TEMP_DIR()."/ufdbcat-x64-1.31.tar.gz";
+	
+	if(!$curl->GetFile($tempfile)){
+		squid_admin_mysql(0, "Unable to download http://articatech.net/download/ufdbcat-x64-1.31.tar.gz", null,__FILE__,__LINE__);
+		return;
+	}
+	
+	$tar=$unix->find_program("tar");
+	shell_exec("$tar xf $tempfile -C /");
+	if(!is_file("/etc/artica-postfix/UFDBCAT_INSTALLED")){
+		squid_admin_mysql(0, "Unable to install ufdbcat-x64-1.31.tar.gz package", null,__FILE__,__LINE__);
+		return;
+		
+	}
+	squid_admin_mysql(2, "Success installed Categories Service TCP/IP version",null,__FILE__,__LINE__);
+	restart(true);
+}
 
 
 function CheckDirectories($verifdbs=false){
@@ -245,6 +286,11 @@ function CheckDirectories($verifdbs=false){
 	
 	
 	@mkdir("/home/ufdbcat",0755,true);
+	@mkdir("/home/ufdbcat/security",0755,true);
+	$compile_ufdbguard=new compile_ufdbguard();
+	$compile_ufdbguard->BuildCertificates();
+	
+	
 	$cp=$unix->find_program("cp");
 	
 	
@@ -363,26 +409,34 @@ function start($aspid=false,$verifdbs=false){
 	if($GLOBALS["OUTPUT"]){
 		echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} ** Categories Appliance Mode ***\n";}
 	
-	$isRemoteSockets=isRemoteSockets();
-	
-	if($isRemoteSockets){
-		if(!is_file("$Masterbin.sock")){
-			@copy($Masterbin, "$Masterbin.sock");
-		}
 		
+	// 
+	$isRemoteSockets=true;
+	if(!is_file("/etc/artica-postfix/UFDBCAT_INSTALLED")){	
+		$isRemoteSockets=isRemoteSockets();
 		$ufdbguardd=$unix->find_program("ufdbguardd");
-		if(!is_file($ufdbguardd)){
-			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Fatal ufdbguardd no such binary!!!\n";}
-			return false;
+		if($isRemoteSockets){
+			if(is_file($ufdbguardd)){
+				if(!is_file("$Masterbin.sock")){@copy($Masterbin, "$Masterbin.sock");}
+				@unlink($Masterbin);
+				@copy($ufdbguardd,$Masterbin);
+			}
 		}
-		@unlink($Masterbin);
-		@copy($ufdbguardd,$Masterbin);
+	
+		if(!$isRemoteSockets){
+			if(is_file("$Masterbin.sock")){
+				@copy("$Masterbin.sock",$Masterbin);
+				@unlink("$Masterbin.sock");
+			}
+		}
 	}
 	
-	if(!$isRemoteSockets){
-		if(is_file("$Masterbin.sock")){
-			@copy("$Masterbin.sock",$Masterbin);
-			@unlink("$Masterbin.sock");
+	if($isRemoteSockets){
+	if($EnableLocalUfdbCatService==1){
+		$ufdbCatPort=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/ufdbCatPort"));
+		if($ufdbCatPort==0){$ufdbCatPort=3978;}
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} checking and killing for port {$ufdbCatPort}\n";}
+		$unix->KILL_PROCESSES_BY_PORT($ufdbCatPort);
 		}
 	}
 	
@@ -394,6 +448,7 @@ function start($aspid=false,$verifdbs=false){
 	build_progress("{starting_service}",96);
 	squid_admin_mysql(2, "Starting Categories Service", "nothing",__FILE__,__LINE__);
 	buildconfig();
+	@unlink("/var/run/ufdbcat-03978");
 	shell_exec($cmd);
 	
 	
@@ -426,6 +481,8 @@ function start($aspid=false,$verifdbs=false){
 		
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Success\n";}
 		build_progress("{success}",100);
+		$squidbin=$unix->LOCATE_SQUID_BIN();
+		if(is_file($squidbin)){shell_exec("$squidbin -f /etc/squid3/squid.conf -k reconfigure >/dev/null 2>&1 &");}
 		return true;
 	}
 	squid_admin_mysql(0, "Failed to start Categories Service", "nothing",__FILE__,__LINE__);
@@ -468,7 +525,7 @@ function stop($aspid=false){
 
 	if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} service Shutdown pid $pid...\n";}
 	build_progress("{stopping_service}",6);
-	squid_admin_mysql(0, "Stopping Categories Service", "nothing",__FILE__,__LINE__);
+	squid_admin_mysql(1, "Stopping Categories Service", "nothing",__FILE__,__LINE__);
 	unix_system_kill($pid);
 	for($i=0;$i<5;$i++){
 		$pid=PID_NUM();
@@ -548,7 +605,7 @@ function buildconfig(){
 	$array["category_blog"]="blog";
 	$array["category_remote_control"]="remote-control";
 	
-	
+	$array["category_youtube"]="youtube";
 	$array["category_audio_video"]="audio-video";
 	$array["category_webtv"]="webtv";
 	$array["category_movies"]="movies";
@@ -793,6 +850,10 @@ function buildconfig(){
 	
 	
 	
+
+	
+	
+	
 	$c=0;
 	while (list ($dirname, $realcat) = each ($array) ){
 		
@@ -833,13 +894,10 @@ function buildconfig(){
 	$f[]="logblock off";
 	$f[]="logpass off";
 	$f[]="logall off";
-	$f[]="squid-version \"3.3\"";
 	$f[]="url-lookup-result-during-database-reload deny";
 	$f[]="url-lookup-result-when-fatal-error deny";
 	$f[]="analyse-uncategorised-urls off";
-	$f[]="enforce-https-with-hostname off";
-	$f[]="enforce-https-offical-certificate off";
-	$f[]="https-prohibit-insecure-sslv2 off";
+
 	
 	$EnableLocalUfdbCatService=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableLocalUfdbCatService"));
 	if($AsCategoriesAppliance==1){$EnableLocalUfdbCatService=1;}
@@ -848,6 +906,9 @@ function buildconfig(){
 		$ufdbCatInterface=@file_get_contents("/etc/artica-postfix/settings/Daemons/ufdbCatInterface");
 		
 		if($ufdbCatInterface<>null){
+			
+			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Checking interface \"$ufdbCatInterface\"\n";}
+			
 			if(!$unix->is_interface_available($ufdbCatInterface)){
 				if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} $ufdbCatInterface not available\n";}
 			}else{
@@ -861,6 +922,8 @@ function buildconfig(){
 		$f[]="port $ufdbCatPort";
 		$f[]="interface $ufdbCatInterface";
 	}
+	
+
 	
 	$f[]="check-proxy-tunnels off";
 	$f[]="safe-search off";
@@ -877,10 +940,12 @@ function buildconfig(){
 	
 	if(!is_file("/home/ufdbcat/security/cacerts")){
 		@mkdir("/home/ufdbcat/security");
-		@touch("/home/ufdbcat/security/cacerts");
+		if(!is_file("/home/ufdbcat/security/cacerts")){
+			@touch("/home/ufdbcat/security/cacerts");
+		}
 	}
 	$f[]="category security {";
-	$f[]="\tcacerts \"security/cacerts\"";
+	$cats[]="\tcacerts \"/home/ufdbcat/security/cacerts\"";
 	$f[]="\toption  enforce-https-with-hostname off";
 	$f[]="\toption  enforce-https-official-certificate off";
 	$f[]="\toption  https-prohibit-insecure-sslv2 off";
@@ -892,7 +957,8 @@ function buildconfig(){
 	$f[]="\toption 	allow-citrixonline-over-https off";
 	$f[]="\toption 	allow-unknown-protocol-over-https off";
 	$f[]="}";
-	
+	$f[]="";
+	$f[]="";
 	$f[]=@implode("\n", $catz);
 	$f[]="";
 	$f[]="";
@@ -947,7 +1013,7 @@ function install(){
 	$tar=$unix->find_program("tar");
 	shell_exec("$tar xf $tmpfile -C /");
 	if(is_file($Masterbin)){
-		squid_admin_mysql(0, "Success installing Artica Categorize Daemon", null,__FILE__,__LINE__);
+		squid_admin_mysql(2, "Success installing Artica Categorize Daemon", null,__FILE__,__LINE__);
 		return;
 	}
 	

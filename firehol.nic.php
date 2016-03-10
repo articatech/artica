@@ -30,6 +30,7 @@ function tabs(){
 	$tpl=new templates();
 	$users=new usersMenus();
 	$array["settings"]="$nic->NICNAME $nic->netzone ({$_GET["nic"]})";
+	$array["rules"]="{rules}";
 	$array["services"]="{services}";
 	$array["firehol_client_services"]="{local_services}";
 	
@@ -38,12 +39,19 @@ function tabs(){
 	while (list ($num, $ligne) = each ($array) ){
 
 		if($num=="services"){
-			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"firehol.nic.services.php?table=firehol_services&nic={$_GET["nic"]}\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"firehol.nic.services.php?table=yes&xtable=firehol_services&nic={$_GET["nic"]}\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
 			continue;
 
 		}
+		
+		if($num=="rules"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"firehol.nic.rules.php?eth={$_GET["nic"]}\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
+			continue;
+		
+		}		
+		
 		if($num=="firehol_client_services"){
-			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"firehol.nic.services.php?interfaces=yes&xtable=firehol_client_services&nic={$_GET["nic"]}\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"firehol.nic.services.php?table=yes&xtable=firehol_client_services&nic={$_GET["nic"]}\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
 			continue;
 		
 		}		
@@ -120,6 +128,7 @@ function nic_params(){
 	$nic=new system_nic($_GET["eth"]);
 	$page=CurrentPageName();
 	$tpl=new templates();
+	$sock=new sockets();
 	$t=time();
 	$BEHA["reject"]="{strict_mode}";
 	$BEHA["accept"]="{trusted_mode}";
@@ -133,6 +142,19 @@ function nic_params(){
 	$masquerade[0]="{none}";
 	$masquerade[1]="{masquerading}";
 	$masquerade[2]="{masquerading_invert}";
+	$EnableIpBlocks=intval($sock->GET_INFO("EnableIpBlocks"));
+	$IPSetInstalled=intval($sock->GET_INFO("IPSetInstalled"));
+	
+	if($IPSetInstalled==1){
+		$EnableIpBlocks_explain=" &laquo;".texttooltip("{block_countries}","{ipblocks_text}","GotoIpBlocks()")."&raquo;";
+		
+	}
+	
+	if($EnableIpBlocks==0){
+		$EnableIpBlocks_field="{disabled}$EnableIpBlocks_explain";
+	}else{
+		$EnableIpBlocks_field=Field_checkbox_design("DenyCountries-$t", 1,$nic->DenyCountries);
+	}
 	
 	
 	if(!is_file("{$GLOBALS["BASEDIR"]}/FLUX_{$_GET["eth"]}_RX")){$jsload=null;}
@@ -153,8 +175,16 @@ function nic_params(){
 		<tr>
 		<td class=legend style='font-size:22px'>{masquerading}:</td>
 		<td>". Field_array_Hash($masquerade, "firewall_masquerade-$t",$nic->firewall_masquerade,"style:font-size:22px")."</td>
-	</tr>	
-				
+	</tr>
+	<tr>
+	<tr>
+		<td class=legend style='font-size:22px'>{enable_ipblocks}:</td>
+		<td style='font-size:22px'>$EnableIpBlocks_field</td>
+	</tr>
+	<tr>
+		<td class=legend style='font-size:22px'>{accept_artica_w}:</td>
+		<td style='font-size:22px'>".Field_checkbox_design("firewall_artica-$t", 1,$nic->firewall_artica)."</td>
+	</tr>				
 	<tr>
 		<td colspan=2 align='right'><hr>". button("{apply}","Save$t()",32)."</td>
 	</tr>	
@@ -173,9 +203,17 @@ var xSave$t= function (obj) {
 
 function Save$t(){
 	var XHR = new XHRConnection();
+	var DenyCountries=0;
 	XHR.appendData('firewall_policy',document.getElementById('firewall_policy-$t').value);
 	XHR.appendData('firewall_behavior',document.getElementById('firewall_behavior-$t').value);
 	XHR.appendData('firewall_masquerade',document.getElementById('firewall_masquerade-$t').value);
+	XHR.appendData('firewall_artica',document.getElementById('firewall_artica-$t').value);
+	
+	
+	if(document.getElementById('DenyCountries-$t')){
+		if(document.getElementById('DenyCountries-$t').checked){DenyCountries=1;}
+	}
+	XHR.appendData('DenyCountries',DenyCountries);
 	XHR.appendData('nic','{$_GET["eth"]}');
 	XHR.sendAndLoad('$page', 'POST',xSave$t);
 }	
@@ -249,5 +287,7 @@ function nic_params_save(){
 	$nic->firewall_policy=$_POST["firewall_policy"];
 	$nic->firewall_behavior=$_POST["firewall_behavior"];
 	$nic->firewall_masquerade=$_POST["firewall_masquerade"];
+	$nic->firewall_artica=$_POST["firewall_artica"];
+	$nic->DenyCountries=$_POST["DenyCountries"];
 	$nic->SaveNic();
 }

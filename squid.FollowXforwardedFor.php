@@ -65,7 +65,7 @@ function popup(){
 	$delete_this_child=$tpl->javascript_parse_text("{delete_this_child}");
 	$apply_params=$tpl->_ENGINE_parse_body("{apply}");
 	$title=$tpl->javascript_parse_text("{follow_x_forwarded_for}");
-	
+	$local_forwarded_for=$tpl->javascript_parse_text("{local_forwarded_for}");
 	$tt=$_GET["tt"];
 	$t=time();		
 
@@ -86,6 +86,7 @@ $('#table-$t').flexigrid({
 	],
 buttons : [
 	{name: '<strong style=font-size:18px>$new_proxy</strong>', bclass: 'add', onpress : AddProxyChild},
+	{name: '<strong style=font-size:18px>$local_forwarded_for</strong>', bclass: 'Settings', onpress : LocalForwardedFor},
 	{separator: true},{name: '<strong style=font-size:18px>$apply_params</strong>', bclass: 'apply', onpress : SquidBuildNow$t},
 
 		],	
@@ -112,6 +113,10 @@ buttons : [
 function AddProxyChild(){
 	YahooWin5('750','$page?add-proxy=yes&t=$t','$new_proxy');
 
+}
+
+function LocalForwardedFor(){
+	Loadjs('squid.forwarded_for.php');
 }
 
 	var x_DeleteSquidChild$t= function (obj) {

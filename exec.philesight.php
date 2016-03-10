@@ -150,6 +150,7 @@ function scan_directories(){
 	
 	$pid=$unix->get_pid_from_file($pidFile);
 	if($unix->process_exists($pid)){return;}
+	$START_TIME=time();
 	
 	if(!$GLOBALS["FORCE"]){
 		$time=$unix->file_time_min($TimeFile);
@@ -172,7 +173,10 @@ function scan_directories(){
 		system_admin_events("/usr/bin/ruby1.8 no such binary, philesight cannot be used!",__FUNCTION__,__FILE__,__LINE__);
 	}
 	$sock=new sockets();
-	$EnableArticaMetaClient=intval($sock->GET_INFO("EnableArticaMetaClient"));
+	$EnableArticaMetaClient=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaClient"));
+	$EnableArticaMetaServer=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaServer"));
+	if($EnableArticaMetaServer==1){$EnableArticaMetaClient=0;}
+	
 	if($EnableArticaMetaClient==1){
 		meta_events("Meta Client Enabled",__FUNCTION__,__LINE__);
 	}
@@ -272,13 +276,24 @@ function scan_directories(){
 	
 	
 	build_progress("{success}",100);
+	
+	
+	$Took=$unix->distanceOfTimeInWords($START_TIME,time());
+	squid_admin_mysql(2, "$pr directories size scanned ( took $Took) ", null,__FILE__,__LINE__);
+	system_admin_mysql(2, "$pr directories size scanned ( took $Took) ", null,__FILE__,__LINE__);
+	
+	
+	
 	if($EnableArticaMetaClient){
 		meta_events("UPDATED=$UPDATED",__FUNCTION__,__LINE__);
 	}
 	
 	if($UPDATED){
 		$sock=new sockets();
-		$EnableArticaMetaClient=intval($sock->GET_INFO("EnableArticaMetaClient"));
+		$EnableArticaMetaClient=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaClient"));
+		$EnableArticaMetaServer=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaServer"));
+		if($EnableArticaMetaServer==1){$EnableArticaMetaClient=0;}
+	
 		if($EnableArticaMetaClient==1){
 			$cp=$unix->find_program("cp");
 			$tar=$unix->find_program("tar");

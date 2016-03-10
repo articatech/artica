@@ -439,7 +439,7 @@ function test_nas_popup(){
 	$sock=new sockets();
 	$datas=unserialize(base64_decode($sock->getFrameWork("services.php?squidlogs-oldlogs-test-nas=yes")));
 	echo "<textarea style='margin-top:5px;font-family:Courier New;
-	font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+	font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 	overflow:auto;font-size:11px' id='textToParseCats-$t'>".@implode("\n", $datas)."</textarea>";
 }
 function import_now(){
@@ -455,7 +455,7 @@ function events(){
 	$sock=new sockets();
 	$datas=unserialize(base64_decode($sock->getFrameWork("services.php?squidlogs-oldlogs-logs-nas=yes")));
 	echo "<textarea style='margin-top:5px;
-	font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+	font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 	overflow:auto;font-size:11px' id='textToParseCats-$t'>".@implode("\n", $datas)."</textarea>";	
 	
 }

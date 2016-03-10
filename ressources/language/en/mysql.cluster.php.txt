@@ -10,11 +10,11 @@
 <MysqlClusterManagerTarget>Management server address</MysqlClusterManagerTarget>
 <MYSQL_CLUSTER_MANAGER>Management Server</MYSQL_CLUSTER_MANAGER>
 <MYSQL_CLUSTER_MANAGER_TEXT>Define this server has the Management Server that will serve communications with all nodes</MYSQL_CLUSTER_MANAGER_TEXT>
-<MYSQL_CLUSTER_REPLICAT>Set this server has Mysql replicat</MYSQL_CLUSTER_REPLICAT>
+<MYSQL_CLUSTER_REPLICAT>Set this server has MySQL replicat</MYSQL_CLUSTER_REPLICAT>
 <MYSQL_CLUSTER_REPLICAT_TEXT>Point this server to the MySQL Cluster Management Server in order to replicate databases in real-time</MYSQL_CLUSTER_REPLICAT_TEXT>
 <MYSQL_CLUSTER_REPLICA_ADD>Add a new Replica</MYSQL_CLUSTER_REPLICA_ADD>
 <MYSQL_CLUSTER_REPLICA_ADD_EXPLAIN>Define the client server (replica) IP/name address</MYSQL_CLUSTER_REPLICA_ADD_EXPLAIN>
 <MYSQL_CLUSTER_REPLICA_ADD_TEXT>Click on this icon to add a new mysql replica server</MYSQL_CLUSTER_REPLICA_ADD_TEXT>
-<MYSQL_REPLICAS>Mysql replicas list</MYSQL_REPLICAS>
+<MYSQL_REPLICAS>MySQL replicas list</MYSQL_REPLICAS>
 <NBD_MGMD_NOT_INSTALLED>nbd_mgmd is not installed</NBD_MGMD_NOT_INSTALLED>
-<NBD_MGMD_NOT_INSTALLED_TEXT>Your current Mysql server is not enabled for cluster configuration</NBD_MGMD_NOT_INSTALLED_TEXT>
+<NBD_MGMD_NOT_INSTALLED_TEXT>Your current MySQL server is not enabled for cluster configuration</NBD_MGMD_NOT_INSTALLED_TEXT>

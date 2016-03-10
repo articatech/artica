@@ -112,7 +112,7 @@ function Save(){
 		AssociatesG($RuleID,$gpid,0);
 		AssociatesG($RuleID,$CategoryID,1);
 		
-	
+		if(!$acl->aclrule_edittype($RuleID,"url_rewrite_access_allow",1)){echo "$ligne -> FALSE ERR.".__LINE__."\n";continue;}
 		if(!$acl->aclrule_edittype($RuleID,"url_rewrite_access_deny",1)){echo "$ligne -> FALSE ERR.".__LINE__."\n";continue;}
 		echo "Associates {$RuleName}[$RuleID] to $CategoryID,$gpid ($Category_groupnane,$GroupName) [OK]\n";
 		

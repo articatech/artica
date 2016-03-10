@@ -395,15 +395,15 @@ function buildConfig(){
 	if(!is_numeric($PHP_FCGI_MAX_REQUESTS)){$PHP_FCGI_MAX_REQUESTS=200;}
 	
 	$PHP_FCGI_CHILDREN=1;
-	$max_procs=5;
-	
-	
+	$max_procs=2;
+	$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+	if($EnableIntelCeleron==1){$LighttpdRunAsminimal=1;}
 	if($LighttpdArticaMaxProcs>0){$max_procs=$LighttpdArticaMaxProcs;}
 	if($LighttpdArticaMaxChildren>0){$PHP_FCGI_CHILDREN=$LighttpdArticaMaxChildren;}
 	
 	if(!$unix->ISMemoryHiger1G()){
 		$PHP_FCGI_CHILDREN=2;
-		$max_procs=2;
+		$max_procs=1;
 		$PHP_FCGI_MAX_REQUESTS=200;
 	}
 	
@@ -411,7 +411,7 @@ function buildConfig(){
 	if($MEMORY<624288){$LighttpdRunAsminimal=1;}
 	
 	if($LighttpdRunAsminimal==1){
-		$max_procs=2;
+		$max_procs=1;
 		$PHP_FCGI_CHILDREN=1;
 		$PHP_FCGI_MAX_REQUESTS=500;
 	}

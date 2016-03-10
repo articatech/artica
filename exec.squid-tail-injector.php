@@ -1316,7 +1316,7 @@ function inject_array($array){
 	}
 	
 	while (list ($table, $contentArray) = each ($array) ){
-		if(preg_match("#squidhour_([0-9]+)#",$table,$re)){$q->TablePrimaireHour($re[1]);}
+	//	
 		$prefixsql="INSERT IGNORE INTO $table (`sitename`,`uri`,`TYPE`,`REASON`,`CLIENT`,`zDate`,`zMD5`,`remote_ip`,`country`,`QuerySize`,`uid`,`cached`,`MAC`,`hostname`) VALUES ";
 		$sql="$prefixsql".@implode(",",$contentArray);
 		if($GLOBALS["VERBOSE"]){echo $sql."\n";}

@@ -912,8 +912,7 @@ function statkaspersky(){
 	return LocalParagraphe("Kaspersky","kaspersky_av_text","YahooWin(580,'kaspersky.index.php','Kaspersky');","bigkav-48.png");
 }
 function sysinfos(){
-	$GLOBALS["ICON_FAMILY"]="SYSTEM";
-	return Paragraphe("scan-64.png", "{sysinfos}", "{sysinfos_text}","javascript:s_PopUp('phpsysinfo/index.php',1000,600,1);");
+	
 }
 function certificate(){
 	$GLOBALS["ICON_FAMILY"]="SECURITY";

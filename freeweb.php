@@ -29,6 +29,8 @@
 	if(isset($_POST["watchdog"])){watchdog_save();exit;}
 	if(isset($_GET["status"])){freewebs_status();exit;}
 	if(isset($_POST["EnablePHPFPM"])){EnablePHPFPM();exit;}
+	if(isset($_POST["EnableSPAWNFCGI"])){EnableSPAWNFCGI();exit;}
+	
 	if(isset($_POST["EnableNginx"])){EnableNginx();exit;}
 	if(isset($_GET["log-rotate-js"])){log_rotate_js();exit;}
 	if(isset($_GET["log-rotate-popup"])){log_rotate_popup();exit;}
@@ -622,22 +624,26 @@ function popup(){
 		
 
 	$array["groupwares"]='{groupwares}';
-	$array["WebCopy"]='WebCopy';
 	
+	$array["events"]='{events}';
 	
 
 	
-	$fontsize="style='font-size:18px'";
+	
 	
 	if(isset($_GET["force-groupware"])){
 		unset($array["index"]);
 		unset($array["params"]);
 		unset($array["modules"]);
-		unset($array["pure-ftpd"]);
+		
 		unset($array["tomcat"]);
 		$force_groupware="&force-groupware={$_GET["force-groupware"]}&ForceInstanceZarafaID={$_GET["ForceInstanceZarafaID"]}";
 	}
 	
+	$fontsize="style='font-size:18px'";
+	if(count($array)<8){
+		$fontsize="style='font-size:24px'";
+	}
 	
 	while (list ($num, $ligne) = each ($array) ){
 		
@@ -645,6 +651,11 @@ function popup(){
 			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"pureftp.index.php?pure-ftpd-page=yes\" $fontsize><span $fontsize>$ligne</span></a></li>\n");
 			continue;
 		}
+		if($num=="events"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"apache.watchdog-events.php\" $fontsize><span $fontsize>$ligne</span></a></li>\n");
+			continue;
+		}
+		
 		
 		if($num=="tomcat"){
 			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"tomcat.php\" $fontsize><span $fontsize>$ligne</span></a></li>\n");
@@ -684,14 +695,14 @@ function index(){
 	$FreeWebListenPort=$sock->GET_INFO("FreeWebListenPort");
 	$FreeWebListenSSLPort=$sock->GET_INFO("FreeWebListenSSLPort");
 	$FreeWebListen=$sock->GET_INFO("FreeWebListen");
-	$FreeWebLeftMenu=$sock->GET_INFO("FreeWebLeftMenu");
+	$FreeWebLeftMenu=intval($sock->GET_INFO("FreeWebLeftMenu"));
 	$FreeWebDisableSSL=$sock->GET_INFO("FreeWebDisableSSL");
 	if($FreeWebListen==null){$FreeWebListen="*";}
 	if(!is_numeric($EnableFreeWeb)){$EnableFreeWeb=0;}
 	if(!is_numeric($FreeWebDisableSSL)){$FreeWebDisableSSL=0;}
 	if($FreeWebListenPort==null){$FreeWebListenPort=80;}
 	if($FreeWebListenSSLPort==null){$FreeWebListenSSLPort=443;}
-	if(!is_numeric($FreeWebLeftMenu)){$FreeWebLeftMenu=1;}
+	
 	$tcp=new networking();
 	$APACHE_APPLIANCE=0;
 	if($users->APACHE_APPLIANCE){$APACHE_APPLIANCE=1;}
@@ -799,7 +810,8 @@ function index(){
 	
 	var x_EnableFreeWebSave=function (obj) {
 			var results=obj.responseText;
-			RefreshTab('main_config_freeweb');
+			Loadjs('freeweb.progress.php');
+			
 		}	
 		
 		function EnableFreeWebSave(){
@@ -811,8 +823,9 @@ function index(){
 		
 		var x_FreeWebLeftMenuCheck=function (obj) {
 			var results=obj.responseText;
-			if(results.length>0){alert(results);}			
-			CacheOff();
+			if(results.length>0){alert(results);}
+			AjaxTopMenu('template-top-menus','admin.top.menus.php');			
+			
 		}
 
 		function FreeWebDisableFreeWebLeftMenu(){
@@ -1279,6 +1292,11 @@ function delete(){
 		$q->QUERY_SQL("DELETE FROM nginx_exploits WHERE servername='$servername'");
 		if(!$q->ok){echo $q->mysql_error;return;}
 	}
+	if($q->TABLE_EXISTS("nginx_exchecp")){
+		$q->QUERY_SQL("DELETE FROM nginx_exchecp WHERE hostname='$servername'");
+		if(!$q->ok){echo $q->mysql_error;return;}
+	}	
+	
 
 	$sock=new sockets();
 	$sock->getFrameWork("squid.php?reverse-proxy-apply=yes");	
@@ -1336,18 +1354,14 @@ function apache_src_status(){
 	
 	if(!isset($_GET["withoutftp"])){
 		$serv[]=DAEMON_STATUS_ROUND("APP_PHPFPM",$ini,null,0);
+		$serv[]=DAEMON_STATUS_ROUND("APP_SPWANFCGI",$ini,null,0);
 		$serv[]=DAEMON_STATUS_ROUND("PUREFTPD",$ini,null,0);
 		$serv[]=DAEMON_STATUS_ROUND("APP_TOMCAT",$ini,null,0);
 		$serv[]=DAEMON_STATUS_ROUND("APP_NGINX",$ini,null,0);
 	}
 	
 	$refresh="<div style='text-align:right;margin-top:8px'>".imgtootltip("refresh-24.png","{refresh}","RefreshTab('main_config_freeweb')")."</div>";
-	if(!isset($_GET["withoutftp"])){
-		$users=new usersMenus();
-		if(!$users->PUREFTP_INSTALLED){
-			$tips="<center style='margin-top:20px'>".Paragraphe_tips("64-infos.png", "{TIPS_PUREFTPD_TITLE}", "{TIPS_PUREFTPD_TITLE_TEXT}","javascript:Loadjs('setup.index.progress.php?product=APP_PUREFTPD&start-install=yes');",265)."</center>";
-		}
-	}
+
 		
 	while (list ($a,$b) = each ($serv) ){if(trim($b)==null){continue;}$statusT[]=$b;}	
 	$status=@implode("<br>", $statusT);
@@ -1628,9 +1642,9 @@ function watchdog_form(){
 	$EnableNginx_warn=$tpl->javascript_parse_text("{EnableNginx_warn}");
 	
 	
-
-	
-	$EnablePHPFPM=$sock->GET_INFO("EnablePHPFPM");
+	$EnableNginx=intval($sock->GET_INFO("EnableNginx"));
+	$EnableSPAWNFCGI=intval($sock->GET_INFO("EnableSPAWNFCGI"));
+	$EnablePHPFPM=intval($sock->GET_INFO("EnablePHPFPM"));
 	if(!is_numeric($EnablePHPFPM)){$EnablePHPFPM=0;}
 	if(!is_numeric($EnableNginx)){$EnableNginx=1;}
 	if(!is_numeric($ZarafaWebAccessInFrontEnd)){$ZarafaWebAccessInFrontEnd=1;}
@@ -1659,12 +1673,17 @@ function watchdog_form(){
 	<div id='$t' style='margin-top:20px'>
 		<table style='width:99%' class=form>
 		<tbody>
-			<tr>
+	";
+	
+	if($users->ZARAFA_INSTALLED){
+			$html=$html."<tr>
 				<td class=legend style='font-size:22px' nowrap>{ZarafaWebAccessInFrontEnd}:</td>
 				<td>". Field_checkbox_design("$t-ZarafaWebAccessInFrontEnd", 1,$ZarafaWebAccessInFrontEnd,"ZarafaWebAccessInFrontEnd{$t}()")."</td>
 				<td>&nbsp;</td>
-			</tr>		
-			<tr>
+			</tr>
+		";
+	}	
+			$html=$html."<tr>
 				<td class=legend style='font-size:22px' nowrap>{EnableNginx}:</td>
 				<td>". Field_checkbox_design("$t-EnableNginx", 1,$EnableNginx,"EnableNginx{$t}()")."</td>
 				<td>&nbsp;</td>
@@ -1673,7 +1692,13 @@ function watchdog_form(){
 				<td class=legend style='font-size:22px' nowrap>{EnablePHPFPM}:</td>
 				<td>". Field_checkbox_design("$t-EnablePHPFPM", 1,$EnablePHPFPM,"EnableEnablePHPFPM{$t}()")."</td>
 				<td>&nbsp;</td>
-			</tr>		
+			</tr>
+			<tr>
+				<td class=legend style='font-size:22px' nowrap>{EnableSPAWNFCGI}:</td>
+				<td>". Field_checkbox_design("$t-EnableSPAWNFCGI", 1,$EnableSPAWNFCGI,"EnableEnableSPAWNFCGI{$t}()")."</td>
+				<td>&nbsp;</td>
+			</tr>
+			
 		
 			<tr>
 				<td class=legend style='font-size:22px'>{enable_watchdog}:</td>
@@ -1738,6 +1763,7 @@ function watchdog_form(){
 		}
 		
 	function ZarafaWebAccessInFrontEnd{$t}Check(){
+		if(!document.getElementById('$t-ZarafaWebAccessInFrontEnd')){return;}
 		var ZARAFA_INSTALLED=$ZARAFA_INSTALLED;
 		if(ZARAFA_INSTALLED==0){
 			document.getElementById('$t-ZarafaWebAccessInFrontEnd').disabled=true;
@@ -1762,13 +1788,21 @@ function watchdog_form(){
 	
 	function EnableEnablePHPFPM{$t}(){
 		var XHR = new XHRConnection();
-		EnablePHPFPM=0;
+		var EnablePHPFPM=0;
 		if(document.getElementById('$t-EnablePHPFPM').checked){EnablePHPFPM=1;}
 		XHR.appendData('EnablePHPFPM',EnablePHPFPM);
 		XHR.sendAndLoad('$page', 'POST',x_{$t}_SaveInstance);
 		
 	}
-	
+	function EnableEnableSPAWNFCGI{$t}(){
+		var XHR = new XHRConnection();
+		var EnableSPAWNFCGI=0;
+		if(document.getElementById('$t-EnableSPAWNFCGI').checked){EnableSPAWNFCGI=1;}
+		XHR.appendData('EnableSPAWNFCGI',EnableSPAWNFCGI);
+		XHR.sendAndLoad('$page', 'POST',x_{$t}_SaveInstance);
+		
+	}	
+
 
 	
 	
@@ -1921,6 +1955,13 @@ function EnablePHPFPM(){
 	$sock->getFrameWork("nginx.php?restart=yes");	
 	$sock->getFrameWork("services.php?restart-phpfpm=yes");
 }
+function EnableSPAWNFCGI(){
+	$sock=new sockets();
+	$sock->SET_INFO("EnableSPAWNFCGI",$_POST["EnableSPAWNFCGI"]);
+	$sock->getFrameWork("nginx.php?restart=yes");
+	$sock->getFrameWork("services.php?restart-SPAWNFCGI=yes");
+}
+
 function EnableNginx(){
 	$sock=new sockets();
 	$sock->SET_INFO("EnableNginx",$_POST["EnableNginx"]);

@@ -36,7 +36,7 @@ if($EnableKerbAuth==1){$error=FATAL_ERROR_SHOW_128("{ldap_with_ad_explain}");}
 if(trim($users->SQUID_LDAP_AUTH)==null){
 	echo FATAL_ERROR_SHOW_128("{authenticate_users_no_binaries}");return;
 }
-
+	$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
 	$please_choose_only_one_method=$tpl->javascript_parse_text("{please_choose_only_one_method}");
 	$ldap_server=$squid->EXTERNAL_LDAP_AUTH_PARAMS["ldap_server"];
 	$ldap_port=$squid->EXTERNAL_LDAP_AUTH_PARAMS["ldap_port"];
@@ -73,9 +73,20 @@ if(trim($users->SQUID_LDAP_AUTH)==null){
 	if(!is_numeric($squid->EXTERNAL_LDAP_AUTH_PARAMS["external_acl_cache"])){$squid->EXTERNAL_LDAP_AUTH_PARAMS["external_acl_cache"]=360;}
 	
 	if($EnableSquidExternalLDAP==1){$squid->LDAP_AUTH=0;}
+	$bt_SaveExternalLDAPSYS=button("{apply}","SaveExternalLDAPSYS()",32);
+	$txt_SaveExternalLDAPSYS=null;
+	
+	if($EnableOpenLDAP==0){
+		$squid->LDAP_AUTH=0;
+		$bt_SaveExternalLDAPSYS=null;
+		$txt_SaveExternalLDAPSYS="<p class=text-error style='font-size:18px'>{local_openldap_service_disabled}</p>";
+	}
+	
+	
 
 $html="$error
 <div style='width:98%' class=form>
+$txt_SaveExternalLDAPSYS
 <table style='width:99%' class=TableRemove>
 <tr>
 	<td colspan=2 >" . Paragraphe_switch_img(
@@ -91,7 +102,7 @@ $html="$error
 	<tr>
 		<td colspan=2 align='right'>
 			<hr>
-				". button("{apply}","SaveExternalLDAPSYS()",32)."
+				$bt_SaveExternalLDAPSYS
 		</td>
 	</tr>
 </table>

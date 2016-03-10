@@ -11,7 +11,9 @@
 # A mail received to 2 different receivers, report 2 records.
 # A mail received to a forwarded account is reported as to the original receiver, not the "forwarded to".
 # A mail locally sent to a local alias is reported as n mails to all addresses of alias.
+# Mail subject and attachments appended for postfix
 #-------------------------------------------------------
+
 use strict;no strict "refs";
 
 
@@ -19,7 +21,7 @@ use strict;no strict "refs";
 # Defines
 #-------------------------------------------------------
 use vars qw/ $REVISION $VERSION /;
-$REVISION='$Revision: 1.34 $'; $REVISION =~ /\s(.*)\s/; $REVISION=$1;
+$REVISION='$Revision: $'; $REVISION =~ /\s(.*)\s/; $REVISION=$1;
 $VERSION="1.2 (build $REVISION)";
 
 use vars qw/
@@ -111,6 +113,13 @@ sub trim { $_=shift;
 	return $_;
 }
 
+# Return string without starting and ending apostrophes 
+# 
+sub CleanFilename { $_=shift||'';
+	s/^"+//; s/"+$//;
+	return $_;
+}
+
 # Write a record
 #
 sub OutputRecord {
@@ -126,10 +135,12 @@ sub OutputRecord {
 	my $size=shift||0;
 	my $forwardto=shift;
 	my $extinfo=shift||'-';
+	my $subject=shift||'-';
+	my $attachments=shift;
 
 	# Clean day and month
 	$day=sprintf("%02d",$day);
-    $month=sprintf("%02d",$MonthNum{$month}||$month);
+        $month=sprintf("%02d",$MonthNum{$month}||$month);
 
 	# Clean from
 	$from=&CleanEmail($from);
@@ -154,7 +165,10 @@ sub OutputRecord {
 	#if we don't have info for relay_s, we keep it unknown, awstats might then guess it
 	
 	# Write line
-	print "$year-$month-$day $time $from $to $relay_s $relay_r SMTP $extinfo $code $size\n";
+	print "$year-$month-$day $time $from $to $relay_s $relay_r SMTP $extinfo $code $size $subject ";
+        if($attachments) { print scalar(@{$attachments})." \"@{$attachments}\"";}
+        else {print "0 -";}
+        print "\n";
 	
 	# If there was a redirect
 	if ($forwardto) {
@@ -300,10 +314,12 @@ while (<>) {
 		$MailType||='postfix';
 		# Example: 
 		# postfix:  Sep  9 18:24:23 halley postfix/local[22003]: 12C6413EC9: to=<etavidian@partenor.com>, relay=local, delay=0, status=bounced (unknown user: "etavidian")
-		my ($mon,$day,$time,$id,$to,$relay_r)=m/(\w+)\s+(\d+)\s+(\d+:\d+:\d+)\s+[\w\-\.\@]+\s+(?:postfix\/(?:local|lmtp|smtpd|smtp|virtual|pipe))\[\d+\]:\s+(.*?):\s+to=([^\s,]*)[\s,]+relay=([^\s,]*)/;
+		# postfix:  Dec 23 09:04:27 halley postfix/smtp[13903]: 00385FD604D: to=<etavidian@partenor.com>, relay=local, delay=0.26, delays=0.15/0/0/0.1, dsn=5.0.0, status=bounced (host local said: 551 mail refused (in reply to end of DATA command))
+		my ($mon,$day,$time,$id,$to,$relay_r,$code)=m/(\w+)\s+(\d+)\s+(\d+:\d+:\d+)\s+[\w\-\.\@]+\s+(?:postfix\/(?:local|lmtp|smtpd|smtp|virtual|pipe))\[\d+\]:\s+(.*?):\s+to=([^\s,]*)[\s,]+relay=([^\s,]*).*said:\s+(\d+)\s+.*/;
 		$mailid=($id eq 'reject'?'999':$id);	# id not provided in log, we take '999'
+		if(!$code) {$code = 999;} # Unkown error (bounced)
 		if ($mailid) {
-			$mail{$mailid}{'code'}=999;	# Unkown error (bounced)
+			$mail{$mailid}{'code'}=$code;
 			$mail{$mailid}{'to'}=&trim($to);
 			$mail{$mailid}{'relay_r'}=&trim($relay_r);
 			$mail{$mailid}{'year'}=$year; ### <CJK>###
@@ -311,7 +327,7 @@ while (<>) {
 			$mail{$mailid}{'day'}=$day;
 			$mail{$mailid}{'time'}=$time;
 			if (! defined($mail{$mailid}{'size'})) { $mail{$mailid}{'size'}='?'; }
-			debug("For id=$mailid, found a postfix bounced incoming message: code=$mail{$mailid}{'code'} to=$mail{$mailid}{'to'} relay_r=$mail{$mailid}{'relay_r'}");
+			debug("For id=$mailid, found a postfix bounced incoming message: code=$mail{$mailid}{'code'} to=$mail{$mailid}{'to'} relay_r=$mail{$mailid}{'relay_r'} code=$mail{$mailid}{'code'}");
 		}
 	}
 	#
@@ -480,6 +496,31 @@ while (<>) {
 	}
 
 	#
+	# Matched sendmail or postfix message header
+	#
+	elsif (/: warning: header (Subject|Content-Disposition):/i) {
+                if (m/header Subject:/) {
+                  # Example: Jan 31 16:22:39 neptun postfix/cleanup[7006]: AD1D945585: warning: header Subject: auauauauauau! from local; from=<who@i.am> to=<some@aol.com>
+                  my ($id,$value)=m/\w+\s+\d+\s+\d+:\d+:\d+\s+[\w\-\.\@]+\s+postfix\/cleanup\[\d+\]:\s+(.*?):\s+warning: header Subject:\s*(.*) from.*;\s+from=[^\s,]*\s+to=[^\s,]*/;
+                  $mailid=$id;
+		  if (! $mail{$id}{'subject'}) { $mail{$id}{'subject'}='"'.$value.'"'; }     # If not already defined, we define it
+                  debug("For id=$id, found a postfix message header: subject=$mail{$id}{'subject'}");
+                } 
+                elsif (m/header Content-Disposition: attachment;/)  {
+		  # Example:
+                  # postfix: Jan 24 11:27:01 appolon postfix/cleanup[8692]: D5EC8FD6056: warning: header Content-Disposition: attachment; filename=attachment.msg from unknown[xx.xx.xx.10]; from=<> to=<jo@jo.com> proto=ESMTP helo=<xxx.com>
+                  # postfix: Jan 31 16:22:39 neptun postfix/cleanup[7006]: AD1D945585: warning: header Content-Disposition: attachment;??filename="attachment.log" from local; from=<who@i.am> to=<omeaol.com>
+                  # postfix: Jan 31 17:33:46 neptun postfix/cleanup[7283]: B83CB45585: warning: header Content-Disposition: attachment;??filename*=iso-8859-1''Some%20crazy%20name%FC%2Epdf from local; from=<jo@jo.com> to=<xxx@yahoo.com>
+                  my ($id,$value)=m/\w+\s+\d+\s+\d+:\d+:\d+\s+[\w\-\.\@]+\s+postfix\/cleanup\[\d+\]:\s+(.*?):\s+warning: header Content-Disposition:\s*(?:attachment|inline);\s*(?:\?*)filename\*?=(?:.*'')?(.*) from.*;\s+from=[^\s,]*\s+to=[^\s,]*/i;
+                  $mailid=$id;
+                  push(@{$mail{$id}{'attachments'}}, CleanFilename($value)); # put the new filename into attachment`s list 
+                  debug("For id=$id, found an attachment header: attachments= @{$mail{$id}{'attachments'}}");
+                }
+                else {
+                  debug("unhandled header: $_");
+                }
+        }
+	#
 	# Matched sendmail or postfix "to" message
 	#
 	elsif (/: to=.*stat(us)?=sent/i) {
@@ -497,12 +538,12 @@ while (<>) {
 		} 
 		###########################################
 		elsif (m/\s*dsn=2.6.0\s*/) {
-            # if the DSN is not 2.0.0, we discard this mail to avoid counting it twice
-            # postfix: Aug 29 19:22:38 example postfix/smtp[1347]: D989FD6C302: to=<webmaster@example.com>, relay=127.0.0.1[127.0.0.1]:10024, delay=2.9, delays=0.31/0.01/0/2.6, dsn=2.6.0, status=sent (250 2.6.0 Ok, id=01182-01, from MTA([127.0.0.1]:10025): 250 2.0.0 Ok: queued as 995DCD6C315)
-            debug("For id=$id, mail DSN is not 2.0.0, we discard it");
-            delete $mail{$id};
-        }
-        ###########################################
+                        # if the DSN is not 2.0.0, we discard this mail to avoid counting it twice
+                        # postfix: Aug 29 19:22:38 example postfix/smtp[1347]: D989FD6C302: to=<webmaster@example.com>, relay=127.0.0.1[127.0.0.1]:10024, delay=2.9, delays=0.31/0.01/0/2.6, dsn=2.6.0, status=sent (250 2.6.0 Ok, id=01182-01, from MTA([127.0.0.1]:10025): 250 2.0.0 Ok: queued as 995DCD6C315)
+                        debug("For id=$id, mail DSN is not 2.0.0, we discard it");
+                        delete $mail{$id};
+                }
+                ###########################################
 		else {
 			if (m/\s+orig_to=([^\s,]*)[\s,]/) {
 				# If we have a orig_to, we used it as receiver
@@ -609,7 +650,7 @@ while (<>) {
 		my $delivery=0;
 		my $canoutput=0;
 		
-		debug("ID:$mailid RELAY_S:".($mail{$mailid}{'relay_s'}||'')." RELAY_R:".($mail{$mailid}{'relay_r'}||'')." FROM:".($mail{$mailid}{'from'}||'')." TO:".($mail{$mailid}{'to'}||'')." CODE:".($mail{$mailid}{'code'}||''));
+		debug("ID:$mailid RELAY_S:".($mail{$mailid}{'relay_s'}||'')." RELAY_R:".($mail{$mailid}{'relay_r'}||'')." FROM:".($mail{$mailid}{'from'}||'')." TO:".($mail{$mailid}{'to'}||'')." SUBJECT:".($mail{$mailid}{'subject'}||'')." ATTACHMENT(s): @{$mail{$mailid}{'attachments'}} CODE:".($mail{$mailid}{'code'}||''));
 
 		# Check if we can output a mail line
 		if ($MailType eq 'qmail') {
@@ -638,7 +679,7 @@ while (<>) {
 
 		# If we can
 		if ($canoutput) {
-			&OutputRecord($mail{$mailid}{'year'}?$mail{$mailid}{'year'}:$year,$mail{$mailid}{'mon'},$mail{$mailid}{'day'},$mail{$mailid}{'time'},$mail{$mailid}{'from'},$to,$mail{$mailid}{'relay_s'},$mail{$mailid}{'relay_r'},$code,$mail{$mailid}{'size'},$mail{$mailid}{'forwardto'},$mail{$mailid}{'extinfo'});
+			&OutputRecord($mail{$mailid}{'year'}?$mail{$mailid}{'year'}:$year,$mail{$mailid}{'mon'},$mail{$mailid}{'day'},$mail{$mailid}{'time'},$mail{$mailid}{'from'},$to,$mail{$mailid}{'relay_s'},$mail{$mailid}{'relay_r'},$code,$mail{$mailid}{'size'},$mail{$mailid}{'forwardto'},$mail{$mailid}{'extinfo'},$mail{$mailid}{'subject'},$mail{$mailid}{'attachments'});
 			# Delete mail with generic unknown id (This id can by used by another mail)
 			if ($mailid eq '999') {
 				debug(" Delete mail for id=$mailid",3);

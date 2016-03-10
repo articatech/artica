@@ -38,6 +38,7 @@ include_once(dirname(__FILE__).'/ressources/class.resolv.conf.inc');
 	if($argv[1]=="--stop"){$GLOBALS["OUTPUT"]=true;stop();die();}
 	if($argv[1]=="--start"){$GLOBALS["OUTPUT"]=true;start();die();}
 	if($argv[1]=="--restart"){$GLOBALS["OUTPUT"]=true;restart();die();}
+	if($argv[1]=="--restart-build"){$GLOBALS["OUTPUT"]=true;restart_build();die();}
 	if($argv[1]=="--reload"){$GLOBALS["OUTPUT"]=true;reload();die();}
 	if($argv[1]=="--force-restart"){$GLOBALS["OUTPUT"]=true;force_restart();die();}
 	if($argv[1]=="--build"){$GLOBALS["OUTPUT"]=true;$GLOBALS["RECONFIGURE"]=true;build();die();}
@@ -361,16 +362,25 @@ function build($OnlySingle=false){
 	$upstream=new nginx_upstream();
 	$upstreams_servers=$upstream->build();
 	
-	
-	
+	$NginxBehindLB=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/NginxBehindLB"));
+	$NginxLBIpaddr=@file_get_contents("/etc/artica-postfix/settings/Daemons/NginxLBIpaddr");
+	if($NginxLBIpaddr==null){$NginxBehindLB=0;}
+	$logf="-";
 
 	$f[]="";
 	$f[]="";
 	$f[]="http {";
 	$f[]="\tinclude /etc/nginx/mime.types;";
 	
+	
+	if($NginxBehindLB==1){
+		$f[]="\tset_real_ip_from   $NginxLBIpaddr;";
+		$f[]="\treal_ip_header      X-Forwarded-For;";
+		$logf="\$http_x_forwarded_for";
+	}
+	
 	$f[]="\tlog_format  awc_log";
-	$f[]="\t\t'[\$server_name] \$remote_addr - \$remote_user [\$time_local] \$request '";
+	$f[]="\t\t'ngx[\$server_name] \$remote_addr $logf \$remote_user [\$time_local] \$request '";
 	$f[]="\t\t'\"\$status\" \$body_bytes_sent \"\$http_referer\" '";
 	$f[]="\t\t'\"\$http_user_agent\" \"\$http_x_forwarded_for\" [\$upstream_cache_status]';";
 	$f[]="";	
@@ -917,6 +927,13 @@ function BuildReverse($ligne,$backupBefore=false){
 	}
 	$ListenPort=$ligne["port"];
 	$SSL=$ligne["ssl"];
+	
+	if($ligne["owa"]==1){
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx, MS Exchange Web site...`\n";}
+		
+		
+	}
+	
 		
 	$certificate=$ligne["certificate"];
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx, protect remote web site `{$ligne["servername"]}:$ListenPort [SSL:$SSL]`\n";}
@@ -1090,7 +1107,7 @@ function build_default($aspid=false){
 	$f[]="server {";
 	$f[]="\tlisten       80;";
 	$f[]="\tserver_name  ".$unix->hostname_g().";";
-	$f[]="\tproxy_cache_key \$host\$request_uri\$cookie_user";
+	$f[]="\tproxy_cache_key \$host\$request_uri\$cookie_user;";
 	$f[]="\tproxy_set_header Host \$host;";
 	$f[]="\tproxy_set_header	X-Forwarded-For	\$proxy_add_x_forwarded_for;";
 	$f[]="\tproxy_set_header	X-Real-IP	\$remote_addr;";
@@ -1366,6 +1383,21 @@ function restart(){
 	
 }
 
+function restart_build(){
+	
+	
+	build_progress_restart("{reconfiguring}",10);
+	build(true);
+	build_progress_restart("{stopping_service}",50);
+	nginx_admin_mysql(1, "Restart reverse-proxy service by Admin [action=info]", null,__FILE__,__LINE__);
+	stop(true);
+	build_progress_restart("{starting_service}",90);
+	if(!start(true)) {
+		build_progress_restart("{starting_service} {failed}",110);
+	}
+	build_progress_restart("{starting_service} {success}",100);
+}
+
 
 function start($aspid=false){
 	$unix=new unix();
@@ -1373,7 +1405,7 @@ function start($aspid=false){
 	$nginx=$unix->find_program("nginx");
 	if(!is_file($nginx)){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx, not installed\n";}
-		return;
+		return false;
 	}
 
 	if(!$aspid){
@@ -1382,7 +1414,7 @@ function start($aspid=false){
 		if($unix->process_exists($pid,basename(__FILE__))){
 			$time=$unix->PROCCESS_TIME_MIN($pid);
 			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx Already Artica task running PID $pid since {$time}mn\n";}
-			return;
+			return false;
 		}
 		@file_put_contents($pidfile, getmypid());
 	}
@@ -1396,7 +1428,7 @@ function start($aspid=false){
 	if($unix->process_exists($pid)){
 		$timepid=$unix->PROCCESS_TIME_MIN($pid);
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx Service already started $pid since {$timepid}Mn...\n";}
-		return;
+		return true;
 	}
 	
 	$php=$unix->LOCATE_PHP5_BIN();
@@ -1420,12 +1452,12 @@ function start($aspid=false){
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx service \"EnableNginx\" = $EnableNginx\n";}
 	if($SquidAllow80Port==1){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx service disabled (SquidAllow80Port)\n";}
-		return;
+		return false;
 	}
 	
 	if($EnableNginx==0){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx service disabled\n";}
-		return;
+		return false;
 	}
 	GHOSTS_PID();
 	@mkdir("/home/nginx/tmp",0755,true);
@@ -1481,8 +1513,9 @@ function start($aspid=false){
 		$php5=$unix->LOCATE_PHP5_BIN();
 		shell_exec("$nohup $php5 /usr/share/artica-postfix/exec.php-fpm.php --start >/dev/null 2>&1 &");
 		shell_exec("$nohup $php /usr/share/artica-postfix/exec.nginx.wizard.php --avail-status --force >/dev/null 2>&1 &");
-		return;
+		return true;
 	}
+	return false;
 	nginx_admin_mysql(0, "Nginx Web service failed to start [action=info]", null,__FILE__,__LINE__);
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Nginx service failed...\n";}
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: $cmd\n";}
@@ -1722,79 +1755,13 @@ function status(){
 	@file_put_contents($pidfile, getmypid());	
 
 	
-	
-	$maindir="/etc/nginx/sites-enabled";
-	foreach (glob("/etc/nginx/sites-enabled/*") as $filename) {
-		$t=explode("\n",@file_get_contents($filename));
-		while (list ($key, $line) = each ($t) ){
-			if(preg_match("#listen\s+(.+?);#", $line,$re)){
-				
-				$array[basename($filename)]["LISTEN"]=$re[1];
-				continue;
-			}
-			if(preg_match("#server_name\s+(.+?);#", $line,$re)){
-				$re[1]=trim($re[1]);
-				if(preg_match("#^(.+?)\s+#", $re[1],$ri)){$re[1]=$ri[1];}
-				$array[basename($filename)]["host"]=$re[1];
-				continue;
-			}			
-			if(preg_match("#ssl\s+on;#", $line,$re)){
-				$array[basename($filename)]["SSL"]=true;
-				continue;
-			}
-			 
-			
-		}
-		
-		
-	}	
-	
-	
-	$curl=$unix->find_program("curl");
-	
-	while (list ($key, $BIG) = each ($array) ){
-		$f=array();
-		if($GLOBALS["VERBOSE"]){echo "{$BIG["host"]}\n";}
-		if(preg_match("#unix:#", $BIG["LISTEN"])){continue;}
-		$proto="http";
-		$f[]="$curl";
-		$f[]="--header 'Host: {$BIG["host"]}'";
-		if(isset($BIG["SSL"])){$f[]="--insecure";$proto="https";}
-		$f[]="$proto://127.0.0.1:{$BIG["LISTEN"]}/nginx_status 2>&1";
-		$cmdline=@implode(" ", $f);
-		if($GLOBALS["VERBOSE"]){echo "$cmdline\n";}
-		$results=array();
-		
-		exec("$cmdline",$results);
-		while (list ($index, $line) = each ($results) ){
-			if(preg_match("#Active connections:\s+([0-9]+)#", $line,$re)){$FINAL[$BIG["host"]]["AC"]=$re[1];continue;}
-			if(preg_match("#([0-9]+)\s+([0-9]+)\s+([0-9]+)#", $line,$re)){
-					$FINAL[$BIG["host"]]["ACCP"]=$re[1];
-					$FINAL[$BIG["host"]]["ACHDL"]=$re[2];
-					$FINAL[$BIG["host"]]["ACRAQS"]=$re[3];
-					continue;}
-					
-			if(preg_match("#Reading: ([0-9]+) Writing: ([0-9]+) Waiting: ([0-9]+)#", $line,$re)){
-				$FINAL[$BIG["host"]]["reading"]=$re[1];
-				$FINAL[$BIG["host"]]["writing"]=$re[2];
-				$FINAL[$BIG["host"]]["waiting"]=$re[3];
-			continue;}
-			
-			
-		}
-
-		
-		
-		
-	}
-	if($GLOBALS["VERBOSE"]){print_r($FINAL)."\n";}
 	caches_status();
 	
 	
 	
 	@unlink($pidTime);
 	@mkdir("/usr/share/artica-postfix/ressources/logs/web",0777,true);
-	@file_put_contents($pidTime, serialize($FINAL));
+	@file_put_contents($pidTime, time());
 	@chmod($pidTime,0777);
 	rotate();
 	
@@ -2412,6 +2379,38 @@ function import_bulk(){
 	
 	echo "$SUCCESS Imported sites, $FAILED failed\n";
 	
+}
+function build_progress_restart($text,$pourc){
+	$filename=basename(__FILE__);
+
+	if(function_exists("debug_backtrace")){
+		$trace=debug_backtrace();
+
+		if(isset($trace[0])){
+			$file=basename($trace[0]["file"]);
+			$function=$trace[0]["function"];
+			$line=$trace[0]["line"];
+		}
+
+		if(isset($trace[1])){
+			$file=basename($trace[1]["file"]);
+			$function=$trace[1]["function"];
+			$line=$trace[1]["line"];
+		}
+
+
+
+	}
+
+
+	echo "[{$pourc}%] $filename $text ( $function Line $line)\n";
+	$cachefile="/usr/share/artica-postfix/ressources/logs/nginx.restart.progress";
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	@file_put_contents($cachefile, serialize($array));
+	@chmod($cachefile,0755);
+	if($GLOBALS["OUTPUT"]){usleep(5000);}
+
 }
 function build_progress($text,$pourc){
 	$filename=basename(__FILE__);

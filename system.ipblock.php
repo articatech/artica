@@ -18,17 +18,8 @@
 	if(isset($_POST["cn"])){SaveIpChecks();exit;}
 	if(isset($_GET["show"])){show();exit;}
 	
-js();
+popup();
 
-
-
-function js(){
-	$page=CurrentPageName();
-	$tpl=new templates();
-	echo $tpl->_ENGINE_parse_body("YahooWin3('540','$page?popup=yes','{block_countries}');");
-	
-	
-}
 
 function list_threads_perform(){
 	$se=$_GET["se"];
@@ -85,8 +76,8 @@ $('#table-$t').flexigrid({
 	url: '$page?ipchecks-list=yes&t=$t',
 	dataType: 'json',
 	colModel : [
-		{display: '$countries', name : 'countries', width :369, sortable : false, align: 'left'},
-		{display: '$enable', name : 'disable', width :51, sortable : true, align: 'center'},
+		{display: '<span style=font-size:20px>$countries</span>', name : 'countries', width :850, sortable : false, align: 'left'},
+		{display: '<span style=font-size:20px>$enable</span>', name : 'disable', width :120, sortable : true, align: 'center'},
 		
 		
 	],
@@ -99,12 +90,12 @@ $('#table-$t').flexigrid({
 	sortname: 'saved_date',
 	sortorder: 'desc',
 	usepager: true,
-	title: '',
+	title: '<span style=font-size:30px>$countries</span>',
 	useRp: false,
 	rp: 15,
 	showTableToggleBtn: false,
-	width: 467,
-	height: 350,
+	width: '99%',
+	height: 550,
 	singleSelect: true
 	
 	});   
@@ -211,7 +202,8 @@ if($_POST["query"]<>null){
 			if(!preg_match("#$pattern#",$ligne)){continue;}
 		}
 		$c++;
-		$href="<a href=\"javascript:blur();\" OnClick=\"ShowBlockIPList('$num','{$list[$num]}');\" style='font-size:14px;text-decoration:underline'>";
+		$href="<a href=\"javascript:blur();\" 
+		OnClick=\"ShowBlockIPList('$num','{$list[$num]}');\" style='font-size:24px;text-decoration:underline'>";
 		
 		$data['rows'][] = array(
 				'id' => $id,
@@ -237,18 +229,12 @@ function popup(){
 
 	
 	while (list ($num, $ligne) = each ($array) ){
-		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes\"><span style='font-size:14px'>$ligne</span></a></li>\n");
+		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes\"><span style='font-size:26px'>$ligne</span></a></li>\n");
 	}
 	
 	
-	echo  "
-	<div id=main_config_ipblocks style='width:100%;height:550px;overflow:auto'>
-		<ul>". implode("\n",$html)."</ul>
-	</div>
-		<script>
-		  $(document).ready(function() {
-			$(\"#main_config_ipblocks\").tabs();});
-		</script>";		
+	echo build_artica_tabs($html, "main_config_ipblocks",1490);
+
 	
 	
 }
@@ -257,22 +243,23 @@ function enable_form(){
 	$page=CurrentPageName();
 	$tpl=new templates();
 	$sock=new sockets();
-	$EnableIpBlocks=$sock->GET_INFO("EnableIpBlocks");
-	$p=Paragraphe_switch_img("{enable_ipblocks}","{ipblocks_text}","EnableIpBlocks",
-	$EnableIpBlocks,null,350);
+	$EnableIpBlocks=intval($sock->GET_INFO("EnableIpBlocks"));
+	$p=Paragraphe_switch_img("{enable_ipblocks}","{ipblocks_explain}<br>{ipblocks_text}","EnableIpBlocks",
+	$EnableIpBlocks,null,1450);
 	
 	$html="
-	<div class=explain style='font-size:14px',>{ipblocks_explain}</div>
-	<div id='EnableIpBlocksDiv' class=form style='width:95%'>
+	
+	<div id='EnableIpBlocksDiv' class=form style='width:98%'>
 		$p
 	
-	<div style='text-align:right'><hr>". button("{apply}","SaveEnableIpBlocks()",16)."</div>
+	<div style='text-align:right'><hr>". button("{apply}","SaveEnableIpBlocks()",45)."</div>
 	
 	</div>
 	<script>
 	function x_SaveEnableIpBlocks(obj) {
 		var tempvalue=obj.responseText;
 		if(tempvalue.length>3){alert(tempvalue);}
+		Loadjs('firehol.progress.php');
 		RefreshTab('main_config_ipblocks');
 	}	
 	
@@ -280,7 +267,6 @@ function enable_form(){
 	function SaveEnableIpBlocks(){
 	    var XHR = new XHRConnection();
 		XHR.appendData('EnableIpBlocks',document.getElementById('EnableIpBlocks').value);
-		AnimateDiv('EnableIpBlocksDiv');
 		XHR.sendAndLoad('$page', 'GET',x_SaveEnableIpBlocks);
 	}
 	</script>

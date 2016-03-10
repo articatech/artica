@@ -29,19 +29,33 @@ function page(){
 	$page=CurrentPageName();
 	$tpl=new templates();	
 	$sock=new sockets();
-	$EnableHaProxy=$sock->GET_INFO("EnableHaProxy");
-	if(!is_numeric($EnableHaProxy)){$EnableHaProxy=1;}
+	$EnableHaProxy=intval($sock->GET_INFO("EnableHaProxy"));
+	
+	if($EnableHaProxy==1){
+		$q=new mysql();
+		$sql="SELECT count(*) as tcount FROM haproxy WHERE enabled=1";
+		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
+		if(intval($ligne["tcount"])==0){
+			$ERR="<p class=text-error style='font-size:22px'>{HAPROXY_NOBACKENDS_DEFINED}</p>";
+			
+		}
+	}
+	
+	
 	$DenyHaproxyConf=intval($sock->GET_INFO("DenyHaproxyConf"));
 	$t=time();
 	$html="<table style='width:100%'>
 	<tr>
 		<td style='vertical-align:top;width:30%'><div id='haproxy-status'></div></td>
 		<td style='vertical-align:top;width:70%;padding-left:15px'>
-			<div style='font-size:26px;margin-bottom:20px'>{load_balancing}</div>
-			". Paragraphe_switch_img("{EnableHaProxy}", "{EnableHaProxy_text}","EnableHaProxy-$t",$EnableHaProxy,null,650)."<br>
-			". Paragraphe_switch_img("{DenyHaproxyConf}", "{DenyHaproxyConf_text}","DenyHaproxyConf-$t",$DenyHaproxyConf,null,650)."<br>
+			<div style='font-size:40px;margin-bottom:40px'>{load_balancing}</div>
+			$ERR
+			<div style='width:98%' class=form>
+			". Paragraphe_switch_img("{EnableHaProxy}", "{EnableHaProxy_text}","EnableHaProxy-$t",$EnableHaProxy,null,1010)."<br>
+			". Paragraphe_switch_img("{DenyHaproxyConf}", "{DenyHaproxyConf_text}","DenyHaproxyConf-$t",$DenyHaproxyConf,null,1010)."<br>
 			
-			<div style='width:100%;text-align:right'><hr>". button("{apply}","Save$t()",26)."</div>
+			<div style='width:100%;text-align:right'><hr>". button("{apply}","Save$t()",44)."</div>
+			</div>
 			</td>
 	</tr>
 	</table>
@@ -51,7 +65,8 @@ function page(){
 		var results=obj.responseText;
 		if(results.length>3){alert(results);}
 		UnlockPage();
-		if(document.getElementById('main_config_haproxy')){RefreshTab('main_config_haproxy');}
+		Loadjs('haproxy.progress.php');
+		
 	}
 	function Save$t(){
 		LockPage();

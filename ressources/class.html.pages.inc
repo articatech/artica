@@ -289,7 +289,7 @@ Class HtmlPages{
 	}
 	
 	function PagePostfixLogs(){
-	
+	include_once(dirname(__FILE__)."/class.status.logs.inc");
 	$sock=new sockets();
 	$datas=$sock->getfile('maillog:postfix');
 	$datas=htmlentities($datas);

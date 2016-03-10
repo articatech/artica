@@ -274,8 +274,7 @@ class Net_DNS2_Socket_Sockets extends Net_DNS2_Socket
             return false;
 
         } else if ($result == 0) {
-
-            $this->last_error = 'timeout on read select()';
+            $this->last_error = "timeout max:{$this->timeout}s on read select()";
             return false;
         }
 

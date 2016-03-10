@@ -643,18 +643,13 @@ function mimes_import(){
 function bodies_import(){
 	
 	$prefix="INSERT IGNORE INTO postfix_regex_checks (pcre,action,pattern,flags,hostname,headers) VALUES ";
-	
-$f[]=array("REJECT","^TV[nopqr]....[AB]..A.A....*AAAA...*AAAA","EXE files denied");
-$f[]=array("REJECT","^M35[GHIJK].`..`..*````","EXE files denied");
-$f[]=array("REJECT","^TV[nopqr]....[AB]..A.A","EXE files denied");
-$f[]=array("REJECT","^M35[GHIJK].`..`..*````","EXE files denied");
-$f[]=array("DUNNO","^[A-Za-z0-9+\/=]{4,76}$","");
-$f[]=array("DUNNO","^ {6,11}\d{1,6}[ km]","");
-$f[]=array("DUNNO","^ {4}blocked using ","");
-$f[]=array("REJECT","^begin\s+\d+\s+.+?\.(386|ad[ept]|app|as[dpx]|ba[st]|bin|btm|cab|cb[lt]|cgi|chm|cil|cla(ss)?|cmd|com|cp[el]|crt|cs[chs]|cvp|dll|dot|drv|em(ai)?l|ex[_e]|fon|fxp|hlp|ht[ar]|in[fips]|isp|jar|jse?|keyreg|ksh|lib|lnk|md[abetw]|mht(m|ml)?|mp3|ms[ciopt]|nte|nws|obj|ocx|ops|ov.|pcd|pgm|pif|p[lm]|pot|pps|prg|reg|sc[rt]|sh[bs]?|slb|smm|sw[ft]|sys|url|vb[esx]?|vir|vmx|vxd|wm[dsz]|ws[cfh]|xl.|xms|\{[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\})\b","\".$1\" filetype not allowed");
-$f[]=array("REJECT","<\s*(object\s+data)\s*=","Email with \"$1\" tags not allowed");
-$f[]=array("REJECT","<\s*(script\s+language\s*=\"vbs\")","Email with \"$1\" tags not allowed");
-$f[]=array("REJECT","<\s*(script\s+language\s*=\"VBScript\.Encode\")","Email with \"$1\" tags not allowed");
+	$f[]=array("DUNNO","^[A-Za-z0-9+\/=]{4,76}$","");
+	$f[]=array("DUNNO","^ {6,11}\d{1,6}[ km]","");
+	$f[]=array("DUNNO","^ {4}blocked using ","");
+	$f[]=array("REJECT","^begin\s+\d+\s+.+?\.(386|ad[ept]|app|as[dpx]|ba[st]|bin|btm|cab|cb[lt]|cgi|chm|cil|cla(ss)?|cmd|com|cp[el]|crt|cs[chs]|cvp|dll|dot|drv|em(ai)?l|ex[_e]|fon|fxp|hlp|ht[ar]|in[fips]|isp|jar|jse?|keyreg|ksh|lib|lnk|md[abetw]|mht(m|ml)?|mp3|ms[ciopt]|nte|nws|obj|ocx|ops|ov.|pcd|pgm|pif|p[lm]|pot|pps|prg|reg|sc[rt]|sh[bs]?|slb|smm|sw[ft]|sys|url|vb[esx]?|vir|vmx|vxd|wm[dsz]|ws[cfh]|xl.|xms|\{[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}\})\b","\".$1\" filetype not allowed");
+	$f[]=array("REJECT","<\s*(object\s+data)\s*=","Email with \"$1\" tags not allowed");
+	$f[]=array("REJECT","<\s*(script\s+language\s*=\"vbs\")","Email with \"$1\" tags not allowed");
+	$f[]=array("REJECT","<\s*(script\s+language\s*=\"VBScript\.Encode\")","Email with \"$1\" tags not allowed");
 
 	while (list ($num, $lin) = each ($f) ){
 		while (list ($a, $b) = each ($lin) ){$lin[$a]=addslashes($b);}

@@ -6,12 +6,7 @@
 	include_once('ressources/class.ldap.inc');
 	include_once('ressources/class.users.menus.inc');
 
-	$user=new usersMenus();
-	if($user->AsPostfixAdministrator==false){
-		$tpl=new templates();
-		echo "alert('". $tpl->javascript_parse_text("{ERROR_NO_PRIVS}")."');";
-		die();exit();
-	}
+
 
 	if(isset($_GET["disclaimer"])){disclaimer();exit;}
 	if(isset($_GET["items-rules"])){items();exit;}
@@ -46,24 +41,24 @@ function popup(){
 	$online_help=$tpl->_ENGINE_parse_body("{online_help}");
 	$buttons="
 	buttons : [
-	{name: '$new_entry', bclass: 'Add', onpress : NewGItem$t},
-	{name: '$compile_rules', bclass: 'Reconf', onpress : MimeDefangCompileRules},
-	{name: '$online_help', bclass: 'Help', onpress : ItemHelp$t},
+	{name: '<strong style=font-size:18px>$new_entry</strong>', bclass: 'Add', onpress : NewGItem$t},
+	
+	
 	],	";
 	
 	
 	$html="
-	<table class='flexRT$t' style='display: none' id='flexRT$t' style='width:99%'></table>
+	<table class='DISCLAIMERS_RULES_TABLE' style='display: none' id='DISCLAIMERS_RULES_TABLE' style='width:99%'></table>
 <script>
 var mem$t='';
 $(document).ready(function(){
-$('#flexRT$t').flexigrid({
+$('#DISCLAIMERS_RULES_TABLE').flexigrid({
 	url: '$page?items-rules=yes&t=$t',
 	dataType: 'json',
 	colModel : [	
-		{display: '$from', name : 'mailfrom', width :361, sortable : true, align: 'left'},
-		{display: '$to', name : 'mailto', width :361, sortable : false, align: 'left'},
-		{display: '&nbsp;', name : 'action', width :31, sortable : false, align: 'center'},
+		{display: '<span style=font-size:18px>$from</span>', name : 'mailfrom', width :600, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$to</span>', name : 'mailto', width :600, sortable : false, align: 'left'},
+		{display: '&nbsp;', name : 'action', width :80, sortable : false, align: 'center'},
 
 	],
 	$buttons
@@ -76,12 +71,12 @@ $('#flexRT$t').flexigrid({
 	sortname: 'mailfrom',
 	sortorder: 'asc',
 	usepager: true,
-	title: '$title',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
-	width: $TB_WIDTH,
-	height: $TB_HEIGHT,
+	width: '99%',
+	height: 550,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200,500]
 	
@@ -96,15 +91,15 @@ function ItemHelp$t(){
 var x_NewGItem$t=function(obj){
 	var tempvalue=obj.responseText;
     if(tempvalue.length>3){alert(tempvalue);}
-    $('#flexRT$t').flexReload();
+    $('#DISCLAIMERS_RULES_TABLE').flexReload();
 }
 
 function NewGItem$t(){
-	YahooWin('650','$page?disclaimer=&t=$t','$new_entry');
+	YahooWin('900','$page?disclaimer=&t=$t','$new_entry');
 	
 }
 function GItem$t(zmd5,ttile){
-	YahooWin('650','$page?disclaimer='+zmd5+'&t=$t',ttile);
+	YahooWin('900','$page?disclaimer='+zmd5+'&t=$t',ttile);
 	
 }
 
@@ -154,6 +149,24 @@ function items(){
 	$page=1;
 	$FORCE_FILTER="";
 	
+	if(!$users->AsPostfixAdministrator){
+		if($users->AsMessagingOrg){
+			$ldap=new clladp();
+			$domains=$ldap->hash_get_domains_ou($_SESSION["ou"]);
+				
+			while (list ($domain,$MAIN) = each ($domains) ){
+				$domain=trim(strtolower($domain));
+				if($domain==null){continue;}
+				$FDOMS[]="mailto LIKE '%$domain'";
+				$FDOMS2[]="mailfrom LIKE '%$domain'";
+			}
+			$imploded1=@implode(" OR ", $FDOMS);
+			$imploded2=@implode(" OR ", $FDOMS2);
+			$table="(select * FROM mimedefang_disclaimer WHERE ($imploded1) OR ($imploded2)) as t";
+		}
+	
+	}
+	
 
 	if(isset($_POST["sortname"])){if($_POST["sortname"]<>null){$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";}}	
 	if(isset($_POST['page'])) {$page = $_POST['page'];}
@@ -187,23 +200,24 @@ function items(){
 	$data['rows'] = array();
 	
 	if(!$q->ok){json_error_show($q->mysql_error);}	
-	
+	if(mysql_num_rows($results)==0){json_error_show("no rule");}
 	while ($ligne = mysql_fetch_assoc($results)) {
 	$zmd5=$ligne["zmd5"];
 
-	
+	$color="black";
 	$delete=imgsimple("delete-24.png","","DeleteDisclaimer$t('$zmd5')");
 	
 	$urljs="<a href=\"javascript:blur();\" OnClick=\"javascript:GItem$t('$zmd5','{$ligne["mailfrom"]}&nbsp;&raquo;&nbsp;{$ligne["mailto"]}');\"
-	style='font-size:16px;color:$color;text-decoration:underline'>";
+	style='font-size:22px;color:$color;text-decoration:underline'>";
 	
 	
 	$data['rows'][] = array(
+			
 		'id' => "$zmd5",
 		'cell' => array(
-			"<span style='font-size:16px;color:$color'>$urljs{$ligne["mailfrom"]}</a></span>",
-			"<span style='font-size:18px;color:$color'>$urljs{$ligne["mailto"]}</a></span>",
-			"<span style='font-size:16px;color:$color'>$delete</a></span>",
+			"<span style='font-size:22px;color:$color'>$urljs{$ligne["mailfrom"]}</a></span>",
+			"<span style='font-size:22px;color:$color'>$urljs{$ligne["mailto"]}</a></span>",
+			"<center style='font-size:16px;color:$color'>$delete</a></center>",
 			)
 		);
 	}
@@ -233,7 +247,7 @@ function disclaimer(){
 	while (list ($num, $ligne) = each ($array) ){
 
 		
-		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&zmd5=$zmd5&t=$t\"><span style='font-size:14px'>$ligne</span></a></li>\n");
+		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&zmd5=$zmd5&t=$t\"><span style='font-size:18px'>$ligne</span></a></li>\n");
 	}
 	
 	
@@ -241,17 +255,8 @@ function disclaimer(){
 	$height="600px";
 	$width="100%";$height="100%";
 	
-	echo "
-	<div id=main_config_mimedefang_discl style='width:{$width};height:{$height};overflow:auto'>
-		<ul>". implode("\n",$html)."</ul>
-	</div>
-		<script>
-				$(document).ready(function(){
-					$('#main_config_mimedefang_discl').tabs();
-			
-			
-			});
-		</script>";		
+	echo build_artica_tabs($html, "main_config_mimedefang_discl");
+
 }
 
 function disclaimer_rule(){
@@ -259,7 +264,7 @@ function disclaimer_rule(){
 	$tpl=new templates();
 	$page=CurrentPageName();
 	$q=new mysql();
-	$btname=button("{add}","Addisclaimer$t();","18px");
+	$btname=button("{add}","Addisclaimer$t();","32px");
 	$zmd5=$_GET["zmd5"];
 	
 	if($zmd5<>null){
@@ -270,52 +275,53 @@ function disclaimer_rule(){
 	
 	
 	$html="
-	<div id='$t-adddis'></div>
-	 <table style='width:99%' class=form>
+	<div style='font-size:18px;margin:20px' class=explain>{mimedefang_email_explain}</div>
+	 <table style='width:98%' class=form>
 	 <tr>
-	 	<td class=legend style='font-size:16px'>{sender}:</td>
-	 	<td>". Field_text("mailfrom-$t",$ligne["mailfrom"],"font-size:16px;width:310px")."</td>
+	 	<td class=legend style='font-size:22px'>{sender}:</td>
+	 	<td>". Field_text("mailfrom-$t",$ligne["mailfrom"],"font-size:22px;width:90%")."</td>
 	 </tr>
 	 <tr>
-	 	<td class=legend style='font-size:16px'>{recipient}:</td>
-	 	<td>". Field_text("mailto-$t",$ligne["mailto"],"font-size:16px;width:310px",null,null,null,false,"AddisclaimerC$t(event)")."</td>
+	 	<td class=legend style='font-size:22px'>{recipient}:</td>
+	 	<td>". Field_text("mailto-$t",$ligne["mailto"],"font-size:22px;width:90%",null,null,null,false,"AddisclaimerC$t(event)")."</td>
 	 </tr>	
 	<tr>
 		<td colspan=2 align='right'><hr>$btname</td>
 	</tr>
 	</table>
 	<script>
-		var x_Addisclaimer$t= function (obj) {
-			var tempvalue=obj.responseText;
-			if(tempvalue.length>3){alert(tempvalue)};
-			document.getElementById('$t-adddis').innerHTML='';
-			$('#flexRT$t').flexReload();
-			YahooWinHide();
-		}		
+var x_Addisclaimer$t= function (obj) {
+	var tempvalue=obj.responseText;
+	if(tempvalue.length>3){alert(tempvalue)};
+	$('#DISCLAIMERS_RULES_TABLE').flexReload();
+	var zmd5='$zmd5';
+	if(zmd5.length==0){
+		YahooWinHide();
+	}
+}		
 
-		function AddisclaimerC$t(e){
-			if(checkEnter(e)){Addisclaimer$t();}
-		}
+function AddisclaimerC$t(e){
+	if(checkEnter(e)){Addisclaimer$t();}
+}
 	
-		function Addisclaimer$t(){
-		var XHR = new XHRConnection();  
-		  XHR.appendData('zmd5','$zmd5');
-	      XHR.appendData('mailfrom',document.getElementById('mailfrom-$t').value);
-	      XHR.appendData('mailto',document.getElementById('mailto-$t').value);
-		  AnimateDiv('$t-adddis');
-		  XHR.sendAndLoad('$page', 'POST',x_Addisclaimer$t);
-		}
+function Addisclaimer$t(){
+	var XHR = new XHRConnection();  
+	XHR.appendData('zmd5','$zmd5');
+	XHR.appendData('mailfrom',document.getElementById('mailfrom-$t').value);
+	XHR.appendData('mailto',document.getElementById('mailto-$t').value);
+	XHR.sendAndLoad('$page', 'POST',x_Addisclaimer$t);
+}
 		
-		function AddisclaimerCheck$t(){
-			var zmd5='$zmd5';
-			if(zmd5.length>5){
-				document.getElementById('mailfrom-$t').disabled=true;
-				document.getElementById('mailto-$t').disabled=true;
-			}
-		}
+function AddisclaimerCheck$t(){
+	var zmd5='$zmd5';
+	if(zmd5.length>5){
+		document.getElementById('mailfrom-$t').disabled=true;
+		document.getElementById('mailto-$t').disabled=true;
+	}
+}
 	
-	AddisclaimerCheck$t();
-	</script>";
+AddisclaimerCheck$t();
+</script>";
 	echo $tpl->_ENGINE_parse_body($html);
 	
 }
@@ -361,7 +367,7 @@ function disclaimer_text(){
 	}
 
 	$html="
-		<div class=explain style='font-size:14px'>{put_text_content_here}</div>
+		<div style='font-size:22px'>{put_text_content_here}</div>
 	<div id='$t-adddis'></div>
 	<table style='width:99%;' class=form>
 	<tr>
@@ -369,11 +375,11 @@ function disclaimer_text(){
 		<textarea 
 			style='margin-top:5px;font-family:Courier New;font-weight:bold;
 			width:100%;height:450px;border:5px solid #8E8E8E;overflow:auto;
-			font-size:14px' id='textcontent$t'>{$ligne["textcontent"]}</textarea>
+			font-size:18px !important' id='textcontent$t'>{$ligne["textcontent"]}</textarea>
 		</td>
 	</tr>
 	<tr>
-		<td align='right'><hr>". button("{apply}", "SaveDiclaimerText$t()","18px")."</td>
+		<td align='right'><hr>". button("{apply}", "SaveDiclaimerText$t()","30")."</td>
 	</tr>
 	</table>
 	<script>
@@ -413,25 +419,23 @@ function disclaimer_html(){
 	}
 
 	$html="
-	<div id='$tt-adddis'></div>
-	<div class=explain style='font-size:14px'>{put_html_code_here}</div>
+	<div style='font-size:22px'>{put_html_code_here}</div>
 
 	<table style='width:99%;' class=form>
 	<tr>
 		<td><textarea 
 			style='margin-top:5px;font-family:Courier New;font-weight:bold;
 			width:100%;height:450px;border:5px solid #8E8E8E;overflow:auto;
-			font-size:14px' id='textcontent$tt'>{$ligne["htmlcontent"]}</textarea></td>
+			font-size:18px !important' id='textcontent$tt'>{$ligne["htmlcontent"]}</textarea></td>
 	</tr>
 	<tr>
-		<td align='right'><hr>". button("{apply}", "SaveDiclaimerText$tt()","18px")."</td>
+		<td align='right'><hr>". button("{apply}", "SaveDiclaimerText$tt()","30")."</td>
 	</tr>
 	</table>
 	<script>
 		var x_SaveDiclaimerText$tt= function (obj) {
 			var tempvalue=obj.responseText;
 			if(tempvalue.length>3){alert(tempvalue)};
-			document.getElementById('$tt-adddis').innerHTML='';
 			RefreshTab('main_config_mimedefang_discl');
 		}		
 	
@@ -439,7 +443,6 @@ function disclaimer_html(){
 		var XHR = new XHRConnection();  
 		  XHR.appendData('zmd5','$zmd5');
 	      XHR.appendData('htmlcontent',document.getElementById('textcontent$tt').value);
-		  AnimateDiv('$tt-adddis');
 		  XHR.sendAndLoad('$page', 'POST',x_SaveDiclaimerText$tt);
 		}	
 	</script>";

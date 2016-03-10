@@ -34,7 +34,7 @@ if($EnablePostfixMultiInstance==0){
 	if($argv[1]=="--stop-single"){$GLOBALS["OUTPUT"]=true;SingleInstance_stop();die();}
 	if($argv[1]=="--restart-single"){$GLOBALS["OUTPUT"]=true;SingleInstance_restart();die();}
 	if($argv[1]=="--reload-single"){$GLOBALS["OUTPUT"]=true;SingleInstance_reload();die();}
-	
+	if($argv[1]=="--AutoWhiteList"){SingleInstance_whitelist();die();}
 }
 
 parsecmdlines($argv);
@@ -154,6 +154,33 @@ function SingleInstance_restart(){
 	SingleInstance_start(true);
 	
 }
+
+
+
+function SingleInstance_whitelist(){
+	$sock=new sockets();
+	$timefile="/etc/artica-postfix/pids/exec.milter-greylist.php.SingleInstance_whitelist.pid";
+	$MimeDefangEnabled=intval($sock->GET_INFO('MimeDefangEnabled'));
+	$MimeDefangAutoWhiteList=intval($sock->GET_INFO("MimeDefangAutoWhiteList"));
+	$MilterGreyListEnabled=intval($sock->GET_INFO("MilterGreyListEnabled"));
+	if($MimeDefangEnabled==0){$MimeDefangAutoWhiteList=0;}
+	if($MimeDefangAutoWhiteList==0){return;}
+	if($MilterGreyListEnabled==0){return;}
+	
+	$unix=new unix();
+	$timeExec=$unix->file_time_min($timefile);
+	if($timeExec<10){return;}
+	@unlink($timefile);
+	@file_put_contents($timefile, time());
+	$q=new mysql();
+	$LastCount=intval($sock->GET_INFO('MimeDefangAutoWhiteListGreyCount'));
+	$NeWCount=$q->COUNT_ROWS("autowhite", "artica_backup");
+	if($LastCount==$NeWCount){return;}
+	SingleInstance_reload();
+	
+}
+
+
 function SingleInstance_reload(){
 	$unix=new unix();
 	SingleInstance();
@@ -769,7 +796,6 @@ if(count($sql)>0){
 				$array["GREYLISTED"]=$re[2];
 				$array["WHITELISTED"]=$re[3];
 				$array["TARPITED"]=$re[4];
-				if($GLOBALS["VERBOSE"]){print_r($array);}
 				@file_put_contents("/usr/share/artica-postfix/ressources/logs/greylist-count-$hostname.tot", serialize($array));
 				shell_exec("$chmod 755 /usr/share/artica-postfix/ressources/logs/greylist-count-$hostname.tot");
 			}else{

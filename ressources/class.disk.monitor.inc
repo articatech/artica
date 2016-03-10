@@ -11,6 +11,7 @@ class disk_monitor{
 	
 	
 	public function Scan(){
+		if(!is_array($this->HardDisksWatchDog)){return;}
 		if(count($this->HardDisksWatchDog)==0){return;}
 		while (list ($dev, $ligne) = each ($this->HardDisksWatchDog) ){
 			

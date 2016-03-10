@@ -351,7 +351,7 @@ function WebCopyIDDirectory($ID){
 
 function TransFormToHtml($file){
 	if(!is_file($file)){return false;}
-	$original_file=trim(file_get_contents("$file"));
+	$original_file=trim(@file_get_contents("$file"));
 	
  $attachmentdir=dirname($file);
  $fullmessagesdir=dirname($file);

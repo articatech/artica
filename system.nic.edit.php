@@ -113,7 +113,7 @@ function flus_arp_cache_popup(){
 	$nic=$_GET["nic"];
 	$datas=unserialize(base64_decode($sock->getFrameWork("network.php?flush-arp-cache=$nic")));
 	echo "<textarea style='margin-top:5px;font-family:Courier New;
-	font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+	font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 	overflow:auto;font-size:11px' id='textToParseCats-$t'>".@implode("\n", $datas)."</textarea>";
 }
 
@@ -177,11 +177,11 @@ function tabs(){
 		$array["ipconfig-v6"]='ipV6';
 	}
 	//$array["ipconfig-routes"]='{routes}';
-	$array["ipconfig-routage"]='{routing}';
+	//$array["ipconfig-routage"]='{routing}';
 	
 
 	
-	//$array["ipconfig-qos"]='{Q.O.S}';
+	$array["ipconfig-qos"]='{Q.O.S}';
 	$array["ipconfig-tools"]='{tools}';
 	
 	//ip neigh flush dev eth0
@@ -198,6 +198,11 @@ function tabs(){
 			$html[]= "<li><a href=\"firehol.nic.services.php?nic=$nic\"><span style='font-size:20px'>$ligne</span></a></li>\n";
 			continue;
 		}
+		
+		if($num=="ipconfig-qos"){
+			$html[]= "<li><a href=\"system.nic.qos.php?nic=$nic\"><span style='font-size:20px'>$ligne</span></a></li>\n";
+			continue;
+		}		
 		
 		$html[]= "<li><a href=\"$page?$num=yes&nic=$nic&button={$_GET["button"]}&noreboot={$_GET["noreboot"]}\"><span style='font-size:20px'>$ligne</span></a></li>\n";
 	}
@@ -503,8 +508,8 @@ function ipconfig_nic(){
 			<td width=1%>" . Field_checkbox_design('dhcp',1,$nic->dhcp,'SwitchDHCP()')."</td>
 		</tr>
 		<tr>
-			<td class=legend style='font-size:22px'>{enable_ids}:</td>
-			<td width=1%>" . Field_checkbox_design('UseSnort',1,$snortInterfaces[$eth],'SwitchSnort()')."</td>
+			<td class=legend style='font-size:22px'>". texttooltip("{free_mode}","{free_mode_if_explain}").":</td>
+			<td width=1%>" . Field_checkbox_design('UseSPAN',1,$nic->UseSPAN,'SwitchUseSPAN()')."</td>
 		</tr>
 	</table>
 	
@@ -583,6 +588,9 @@ function ipconfig_nic(){
 			var DisableNetworksManagement=$DisableNetworksManagement;
 			if(DisableNetworksManagement==1){alert('$ERROR_NO_PRIVS');return;}
 			if(document.getElementById('dhcp').checked){XHR.appendData('dhcp','1');}else{XHR.appendData('dhcp','0');}
+			if(document.getElementById('UseSPAN').checked){XHR.appendData('UseSPAN','1');}else{XHR.appendData('UseSPAN','0');}
+			
+			
 			if(document.getElementById('enabled').checked){XHR.appendData('enabled','1');}else{XHR.appendData('enabled','0');}
 			if(document.getElementById('defaultroute-$t').checked){XHR.appendData('defaultroute','1');}else{XHR.appendData('defaultroute','0');}
 			XHR.appendData('NICNAME',encodeURIComponent(document.getElementById('NICNAME-$t').value));
@@ -663,17 +671,20 @@ function ipconfig_nic(){
 			if(document.getElementById('DNS_1')){document.getElementById('DNS_1').disabled=true;}
 			if(document.getElementById('DNS_2')){document.getElementById('DNS_2').disabled=true;}
 			document.getElementById('save_nic').disabled=true;
+			document.getElementById('UseSPAN').disabled=true;
 			if(DisableNetworksManagement==1){return;}
 			document.getElementById('dhcp').disabled=false;
 			document.getElementById('IPADDR').disabled=false;
 			document.getElementById('NETMASK').disabled=false;
 			document.getElementById('GATEWAY').disabled=false;
 			document.getElementById('mtu-$t').disabled=false;
+			document.getElementById('UseSPAN').disabled=false;
 			if(document.getElementById('DNS_1')){document.getElementById('DNS_1').disabled=false;}
 			if(document.getElementById('DNS_2')){document.getElementById('DNS_2').disabled=false;}
 			document.getElementById('save_nic').disabled=false;	
 			if(document.getElementById('zlistnic-info-$eth')){LoadAjax('zlistnic-info-$eth','system.nic.config.php?nic-builder=$eth');}
-			SwitchDHCP();		
+			SwitchDHCP();	
+			SwitchUseSPAN();	
 		
 		}
 		
@@ -683,6 +694,7 @@ function ipconfig_nic(){
 		document.getElementById('GATEWAY').disabled=true;
 		document.getElementById('BROADCAST').disabled=true;
 		document.getElementById('mtu-$t').disabled=true;
+		document.getElementById('UseSPAN').disabled=true;
 		if(document.getElementById('DNS_1')){document.getElementById('DNS_1').disabled=true;}
 		if(document.getElementById('DNS_2')){document.getElementById('DNS_2').disabled=true;}
 		document.getElementById('dhcp').disabled=true;
@@ -691,6 +703,7 @@ function ipconfig_nic(){
 		
 		document.getElementById('dhcp').disabled=false;
 		if(document.getElementById('dhcp').checked==true){return;}
+		document.getElementById('UseSPAN').disabled=false;
 		document.getElementById('IPADDR').disabled=false;
 		document.getElementById('NETMASK').disabled=false;
 		document.getElementById('GATEWAY').disabled=false;
@@ -698,15 +711,35 @@ function ipconfig_nic(){
 		document.getElementById('mtu-$t').disabled=false;
 		if(document.getElementById('DNS_1')){document.getElementById('DNS_1').disabled=false;}
 		if(document.getElementById('DNS_2')){document.getElementById('DNS_2').disabled=false;}
-	}		
+	}	
+
+	function SwitchUseSPAN(){
+		if(!document.getElementById('enabled').checked){return;}
+	
+	
+		if(document.getElementById('UseSPAN').checked==true){
+			document.getElementById('IPADDR').disabled=true;
+			document.getElementById('NETMASK').disabled=true;
+			document.getElementById('GATEWAY').disabled=true;
+			document.getElementById('BROADCAST').disabled=true;
+			document.getElementById('mtu-$t').disabled=true;
+			if(document.getElementById('DNS_1')){document.getElementById('DNS_1').disabled=true;}
+			if(document.getElementById('DNS_2')){document.getElementById('DNS_2').disabled=true;}
+			document.getElementById('dhcp').disabled=true;
+		}else{
+			SwitchDHCP();
+		
+		}
+	}
 	
 	function DisableSnortInterface(){
 		document.getElementById('UseSnort').disabled=true;
 	}
 		
-	$jsSnort	
+		
 	LockNic();
 	CheckMII$t();
+	SwitchUseSPAN();
 	</script>	
 	";
 	
@@ -767,7 +800,7 @@ function save_nic(){
 		if(is_numeric(substr($_GET["netzone"], 0,1))){echo "Network Zone Must start with a letter\n";return;}
 	}
 	
-	
+	$UseSPAN=intval($_GET["UseSPAN"]);
 	$nic=trim($_GET["save_nic"]);
 	$IPADDR=trim($_GET["IPADDR"]);
 	$NETMASK=trim($_GET["NETMASK"]);
@@ -802,21 +835,24 @@ function save_nic(){
 	
 	
 	if(intval($_GET["enabled"])==1){
-		if($_GET["dhcp"]<>1){
-			if(!$ip->checkIP($IPADDR)){echo "CheckIP: Address: $IPADDR = False;\n";return;}
-			if(!$ip->checkIP($NETMASK)){echo "CheckIP: NetMask $NETMASK = False;\n";return;}
-			if($GATEWAY<>"0.0.0.0"){
-				if(!$ip->checkIP($GATEWAY)){echo "CheckIP: Gateway $GATEWAY = False;\n";return;}
+		
+		if($UseSPAN<>1){
+			if($_GET["dhcp"]<>1){
+				if(!$ip->checkIP($IPADDR)){echo "CheckIP: Address: $IPADDR = False;\n";return;}
+				if(!$ip->checkIP($NETMASK)){echo "CheckIP: NetMask $NETMASK = False;\n";return;}
+				if($GATEWAY<>"0.0.0.0"){
+					if(!$ip->checkIP($GATEWAY)){echo "CheckIP: Gateway $GATEWAY = False;\n";return;}
+				}
 			}
+			if($DNS_1<>null){
+				if(!$ip->checkIP($DNS_1)){echo "CheckIP: DNS 1 $DNS_1 = False;\nOr set null value to remove this message";return;}	
+			}
+			
+			if($DNS_2<>null){
+				if(!$ip->checkIP($DNS_2)){echo "CheckIP: DNS 2 $DNS_2 = False;\nOr set null value to remove this message";return;}	
+			}
+			
 		}
-		if($DNS_1<>null){
-			if(!$ip->checkIP($DNS_1)){echo "CheckIP: DNS 1 $DNS_1 = False;\nOr set null value to remove this message";return;}	
-		}
-		
-		if($DNS_2<>null){
-			if(!$ip->checkIP($DNS_2)){echo "CheckIP: DNS 2 $DNS_2 = False;\nOr set null value to remove this message";return;}	
-		}
-		
 	}
 
 	$htmltools=new htmltools_inc();
@@ -831,6 +867,7 @@ function save_nic(){
 	$nics->NETMASK=$NETMASK;
 	$nics->GATEWAY=$GATEWAY;
 	$nics->BROADCAST=$BROADCAST;
+	$nics->UseSPAN=$UseSPAN;
 	if($DNS_1<>null){$nics->DNS1=$DNS_1; }
 	if($DNS_2<>null){ $nics->DNS2=$DNS_2; }
 	$nics->dhcp=$_GET["dhcp"];

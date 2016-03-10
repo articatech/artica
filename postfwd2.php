@@ -104,9 +104,8 @@ function tabs(){
 	$array["rules"]='{rules}';
 	$array["objects"]='{objects}';
 	
-	if($_GET["newinterface"]<>null){
-		$fonctsize="font-size:16px";
-	}
+	$fonctsize="font-size:24px";
+
 		
 	
 
@@ -119,24 +118,7 @@ function tabs(){
 	}
 	
 	
-	echo "
-	<div id=main_config_postfwd2 style='width:100%;height:620px;overflow:auto'>
-		<ul>". implode("\n",$html)."</ul>
-	</div>
-		<script>
-				$(document).ready(function(){
-					$('#main_config_postfwd2').tabs({
-				    load: function(event, ui) {
-				        $('a', ui.panel).click(function() {
-				            $(ui.panel).load(this.href);
-				            return false;
-				        });
-				    }
-				});
-			
-			
-			});
-		</script>";		
+	echo build_artica_tabs($html, "main_config_postfwd2",1450);
 }
 
 function status_service(){
@@ -156,7 +138,8 @@ function status(){
 	
 	$main=new maincf_multi($_GET["instance"]);
 	$array_filters=unserialize(base64_decode($main->GET_BIGDATA("PluginsEnabled")));
-	$reconfigure=Paragraphe("64-settings-refresh.png","{generate_config}","{postfix_reconfigure_text}","javascript:postfwd2Reconfigure()");
+	$reconfigure=Paragraphe("64-settings-refresh.png","{generate_config}",
+			"{postfix_reconfigure_text}","javascript:postfwd2Reconfigure()");
 	
 	$q=new mysql();
 	if(!$q->TABLE_EXISTS('postfwd2','artica_backup')){	
@@ -170,22 +153,23 @@ function status(){
 	<table style='width:100%'>
 	<tr>
 	<td valign='top'>
-		<div style='font-size:18px'>{APP_POSTFWD2}</div>
-		<div style='text-align:right;padding-top:5px;border-top:1px solid #CCCCCC'><i style='font-size:14px'>&laquo;&nbsp;{instance}:{$_GET["instance"]}&nbsp;&raquo;</i></div>
+		<div style='font-size:30px;'>{APP_POSTFWD2}</div>
+		<div style='text-align:right;padding-top:5px;margin-bottom:30px'><i style='font-size:28px'>&laquo;&nbsp;{instance}:{$_GET["instance"]}&nbsp;&raquo;</i></div>
 		<p>&nbsp;</p>
-		<div class=explain style='font-size:14px'>{POSTFWD2_ABOUT}</div>
+		<div style='width:98%' class=form>
+		". Paragraphe_switch_img("{enable_service}", "{POSTFWD2_ABOUT}","EnablePOSTFWD2",$array_filters["APP_POSTFWD2"],null,1040)."
+		
+		<div style='text-align:right'>
+				". button("{apply}","EnablePOSTFWD2Check()",40)."</div>
+		</div>
+		
+		
 	</td>
-	<td valign='top' style='width:270px'>
-		<table style='width:99%' class=form>
-			<tr>
-				<td class=legend>{enable_service}</td>
-				<td>". Field_checkbox("EnablePOSTFWD2",1,$array_filters["APP_POSTFWD2"],"EnablePOSTFWD2Check()")."</td>
-			</tr>
-		</table>
+	<td valign='top' style='width:400px'>
 		<p>&nbsp;</p>
 		<div id='postfwd2-status'></div>
 		<p>&nbsp;</p>
-		$reconfigure
+		<center>". button("{generate_config}","postfwd2Reconfigure()",20)."</center>
 	</tr>
 	</table>
 	
@@ -201,7 +185,7 @@ function status(){
 	
 	function EnablePOSTFWD2Check(){
 		var XHR = new XHRConnection();
-		if(document.getElementById('EnablePOSTFWD2').checked){XHR.appendData('EnablePOSTFWD2',1);}else{XHR.appendData('EnablePOSTFWD2',0);}
+		XHR.appendData('EnablePOSTFWD2',document.getElementById('EnablePOSTFWD2').value);
 		XHR.appendData('instance','{$_GET["instance"]}');	
 		XHR.sendAndLoad('$page', 'GET',x_EnablePOSTFWD2Check);
 		}		

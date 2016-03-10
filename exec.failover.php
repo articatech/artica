@@ -1,6 +1,7 @@
 <?php
 if(posix_getuid()<>0){die("Cannot be used in web server mode\n\n");}
 if(preg_match("#--verbose#",implode(" ",$argv))){$GLOBALS["DEBUG"]=true;$GLOBALS["VERBOSE"]=true;}
+if(preg_match("#--force#",implode(" ",$argv))){$GLOBALS["FORCE"]=true;}
 if($GLOBALS["VERBOSE"]){ini_set('html_errors',0);ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);}
 include_once(dirname(__FILE__).'/ressources/class.templates.inc');
 include_once(dirname(__FILE__).'/ressources/class.ldap.inc');
@@ -211,31 +212,33 @@ function exunlink(){
 	
 	$uri="$proto://{$MAIN["SLAVE"]}:{$MAIN["SLAVE_PORT"]}/nodes.listener.php?ucarp2-remove=$SEND_SETTING&continue=true";
 	
-	
-	build_progress("Notify {$MAIN["SLAVE"]}",20);
-	
-	$curl=new ccurl($uri,true,$WgetBindIpAddress,true);
-	$curl->NoHTTP_POST=true;
-	if(!$curl->get()){
-		echo "$curl->error\n";
-		debug_curl($curl->CURL_ALL_INFOS);
-		build_progress("{reboot_networks} {$MAIN["SLAVE"]}:{$MAIN["SLAVE_PORT"]} {failed}",110);
-		return;
-	}
-	
-	if(!preg_match("#<RESULTS>(.+?)</RESULTS>#is", $curl->data,$re)){
-		echo "Please verify that both servers must have the same Artica version\n";
-		build_progress("{reboot_networks} {$MAIN["SLAVE"]}:{$MAIN["SLAVE_PORT"]} {protocol_error}",110);
-		return;
-	}
-	
-	$array=unserialize(base64_decode($re[1]));
-	if($array["ERROR"]){
-		echo "{$array["ERROR_SHOW"]}\n";
-		build_progress("{reboot_networks} {$MAIN["SLAVE"]}:{$MAIN["SLAVE_PORT"]} {failed}",110);
-		return;
+	if(!$GLOBALS["FORCE"]){
+		build_progress("Notify {$MAIN["SLAVE"]}",20);
+		
+		$curl=new ccurl($uri,true,$WgetBindIpAddress,true);
+		$curl->NoHTTP_POST=true;
+		if(!$curl->get()){
+			echo "$curl->error\n";
+			debug_curl($curl->CURL_ALL_INFOS);
+			build_progress("{reboot_networks} {$MAIN["SLAVE"]}:{$MAIN["SLAVE_PORT"]} {failed}",110);
+			return;
+		}
+		
+		if(!preg_match("#<RESULTS>(.+?)</RESULTS>#is", $curl->data,$re)){
+			echo "Please verify that both servers must have the same Artica version\n";
+			build_progress("{reboot_networks} {$MAIN["SLAVE"]}:{$MAIN["SLAVE_PORT"]} {protocol_error}",110);
+			return;
+		}
+		
+		$array=unserialize(base64_decode($re[1]));
+		if($array["ERROR"]){
+			echo "{$array["ERROR_SHOW"]}\n";
+			build_progress("{reboot_networks} {$MAIN["SLAVE"]}:{$MAIN["SLAVE_PORT"]} {failed}",110);
+			return;
+		}
 	}
 	build_progress("{please_wait_reconfigure_network}",80);
+	if(!$GLOBALS["FORCE"]){sleep(3);}
 	$nic=new system_nic($eth);
 	$nic->ucarp_enabled=0;
 	$nic->ucarp_vip=null;
@@ -254,12 +257,14 @@ function exunlink(){
 	}	
 	//please_wait_reconfigure_network
 	$sock->SET_INFO("HASettings", base64_encode(serialize(array())));
+	
 	build_progress("{reboot_networks}",75);
+	if(!$GLOBALS["FORCE"]){sleep(3);}
 	$php=$unix->LOCATE_PHP5_BIN();
 	system("$php /usr/share/artica-postfix/exec.virtuals-ip.php --build --force");
 	build_progress("{reboot_networks}",80);
 	squid_admin_mysql(0, "Rebooting Network", null,__FILE__,__LINE__);
-	system("/etc/init.d/artica-ifup --script=exec.failover.php/".__FUNCTION__);
+	system("/etc/init.d/artica-ifup start --script=exec.failover.php/".__FUNCTION__);
 	build_progress("{starting_service}",90);
 	system("/etc/init.d/artica-failover stop");
 	sleep(3);

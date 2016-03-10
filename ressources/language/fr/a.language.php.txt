@@ -78,7 +78,7 @@ Choisissez le domaine principale et indiquez le sous-domaine que vous voulez cr&
 <affect_vg_to_service>Affecter ce groupe &agrave; un service (FreeWebs ou serveurs virtuels)</affect_vg_to_service>
 <affect_vg_to_service_explain>Cette option indique que ce groupe LVM sera utilis&eacute; afin de construire automatiquement des contenants pour un service particulier.[br]Par exemple afin de d&eacute;finir des quotas par taille sur les espaces FreeWebs.[br]Les r&eacute;pertoires Web seront alors stock&eacute;s dans un disque virtuel d&eacute;di&eacute;.</affect_vg_to_service_explain>
 <Airflow_Temperature_Cel>Temp&eacute;rature de l%u2019air (WDC)</Airflow_Temperature_Cel>
-<Airflow_Temperature_Cel_text>Temp&eacute;rature de l%u2019air sur les disques Western Digital (la m&ecirc;me que la temp&eacute;rature , mais la valeur de l%u2019attribut est inf&eacute;rieure de 50).</Airflow_Temperature_Cel_text>
+<Airflow_Temperature_Cel_text>Temp&eacute;rature de l'air sur les disques Western Digital (la m&ecirc;me que la temp&eacute;rature , mais la valeur de l'attribut est inf&eacute;rieure de 50).</Airflow_Temperature_Cel_text>
 <aliases_domains_explain>C'est la liste des domaines virtuels.[br]Tous les domaines list&eacute;s ci-dessous sont fictifs et pointent tous sur le domaine principal.[br]Le serveur va transformer l'adresse de destination vers la vrai adresse utilis&eacute;e.[br]
 Dans ce cas,  jhon@alias.domain.tld sera transmis vers jhon@domain.tld.</aliases_domains_explain>
 <AllowAllNetworks>Autoriser tous les r&eacute;seaux</AllowAllNetworks>
@@ -127,7 +127,7 @@ assure que les disques prioritaires sont moins d&eacute;vers&eacute;s</Amandapri
 <AmandaStrategyExplain>&quot;standard&quot; - le niveau standard.[br]
 &quot;nofull&quot; - Faire un niveau 1 &agrave; chaque fois. Cela peut &ecirc;tre utilis&eacute; pour un syst&egrave;me de fichier petit qui ne change pas beaucoup.Amanda sauvegarde ensuite uniquement les modifications.[br]
 &quot;noinc&quot; - Faire un niveau 0 &agrave; chaque fois.[br]
-&quot;skip&quot; - laisser passer toutes les extractions. Utile pour partager une liste de n%u0153ud unique dans plusieurs configurations.[br]
+&quot;skip&quot; - laisser passer toutes les extractions. Utile pour partager une liste de n?ud unique dans plusieurs configurations.[br]
 &quot;incronly&quot; - Faire seulement des extractions incr&eacute;mentales. similaire &agrave; 'nofull', mais augmente le niveau d'extraction.Les extractions compl&egrave;tes sont effectu&eacute;e uniquement sur demande manuelles</AmandaStrategyExplain>
 <amanda_backup_server_explain>Si ce serveur Artica est un client et qu'il doit envoyer ses sauvegardes &agrave; un serveur de sauvegarde centralis&eacute;, indiquez ici le nom d'h&ocirc;te du serveur de sauvegardes.(le nom d'h&ocirc;te complet)</amanda_backup_server_explain>
 <amanda_computers_explain>Cette section vous permet d'indiquer des clients distants &agrave; sauvegarder.[br]Chaque client doit disposer du client Amanda avant.[br]
@@ -234,7 +234,7 @@ Patientez quelques secondes et rafra&icirc;chissez cette page.</apply_network_co
 <APP_PDNS_INSTANCE>PowerDNS (Instance)</APP_PDNS_INSTANCE>
 <APP_PHPFCGI>Module FastCGI</APP_PHPFCGI>
 <APP_PIWIK>Piwik</APP_PIWIK>
-<APP_PIWIK_TEXT>Piwik est un logiciel d'analyse Web en temps r&eacute;el . Il vous fournit des rapports d&eacute;taill&eacute;s sur les visiteurs de votre site Web: moteur de recherche et mots cl&eacute;s utilis&eacute;s, leurs langues, vos pages les plus populaires%u2026 et bien plus encore.</APP_PIWIK_TEXT>
+<APP_PIWIK_TEXT>Piwik est un logiciel d'analyse Web en temps r&eacute;el . Il vous fournit des rapports d&eacute;taill&eacute;s sur les visiteurs de votre site Web: moteur de recherche et mots cl&eacute;s utilis&eacute;s, leurs langues, vos pages les plus populaires et bien plus encore.</APP_PIWIK_TEXT>
 <APP_POSTFWD2>Strat&eacute;gie de d&eacute;l&eacute;gation</APP_POSTFWD2>
 <APP_POSTFWD2_ICON_TEXT>G&eacute;rer vos r&egrave;gles SMTP comme un pare-feu avec PostFwd</APP_POSTFWD2_ICON_TEXT>
 <APP_POSTFWD2_TEXT>Policy Delegation est une sorte de pare-feu qui vous autorise &agrave; d&eacute;finir des r&egrave;gles permettant de limiter les flux de messagerie</APP_POSTFWD2_TEXT>

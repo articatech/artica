@@ -1,4 +1,4 @@
-<about>Samba est une suite Logicielle Open Source/Libre qui fournit le fichier uniforme et des services d'empreinte aux clients SMB/CIFS. [Br] Samba est librement disponible, &agrave; la diff&eacute;rence d'autres mises en %u0153uvre SMB/CIFS et tient compte de l'interop&eacute;rabilit&eacute; entre des serveurs Linux/Unix et des clients Windows</about>
+<about>Samba est une suite Logicielle Open Source/Libre qui fournit le fichier uniforme et des services d'empreinte aux clients SMB/CIFS. [Br] Samba est librement disponible, &agrave; la diff&eacute;rence d'autres mises en ?uvre SMB/CIFS et tient compte de l'interop&eacute;rabilit&eacute; entre des serveurs Linux/Unix et des clients Windows</about>
 <add_a_shared_folder>Ajouter un nouveau dossier partag&eacute;</add_a_shared_folder>
 <add_a_shared_folder_text>Explorez vos disques et partagez des fichiers</add_a_shared_folder_text>
 <add_sub_folder>Ajouter un sous-dossier</add_sub_folder>

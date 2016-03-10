@@ -13,14 +13,16 @@ $GLOBALS["SHOW_COMPILE_ONLY"]=false;
 $GLOBALS["NO_COMPILE"]=false;
 $GLOBALS["REPOS"]=false;
 if(preg_match("#schedule-id=([0-9]+)#",implode(" ",$argv),$re)){$GLOBALS["SCHEDULE_ID"]=$re[1];}
-if($argv[1]=='--compile'){$GLOBALS["SHOW_COMPILE_ONLY"]=true;}
+if(isset($argv[1])){
+	if($argv[1]=='--compile'){$GLOBALS["SHOW_COMPILE_ONLY"]=true;}
+}
 if(preg_match("#--no-compile#", @implode(" ", $argv))){$GLOBALS["NO_COMPILE"]=true;}
 if(preg_match("#--verbose#", @implode(" ", $argv))){$GLOBALS["VERBOSE"]=true;}
 if(preg_match("#--repos#", @implode(" ", $argv))){$GLOBALS["REPOS"]=true;}
 if(preg_match("#--force#", @implode(" ", $argv))){$GLOBALS["FORCE"]=true;}
 
 $users=new usersMenus();
-$APACHE_MODULES_PATH=$users->APACHE_MODULES_PATH;
+$APACHE_MODULES_PATH=$unix->APACHE_MODULES_PATH();
 if(!is_dir($APACHE_MODULES_PATH)){
 	echo "Unable to locate APACHE MODULES DIRECTORY...\n";
 	die();

@@ -27,7 +27,7 @@ include_once(dirname(__FILE__)."/ressources/class.mysql.catz.inc");
 include_once(dirname(__FILE__)."/ressources/externals/Net_DNS2/DNS2.php");
 include_once(dirname(__FILE__)."/ressources/class.resolv.conf.inc");
 
-
+if(system_is_overloaded()){die();}
 
 
 if($argv[1]=="--stats"){GenerateGraph();exit;}
@@ -45,6 +45,12 @@ function CHECK_DNS_SYSTEMS(){
 	$pidFile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
 	$BigTime="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".week.time";
 
+	
+	if(!is_file("/etc/artica-postfix/settings/Daemons/EnableDNSPerfs")){@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableDNSPerfs", 1);}
+	$EnableDNSPerfs=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableDNSPerfs"));
+	if($EnableDNSPerfs==0){
+		echo "EnableDNSPerfs -> Disabled\n";
+		die();}
 
 	$unix=new unix();
 	$GLOBALS["MYHOSTNAME"]=$unix->hostname_g();
@@ -107,6 +113,7 @@ function CHECK_DNS_SYSTEMS(){
 		if($GLOBALS["VERBOSE"]){echo "$dnsA\n";}
 		$t['start'] = microtime(true);
 		$rs = new Net_DNS2_Resolver(array('nameservers' => array($dnsA)));
+		$rs->timeout=20;
 
 		try {
 			$date=date("Y-m-d H:i:s");
@@ -117,7 +124,7 @@ function CHECK_DNS_SYSTEMS(){
 			$timeC=$time*10000;
 		} catch(Net_DNS2_Exception $e) {
 			$error=$e->getMessage();
-			squid_admin_mysql(0, "DNS benchmark failed on $dnsA $error", $error,__FILE__,__LINE__);
+			squid_admin_mysql(1, "DNS benchmark failed on $dnsA $error", $error,__FILE__,__LINE__);
 			continue;
 		}
 
@@ -130,12 +137,10 @@ function CHECK_DNS_SYSTEMS(){
 		foreach($result->answer as $record){
 			if($ipClass->isIPAddress($record->address)){
 				if($perc>100){$perc=100;}
-				$q=new influx();
-				$array["fields"]["PERCENT"]=$perc;
-				$array["fields"]["RESPONSE"]=$time;
-				$array["tags"]["proxyname"]=$GLOBALS["MYHOSTNAME"];
-				$array["tags"]["DNS"]=$dnsA;
-				$q->insert("dnsperfs", $array);
+				$zDate=date("Y-m-d H:i:s");
+				$q=new postgres_sql();
+				$q->QUERY_SQL("INSERT INTO dnsperfs (zDate,PROXYNAME,DNS,PERCENT,RESPONSE)
+				VALUES ('$zDate','{$GLOBALS["MYHOSTNAME"]}','$dnsA','$perc','$time');");
 				break;
 			}
 		}
@@ -143,7 +148,7 @@ function CHECK_DNS_SYSTEMS(){
 
 	}
 	
-	GenerateGraph();
+	GenerateGraph(true);
 }
 
 function Events($text){
@@ -173,48 +178,55 @@ function mini_bench_to($arg_t, $arg_ra=false){
 	if ($arg_ra) return $ar_aff;
 	return $aff;
 }
-function GenerateGraph(){
+function GenerateGraph($nopid=false){
+	
+	if(!is_file("/etc/artica-postfix/settings/Daemons/EnableDNSPerfs")){
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableDNSPerfs", 1);
+	}
+	
+
+	
 	
 	$unix=new unix();
 	$pidtime="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".time";
 	$time=$unix->file_time_min($pidtime);
-	if(!$GLOBALS["FORCE"]){
-		if($time<60){return;}
-	}
+	if(!$GLOBALS["FORCE"]){if($time<60){return;}}
 	
 	@unlink($pidtime);
 	@file_put_contents($pidtime, time());
+	$q=new mysql();
+	$EnableDNSPerfs=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableDNSPerfs"));
+	
+	
+	if($EnableDNSPerfs==0){
+		$q->QUERY_SQL("DROP TABLE dashboard_dnsperf_day","artica_events");
+		die();
+	}
 	
 	$q=new mysql();
-	
 	$q->QUERY_SQL("DROP TABLE dashboard_dnsperf_day","artica_events");
 	
-	$q->QUERY_SQL("CREATE TABLE IF NOT EXISTS `dashboard_dnsperf_day` (
-			`TIME` DATETIME,
-			`DNS` VARCHAR(128),
-			`PERCENT` FLOAT(5),
-			`RESPONSE` FLOAT(5),
-			KEY `DNS` (`DNS`),
-			KEY `TIME` (`TIME`),
-			KEY `PERCENT` (`PERCENT`),
-			KEY `RESPONSE` (`RESPONSE`)
-			) ENGINE=MYISAM;","artica_events"
-	);
+	
+	$q=new postgres_sql();
+	$q->QUERY_SQL("DROP TABLE dashboard_dnsperf_day");
+	$q->QUERY_SQL("CREATE TABLE IF NOT EXISTS dashboard_dnsperf_day (time timestamp,DNS VARCHAR(128), percent FLOAT(5), response FLOAT(5) )");
+	
+	$q->create_index("dashboard_dnsperf_day", "ikey",array("time","dns","percent","response"));
 	
 	$hostname=$unix->hostname_g();
-	$now=InfluxQueryFromUTC(strtotime("-24 hour"));
-	$influx=new influx();
-	$sql="SELECT MEAN(PERCENT) as PERCENT,MEAN(RESPONSE) as RESPONSE,DNS FROM dnsperfs  where proxyname='$hostname' and time > {$now}s GROUP BY DNS,time(10m) ORDER BY ASC";
+	$now=strtotime("-24 hour");
+	$q=new postgres_sql();
+	$sql="SELECT AVG(PERCENT) as PERCENT,AVG(RESPONSE) as RESPONSE,DNS FROM dnsperfs  where PROXYNAME='$hostname' and time > {$now}s GROUP BY DNS,time(10m) ORDER BY ASC";
 	
-	$main=$influx->QUERY_SQL($sql);
+	$results=$q->QUERY_SQL($sql);
 	
-	foreach ($main as $row) {
-		$time=InfluxToTime($row->time);
-		if(!is_numeric($row->PERCENT)){continue;}
-		$PERCENT=$row->PERCENT;
-		$RESPONSE=$row->RESPONSE;
-		$DNS=$row->DNS;
-		$zDate=date("Y-m-d H:i:s",$time);
+	while($ligne=@pg_fetch_assoc($results)){
+		$zDate=$ligne["zDate"];
+		$PERCENT=$ligne["PERCENT"];
+		if(!is_numeric($PERCENT)){continue;}
+		
+		$RESPONSE=$ligne["RESPONSE"];
+		$DNS=$ligne["DNS"];
 		$f[]="('$zDate','$DNS','$RESPONSE','$PERCENT')";
 		
 		
@@ -222,15 +234,16 @@ function GenerateGraph(){
 	
 	if(count($f)>0){
 		print_r($f);
-		$q->QUERY_SQL("INSERT INTO dashboard_dnsperf_day (`TIME`,`DNS`,`RESPONSE`,`PERCENT`) 
+		$q->QUERY_SQL("INSERT INTO dashboard_dnsperf_day (time,dns,response,percent) 
 				VALUES ".@implode(",", $f),"artica_events");
 		
 	}
 	
 	$hostname=$unix->hostname_g();
-	$now=InfluxQueryFromUTC(strtotime("-30 day"));
+	$now=date("Y-m-d H:i:s",strtotime("-30 day"));
 	$influx=new influx();
-	$sql="SELECT MEAN(PERCENT) as PERCENT,MEAN(RESPONSE) as RESPONSE,DNS FROM dnsperfs  where proxyname='$hostname' and time > {$now}s GROUP BY DNS,time(1d) ORDER BY ASC";
+	$sql="SELECT MEAN(PERCENT) as PERCENT,MEAN(RESPONSE) as RESPONSE,
+	DNS FROM dnsperfs  where PROXYNAME='$hostname' and time > '$now' GROUP BY DNS,time(1d) ORDER BY ASC";
 	
 	$main=$influx->QUERY_SQL($sql);
 	$f=array();
@@ -253,18 +266,8 @@ function GenerateGraph(){
 	
 		
 	$q->QUERY_SQL("DROP TABLE dashboard_dnsperf_month","artica_events");
-	
-	$q->QUERY_SQL("CREATE TABLE IF NOT EXISTS `dashboard_dnsperf_month` (
-			`TIME` DATETIME,
-			`DNS` VARCHAR(128),
-			`PERCENT` FLOAT(5),
-			`RESPONSE` FLOAT(5),
-			KEY `DNS` (`DNS`),
-			KEY `TIME` (`TIME`),
-			KEY `PERCENT` (`PERCENT`),
-			KEY `RESPONSE` (`RESPONSE`)
-			) ENGINE=MYISAM;","artica_events"
-	);	
+	$q->QUERY_SQL("CREATE TABLE IF NOT EXISTS dashboard_dnsperf_month (`TIME` timestamp,`DNS` VARCHAR(128),`PERCENT` FLOAT(5),`RESPONSE` FLOAT(5)");	
+	$q->create_index("dashboard_dnsperf_month","ikey",array("time","dns","percent","response"));
 	
 	if(count($f)>0){
 		print_r($f);

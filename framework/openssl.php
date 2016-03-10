@@ -14,7 +14,9 @@ if(isset($_GET["move-privkey"])){move_private_key();exit;}
 if(isset($_GET["gen-csr"])){gencsr();exit;}
 if(isset($_GET["copy-csr"])){copy_csr();exit;}
 if(isset($_GET["generate-csr"])){generate_CSR();exit;}
-
+if(isset($_GET["pvk-convert"])){pvk_convert();exit;}
+if(isset($_GET["pfx-convert"])){pfx_convert();exit;}
+if(isset($_GET["generate-pfx"])){pfx_generate();exit;}
 
 
 while (list ($num, $line) = each ($_GET)){$f[]="$num=$line";}
@@ -86,7 +88,7 @@ function gencsr(){
 		shell_exec("$openssl genrsa -out /etc/openssl/private-key/privkey.key 2048");
 	}
 	
-	$cmd[]="$openssl req -new -key /etc/openssl/private-key/privkey.key";
+	$cmd[]="$openssl req -new -sha256 -key /etc/openssl/private-key/privkey.key";
 	$cmd[]="-passin pass:{$ligne["password"]}";
 	$cmd[]="-subj \"/C=$C/ST=$ST/L=$L/O=$O/OU=$OU/CN=$CommonName\" -out /etc/openssl/private-key/server.csr 2>&1";
 	$cmdline=@implode(" ", $cmd);
@@ -180,3 +182,55 @@ function tomysql(){
 	echo "<articadatascgi>". base64_encode(trim(@implode("\n",$results)))."</articadatascgi>";	
 	
 }
+
+function pvk_convert(){
+	$servername=$_GET["pvk-convert"];
+	$unix=new unix();
+	$nohup=$unix->find_program("nohup");
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$cmd=trim("$php5 /usr/share/artica-postfix/exec.openssl.php --pvk \"$servername\" 2>&1");
+	exec($cmd,$results);
+	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
+	echo "<articadatascgi>". base64_encode(trim(@implode("\n",$results)))."</articadatascgi>";
+	
+}
+function pfx_convert(){
+	$servername=$_GET["pfx-convert"];
+	$unix=new unix();
+	$nohup=$unix->find_program("nohup");
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$cmd=trim("$php5 /usr/share/artica-postfix/exec.openssl.php --pfx-convert \"$servername\" 2>&1");
+	exec($cmd,$results);
+	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
+	echo "<articadatascgi>". base64_encode(trim(@implode("\n",$results)))."</articadatascgi>";
+
+}
+
+
+function pfx_generate(){
+	$servername=$_GET["generate-pfx"];
+	$unix=new unix();
+	$nohup=$unix->find_program("nohup");
+	$php5=$unix->LOCATE_PHP5_BIN();
+
+
+	
+	$GLOBALS["PROGRESS_FILE"]="/usr/share/artica-postfix/ressources/logs/web/openssl.x509.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/openssl.x509.log";
+	
+	@unlink($GLOBALS["PROGRESS_FILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["PROGRESS_FILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["PROGRESS_FILE"], 0755);
+	@chmod($GLOBALS["LOGSFILES"], 0755);
+	
+	
+	$servername=str_replace("*", "_ALL_", $servername);
+	$cmd=trim("$nohup $php5 /usr/share/artica-postfix/exec.openssl.php --pfx $servername >{$GLOBALS["LOGSFILES"]} 2>&1 &");
+	exec($cmd,$results);
+	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
+	echo "<articadatascgi>". base64_encode(@implode("\n",$results))."</articadatascgi>";
+	
+}
+

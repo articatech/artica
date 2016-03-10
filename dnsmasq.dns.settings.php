@@ -31,7 +31,6 @@ if(isset($_POST["EnableDNSMASQOCSDB"])){EnableDNSMASQOCSDB();exit;}
 if(isset($_GET["get-status"])){status();exit;}
 if(isset($_GET["sub-status"])){page_status();exit;}
 if(isset($_GET["sub-settings"])){page_settings();exit;}
-if(isset($_GET["sub-listen"])){page_listen();exit;}
 if(isset($_GET["sub-events"])){page_events();exit;}
 
 
@@ -111,7 +110,7 @@ function page_enable(){
 	var xSave$t= function (obj) {
 		var tempvalue=obj.responseText;
 		if(tempvalue.length>3){alert(tempvalue);}	
-		Loadjs('system.services.cmd.php?APPNAME=APP_DNSMASQ&action=restart&cmd=". urlencode("/etc/init.d/dnsmasq")."&id=&appcode=APP_DNSMASQ');
+		Loadjs('dnsmasq.restart.progress.php');
 	}
 
 	function Save$t(){
@@ -236,14 +235,21 @@ $html="
 <table style='width:100%'>
 	<tbody>
 		<tr>
-			<td align='right' style='font-size:22px;vertical-align:middle;'nowrap style='font-size:22px;vertical-align:middle' class=legend>". texttooltip("{cache-size}","{cache-size_text}").":</td>
-			<td align='left' style='font-size:22px;vertical-align:middle;' style='font-size:22px;vertical-align:middle'>" . Field_text('cache-size',$cf->main_array["cache-size"],"font-size:18px;padding:3px;width:70px")."</td>
+			<td align='right' style='font-size:22px;vertical-align:middle;' nowrap class=legend>". texttooltip("{cache-size}","{cache-size_text}").":</td>
+			<td align='left' style='font-size:22px;vertical-align:middle;'>" . Field_text('cache-size',$cf->main_array["cache-size"],"font-size:22px;padding:3px;width:120px")."</td>
 			
 		</tr>
+		<tr>
+			<td align='right' style='font-size:22px;vertical-align:middle;'nowrap class=legend>". texttooltip("{dns-forward-max}","{dns-forward-max_text}").":</td>
+			<td align='left' style='font-size:22px;vertical-align:middle;'>" . Field_text('dns-forward-max',$cf->main_array["dns-forward-max"],"font-size:22px;padding:3px;width:120px")."</td>
+			
+		</tr>					
+					
+			
 	
 		<tr>
-			<td align='right' style='font-size:22px;vertical-align:middle;'    nowrap style='font-size:22px;vertical-align:middle' class=legend>". texttooltip("{local_domain}","{dnsmasq_domain_explain}").":</td>
-			<td align='left' style='font-size:22px;vertical-align:middle;' style='font-size:22px;vertical-align:middle'>" . Field_text('dnsmasq-domain',$cf->main_array["domain"],"font-size:18px;padding:3px;")."</td>
+			<td align='right' style='font-size:22px;vertical-align:middle;'    nowrap class=legend>". texttooltip("{local_domain}","{dnsmasq_domain_explain}").":</td>
+			<td align='left' style='font-size:22px;vertical-align:middle;'>" . Field_text('dnsmasq-domain',$cf->main_array["domain"],"font-size:22px;padding:3px;width:220px")."</td>
 			
 		</tr>
 	
@@ -268,7 +274,7 @@ function page(){
 	
 	
 	
-	$fonctsize="font-size:22px";
+	$fonctsize="font-size:24px";
 	
 		
 	
@@ -316,8 +322,8 @@ function page_status(){
 	$html="
 	<table style='width:100%'>
 	<tr>
-		<td width=1% style='font-size:18px;vertical-align:top;'><div id='get-status'></div></td>
-		<td width=99% style='font-size:18px;vertical-align:top;'>
+		<td style='font-size:18px;vertical-align:top;width:310px'><div id='get-status'></div></td>
+		<td  style='font-size:18px;vertical-align:top;width:1140px'>
 			<div class=explain id='dnsmaskrool' style='font-size:18px'>{dnsmasq_intro_settings}</div>
 			<div id='enable-$t'></div>
 			
@@ -385,7 +391,7 @@ while (list ($index, $key) = each ($f) ){
 $html="
 <table style='width:100%'>
 <tr>
-	<td width=30% style='vertical-align:top;padding-right:10px'><div id='status-$t'></div></td>
+	<td style='vertical-align:top;padding-right:10px;width:240px'><div id='status-$t'></div></td>
 	<td width=70%>
 <div id='ffm1$t'></div>
 
@@ -403,7 +409,7 @@ $html="
 	var x_SaveDNSMASQMainConf= function (obj) {
 		var tempvalue=obj.responseText;
 		if(tempvalue.length>3){alert(tempvalue);}	
-		RefreshTab('main_config_dnsmasqsub');
+		Loadjs('dnsmasq.restart.progress.php');
 	}
 
 	function SaveDNSMASQMainConf(){
@@ -411,6 +417,7 @@ $html="
 		XHR.appendData('resolv-file',document.getElementById('resolv-file').value);
 		XHR.appendData('cache-size',document.getElementById('cache-size').value);
 		XHR.appendData('domain',document.getElementById('dnsmasq-domain').value);
+		XHR.appendData('dns-forward-max',document.getElementById('dnsmasq-domain').value);
 		XHR.appendData('SaveConf1','yes');		
 		". @implode("\n", $js)."
 		AnimateDiv('ffm1$t');

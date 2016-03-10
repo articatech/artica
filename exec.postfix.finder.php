@@ -169,7 +169,8 @@ function logrotate(){
 	}
 	
 	$strings=null;
-	exec("$du -h -s $BackupMailLogPath",$results);
+	$NICE=$unix->EXEC_NICE();
+	exec("$NICE$du -h -s $BackupMailLogPath",$results);
 	$strings=@implode("",$results);
 	if(preg_match("#^(.+?)\s+#",$strings,$re)){$final_size=$re[1];}
 

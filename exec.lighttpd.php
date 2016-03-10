@@ -1,6 +1,7 @@
 <?php
 if(is_file("/etc/artica-postfix/FROM_ISO")){if(is_file("/etc/init.d/artica-cd")){print "Starting......: ".date("H:i:s")." artica-". basename(__FILE__)." Waiting Artica-CD to finish\n";die();}}
 if(posix_getuid()<>0){die("Cannot be used in web server mode\n\n");}
+
 $GLOBALS["FORCE"]=false;
 $GLOBALS["RECONFIGURE"]=false;
 $GLOBALS["SWAPSTATE"]=false;
@@ -146,6 +147,44 @@ function apache_stop(){
 		if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} failed...\n";}
 	}
 }
+
+
+function patchHardDrives(){
+	
+	
+	exec("/sbin/blkid 2>&1",$results);
+	
+	while (list ($num, $val) = each ($results) ){
+		$val=trim($val);
+		if(preg_match("#^(.+?):.*?UUID=\"(.+?)\"\s+#", $val,$re)){
+			$UUIDS[$re[2]]=$re[1];
+		}
+	
+	}
+	
+	
+	$f=explode("\n",@file_get_contents("/etc/fstab"));
+	while (list ($num, $val) = each ($f) ){
+		if(preg_match("#(.+?)\s+(.+?)\s+ext4\s+(.+?)\s+([0-9]+)\s+([0-9]+)#", $val,$re)){
+			
+			$dev=$re[1];
+			
+			if(preg_match("#UUID=(.+)#", $dev,$rz)){
+				if(!isset($UUIDS[$rz[1]])){
+					if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} EXT4 $dev ( Unknown )\n";}
+					continue;}
+				$dev=$UUIDS[$rz[1]];
+			}
+			
+			
+			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} EXT4 $dev changed to dir_index,journal_data_writeback\n";}
+			shell_exec("/sbin/tune2fs -o journal_data_writeback $dev");
+			shell_exec("/sbin/tune2fs -O dir_index $dev");
+		}
+	}	
+	
+}
+
 
 function apache_kill_ipcs(){
 	$GLOBALS["CLASS_UNIX"]=new unix();
@@ -632,6 +671,7 @@ function apache_start(){
 	$php5=$unix->LOCATE_PHP5_BIN();
 	$rm=$unix->find_program("rm");
 	$apache2ctl=$unix->LOCATE_APACHE_CTL();
+	patchHardDrives();
 	apache_config();
 	
 
@@ -1511,7 +1551,7 @@ function apache_squidguard_config(){
 	$f[]="	php_value open_basedir \"/usr/share/artica-postfix:/var/log/apache2:/home/artica:/var/log:/var/run/mysqld:/tmp:/usr/share/php:/usr/share/php5:/var/lighttpd/upload:/var/lib/php5:/usr/share/artica-postfix/ressources:/usr/share/artica-postfix/framework:/usr/share/artica-postfix/user-backup:/usr/share/artica-postfix/user-backup/ressources:/etc/ssl/certs/mysql-client-download:/usr/share/artica-postfix/LocalDatabases:/var/run:/bin:/usr/sbin:/etc/artica-postfix/settings\"";
 	$f[]="";
 	$f[]="	<Directory \"/usr/share/artica-postfix/\">";
-	$f[]="		DirectoryIndex exec.squidguard.php";
+	$f[]="		DirectoryIndex ufdbguardd.php";
 	$f[]="		Options Indexes +FollowSymLinks +SymLinksIfOwnerMatch MultiViews";
 	$f[]="		IndexIgnore *";
 	$f[]="		AllowOverride All";
@@ -1537,7 +1577,7 @@ function apache_squidguard_config(){
 	$f[]="	php_value open_basedir \"/usr/share/artica-postfix:/var/log/apache2:/home/artica:/var/log:/var/run/mysqld:/tmp:/usr/share/php:/usr/share/php5:/var/lighttpd/upload:/var/lib/php5:/usr/share/artica-postfix/ressources:/usr/share/artica-postfix/framework:/usr/share/artica-postfix/user-backup:/usr/share/artica-postfix/user-backup/ressources:/etc/ssl/certs/mysql-client-download:/usr/share/artica-postfix/LocalDatabases:/var/run:/bin:/usr/sbin:/etc/artica-postfix/settings\"";
 	$f[]="";
 	$f[]="	<Directory \"/usr/share/artica-postfix/\">";
-	$f[]="		DirectoryIndex exec.squidguard.php";
+	$f[]="		DirectoryIndex ufdbguardd.php";
 	$f[]="		Options Indexes +FollowSymLinks +SymLinksIfOwnerMatch MultiViews";
 	$f[]="		IndexIgnore *";
 	$f[]="		AllowOverride All";
@@ -1653,15 +1693,8 @@ function buildConfig(){
 	
 	
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} Creating PHP configuration..\n";}
-	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} Executing artica-install --php-ini..\n";}
-	exec("/usr/share/artica-postfix/bin/artica-install --php-ini 2>&1",$results);
-	while (list ($pid, $line) = each ($results) ){
-				$line=trim($line);
-			if($line==null){continue;}
-			if(preg_match("#Starting.*?lighttpd(.+)#", $line,$re)){$line=$re[1];}
-			$line=str_replace(": ", "", $line);
-			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [ARTI]: {$GLOBALS["SERVICE_NAME"]} $line\n";}
-	}	
+	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["SERVICE_NAME"]} Executing PHP.INI\n";}
+	system("$php /usr/share/artica-postfix/exec.php.ini.php");
 	PHP_MYADMIN();
 	
 	

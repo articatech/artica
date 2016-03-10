@@ -148,7 +148,10 @@ function Execute(){
 	
 
 	$sock=new sockets();
-	$EnableArticaMetaClient=intval($sock->GET_INFO("EnableArticaMetaClient"));
+	$EnableArticaMetaClient=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaClient"));
+	$EnableArticaMetaServer=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaServer"));
+	if($EnableArticaMetaServer==1){$EnableArticaMetaClient=0;}
+	
 	if($EnableArticaMetaClient==1){
 		build_progress("Using Meta Server server",10);
 		return artica_meta_client();

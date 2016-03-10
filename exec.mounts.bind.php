@@ -13,7 +13,20 @@ start();
 
 function start(){
 	
+	
+	if(!is_file("/etc/artica-postfix/MOUNT_BINDS/BINDS.db")){
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} No mount\n";}
+		return;
+		
+	}
+	
 	$DATAS=unserialize(@file_get_contents("/etc/artica-postfix/MOUNT_BINDS/BINDS.db"));
+	
+	if(!is_array($DATAS)){
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} No mount\n";}
+		return;
+	}
+	
 	if(count($DATAS)==0){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} No mount\n";}
 		return;

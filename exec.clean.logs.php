@@ -30,6 +30,11 @@ if($argv[1]=='--used-space'){used_space();die();}
 if($argv[1]=='--cleandb'){CleanLogsDatabases(true);die();}
 if($argv[1]=='--clean-logs'){CleanLOGSF();}
 if($argv[1]=='--buidsh'){buidsh();exit;}
+if($argv[1]=='--rttsize'){RTTSizes(true);exit;}
+if($argv[1]=='--suricata'){CleanSuricataLogs();exit;}
+if($argv[1]=='--artica-meta'){ArticaMeta();exit;}
+
+
 if(!$GLOBALS["FORCE"]){
 	if(system_is_overloaded(__FILE__)){
 		if($GLOBALS["VERBOSE"]){echo "This system is overloaded, die()\n";}
@@ -53,7 +58,7 @@ if($argv[1]=='--clean-install'){CleanOldInstall();die();}
 if($argv[1]=='--paths-status'){PathsStatus();die();}
 if($argv[1]=='--maillog'){maillog();die();}
 if($argv[1]=='--wrong-numbers'){wrong_number();die();}
-if($argv[1]=='--DirectoriesSize'){DirectoriesSize();die();}
+if($argv[1]=='--DirectoriesSize'){die();}
 if($argv[1]=='--cleanbin'){Cleanbin();die();}
 if($argv[1]=='--zarafa-locks'){ZarafaLocks();die();}
 if($argv[1]=='--squid-caches'){squidClean();die();}
@@ -97,10 +102,13 @@ function CleanLOGSF(){
 	@file_put_contents($Pidfile, getmypid());
 	
 	if(!$GLOBALS["VERBOSE"]){
-		$time=$unix->file_time_min($PidTime);
-		if($time<15){echo "Only each 15mn\n";die();}
-		@unlink($PidTime);
-		@file_put_contents($PidTime, time());
+		if(!$GLOBALS["FORCE"]){
+			$time=$unix->file_time_min($PidTime);
+			echo "$PidTime = {$time}mn\n";
+			if($time<15){echo "Only each 15mn\n";die();}
+			@unlink($PidTime);
+			@file_put_contents($PidTime, time());
+		}
 	}
 	
 	
@@ -111,14 +119,180 @@ function CleanLOGSF(){
 	if(is_file($squidbin)){
 		squidClean();
 	}
+	
+	CleanSuricataLogs();
 	CleanKav4ProxyLogs();
 	CleanLogs(true);
+	Cleanbin();
 	logrotatelogs(true);
 	Clean_tmp_path(true);
 	artica_logs();
 	sessions_clean();
+	ArticaMeta(true);
+	
+	
+	if(is_dir("/var/log/influxdb")){
+		shell_exec("rm -rf /var/log/influxdb");
+	}
+	
+	
+	
+	$dir="/usr/share/artica-postfix/ressources/conf/upload/StatsApplianceLogs";
+	if(is_dir($dir)){
+		$dirs=$unix->dirdir($dir);
+		while (list ($directory,$filename) = each ($dirs)){
+			StatsApplianceLogs($directory);
+	
+		}
+	}
+	
 	die();	
 	
+	
+}
+
+
+function ArticaMeta($aspid=false){
+	$unix=new unix();
+	
+	$Pidfile="/etc/artica-postfix/pids/cleanArticaMetaRepos.pid";
+	$PidTime="/etc/artica-postfix/pids/cleanArticaMetaRepos.time";
+	
+	if(!$aspid){
+		$pid=$unix->get_pid_from_file($Pidfile);
+		if($unix->process_exists($pid,basename(__FILE__))){
+			if($GLOBALS["VERBOSE"]){echo "Aborting Task already running pid $pid ".__FUNCTION__."()\n";} 
+			return;
+		}
+	}
+	@file_put_contents($Pidfile, getmypid());
+	
+	if(!$GLOBALS["VERBOSE"]){
+		$time=$unix->file_time_min($PidTime);
+		if($time<240){echo "Only each 240mn\n";die();}
+		@unlink($PidTime);
+		@file_put_contents($PidTime, time());
+	}
+	
+	$dir="/usr/share/artica-postfix/ressources/conf/meta/hosts/uploaded";
+	if(is_dir($dir)){
+		$dirs=$unix->dirdir($dir);
+		while (list ($directory,$filename) = each ($dirs)){
+			ArticaMeta_uploads($directory);
+			
+		}
+	}
+	
+
+	
+	
+}
+
+function StatsApplianceLogs($directory){
+	$unix=new unix();
+	if (!$handle = opendir($directory)) {return;}
+	while (false !== ($fileZ = readdir($handle))) {
+		if($fileZ=="."){continue;}
+		if($fileZ==".."){continue;}
+		$path="$directory/$fileZ";
+		if($unix->file_time_min($path)>240){
+			echo "Removing $path\n";
+			@unlink($path);
+		}
+	}
+	
+}
+
+function ArticaMeta_uploads($directory){
+	
+	
+	$unix=new unix();
+	$TargetDir="$directory/SQUID_QUOTASIZE";
+	
+	
+	if(is_dir($TargetDir)){
+		if ($handle = opendir($TargetDir)) {
+			while (false !== ($fileZ = readdir($handle))) {
+				if($fileZ=="."){continue;}
+				if($fileZ==".."){continue;}
+				$path="$TargetDir/$fileZ";
+				if($unix->file_time_min($path)>240){
+					echo "Removing $path\n";
+					@unlink($path);
+				}
+			}
+		}
+	}
+	
+	
+}
+
+
+function CleanSuricataLogs(){
+	if(!is_dir("/var/log/suricata")){return;}
+	$unix=new unix();
+	$sock=new sockets();
+	$LogsRotateDefaultSizeRotation=$sock->GET_INFO("LogsRotateDefaultSizeRotation");
+	if(!is_numeric($LogsRotateDefaultSizeRotation)){$LogsRotateDefaultSizeRotation=100;}
+	$BackupMaxDaysDir=$sock->GET_INFO("BackupMaxDaysDir");
+	if($BackupMaxDaysDir==null){$BackupMaxDaysDir="/home/logrotate_backup";}
+	@mkdir($BackupMaxDaysDir,0755,true);
+	$echo=$unix->find_program("echo");
+	@unlink("/etc/artica-postfix/pids/CleanSuricataLogs.time");
+	@file_put_contents("/etc/artica-postfix/pids/CleanSuricataLogs.time", time());
+	
+	if ($handle = opendir("/var/log/suricata")) {
+		while (false !== ($fileZ = readdir($handle))) {
+				if($fileZ=="."){continue;}
+				if($fileZ==".."){continue;}
+				$path="/var/log/suricata/$fileZ";;
+				
+				if(preg_match("#unified2\.alert\.#", $fileZ)){
+					if($unix->file_time_min($path)>30){@unlink($path);}
+					continue;
+				}
+					
+		}
+	}
+	
+	
+	$f[]="fast.log";
+	$f[]="http.log";
+	$f[]="keyword_perf.log";
+	$f[]="packet_stats.log";
+	$f[]="rule_perf.log";
+	$f[]="sid_changes.log";
+	$f[]="stats.log";
+	$RELOAD=false;
+	$pathRange="$BackupMaxDaysDir/".date("Y")."/".date("m")."/" .date("d");
+	
+	while (list ($index,$filename) = each ($f)){
+		$filepath="/var/log/suricata/$filename";
+		$size=(@filesize($filepath)/1024)/1000;
+		echo "$filepath {$size}MB <> {$LogsRotateDefaultSizeRotation}M\n";
+		if($size>$LogsRotateDefaultSizeRotation){
+			@mkdir($pathRange,0755,true);
+			$unix->compress($filepath, $pathRange."/IDS-".time().".$filename.gz");
+			system_admin_mysql(2, "Rotate file $filepath $size>$LogsRotateDefaultSizeRotation", null,__FILE__,__LINE__);
+			shell_exec("$echo \"\">$filepath");
+			$RELOAD=true;
+		}
+		
+	}
+	
+	$size=(@filesize("/var/log/suricata/eve.json")/1024)/1000;
+	if($size>$LogsRotateDefaultSizeRotation){
+		system_admin_mysql(2, "Rotate file /var/log/suricata/eve.json $size>$LogsRotateDefaultSizeRotation", null,__FILE__,__LINE__);
+		@mkdir($pathRange,0755,true);
+		$unix->compress($filepath, $pathRange."/IDS-".time().".eve.json.gz");
+		shell_exec("$echo \"\">/var/log/suricata/eve.json");
+		$RELOAD=true;
+		
+	}
+
+	if($RELOAD){
+		shell_exec("/etc/init.d/suricata reload");
+	}
 	
 }
 
@@ -156,7 +330,7 @@ function squidClean($nopid=false){
 	CleanCacheStores(true);
 	squidlogs_urgency();
 	CleanKav4ProxyLogs();
-	
+	CleanSquidClamav();
 	
 }
 
@@ -184,6 +358,8 @@ function init(){
 
 function varlog(){
 	$unix=new unix();
+	
+	echo "******* varlog () *********\n";
 	
 	$rsync=$unix->find_program("rsync");
 	$rm=$unix->find_program("rm");
@@ -224,7 +400,8 @@ function varlog(){
 	$syslog[]="/var/log/kern.log";
 	$syslog[]="/var/log/user.log";
 	
-	
+	$other[]="/var/log/perfs_queue.log";
+	$other[]="/var/log/artica-status.log";
 	$other[]="/var/log/php.log";
 	$other[]="/var/log/artica-postfix/framework.log";
 	$other[]="/usr/share/artica-postfix/ressources/logs/php.log";
@@ -242,13 +419,22 @@ function varlog(){
 	$other[]="/var/log/influxdb/influxdb.startup";  
 	$other[]="/var/log/influxdb/influxd.log";
 	$other[]="/var/log/influxdb/influxd.service.log";
+	$other[]="/var/log/clamav-unofficial-sigs/clamav-unofficial-sigs.log";
+	$other[]="/var/log/artica-postfix/postfix-logger.debug";
+	$other[]="/var/log/artica-postfix/postfix-logger-start.log";
+	$other[]="/var/log/lighttpd/apache-hotspot-error.log";
+	$other[]="/var/log/suricata/tail.debug";
+	$other[]="/var/log/ArticaStatsDB/ArticaStatsDB.log";
 	
 	if(is_dir("/usr/share/artica-postfix/ressources/ressources")){
 		shell_exec("$rm -rf /usr/share/artica-postfix/ressources/ressources");
 	}
 	
 	if(is_file("/var/log/artica-postfix/squid-logger-start.log")){
-		shell_exec("$echo \"\">/var/log/artica-postfix/squid-logger-start.log");
+		$size=(@filesize("/var/log/squid/squidtail.log")/1024)/1000;
+		if($size>$LogsRotateDefaultSizeRotation){
+			shell_exec("$echo \"\">/var/log/artica-postfix/squid-logger-start.log");
+		}
 	}
 	
 	if(is_file("/var/log/artica-postfix/exec.syslog-engine.php.log")){
@@ -321,6 +507,7 @@ function varlog(){
 	
 	
 	while (list ($index,$filepath) = each ($other)){
+		if(!is_file($filepath)){continue;}
 		$size=(@filesize($filepath)/1024)/1000;
 		echo "$filepath {$size}MB <> {$LogsRotateDefaultSizeRotation}M\n";
 		if($size>50){
@@ -330,54 +517,61 @@ function varlog(){
 	
 	
 	$q=new mysql_storelogs();
-	
-	if ($handle = opendir($LogsDirectoryStorage)) {
-		while (false !== ($fileZ = readdir($handle))) {
-			if($fileZ=="."){continue;}
-			if($fileZ==".."){continue;}
-			$filename="$LogsDirectoryStorage/$fileZ";
-			$q->events("Injecting $filename",__FUNCTION__,__LINE__);
-			$q->InjectFile($filename,null);
-				
+	echo " * * * $LogsDirectoryStorage * * *\n";
+	if(is_dir($LogsDirectoryStorage)){
+		if ($handle = opendir($LogsDirectoryStorage)) {
+			while (false !== ($fileZ = readdir($handle))) {
+				if($fileZ=="."){continue;}
+				if($fileZ==".."){continue;}
+				$filename="$LogsDirectoryStorage/$fileZ";
+				$q->events("Injecting $filename",__FUNCTION__,__LINE__);
+				$q->InjectFile($filename,null);
+					
+			}
 		}
 	}
-	
+	echo " * * * /var/log * * *\n";
 	if ($handle = opendir("/var/log")) {
 		while (false !== ($fileZ = readdir($handle))) {
 			if($fileZ=="."){continue;}
 			if($fileZ==".."){continue;}
-			$path="/var/log/$filename";
+			$path="/var/log/$fileZ";
 			if(is_dir($path)){continue;}
 			if(!preg_match("#artica-status\.log\.[0-9]+$#", $fileZ)){continue;}
 			if($unix->file_time_min($path)>1440){@unlink($path);}
 		}
 	}
 	
-	
-	if ($handle = opendir("/var/log/influxdb")) {
-		while (false !== ($fileZ = readdir($handle))) {
-			if($fileZ=="."){continue;}
-			if($fileZ==".."){continue;}
-			$path="/var/log/influxdb/$filename";
-			if(is_dir($path)){continue;}
-			if(preg_match("#\.log\.[0-9]+$#", $fileZ)){
-				@unlink($path);
-				continue;
+	echo " * * * /var/log/influxdb * * *\n";
+	if(is_dir("/var/log/influxdb")){
+		if ($handle = opendir("/var/log/influxdb")) {
+			while (false !== ($fileZ = readdir($handle))) {
+				if($fileZ=="."){continue;}
+				if($fileZ==".."){continue;}
+				$path="/var/log/influxdb/$fileZ";
+				if(is_dir($path)){continue;}
+				if(preg_match("#\.log\.[0-9]+$#", $fileZ)){
+					@unlink($path);
+					continue;
+				}
+				
 			}
-			
 		}
 	}
-	
-	if ($handle = opendir("/var/log/squid")) {
-		while (false !== ($fileZ = readdir($handle))) {
-			if($fileZ=="."){continue;}
-			if($fileZ==".."){continue;}
-			$path="/var/log/squid/$filename";
-			if(is_dir($path)){continue;}
-			if(preg_match("#ufdbguardd\.log\.[0-9]+$#", $fileZ)){@unlink($path);continue;}
-				
-		}
-	}	
+	echo " * * * /var/log/squid * * *\n";
+	if(is_dir("/var/log/squid")){
+		if ($handle = opendir("/var/log/squid")) {
+			while (false !== ($fileZ = readdir($handle))) {
+				if($fileZ=="."){continue;}
+				if($fileZ==".."){continue;}
+				$path="/var/log/squid/$fileZ";
+				if(is_dir($path)){continue;}
+				if(!preg_match("#ufdbguardd\.log\.[0-9]+$#", $fileZ)){continue;}
+				echo "$path remove \n";
+				@unlink($path);continue;
+			}
+		}	
+	}
 	
 	
 	
@@ -583,6 +777,22 @@ function squidlogs_urgency(){
 		$filename="$BaseWorkDir/$fileZ";
 		$mysql_storelogs=new mysql_storelogs();
 		$mysql_storelogs->ROTATE_ACCESS_TOMYSQL($filename);
+	}
+	
+}
+
+function CleanSquidClamav(){
+	$unix=new unix();
+	if(!is_dir("/home/squid")){return;}
+	if (!$handle = opendir("/home/squid")) {return;}
+	
+	while (false !== ($fileZ = readdir($handle))) {
+		if($fileZ=="."){continue;}
+		if($fileZ==".."){continue;}
+		if(!preg_match("#clamav_tmp#", $fileZ)){continue;}
+		$filename="/home/squid/$fileZ";
+		$time=$unix->file_time_min($filename);
+		if($time>120){@unlink($filename);}
 	}
 	
 }
@@ -1115,8 +1325,7 @@ function Clean_tmp_path($aspid=false){
 	CleanAllindDir("/usr/share/artica-postfix/ressources/support",60);
 	CleanAllindDir("/home/nginx/logsWork",7200);
 	CleanAllindDir("/opt/artica/ldap-backup",7200);
-	
-	
+	CleanAllindDir("/var/log/artica-wifidog",2880);
 	
 	
 	ZarafaLocks();
@@ -1387,13 +1596,14 @@ function Cleanbin(){
 		if ($handle = opendir("/usr/share/artica-postfix/bin")) {
 		while (false !== ($file = readdir($handle))) {
 			if ($file != "." && $file != "..") {
-					
-				if(preg_match("#^st[0-9A-za-z].*#", $file)){
-					echo "Execute ('rm -f ' + BasePath + '/bin/$file');\n";
-				}
+				$filepath="/usr/share/artica-postfix/bin/$file";
+				if(is_dir($filepath)){continue;}
+				if(!preg_match("#^st[0-9A-Za-z]+$#", $file)){continue;}
+				echo "Remove $filepath\n";
+				@unlink($filepath);
 			}
+		}
 	}
-}
 	
 }
 
@@ -1885,6 +2095,7 @@ function CleanLogs($aspid=false){
 	maillog();
 	MakeSpace();
 	cleanRoot();
+	RTTSizes();
 	
 	
 	CheckSingle_logfile("/var/log/php.log",102400);
@@ -1893,7 +2104,7 @@ function CleanLogs($aspid=false){
 	CheckSingle_logfile("/var/log/php5-fpm.log",1024);
 	CheckSingle_logfile("/var/log/artica-squid-stats.log",10240);
 	CheckSingle_logfile("/var/log/atop.log",10240);
-	CheckSingle_logfile("/var/log/apache2/access-common.log",204800);
+	CheckSingle_logfile("/var/log/apache2/common-access.log",204800);
 	
 	wrong_number();
 	Clean_tmp_path();
@@ -1971,6 +2182,197 @@ function CleanLogs($aspid=false){
 	
 	
 }
+
+
+function RTTSizes($aspid=false){
+	
+	
+	if($aspid){
+		$unix=new unix();
+		$Pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
+		$PidTime="/etc/artica-postfix/pids/exec.clean.logs.php.RTTSizes.time";
+		if($GLOBALS["VERBOSE"]){echo "Pidfile: $Pidfile\n";}
+		if($GLOBALS["VERBOSE"]){echo "PidTime: $PidTime\n";}
+		
+		$pid=$unix->get_pid_from_file($Pidfile);
+		if($unix->process_exists($pid,basename(__FILE__))){
+		if($GLOBALS["VERBOSE"]){echo "Aborting Task already running pid $pid ".__FUNCTION__."()\n";} return;}
+		
+		
+		@file_put_contents($Pidfile, getmypid());
+		
+		if(!$GLOBALS["VERBOSE"]){
+			$time=$unix->file_time_min($PidTime);
+			if($time<1440){echo "Only each 1440mn\n";die();}
+			@unlink($PidTime);
+			@file_put_contents($PidTime, time());
+		}
+		
+	}
+	
+	$base="/home/squid/rttsize";
+	$YEAR=date("Y");
+	$MONTH=date("m");
+	$DAY=date("d");
+	$HOUR=date("H");
+	$WEEK=date("W");
+	$unix=new unix();
+	$rm=$unix->find_program("rm");
+	
+	$path="/home/squid/rttsize";
+	if(is_dir($path)){
+		$directory=opendir($path);
+		while ($file = readdir($directory)) {
+			if($file=="."){continue;}
+			if($file==".."){continue;}
+			if(!is_dir("$path/$file")){continue;}
+			if(!is_numeric($file)){continue;}
+			if($file==$YEAR){continue;}
+			shell_exec("$rm -rf $path/$file");
+		}
+	}
+		
+	
+	$path="/home/squid/rttsize/$YEAR/$MONTH/$WEEK/$DAY";
+	
+	
+	if(is_dir($path)){
+		$directory=opendir($path);
+		while ($file = readdir($directory)) {
+			if($file=="."){continue;}
+			if($file==".."){continue;}
+			if(!is_dir("$path/$file")){continue;}
+			if(!is_numeric($file)){continue;}
+			if(intval($file)==intval($HOUR)){continue;}
+			$dirpath="$path/$file";
+			echo "$rm -rf \"$dirpath\"\n";
+			shell_exec("$rm -rf \"$dirpath\"");
+		}
+	
+	}
+	
+	
+	$path="/home/squid/rttsize/$YEAR/$MONTH/$WEEK";
+	$unix=new unix();
+	$rm=$unix->find_program("rm");
+	if(is_dir($path)){
+		$directory=opendir($path);
+		while ($file = readdir($directory)) {
+			if($file=="."){continue;}
+			if($file==".."){continue;}
+			if(!is_dir("$path/$file")){continue;}
+			if(!is_numeric($file)){continue;}
+			if(intval($file)==intval($DAY)){continue;}
+			$dirpath="$path/$file";
+			echo "$rm -rf \"$dirpath\"\n";
+			shell_exec("$rm -rf \"$dirpath\"");
+		}
+	}	
+	
+	
+	$path="/home/squid/rttsize/$YEAR/$MONTH";
+	$unix=new unix();
+	$rm=$unix->find_program("rm");
+	if(is_dir($path)){
+		$directory=opendir($path);
+		while ($file = readdir($directory)) {
+			if($file=="."){continue;}
+			if($file==".."){continue;}
+			if(!is_dir("$path/$file")){continue;}
+			if(!is_numeric($file)){continue;}
+			if(intval($file)==intval($WEEK)){continue;}
+			$dirpath="$path/$file";
+			echo "$rm -rf \"$dirpath\"\n";
+			shell_exec("$rm -rf \"$dirpath\"");
+		}
+	}	
+	$path="/home/squid/rttsize/$YEAR";
+	$unix=new unix();
+	$rm=$unix->find_program("rm");
+	if(is_dir($path)){
+		$directory=opendir($path);
+		while ($file = readdir($directory)) {
+			if($file=="."){continue;}
+			if($file==".."){continue;}
+			if(!is_dir("$path/$file")){continue;}
+			if(!is_numeric($file)){continue;}
+			if(intval($file)==intval($MONTH)){continue;}
+			$dirpath="$path/$file";
+			echo "$rm -rf \"$dirpath\"\n";
+			shell_exec("$rm -rf \"$dirpath\"");
+		}
+	}
+	
+	
+	$path="/home/artica/ufdbcounters/$YEAR/$MONTH/$DAY";
+	
+	
+	if(is_dir($path)){
+		$directory=opendir($path);
+		while ($file = readdir($directory)) {
+			if($file=="."){continue;}
+			if($file==".."){continue;}
+			if(!is_dir("$path/$file")){continue;}
+			if(!is_numeric($file)){continue;}
+			if(intval($file)==intval($HOUR)){continue;}
+			$dirpath="$path/$file";
+			echo "$rm -rf \"$dirpath\"\n";
+			shell_exec("$rm -rf \"$dirpath\"");
+		}
+	}
+
+	$path="/home/artica/ufdbcounters/$YEAR/$MONTH";
+	
+	
+	if(is_dir($path)){
+		$directory=opendir($path);
+		while ($file = readdir($directory)) {
+			if($file=="."){continue;}
+			if($file==".."){continue;}
+			if(!is_dir("$path/$file")){continue;}
+			if(!is_numeric($file)){continue;}
+			if(intval($file)==intval($DAY)){continue;}
+			$dirpath="$path/$file";
+			echo "$rm -rf \"$dirpath\"\n";
+			shell_exec("$rm -rf \"$dirpath\"");
+		}
+	}	
+	
+	$path="/home/artica/ufdbcounters/$YEAR";
+	
+	
+	if(is_dir($path)){
+		$directory=opendir($path);
+		while ($file = readdir($directory)) {
+			if($file=="."){continue;}
+			if($file==".."){continue;}
+			if(!is_dir("$path/$file")){continue;}
+			if(!is_numeric($file)){continue;}
+			if(intval($file)==intval($MONTH)){continue;}
+			$dirpath="$path/$file";
+			echo "$rm -rf \"$dirpath\"\n";
+			shell_exec("$rm -rf \"$dirpath\"");
+		}
+	}	
+
+	$path="/home/artica/ufdbcounters";
+	
+	
+	if(is_dir($path)){
+		$directory=opendir($path);
+		while ($file = readdir($directory)) {
+			if($file=="."){continue;}
+			if($file==".."){continue;}
+			if(!is_dir("$path/$file")){continue;}
+			if(!is_numeric($file)){continue;}
+			if(intval($file)==intval($YEAR)){continue;}
+			$dirpath="$path/$file";
+			echo "$rm -rf \"$dirpath\"\n";
+			shell_exec("$rm -rf \"$dirpath\"");
+		}
+	}	
+}
+
 
 function cleanTmplogs(){
 	
@@ -2144,7 +2546,7 @@ function sessions_clean_parse($directory,$CleanPHPSessionTime,$APACHE_SRC_ACCOUN
 function sessions_clean(){
 	$unix=new unix();
 	$sock=new sockets();
-	$TimeFile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".time";
+	$TimeFile="/etc/artica-postfix/pids/exec.clean.logs.php.sessions_clean.time";
 	if($unix->file_time_min($TimeFile)<60){return;}
 	
 	@unlink($TimeFile);
@@ -2157,6 +2559,8 @@ function sessions_clean(){
 	
 	sessions_clean_parse("/var/lib/php5",$CleanPHPSessionTime,$APACHE_SRC_ACCOUNT,$APACHE_SRC_GROUP);
 	sessions_clean_parse("/var/lib/php5-zarafa",$CleanPHPSessionTime,$APACHE_SRC_ACCOUNT,$APACHE_SRC_GROUP);
+	sessions_clean_parse("/home/artica/hotspot/sessions",$CleanPHPSessionTime,$APACHE_SRC_ACCOUNT,$APACHE_SRC_GROUP);
+	
 	sessions_clean_parse("/home/squid/error_page_sessions",$CleanPHPSessionTime,$APACHE_SRC_ACCOUNT,$APACHE_SRC_GROUP);
 	sessions_clean_parse("/usr/share/artica-postfix/ressources/logs/jGrowl",360,$APACHE_SRC_ACCOUNT,$APACHE_SRC_GROUP);
 	sessions_clean_parse("/usr/share/artica-postfix/ressources/conf",360,$APACHE_SRC_ACCOUNT,$APACHE_SRC_GROUP);
@@ -2474,65 +2878,10 @@ function MakeSpace(){
 	
 }
 
-function DirectoriesSize(){
-	include_once(dirname(__FILE__).'/ressources/class.mysql.inc');
-	$f[]="/var";
-	$f[]="/var/log";
-	$f[]="/var/log/artica-postfix";
-	$f[]="/var/lib";
-	$f[]="/var/www";
-	$f[]="/usr/share";
-	$f[]="/opt";
-	
-	$unix=new unix();
-	
-	$q=new mysql();
-	$q->QUERY_SQL("TRUNCATE TABLE `DirectorySizes`","artica_events");
-	$prefix="INSERT IGNORE INTO DirectorySizes (zmd5,path,size) VALUES ";
-	
-	if($GLOBALS["OUTPUT"]){
-		echo "Checking special directories size....Please wait...\n";
-	}
-	
-	$du=$unix->find_program($du);
-	while (list ($num, $directory) = each ($f)){
-		$size=$unix->DIRSIZE_BYTES($directory);
-		$tt=round(($size/1024)/1000);
-		$md=md5($directory);
-		$sql[]="('$md','$directory','$size')";
-		echo "$directory... $tt MB\n";
-		
-		$dirs=array();
-		$dirs=$unix->dirdir($directory);
-		while (list ($a, $b) = each ($dirs)){
-			$size=$unix->DIRSIZE_BYTES($a);
-			$tt=round(($size/1024)/1000);
-			if($tt>1){
-				echo "\t$a -> " .round(($size/1024)/1000)." MB\n";
-			}
-			$md=md5($a);
-			$sql[]="('$md','$a','$size')";
-			
-			if(count($sql)>100){
-				$q->QUERY_SQL($prefix.@implode(",", $sql),"artica_events");
-				$sql=array();
-			}
-			
-		}
-		
-	}
-	if(count($sql)>0){
-		if($GLOBALS["OUTPUT"]){
-			echo "Checking special directories done.. injecting into DirectorySizes table...\n";
-		}
-		$q->QUERY_SQL($prefix.@implode(",", $sql),"artica_events");}
-	
-	
-}
-//##############################################################################
+
 function used_space(){
 	$GLOBALS["OUTPUT"]=true;
-	DirectoriesSize();
+
 }
 
 function clean_space(){

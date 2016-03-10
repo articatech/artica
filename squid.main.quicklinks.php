@@ -542,7 +542,7 @@ function section_architecture_advanced(){
     
     $dns_servers=Paragraphe('dns-64.png','{dns_servers}','{dns_servers_text}',"javascript:Loadjs('squid.popups.php?script=dns')");
     
-    $syslog=Paragraphe("syslog-64.png", "Syslog", "{squid_syslog_text}","javascript:Loadjs('squid.syslog.php')");
+   
     $syslogMAC=Paragraphe("syslog-64.png", "{ComputerMacAddress}", "{squid_ComputerMacAddress_text}","javascript:Loadjs('squid.macaddr.php')");
     $syslogFQDN=Paragraphe("syslog-64.png", "{log_hostnames}", "{log_hostnames_text}","javascript:Loadjs('squid.loghostname.php')");
     
@@ -555,8 +555,7 @@ function section_architecture_advanced(){
     
     $csvstats=Paragraphe("csv-64.png", "{squid_csv_logs}", "{squid_csv_logs_explain}","javascript:Loadjs('squid.csv.php')");
     
-     $file_descriptors=Paragraphe("64-filetype.png", "{file_descriptors}", "{file_descriptors_squid_explain}",
-    "javascript:Loadjs('squid.file_desc.php')");
+
      
     $snmp=Paragraphe("64-snmp.png", "SNMP", "{squid_snmp_explain}",
     "javascript:Loadjs('squid.snmp.php')");
@@ -568,8 +567,7 @@ function section_architecture_advanced(){
 
     
 
-    $CacheManagement2=Paragraphe("web-site.png", "{CacheManagement2}", "{CacheManagement2_explain}",
-    		"javascript:Loadjs('squid.caches.ManagementChoose.php')");    
+    
     
 
 
@@ -707,7 +705,7 @@ $users=new usersMenus();
 $squid=new squidbee();
 	$compilefile="ressources/logs/squid.compilation.params";
 	if(!is_file($compilefile)){$sock->getFrameWork("squid.php?compil-params=yes");}
-	$COMPILATION_PARAMS=unserialize(base64_decode(file_get_contents($compilefile)));
+	$COMPILATION_PARAMS=unserialize(base64_decode(@file_get_contents($compilefile)));
 	$SquidActHasReverse=$sock->GET_INFO("SquidActHasReverse");
 	if(!is_numeric($SquidActHasReverse)){$SquidActHasReverse=0;}
 	if($users->SQUID_REVERSE_APPLIANCE){$SquidActHasReverse=1;}
@@ -815,8 +813,7 @@ $squid=new squidbee();
 	
 	$csvstats=Paragraphe("csv-64.png", "{squid_csv_logs}", "{squid_csv_logs_explain}","javascript:Loadjs('squid.csv.php')");
 	
-	$file_descriptors=Paragraphe("64-filetype.png", "{file_descriptors}", "{file_descriptors_squid_explain}",
-			"javascript:Loadjs('squid.file_desc.php')");
+
 	 
 	$snmp=Paragraphe("64-snmp.png", "SNMP", "{squid_snmp_explain}",
 			"javascript:Loadjs('squid.snmp.php')");

@@ -41,7 +41,7 @@ function page(){
 	<center style='width:70%;margin:30px' class=form>
 	<div style='font-size:26px'>PHPMyAdmin v.$version</div>
 	<p>&nbsp;</p>
-	". button("PHPMyAdmin Front-end","document.location.href='/mysql';",40)."<p>&nbsp;</p></center></center></div>";
+	". button("PHPMyAdmin Front-end","PopUpFull('/mysql',2048,1024);",40)."<p>&nbsp;</p></center></center></div>";
 		
 			
 			

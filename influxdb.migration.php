@@ -6,7 +6,7 @@ include_once('ressources/class.templates.inc');
 include_once('ressources/class.users.menus.inc');
 include_once('ressources/class.squid.inc');
 include_once('ressources/class.status.inc');
-include_once('ressources/class.artica.graphs.inc');
+
 
 $users=new usersMenus();
 if(!$users->AsWebStatisticsAdministrator){

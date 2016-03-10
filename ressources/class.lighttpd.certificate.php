@@ -57,6 +57,9 @@ class lighttpd_certificate{
 		if($this->UsePrivKeyCrt==0){
 			$this->srca_content=$this->Squidkey;
 			$this->crt_content=$this->SquidCert;
+		}else{
+			$this->srca_content=$ligne["privkey"];
+			$this->crt_content=$ligne["crt"];
 		}
 		
 	}

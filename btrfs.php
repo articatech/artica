@@ -33,10 +33,10 @@ function tabs(){
 		if($EnableIntelCeleron==0){$array["seeker"]='{performance}';}
 		//$array["disks"]='{disks} BtrFS';
 		
-		
+		$array["schedules"]='{schedules}';
 	
 	
-		$fontsize=22;
+		$fontsize=24;
 	
 	
 		while (list ($num, $ligne) = each ($array) ){
@@ -63,7 +63,12 @@ function tabs(){
 			if($num=="seeker"){
 				$tab[]="<li><a href=\"system.disks.performance.php\"><span style='font-size:{$fontsize}px'>$ligne</span></a></li>\n";
 				continue;
-			}			
+			}	
+
+			if($num=="schedules"){
+				$tab[]="<li><a href=\"system.disks.schedules.php\"><span style='font-size:{$fontsize}px'>$ligne</span></a></li>\n";
+				continue;
+			}
 			
 			$tab[]="<li><a href=\"$page?$num=yes\"><span style='font-size:{$fontsize}px'>$ligne</span></a></li>\n";
 				
@@ -71,7 +76,7 @@ function tabs(){
 	
 	
 	
-	echo build_artica_tabs($tab, "btrfs-tabs")."<script>LeftDesign('harddrive-white-64-opac20.png');</script>";
+	echo build_artica_tabs($tab, "btrfs-tabs",1490)."<script>LeftDesign('harddrive-white-64-opac20.png');</script>";
 		
 	
 	

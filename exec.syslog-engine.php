@@ -69,11 +69,14 @@ if($argv[1]=='--imap-bw'){blackwhite_admin_mysql_check(true);die();}
 if($argv[1]=='--rotate'){squid_notifications();die();}
 if($argv[1]=='--updtev'){udfbguard_update_events();die();}
 if($argv[1]=='--rsylogd'){rsyslog_check_includes();die();}
+//exec.syslog-engine.php --rsylogd
+
 if($argv[1]=='--sysev'){sysev();die();}
 if($argv[1]=='--admin-evs'){scan_queue();die();}
 if($argv[1]=='--squid-rt-failed'){squid_rt_mysql_failed();die();}
 if($argv[1]=='--loadavg'){loadavg_logs();sys_alerts();clamd_mem();crossroads();system_admin_events_checks();system_rotate_events_checks();die();}
 if($argv[1]=='--buildconf'){rsyslog_check_includes();exit;}
+if($argv[1]=='--apache'){apache_admin_mysql_check();exit;}
 
 
 if(!$GLOBALS["FORCE"]){
@@ -108,7 +111,7 @@ if($argv[1]=='--auth-logs'){
 		if(system_is_overloaded(basename(__FILE__))){system_admin_events("OVERLOADED system: {$GLOBALS["SYSTEM_INTERNAL_LOAD"]}, aborting",__FUNCTION__,__FILE__,__LINE__,"system");die();}
 		sessions_logs();
 		if(system_is_overloaded(basename(__FILE__))){system_admin_events("OVERLOADED system: {$GLOBALS["SYSTEM_INTERNAL_LOAD"]}, aborting",__FUNCTION__,__FILE__,__LINE__,"system");die();}
-		ipblocks();
+		
 		if(system_is_overloaded(basename(__FILE__))){system_admin_events("OVERLOADED system: {$GLOBALS["SYSTEM_INTERNAL_LOAD"]}, aborting",__FUNCTION__,__FILE__,__LINE__,"system");die();}
 		clamd_mem();
 		if(system_is_overloaded(basename(__FILE__))){system_admin_events("OVERLOADED system: {$GLOBALS["SYSTEM_INTERNAL_LOAD"]}, aborting",__FUNCTION__,__FILE__,__LINE__,"system");die();}
@@ -130,12 +133,12 @@ if($argv[1]=='--auth-logs'){
 		postfix_admin_mysql_check();
 		die();
 }
-if($argv[1]=='--authfw'){authfw();sessions_logs();die();ipblocks();system_admin_events_checks();}
-if($argv[1]=='--authfw-compile'){compile_sshd_rules();sessions_logs();ipblocks();system_admin_events_checks();die();}
-if($argv[1]=='--snort'){snort_logs();sessions_logs();ipblocks();clamd_mem();crossroads();udfbguard_admin_events();system_admin_events_checks();die();}
+if($argv[1]=='--authfw'){authfw();sessions_logs();die();system_admin_events_checks();}
+if($argv[1]=='--authfw-compile'){compile_sshd_rules();sessions_logs();system_admin_events_checks();die();}
+if($argv[1]=='--snort'){snort_logs();sessions_logs();clamd_mem();crossroads();udfbguard_admin_events();system_admin_events_checks();die();}
 if($argv[1]=='--sessions'){sessions_logs();system_admin_events();system_rotate_events_checks();die();}
 
-if($argv[1]=='--ipblocks'){ipblocks();scan_queue(true);die();}
+if($argv[1]=='--;'){scan_queue(true);die();}
 if($argv[1]=='--adminlogs'){admin_logs();crossroads();udfbguard_admin_events();dhcpd_logs();die();}
 if($argv[1]=='--psmem'){ps_mem(true);crossroads();dhcpd_logs();die();}
 if($argv[1]=='--squid-tasks'){die();}
@@ -175,8 +178,6 @@ authlogs();
 if(system_is_overloaded(basename(__FILE__))){system_admin_events("OVERLOADED system: {$GLOBALS["SYSTEM_INTERNAL_LOAD"]}, aborting",__FUNCTION__,__FILE__,__LINE__,"system");die();}
 if($GLOBALS["VERBOSE"]){echo "MAIN::".__LINE__." ->sessions_logs()\n";}
 sessions_logs();
-if($GLOBALS["VERBOSE"]){echo "MAIN::".__LINE__." ->ipblocks()\n";}
-ipblocks();
 if(system_is_overloaded(basename(__FILE__))){system_admin_events("OVERLOADED system: {$GLOBALS["SYSTEM_INTERNAL_LOAD"]}, aborting",__FUNCTION__,__FILE__,__LINE__,"system");die();}
 if($GLOBALS["VERBOSE"]){echo "MAIN::".__LINE__." ->clamd_mem()\n";}
 clamd_mem();
@@ -319,6 +320,12 @@ function rsyslog_check_includes(){
 	if(!is_file("/etc/rsyslog.conf")){return;}
 	$imudp="#";
 	$unix=new unix();
+	
+	$haproxy=$unix->find_program("haproxy");
+	if(is_file($haproxy)){
+		$imudp=null;
+		
+	}
 	
 
 	$f[]="#  /etc/rsyslog.conf	Configuration file for rsyslog.";
@@ -864,8 +871,6 @@ function admin_logs(){
 		if(trim($sql)==null){@unlink($filename);}
 		$q->QUERY_SQL($sql,"artica_events");
 		if(!$q->ok){writelogs("Fatal, $q->mysql_error",__FUNCTION__,__FILE__,__LINE__);
-			if(strpos($q->mysql_error,"Column count doesn't match value count")>0){@unlink($filename);}
-			if(strpos($q->mysql_error,"nknown column")>0){writelogs("Fatal -> DROP TABLE ",__FUNCTION__,__FILE__,__LINE__);$q->QUERY_SQL("DROP TABLE adminevents","artica_events");$q->BuildTables();}
 		continue;}
 		@unlink($filename);
 	}
@@ -1725,6 +1730,7 @@ function meta_admin_mysql_check($nopid=false){
 	$users=new usersMenus();
 	$hostname=$unix->hostname_g();
 	$BaseWorkDir="{$GLOBALS["ARTICALOGDIR"]}/meta_admin_mysql";
+	if(!is_dir($BaseWorkDir)){return;}
 	$uuid=$unix->GetUniqueID();
 	if (!$handle = opendir($BaseWorkDir)) {echo "Failed open $BaseWorkDir\n";return;}
 	
@@ -2706,6 +2712,7 @@ function system_admin_events_inject($f,$nooptimize=false){
 				WriteMyLogs("system_admin_events_inject:: $tablename: `$q->mysql_error`",__FUNCTION__,__FILE__,__LINE__);
 				writelogs("$q->mysql_error",__FUNCTION__,__FILE__,__LINE__);
 				if(preg_match("#Can't find file#", "$q->mysql_error")){
+					if($tablename=="artica_events"){continue;}
 					$q->QUERY_SQL("DROP TABLE $tablename","artica_events");
 					$tq->CheckTableTaskEvents($tablename);
 					$q->QUERY_SQL($sql,"artica_events");
@@ -3090,6 +3097,7 @@ function clean_mysql_events(){
 	$array["update_events"]=true;
 	$array["squid_admin_mysql"]=true;
 	$array["squid_admin_enforce"]=true;
+	$array["postfix_admin_mysql"]=true;
 	$array["webupdate_admin_mysql"]=true;
 	$array["nginx_admin_mysql"]=true;
 	$array["mysql_admin_mysql"]=true;
@@ -3133,6 +3141,8 @@ function clean_mysql_events(){
 			$q->QUERY_SQL("DELETE FROM `$table` ORDER BY zDate LIMIT $toDelete","artica_events");
 			continue;
 		}
+		
+		
 		$q->QUERY_SQL("DELETE FROM `$table` WHERE zDate<DATE_SUB(NOW(),INTERVAL 60 DAY)","artica_events");
 	}
 	
@@ -3141,17 +3151,20 @@ function clean_mysql_events(){
 		$q->QUERY_SQL("DELETE FROM evnts WHERE zDate<DATE_SUB(NOW(),INTERVAL 15 DAY)","artica_events");
 	}
 	
+	if($q->TABLE_EXISTS("sys_alert", "artica_events")){
+		$q->QUERY_SQL("DELETE FROM sys_alert WHERE zDate<DATE_SUB(NOW(),INTERVAL 7 DAY)","artica_events");
+	}
 	
-	$q->QUERY_SQL("DELETE FROM sys_alert WHERE zDate<DATE_SUB(NOW(),INTERVAL 7 DAY)","artica_events");
-	$q->QUERY_SQL("DELETE FROM ps_mem_tot WHERE zDate<DATE_SUB(NOW(),INTERVAL 35 DAY)","artica_events");
+	if($q->TABLE_EXISTS("ps_mem_tot", "artica_events")){
+		$q->QUERY_SQL("DELETE FROM ps_mem_tot WHERE zDate<DATE_SUB(NOW(),INTERVAL 35 DAY)","artica_events");
+	}
 	
 	if($q->TABLE_EXISTS("ps_mem", "artica_events")){
 		$q->QUERY_SQL("DELETE FROM ps_mem WHERE zDate<DATE_SUB(NOW(),INTERVAL 35 DAY)","artica_events");
 	}
-	if($q->TABLE_EXISTS("postfix_admin_mysql", "artica_events")){
-		$q->QUERY_SQL("DELETE FROM postfix_admin_mysql WHERE zDate<DATE_SUB(NOW(),INTERVAL 15 DAY)","artica_events");
-	}
+
 	
+
 	
 	if($q->TABLE_EXISTS("loadavg", "artica_events")){
 		$q->QUERY_SQL("DELETE FROM loadavg WHERE stime < DATE_SUB( NOW( ) , INTERVAL 7 DAY )","artica_events");
@@ -3507,7 +3520,9 @@ function seeker(){
 	}	
 	
 	seeker_log("$c injected files",__LINE__);
-	
+	if($q->TABLE_EXISTS("disk_seeker", "artica_events")){
+		$q->QUERY_SQL("DELETE FROM disk_seeker WHERE zDate<DATE_SUB(NOW(),INTERVAL 7 DAY)","artica_events");
+	}
 	
 }
 
@@ -4123,56 +4138,7 @@ function events_Loadavg($text,$function=null,$line=0){
 		$GLOBALS["CLASS_UNIX"]->events("$filename $function:: $text (L.$line)","{$GLOBALS["ARTICALOGDIR"]}/xLoadAvg.debug");	
 		}	
 
-function ipblocks(){
-	if(system_is_overloaded()){return;}
-	include_once(dirname(__FILE__) . '/ressources/class.mysql.inc');
-	$unix=new unix();
-	$php=$unix->LOCATE_PHP5_BIN();
-	$nogup=$unix->find_program("nohup");
-	$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
-	$pidtime="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".time";
-	$pid=@file_get_contents($pidfile);
-	if($unix->process_exists($pid)){echo "Already running pid $pid\n";return;}	
-	$q=new mysql();
-	if(!$q->TABLE_EXISTS('ipblocks_db','artica_backup')){$q->BuildTables();}
-	if(!is_file($pidtime)){
-		$count=$q->COUNT_ROWS("ipblocks_db", "artica_backup");
-		if($count==0){shell_exec(trim("$nogup /usr/share/artica-postfix/bin/artica-update --ipblocks >/dev/null 2>&1 &"));}
-		sleep(5);
-		@file_put_contents($pidtime, time());
-	}
-	
-	if($unix->file_time_min($pidtime)>480){
-		shell_exec(trim("$nogup /usr/share/artica-postfix/bin/artica-update --ipblocks >/dev/null 2>&1 &"));
-		sleep(5);
-		@unlink($pidtime);
-		@file_put_contents($pidtime, time());
-		$unix->THREAD_COMMAND_SET("$php /usr/share/artica-postfix/exec.postfix.iptables.php --ipdeny");
-	}
-	
-	@file_put_contents($pidfile, getmypid());
-	
-	foreach (glob("{$GLOBALS["ARTICALOGDIR"]}/ipblocks/*.zone") as $filename) {
-		$basename=basename($filename);
-		if(!preg_match("#(.+?)\.zone#", $basename,$re)){continue;}
-		$country=$re[1];
-		$datas=explode("\n", @file_get_contents($filename));
-		$f=true;
-		
-		while (list ($index, $line) = each ($datas) ){
-			$line=trim($line);if($line==null){continue;}if($country==null){continue;}
-			$sql="INSERT IGNORE INTO ipblocks_db (cdir,country) VALUES('$line','$country')";
-			$q->QUERY_SQL($sql,"artica_backup");
-			if(!$q->ok){events("ipblocks:: $q->mysql_error line:".__LINE__);$f=false;break;}
-		}
-		if(!$f){continue;}
-		@unlink($filename);
-	}
-	
 
-	
-	
-}
 
 function haproxy_events(){
 	$qs=new mysql_squid_builder();

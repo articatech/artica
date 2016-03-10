@@ -29,6 +29,7 @@ function popup(){
 	
 	if(preg_match("#AD:(.*?):(.+)#", $_GET["dn"],$re)){
 		$dnEnc=$re[2];
+		$DN_TITLE=base64_decode($dnEnc);
 		$LDAPID=$re[1];
 		$link="BrowseActiveDirectory.php?UsersGroup-list=yes&dn=$dnEnc&ADID=$LDAPID";
 	}	
@@ -42,7 +43,7 @@ $('#table-$t').flexigrid({
 	dataType: 'json',
 	colModel : [
 		{display: '&nbsp;', name : 'img', width : 31, sortable : false, align: 'center'},
-		{display: '$Members', name : 'uid', width : 590, sortable : false, align: 'left'},
+		{display: '<strong style=font-size:18px>$Members</strong>', name : 'uid', width : 773, sortable : false, align: 'left'},
 	],
 
 	searchitems : [
@@ -51,11 +52,11 @@ $('#table-$t').flexigrid({
 	sortname: 'uid',
 	sortorder: 'asc',
 	usepager: true,
-	title: '',
+	title: '$DN_TITLE',
 	useRp: true,
 	rp: 15,
 	showTableToggleBtn: false,
-	width: 670,
+	width: '99%',
 	height: 450,
 	singleSelect: true
 	

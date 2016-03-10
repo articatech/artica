@@ -261,7 +261,7 @@ function tabs(){
 	$tpl=new templates();	
 	$page=CurrentPageName();
 	$GLOBALS["CLASS_SOCKETS"]=new sockets();
-
+	$users=new usersMenus();
 	
 	$EnableClamavDaemon=$GLOBALS["CLASS_SOCKETS"]->GET_INFO("EnableClamavDaemon");
 	if(!is_numeric($EnableClamavDaemon)){$EnableClamavDaemon=0;}
@@ -273,14 +273,31 @@ function tabs(){
 	$SQUIDEnable=$GLOBALS["CLASS_SOCKETS"]->GET_INFO("SQUIDEnable");
 	if($SQUIDEnable==1){if($CicapEnabled==1){$EnableClamavDaemon=1;}}
 	
+	
+	if($users->POSTFIX_INSTALLED){
+		if($users->CLAMAV_MILTER_INSTALLED){
+			$array["clammilt"]='{antivirus_for_messaging}';
+		}
+	}
+	
+	
+	
+	
 	if($EnableClamavDaemon==1){
 		$array["status"]='{status}';
 	}
-	$array["popup"]='{parameters}';
+	$array["popup"]='{engine_parameters}';
 	
 	
 	
 	while (list ($num, $ligne) = each ($array) ){
+		
+		if($num=="clammilt"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"clamav.milter.php\"><span style='font-size:22px'>$ligne</span></a></li>\n");
+			continue;
+		}
+		
+		
 		
 		if($num=="clamav_unofficial"){
 			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"clamav.unofficial.php?popup=yes\"><span style='font-size:22px'>$ligne</span></a></li>\n");

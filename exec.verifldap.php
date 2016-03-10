@@ -26,6 +26,8 @@ if($argv[1]=="--ou"){verif_organization();exit;}
 
 function verif_organization(){
 	$unix=new unix();
+	$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
+	if($EnableOpenLDAP==0){return;}
 	if(!isset($GLOBALS["SQUID_INSTALLED"])){
 		$squidbin=$unix->LOCATE_SQUID_BIN();
 		if(is_file($squidbin)){$GLOBALS["SQUID_INSTALLED"]=true;}else{$GLOBALS["SQUID_INSTALLED"]=false;}

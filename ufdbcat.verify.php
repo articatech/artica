@@ -73,6 +73,7 @@ $trans["agressive"]="horror-extreme.com";
 $trans["alcohol"]="best-of-vodka.com";
 $trans["animals"]="photographsofanimals.info";
 $trans["astrology"]="indianastrologers.in";
+$trans["youtube"]="youtube.com";
 $trans["audio-video"]="youtube.com";
 $trans["automobile/bikes"]="breezerbikes.com";
 $trans["automobile/boats"]="bsailing.com";

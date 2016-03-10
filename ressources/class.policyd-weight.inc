@@ -88,17 +88,7 @@ class policydweight{
 		
 	
 		
-		$this->rhsbl_array["dsn.rfc-ignorant.org"]["HIT"]="3.5";
-		$this->rhsbl_array["dsn.rfc-ignorant.org"]["MISS"]="0";
-		$this->rhsbl_array["dsn.rfc-ignorant.org"]["LOG"]="DSN_RFCI";			
-		
-		$this->rhsbl_array["postmaster.rfc-ignorant.org"]["HIT"]="0.1";
-		$this->rhsbl_array["postmaster.rfc-ignorant.org"]["MISS"]="0";
-		$this->rhsbl_array["postmaster.rfc-ignorant.org"]["LOG"]="PM_RFCI";	
 
-		$this->rhsbl_array["abuse.rfc-ignorant.org"]["HIT"]="0.1";
-		$this->rhsbl_array["abuse.rfc-ignorant.org"]["MISS"]="0";
-		$this->rhsbl_array["abuse.rfc-ignorant.org"]["LOG"]="ABUSE_RFCI";
 	}			
 	
 	}

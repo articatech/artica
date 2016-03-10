@@ -79,7 +79,7 @@ function popuptabs(){
 	
 
 while (list ($num, $ligne) = each ($array) ){
-		$html[]= "<li><a href=\"$page?main=$num\"><span style='font-size:20px'>$ligne</span></a></li>\n";
+		$html[]= "<li><a href=\"$page?main=$num\"><span style='font-size:26px'>$ligne</span></a></li>\n";
 	}
 	
 	return build_artica_tabs($html, "main_config_postfix_net",1490);

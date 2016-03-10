@@ -16,13 +16,29 @@ $Button2014BgcolorOver="#47A447";
 $Button2014BgcolorBorder="#4CAE4C";
 $skinf="#005447";
 $sock=new sockets();
-$font_family=$sock->GET_INFO("InterfaceFonts");
+
+$font_family_org=$sock->GET_INFO("InterfaceFonts");
+$font_family=$font_family_org;
 if($font_family==null){$font_family="'Lucida Grande',Arial, Helvetica, sans-serif";}
+
+$ForceDefaultGreenColor=$sock->GET_INFO("ForceDefaultGreenColor");
+$ForceDefaultButtonColor=$sock->GET_INFO("ForceDefaultButtonColor");
+$ForceDefaultTopBarrColor=$sock->GET_INFO("ForceDefaultTopBarrColor");
+if($ForceDefaultGreenColor<>null){$Green="#".$ForceDefaultGreenColor;}
+
+if($ForceDefaultButtonColor<>null){
+	$Button2014Bgcolor=$ForceDefaultButtonColor;
+	$Button2014BgcolorOver=$ForceDefaultGreenColor;
+	$Button2014BgcolorBorder=$ForceDefaultButtonColor;
+	
+}
+
 
 $skinf=dirname(__FILE__) . "/ressources/templates/{$_COOKIE["artica-template"]}/top-bar-color.conf";
 $skinOver=dirname(__FILE__) . "/ressources/templates/{$_COOKIE["artica-template"]}/top-bar-color-over.conf";
 $skinborder=dirname(__FILE__) . "/ressources/templates/{$_COOKIE["artica-template"]}/top-bar-color-border.conf";
 $body=dirname(__FILE__) . "/ressources/templates/{$_COOKIE["artica-template"]}/body.conf";
+
 
 
 
@@ -1115,7 +1131,7 @@ td.TableBouton2014:hover{
 	border-radius: 5px; 
 	border: 2px solid #000;
 	background: #4c4c4c;
-	color: #fff;
+	color: #fff !important;
 }
 
 /* Use this next selector to style things like font-size and line-height: */
@@ -1125,6 +1141,15 @@ td.TableBouton2014:hover{
 	line-height: 20px;
 	padding: 8px 10px;
 	overflow: hidden;
+	color: #fff !important;
+	
+}
+
+.tooltipster-default .tooltipster-content li {
+	color: #fff !important;
+}
+.tooltipster-default .tooltipster-content ul {
+	color: #fff !important;
 }
 
 /* This next selector defines the color of the border on the outside of the arrow. This will automatically match the color and size of the border set on the main tooltip styles. Set display: none; if you would like a border around the tooltip but no border around the arrow */
@@ -1529,6 +1554,60 @@ $cssplus
     color: white;
 }
 ";
+
+if($ForceDefaultGreenColor<>null){
+$MAINCSS=$MAINCSS."
+body {
+	background-image:none !important;
+	background-color:#$ForceDefaultGreenColor !important
+}
+
+.ui-widget-header {
+	background-image:none !important;
+	background-color:#$ForceDefaultGreenColor !important
+}
+
+";
+
+if($ForceDefaultButtonColor<>null){
+$MAINCSS=$MAINCSS."
+.ui-state-default, .ui-widget-content .ui-state-default, .ui-widget-header .ui-state-default {
+		background: none !important;
+		background-color:#$ForceDefaultButtonColor !important
+}
+
+.ui-state-active a, .ui-state-active a:link, .ui-state-active a:visited {
+  background-color: white !important;
+  color: #$ForceDefaultGreenColor !important;
+}
+
+.ui-state-hover a, .ui-state-hover a:hover {
+    color: #$ForceDefaultButtonColor !important;
+    background-color:#$ForceDefaultGreenColor !important;
+    border:1px solid white !important;
+}
+
+.TopObjectsOver {
+    background-color: #$ForceDefaultButtonColor !important;
+}
+";
+	
+}
+	
+}
+if($font_family_org<>null){
+	$MAINCSS=$MAINCSS."@font-face {
+font-family: \"$font_family_org\" !important;
+	src: none !important;
+}\n";
+}
+if($ForceDefaultTopBarrColor<>null){
+$MAINCSS=$MAINCSS."
+#template-top-menus{
+	background-color:#$ForceDefaultTopBarrColor !important;
+}\n";
+}
+
 
 $_SESSION["FONT_CSS"]=$MAINCSS;
 echo $MAINCSS;

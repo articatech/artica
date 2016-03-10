@@ -40,7 +40,7 @@ class squidguard{
 		$this->ldap_suffix=$ldap->suffix;
 		$this->SquidGuardIPWeb=$sock->GET_INFO("SquidGuardIPWeb");
 		$this->EnableUfdbGuard=$sock->EnableUfdbGuard();
-		if($this->SquidGuardIPWeb==null){$this->SquidGuardIPWeb="http://$usrs->hostname:9020/exec.squidguard.php";}
+		if($this->SquidGuardIPWeb==null){$this->SquidGuardIPWeb="http://$usrs->hostname:9020/ufdbguardd.php";}
 		$this->SquidGuardIPWeb=str_replace('.(none)',"",$this->SquidGuardIPWeb);
 		echo "Starting......: ".date("H:i:s")." squidGuard verbose mode={$GLOBALS["VERBOSE"]}\n";
 		
@@ -207,7 +207,7 @@ class squidguard{
 		
 		if(!preg_match("#^http.*?\/\/#",$this->SquidGuardIPWeb)){
 			$this->SquidGuardIPWeb="https://$this->SquidGuardIPWeb";
-			if(!preg_match("#squidguard\.php#",$this->SquidGuardIPWeb)){$this->SquidGuardIPWeb=$this->SquidGuardIPWeb."/exec.squidguard.php";}
+			if(!preg_match("#ufdbguardd\.php#",$this->SquidGuardIPWeb)){$this->SquidGuardIPWeb=$this->SquidGuardIPWeb."/ufdbguardd.php";}
 		}
 		
 		

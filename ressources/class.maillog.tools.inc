@@ -109,6 +109,7 @@ private function berkleydb_write($dbpath,$key,$MAIN_ARRAY){
 
 
 public function berkleydb_relatime_write($key,$MAIN_ARRAY){
+	return;
 	$time=0;
 	$to=null;
 	$from=null;
@@ -140,27 +141,23 @@ public function berkleydb_relatime_write($key,$MAIN_ARRAY){
 }
 private function berkleydb_realtime_reject_write($key,$MAIN_ARRAY){
 	
-	
+	if(!class_exists("class.postgres.inc")){include_once(dirname(__FILE__)."/class.postgres.inc");}
 	$time=time();
-	$to=$MAIN_ARRAY["RECIPIENT"];
-	$from=$MAIN_ARRAY["SENDER"];
-	$server=$MAIN_ARRAY["HOSTNAME"];
+	if(!isset($MAIN_ARRAY["IPADDR"])){$MAIN_ARRAY["IPADDR"]=null;}
+	$mailto=$MAIN_ARRAY["RECIPIENT"];
+	$mailfrom=$MAIN_ARRAY["SENDER"];
+	$hostname=$MAIN_ARRAY["HOSTNAME"];
 	$ipaddr=$MAIN_ARRAY["IPADDR"];
-	$reject=$MAIN_ARRAY["REJECTED"];
+	$reason=$MAIN_ARRAY["REJECTED"];
 	
+	if($ipaddr==null){$ipaddr=gethostbyname($hostname);}
 	
+	$postgres=new postgres_sql();
+	$date=date("Y-m-d H:i:s");
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;
 	
-	
-	$f = @fopen("/home/artica/postfix/realtime-events/rejected.log", 'a');
-	$text="$time:::$to:::$from:::$server:::$ipaddr:::$reject";
-	@fwrite($f, "$text\n");
-	@fclose($f);
-	
-	
-	$MAIN_ARRAY["DATE"]=date("Y-m-d H:i:s");
-	$dbpath="/home/artica/postfix/postfix/logger/realtime-rejected.".date("YmdHi").".db";
-	$this->berkleydb_relatime_write($key,$MAIN_ARRAY);
-
 }
 
 
@@ -182,6 +179,7 @@ function event_message_milter_reject($postfix_id,$reject,$from,$to=null,$buffer=
 	if($GLOBALS["ActAsASyslogSMTPClient"]==1){return;}
 	if($GLOBALS["EnableArticaSMTPStatistics"]==0){return;}
 	
+	$ARRAY["IPADDR"]=null;
 	$ARRAY["MESSAGE_ID"]=$postfix_id;
 	$smtp_sender=null;
 	$hostname=null;
@@ -190,9 +188,10 @@ function event_message_milter_reject($postfix_id,$reject,$from,$to=null,$buffer=
 	if($sender==null){
 		if(preg_match("#from.+?\[([0-9\.]+)?\]#",$buffer,$re)){$smtp_sender=$re[1];}
 		if(preg_match("#assp\[.+?\]:\s+.+?\s+(.+?)\s+<#",$buffer,$re)){$smtp_sender=$re[1];}
-		if(preg_match("#[0-9]+\.[0-9]+\.[0-9]+\.#",$re[1])){
-			$hostname=gethostbyaddr($re[1]);
-			$this->Postfix_Addconnection_error($hostname,$re[1],$reject);
+		
+		if(preg_match("#[0-9]+\.[0-9]+\.[0-9]+\.#",$smtp_sender)){
+			$hostname=gethostbyaddr($smtp_sender);
+			$this->Postfix_Addconnection_error($hostname,$smtp_sender,$reject);
 		}
 	}
 	
@@ -248,8 +247,8 @@ public function event_message_reject_hostname($reject,$from=null,$to=null,$serve
 
 }
 
-public function event_message_rejected($id,$reject,$from=null,$to=null,$buffer,$sender=null){
-	$this->event_message_reject_hostname($reject, $from,$to, $sender);
+public function event_message_rejected($id,$reject,$from=null,$to=null,$buffer,$sender=null,$ipaddr=null){
+	$this->event_message_reject_hostname($reject, $from,$to, $sender,$ipaddr);
 	
 }
 
@@ -353,6 +352,7 @@ private function shell_exec_maillog($cmd){
 function event_finish($postfix_id,$to,$status,$bounce_error,$from=null,$buffer=null){
 	if($GLOBALS["ActAsASyslogSMTPClient"]==1){return;}
 	if($GLOBALS["EnableArticaSMTPStatistics"]==0){return;}
+	$smtp_sender=null;
 	$delivery_success='yes';
 	if($status=='bounced'){$delivery_success='no';}
 	if($status=='deferred'){$delivery_success='no';}

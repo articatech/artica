@@ -9,6 +9,7 @@ include_once(dirname(__FILE__) . '/ressources/class.mysql.inc');
 include_once(dirname(__FILE__) . '/framework/class.unix.inc');
 include_once(dirname(__FILE__) . '/ressources/class.system.network.inc');
 include_once(dirname(__FILE__) . '/ressources/class.tcpip.inc');
+include_once(dirname(__FILE__) . '/ressources/class.openvpn.certificate.inc');
 
 $GLOBALS["server-conf"]=false;
 $GLOBALS["IPTABLES_ETH"]=null;
@@ -29,8 +30,10 @@ if(isset($openvpn->main_array["GLOBAL"]["IPTABLES_ETH"])){$GLOBALS["IPTABLES_ETH
 if($GLOBALS["IPTABLES_ETH"]==null){$GLOBALS["IPTABLES_ETH"]=IPTABLES_ETH_FIX();}
 
 if($argv[1]=='--server-conf'){
-		$GLOBALS["server-conf"]=true;writelogs("Starting......: ".date("H:i:s")." OpenVPN building settings...","main",__FILE__,__LINE__);
-		BuildTunServer();die();
+		$GLOBALS["server-conf"]=true;
+		writelogs("Starting......: ".date("H:i:s")." OpenVPN building settings...","main",__FILE__,__LINE__);
+		BuildTunServer();
+		die();
 }
 if($argv[1]=="--iptables-server"){BuildIpTablesServer();die();}
 if($argv[1]=="--iptables-delete"){iptables_delete_rules();die();}
@@ -301,18 +304,21 @@ if(preg_match("#^(.+?)\.([0-9]+)$#",$array_ip["IPADDR"],$re)){$eth_broadcast=$re
     $OpenVpnPasswordCert=$sock->GET_INFO("OpenVpnPasswordCert");
 	if($OpenVpnPasswordCert==null){$OpenVpnPasswordCert="MyKey";}
    
-   	if(is_file("/etc/artica-postfix/openvpn/keys/password")){
-   		$askpass=" --askpass /etc/artica-postfix/openvpn/keys/password ";
-   	}		
-	
+   
    	$routess=$routess+GetRoutes();
    	if(is_array($routess)){$routes=implode(" ",$routess);}
+   	
+   	$certificate=$sock->GET_INFO("OpenVPNCertificate");
+   	$cert=new openvpn_certificate($certificate);
+   	$certificates=$cert->build();
+   	
 		
    $port=$ini->_params["GLOBAL"]["LISTEN_PORT"];
+   $openvpn=$unix->find_program("openvpn");
    $server_bridge="--server-bridge $BRIDGE_ADDR {$array_ip["NETMASK"]} {$ini->_params["GLOBAL"]["VPN_DHCP_FROM"]} {$ini->_params["GLOBAL"]["VPN_DHCP_TO"]}";
-   $cmd=" --port $port --dev tap0 $server_bridge --comp-lzo $local --ca $ca --dh $dh --key $key --cert $crt";
+   $cmd="$openvpn --port $port --dev tap0 $server_bridge --comp-lzo $local $certificates";
    $cmd=$cmd. " --ifconfig-pool-persist /etc/artica-postfix/openvpn/ipp.txt $routes";
-   $cmd=$cmd. " $askpass--client-to-client -persist-tun -verb 5 --daemon --writepid /var/run/openvpn/openvpn-server.pid --log \"/var/log/openvpn/openvpn.log\"";
+   $cmd=$cmd. " --client-to-client -persist-tun -verb 5 --daemon --writepid /var/run/openvpn/openvpn-server.pid --log \"/var/log/openvpn/openvpn.log\"";
    $cmd=$cmd. " --status /var/log/openvpn/openvpn-status.log 10";
    @file_put_contents("/etc/openvpn/cmdline.conf",$cmd);
 
@@ -578,10 +584,7 @@ if(count($routess)==0){
 	$OpenVpnPasswordCert=$sock->GET_INFO("OpenVpnPasswordCert");
 	if($OpenVpnPasswordCert==null){$OpenVpnPasswordCert="MyKey";}
    
-	$askpass=null;
-   	if(is_file("/etc/artica-postfix/openvpn/keys/password")){
-   		$askpass=" --askpass /etc/artica-postfix/openvpn/keys/password ";
-   	}
+	
    	
    	$ifconfig_pool_persist=" --ifconfig-pool-persist /etc/artica-postfix/openvpn/ipp.txt ";
    	
@@ -661,13 +664,18 @@ if(count($routess)==0){
  		shell_exec("/usr/share/artica-postfix/bin/artica-install --nsswitch");
  		}
  	}
+ 	
+ 	echo "Starting......: ".date("H:i:s")." OpenVPN building Certificate \"{$ini->_params["GLOBAL"]["CERTIFICATE"]}\"\n";
+ 	$cert=new openvpn_certificate( $ini->_params["GLOBAL"]["CERTIFICATE"]);
+ 	$certificates=$cert->build();
    
    @mkdir("/etc/openvpn/ccd",0666,true);
    $php5=$unix->LOCATE_PHP5_BIN();
+   $openvpn=$unix->find_program("openvpn");
    $me=__FILE__;
-   $cmd=" --port $port --dev tun $proto --server $IP_START $NETMASK$localroutes$client_config_dir$iproute --comp-lzo $local --ca $ca --dh $dh --key $key --cert $crt";
+   $cmd="$openvpn --port $port --dev tun $proto --server $IP_START $NETMASK$localroutes$client_config_dir$iproute --comp-lzo $local $certificates" ;
    $cmd=$cmd. "$ifconfig_pool_persist " . implode(" ",$routess);
-   $cmd=$cmd. " $askpass$duplicate_cn--client-to-client$script_security$plugin --learn-address \"$php5 $me --client-connect\" --keepalive 10 60 --persist-tun --verb 5 --daemon --writepid /var/run/openvpn/openvpn-server.pid --log \"/var/log/openvpn/openvpn.log\"";
+   $cmd=$cmd. " $duplicate_cn--client-to-client$script_security$plugin --learn-address \"$php5 $me --client-connect\" --keepalive 10 60 --persist-tun --verb 5 --daemon --writepid /var/run/openvpn/openvpn-server.pid --log \"/var/log/openvpn/openvpn.log\"";
    $cmd=$cmd. " --status /var/log/openvpn/openvpn-status.log 10";
    echo "Starting......: ".date("H:i:s")." OpenVPN building /etc/openvpn/cmdline.conf done\n";
    @file_put_contents("/etc/openvpn/cmdline.conf",$cmd);

@@ -11,7 +11,8 @@
 	
 	if($argv[1]=="--tmpfs-create"){tmpfsDirCreate();exit(0);}
 	if($argv[1]=="--tmpfs-destroy"){mimedefang_tmpfs_umount();exit(0);}
-	
+	if($argv[1]=="--init"){initScriptDebian();die();}
+	if($argv[1]=="--compile-progress"){compile_progress();}
 	
 
 start();	
@@ -21,6 +22,39 @@ function start(){
 	initScriptDebian();	
 	etc_default();
 	ParseMimeDefangFilter();	
+}
+
+function build_progress($pourc,$text){
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	echo "[$pourc]: $text\n";
+	@file_put_contents("/usr/share/artica-postfix/ressources/logs/spamassassin.urls.progress", serialize($array));
+	@chmod("/usr/share/artica-postfix/ressources/logs/web/mimedefang.progress",0755);
+	sleep(1);
+
+}
+
+function compile_progress(){
+	
+	
+	$unix=new unix();
+	build_progress(10,"{build_init_script}");
+	initScriptDebian();
+	etc_default();
+	build_progress(15,"{configure}");
+	ParseMimeDefangFilter();
+	
+	build_progress(50,"{restarting_artica_status}");
+	system("/etc/init.d/artica-status restart --force");
+	
+	build_progress(50,"{stopping_service}");
+	system("/etc/init.d/mimedefang stop");
+	build_progress(80,"{starting_service}");
+	system("/etc/init.d/mimedefang start");
+	build_progress(90,"{reconfigure_mta}");
+	$php=$unix->LOCATE_PHP5_BIN();
+	system("$php /usr/share/artica-postfix/exec.postfix.maincf.php --milters");
+	build_progress(100,"{done}");
 }
 
 
@@ -39,17 +73,46 @@ function ParseMimeDefangFilter(){
 	$Param=unserialize(base64_decode($sock->GET_INFO("MimeDefangServiceOptions")));
 	if(!is_numeric($Param["DEBUG"])){$Param["DEBUG"]=0;}
 	
+	$MySQL_server=$q->mysql_server;
+	$MySQL_user=$q->mysql_admin;
+	$MySQL_password=$q->mysql_password;
+	$MySQL_port=intval($q->mysql_port);
+	$main=new main_cf();
+	@file_put_contents("/etc/artica-postfix/settings/Daemons/MimeDefangPostFixNetwork",@implode("\n",$main->array_mynetworks));
+	
+	if($MySQL_server==null){$MySQL_server="127.0.0.1";}
+	if($MySQL_server=="localhost"){$MySQL_server="127.0.0.1";}
+	if($MySQL_server=="127.0.0.1"){$MySQL_server=null;}
+	
+	if($MySQL_server==null){
+		$DSN="DBI:mysql:database=artica_backup;mysql_socket=/var/run/mysqld/mysqld.sock";
+	}else{
+		$DSN="DBI:mysql:database=artica_backup;host=$MySQL_server;port=$MySQL_port";
+	}
+	$sock->SET_INFO("MySQLPerlDSN", $DSN);
+	$sock->SET_INFO("MySQLPerlUsername", $MySQL_user);
+	$sock->SET_INFO("MySQLPerlPassword", $MySQL_password);
+	
 	$TMPDIR="/var/spool/MIMEDefang";
 	if(!is_dir($TMPDIR)){@mkdir($TMPDIR,0755,true);}
+	if(!is_dir("$TMPDIR/BACKUP")){@mkdir("$TMPDIR/BACKUP",0755,true);}
 	@chown($TMPDIR, "postfix");
 	@chgrp($TMPDIR, "postfix");
+	@chown("$TMPDIR/BACKUP", "postfix");
+	@chgrp("$TMPDIR/BACKUP", "postfix");
+	
+	$QuarantineDir="/var/spool/MD-Quarantine";
+	if(!is_dir($QuarantineDir)){@mkdir($QuarantineDir,0755,true);}
+	@chown($QuarantineDir, "postfix");
+	@chgrp($QuarantineDir, "postfix");
+	
 	
 	$TMPDIR_CAPTURED="/var/spool/MIMEDefang_replaced";
 	if(!is_dir($TMPDIR_CAPTURED)){@mkdir($TMPDIR_CAPTURED,0755,true);}
 	@chown($TMPDIR_CAPTURED, "postfix");
 	@chgrp($TMPDIR_CAPTURED, "postfix");	
 	
-	@copy("/usr/share/artica-postfix/bin/install/mimedefang/mimedefang-filter", "/etc/mail/mimedefang-filter");
+	@copy("/usr/share/artica-postfix/bin/install/mimedefang/mimedefang-filter.pl", "/etc/mail/mimedefang-filter");
 	while (list ($dim, $line) = each ($localdomains) ){$tr[]="'$dim'=>1";}
 	if(count($tr)>0){$hashlocaldomains=@implode(",", $tr);}
 	
@@ -302,7 +365,10 @@ function mimedefang_tmpfs_ismounted(){
 	
 function initScriptDebian(){
 	$user=new usersMenus();
-	if(!$user->AS_DEBIAN_FAMILY){return;}	
+	$unix=new unix();
+	$debianbin=$unix->find_program("update-rc.d");
+	
+	if(!is_file($debianbin)){return;}
 	$sock=new sockets();
 	$MimeDefangEnabled=$sock->GET_INFO("MimeDefangEnabled");
 	if(!is_numeric($MimeDefangEnabled)){$MimeDefangEnabled=0;}	
@@ -312,12 +378,11 @@ function initScriptDebian(){
 	if(!is_numeric($Param["DEBUG"])){$Param["DEBUG"]=0;}
 	
 	$unix=new unix();
-	$debianbin=$unix->find_program("update-rc.d");
-	if($MimeDefangEnabled==1){
-		shell_exec("$debianbin -f mimedefang defaults >/dev/null 2>&1");
-	}else{
-		shell_exec("$debianbin -f mimedefang remove >/dev/null 2>&1");
-	}
+	
+	
+	$q=new mysql();
+	$q->Check_smtp_logs_table();
+	
 		
 	
 	$php5=$unix->LOCATE_PHP5_BIN();
@@ -332,7 +397,7 @@ function initScriptDebian(){
 	if(!is_numeric($Param["MX_TMPFS"])){$Param["MX_TMPFS"]=0;}	
 	
 	$MX_DEBUG="no";
-	if($Param["DEBUG"]==1){$MX_DEBUG="yes";}
+	
 
 	$f[]="#!/bin/sh";
 	$f[]="#";
@@ -495,7 +560,7 @@ function initScriptDebian(){
 	$f[]="";
 	$f[]="# Extra sendmail macros to pass.  Actually, you can add any extra";
 	$f[]="# mimedefang options here...";
-	$f[]="# MD_EXTRA=\"-a auth_author\"";
+	$f[]="# MD_EXTRA=\"-X\"";
 	$f[]="";
 	$f[]="# Multiplexor queue size -- default is 0 (no queueing)";
 	$f[]="# MX_QUEUE_SIZE=10";
@@ -612,8 +677,8 @@ function initScriptDebian(){
 	$f[]="	return 1";
 	$f[]="    fi";
 	$f[]="";
-	$f[]="    # Start mimedefang";
-	$f[]="    printf \"%-60s\" \"Starting \$prog: \"";
+	$f[]="    # Start mimedefang \$PROGDIR";
+	$f[]="    printf \"%-60s\" \"Starting \$PROGDIR/\$prog: \"";
 	$f[]="    rm -f \$SOCKET > /dev/null 2>&1";
 	$f[]="    \$PROGDIR/\$prog -P \$PID -R \$LOOPBACK_RESERVED_CONNECTIONS \\";
 	$f[]="	-m \$MX_SOCKET \\";
@@ -768,6 +833,7 @@ function initScriptDebian(){
 	@file_put_contents("/etc/init.d/mimedefang", @implode("\n", $f));
 	echo "Starting mimedefang: saving init script for debian done\n";	
 	@chmod("/etc/init.d/mimedefang",0755);
+	shell_exec("$debianbin -f mimedefang defaults >/dev/null 2>&1");
 	
 }
 

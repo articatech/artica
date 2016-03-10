@@ -7,7 +7,7 @@ session_start();
 include_once("ressources/class.templates.inc");
 include_once("ressources/class.ldap.inc");
 include_once("ressources/class.sockets.inc");
-
+include_once(dirname(__FILE__)."/ressources/class.status.logs.inc");
 $user=new usersMenus();
 $tpl=new Templates();
 if($user->AsPostfixAdministrator==false){echo $tpl->_ENGINE_parse_body('{no privileges}');exit;}

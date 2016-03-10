@@ -68,14 +68,200 @@ function run(){
 }
 
 function GetWebsitesList(){
-	$q=new mysql_squid_builder();
-	$arrayDN=$q->GetFamilySitestt(null,true);	
-	while (list ($table, $fff) = each ($arrayDN) ){
-		if(preg_match("#\.(gov|gouv|gor|org|net|web|ac)\.#", "google.$table")){continue;}
-		$array[]="www.google.$table";
-	}	
-	
-	return $array;
+	$f[]="google.com";
+	$f[]="google.ad";
+	$f[]="google.ae";
+	$f[]="google.com.af";
+	$f[]="google.com.ag";
+	$f[]="google.com.ai";
+	$f[]="google.al";
+	$f[]="google.am";
+	$f[]="google.co.ao";
+	$f[]="google.com.ar";
+	$f[]="google.as";
+	$f[]="google.at";
+	$f[]="google.com.au";
+	$f[]="google.az";
+	$f[]="google.ba";
+	$f[]="google.com.bd";
+	$f[]="google.be";
+	$f[]="google.bf";
+	$f[]="google.bg";
+	$f[]="google.com.bh";
+	$f[]="google.bi";
+	$f[]="google.bj";
+	$f[]="google.com.bn";
+	$f[]="google.com.bo";
+	$f[]="google.com.br";
+	$f[]="google.bs";
+	$f[]="google.bt";
+	$f[]="google.co.bw";
+	$f[]="google.by";
+	$f[]="google.com.bz";
+	$f[]="google.ca";
+	$f[]="google.cd";
+	$f[]="google.cf";
+	$f[]="google.cg";
+	$f[]="google.ch";
+	$f[]="google.ci";
+	$f[]="google.co.ck";
+	$f[]="google.cl";
+	$f[]="google.cm";
+	$f[]="google.cn";
+	$f[]="google.com.co";
+	$f[]="google.co.cr";
+	$f[]="google.com.cu";
+	$f[]="google.cv";
+	$f[]="google.com.cy";
+	$f[]="google.cz";
+	$f[]="google.de";
+	$f[]="google.dj";
+	$f[]="google.dk";
+	$f[]="google.dm";
+	$f[]="google.com.do";
+	$f[]="google.dz";
+	$f[]="google.com.ec";
+	$f[]="google.ee";
+	$f[]="google.com.eg";
+	$f[]="google.es";
+	$f[]="google.com.et";
+	$f[]="google.fi";
+	$f[]="google.com.fj";
+	$f[]="google.fm";
+	$f[]="google.fr";
+	$f[]="google.ga";
+	$f[]="google.ge";
+	$f[]="google.gg";
+	$f[]="google.com.gh";
+	$f[]="google.com.gi";
+	$f[]="google.gl";
+	$f[]="google.gm";
+	$f[]="google.gp";
+	$f[]="google.gr";
+	$f[]="google.com.gt";
+	$f[]="google.gy";
+	$f[]="google.com.hk";
+	$f[]="google.hn";
+	$f[]="google.hr";
+	$f[]="google.ht";
+	$f[]="google.hu";
+	$f[]="google.co.id";
+	$f[]="google.ie";
+	$f[]="google.co.il";
+	$f[]="google.im";
+	$f[]="google.co.in";
+	$f[]="google.iq";
+	$f[]="google.is";
+	$f[]="google.it";
+	$f[]="google.je";
+	$f[]="google.com.jm";
+	$f[]="google.jo";
+	$f[]="google.co.jp";
+	$f[]="google.co.ke";
+	$f[]="google.com.kh";
+	$f[]="google.ki";
+	$f[]="google.kg";
+	$f[]="google.co.kr";
+	$f[]="google.com.kw";
+	$f[]="google.kz";
+	$f[]="google.la";
+	$f[]="google.com.lb";
+	$f[]="google.li";
+	$f[]="google.lk";
+	$f[]="google.co.ls";
+	$f[]="google.lt";
+	$f[]="google.lu";
+	$f[]="google.lv";
+	$f[]="google.com.ly";
+	$f[]="google.co.ma";
+	$f[]="google.md";
+	$f[]="google.me";
+	$f[]="google.mg";
+	$f[]="google.mk";
+	$f[]="google.ml";
+	$f[]="google.com.mm";
+	$f[]="google.mn";
+	$f[]="google.ms";
+	$f[]="google.com.mt";
+	$f[]="google.mu";
+	$f[]="google.mv";
+	$f[]="google.mw";
+	$f[]="google.com.mx";
+	$f[]="google.com.my";
+	$f[]="google.co.mz";
+	$f[]="google.com.na";
+	$f[]="google.com.nf";
+	$f[]="google.com.ng";
+	$f[]="google.com.ni";
+	$f[]="google.ne";
+	$f[]="google.nl";
+	$f[]="google.no";
+	$f[]="google.com.np";
+	$f[]="google.nr";
+	$f[]="google.nu";
+	$f[]="google.co.nz";
+	$f[]="google.com.om";
+	$f[]="google.com.pa";
+	$f[]="google.com.pe";
+	$f[]="google.com.pg";
+	$f[]="google.com.ph";
+	$f[]="google.com.pk";
+	$f[]="google.pl";
+	$f[]="google.pn";
+	$f[]="google.com.pr";
+	$f[]="google.ps";
+	$f[]="google.pt";
+	$f[]="google.com.py";
+	$f[]="google.com.qa";
+	$f[]="google.ro";
+	$f[]="google.ru";
+	$f[]="google.rw";
+	$f[]="google.com.sa";
+	$f[]="google.com.sb";
+	$f[]="google.sc";
+	$f[]="google.se";
+	$f[]="google.com.sg";
+	$f[]="google.sh";
+	$f[]="google.si";
+	$f[]="google.sk";
+	$f[]="google.com.sl";
+	$f[]="google.sn";
+	$f[]="google.so";
+	$f[]="google.sm";
+	$f[]="google.sr";
+	$f[]="google.st";
+	$f[]="google.com.sv";
+	$f[]="google.td";
+	$f[]="google.tg";
+	$f[]="google.co.th";
+	$f[]="google.com.tj";
+	$f[]="google.tk";
+	$f[]="google.tl";
+	$f[]="google.tm";
+	$f[]="google.tn";
+	$f[]="google.to";
+	$f[]="google.com.tr";
+	$f[]="google.tt";
+	$f[]="google.com.tw";
+	$f[]="google.co.tz";
+	$f[]="google.com.ua";
+	$f[]="google.co.ug";
+	$f[]="google.co.uk";
+	$f[]="google.com.uy";
+	$f[]="google.co.uz";
+	$f[]="google.com.vc";
+	$f[]="google.co.ve";
+	$f[]="google.vg";
+	$f[]="google.co.vi";
+	$f[]="google.com.vn";
+	$f[]="google.vu";
+	$f[]="google.ws";
+	$f[]="google.rs";
+	$f[]="google.co.za";
+	$f[]="google.co.zm";
+	$f[]="google.co.zw";
+	$f[]="google.cat";
+	return $f;
 	
 }
 
@@ -114,12 +300,21 @@ function addDNSGOOGLE($addrName="nosslsearch.google.com"){
 	$q=new mysql();
 	
 	build_progress("$addrName {checking}",5);
-	
+	$entry=null;
 	$results=$q->QUERY_SQL("SELECT ipaddr FROM net_hosts WHERE `hostname` = 'www.google.com'","artica_backup");
 	if(mysql_num_rows($results)==1){
 		while ($ligne = mysql_fetch_assoc($results)) {
 			$entry=$ligne["ipaddr"];
 		}
+	}
+	if($entry==null){
+		$results=$q->QUERY_SQL("SELECT ipaddr FROM net_hosts WHERE `hostname` = 'google.com'","artica_backup");
+		if(mysql_num_rows($results)==1){
+			while ($ligne = mysql_fetch_assoc($results)) {
+				$entry=$ligne["ipaddr"];
+			}
+		}		
+		
 	}
 	
 	echo "Starting......: ".date("H:i:s")." Squid : Resolved $ipaddr in DB: $entry\n";

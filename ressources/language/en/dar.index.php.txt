@@ -42,7 +42,7 @@ Bzip2 by default uses 6, which is the best speed/compression ratio for most file
 <mount_dar>Mount your backup collection</mount_dar>
 <mount_dar_text>Connect Artica to you backup area in order to query it</mount_dar_text>
 <mount_this_collection>Mount this collection</mount_this_collection>
-<mysql_datas>Mysql databases</mysql_datas>
+<mysql_datas>MySQL databases</mysql_datas>
 <nice_int>Scheduling priority (nice)</nice_int>
 <nice_int_text>Run backup process with an adjusted scheduling priority.[br]
 Range goes from -20 (highest priority) to 19 (lowest).</nice_int_text>

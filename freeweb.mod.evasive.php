@@ -72,6 +72,8 @@ function popup(){
 	$freeweb=new freeweb($_GET["servername"]);
 	
 	$Params=$freeweb->Params["mod_evasive"];
+
+	
 	if(!is_numeric($Params["DOSHashTableSize"])){$Params["DOSHashTableSize"]=1024;}
 	if(!is_numeric($Params["DOSPageCount"])){$Params["DOSPageCount"]=10;}
 	if(!is_numeric($Params["DOSSiteCount"])){$Params["DOSSiteCount"]=150;}
@@ -79,59 +81,51 @@ function popup(){
 	if(!is_numeric($Params["DOSSiteInterval"])){$Params["DOSSiteInterval"]=1.5;}
 	if(!is_numeric($Params["DOSBlockingPeriod"])){$Params["DOSBlockingPeriod"]=10.7;}
 	
-	
-	
-	
 	$html="
-	<div class=explain>{mod_evasive_explain}</div>
-	<table style='width:99%' class=form>
+	<div class=explain style='font-size:18px'>{mod_evasive_explain}</div>
+	<div style='width:98%' class=form>
+	<table style='width:100%'>
 	<tr>
-		<td class=legend>{FreeWebsEnableModEvasive}:</td>
-		<td>". Field_checkbox("DOSEnable",1,$Params["DOSEnable"],"EvasiveDisabled()")."</td>
-		<td>&nbsp;</td>
+		<td class=legend style='font-size:22px'>{FreeWebsEnableModEvasive}:</td>
+		<td>". Field_checkbox_design("DOSEnable",1,$Params["DOSEnable"],"EvasiveDisabled()")."</td>
 	</tr>
 	<tr>
-		<td class=legend>{DOSHashTableSize}:</td>
-		<td>". Field_text("DOSHashTableSize",$Params["DOSHashTableSize"],"font-size:13px;padding:3px;width:60px")."</td>
-		<td>". help_icon("{DOSHashTableSize_explain}")."</td>
+		<td class=legend style='font-size:22px'>".texttooltip("{DOSHashTableSize}","{DOSHashTableSize_explain}").":</td>
+		<td style='font-size:22px'>". Field_text("DOSHashTableSize",$Params["DOSHashTableSize"],"font-size:22px;width:110px")."&nbsp;MB</td>
 	</tr>	
 	
 	
 	<tr>
-		<td class=legend>{threshold}:</td>
-		<td>". Field_text("DOSPageCount",$Params["DOSPageCount"],"font-size:13px;padding:3px;width:60px")."</td>
-		<td>". help_icon("{DOSPageCount_explain}")."</td>
+		<td class=legend style='font-size:22px'>".texttooltip("{threshold}","{DOSPageCount_explain}").":</td>
+		<td style='font-size:22px'>". Field_text("DOSPageCount",$Params["DOSPageCount"],"font-size:22px;width:110px")."</td>
 	</tr>
 
 	
 	<tr>
-		<td class=legend>{total_threshold}:</td>
-		<td>". Field_text("DOSSiteCount",$Params["DOSSiteCount"],"font-size:13px;padding:3px;width:60px")."</td>
-		<td>". help_icon("{DOSSiteCount_explain}")."</td>
+		<td class=legend style='font-size:22px'>".texttooltip("{total_threshold}","{DOSSiteCount_explain}").":</td>
+		<td style='font-size:22px'>". Field_text("DOSSiteCount",$Params["DOSSiteCount"],"font-size:22px;width:110px")."</td>
 	</tr>
 
 	<tr>
-		<td class=legend>{page_interval}:</td>
-		<td>". Field_text("DOSPageInterval",$Params["DOSPageInterval"],"font-size:13px;padding:3px;width:60px")."</td>
-		<td>". help_icon("{DOSPageInterval_explain}")."</td>
+		<td class=legend style='font-size:22px'>".texttooltip("{page_interval}","{DOSPageInterval_explain}")."&nbsp;{seconds}:</td>
+		<td style='font-size:22px'>". Field_text("DOSPageInterval",$Params["DOSPageInterval"],"font-size:22px;width:110px")."</td>
 	</tr>	
 	
 
 
 	<tr>
-		<td class=legend>{site_interval}:</td>
-		<td>". Field_text("DOSSiteInterval",$Params["DOSSiteInterval"],"font-size:13px;padding:3px;width:60px")."</td>
-		<td>". help_icon("{DOSSiteInterval_explain}")."</td>
+		<td class=legend style='font-size:22px'>".texttooltip("{site_interval}","{DOSSiteInterval_explain}")."&nbsp;{seconds}:</td>
+		<td style='font-size:22px'>". Field_text("DOSSiteInterval",$Params["DOSSiteInterval"],"font-size:22px;width:110px")."</td>
 	</tr>
 
 	<tr>
-		<td class=legend>{Blocking_period}:</td>
-		<td>". Field_text("DOSBlockingPeriod",$Params["DOSBlockingPeriod"],"font-size:13px;padding:3px;width:60px")."</td>
-		<td>". help_icon("{DOSBlockingPeriod_explain}")."</td>
-	</tr>	
+		<td class=legend style='font-size:22px'>".texttooltip("{Blocking_period}","{DOSBlockingPeriod_explain}")."&nbsp;{seconds}:</td>
+		<td style='font-size:22px'>". Field_text("DOSBlockingPeriod",$Params["DOSBlockingPeriod"],"font-size:22px;width:110px")."</td>
+		
+	</tr>
 	
 	<tr>
-		<td colspan=3 align='right'><hr>". button("{apply}","SaveModEvasive()")."</td>
+		<td colspan=3 align='right'><hr>". button("{apply}","SaveModEvasive()",40)."</td>
 	</tr>
 	</table>
 	

@@ -476,7 +476,7 @@ function dansguardian_status($asroot=false){
 	
 	
 	
-	if($SquidGuardIPWeb==null){$SquidGuardApachePort=$sock->GET_INFO("SquidGuardApachePort");if(!is_numeric($SquidGuardApachePort)){$SquidGuardApachePort=9020;}$fulluri="http://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApachePort."/exec.squidguard.php";$sock->SET_INFO("SquidGuardIPWeb", $fulluri);}
+	if($SquidGuardIPWeb==null){$SquidGuardApachePort=$sock->GET_INFO("SquidGuardApachePort");if(!is_numeric($SquidGuardApachePort)){$SquidGuardApachePort=9020;}$fulluri="http://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApachePort."/ufdbguardd.php";$sock->SET_INFO("SquidGuardIPWeb", $fulluri);}
 	if($SquidGuardServerName==null){$sock->SET_INFO("SquidGuardServerName",$_SERVER['SERVER_ADDR']);}
 	$eCapClam=null;
 

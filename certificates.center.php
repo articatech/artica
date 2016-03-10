@@ -37,7 +37,7 @@
 	if(isset($_POST["generate-key"])){generate_key();exit;}
 	if(isset($_POST["save-privkey"])){save_private_key();exit;}
 	if(isset($_GET["generate-x509"])){generate_x509();exit;}
-	if(isset($_GET["tools"])){tools();exit;}
+	if(isset($_GET["tools"])){tools_main();exit;}
 	if(isset($_GET["tools-main"])){tools_main();exit;}
 	
 	if(isset($_GET["x509-js"])){x509_js();exit;}
@@ -345,7 +345,8 @@ $('#TABLE_CERTIFICATE_CENTER_MAIN').flexigrid({
 	url: '$page?items=yes&t=$t',
 	dataType: 'json',
 	colModel : [
-		{display: '<span style=font-size:22px>$hostname</span>', name : 'CommonName', width : 350, sortable : true, align: 'left'},	
+		{display: '<span style=font-size:22px>$hostname</span>', name : 'CommonName', width : 320, sortable : true, align: 'left'},	
+		{display: '<span style=font-size:22px>Expire</span>', name : 'DateTo', width :128, sortable : true, align: 'left'},
 		{display: '<span style=font-size:22px>$Organization</span>', name : 'Organization', width :250, sortable : true, align: 'left'},
 		{display: '<span style=font-size:22px>$organizationalUnitName</span>', name : 'OrganizationalUnit', width :250, sortable : true, align: 'left'},
 		{display: '<span style=font-size:22px>$emailAddress</span>', name : 'emailAddress', width :250, sortable : true, align: 'left'},
@@ -462,9 +463,9 @@ function items(){
 	while ($ligne = mysql_fetch_assoc($results)) {
 		$AsProxyCertificate=null;
 		$color="black";
-	$zmd5=md5(serialize($ligne));
-	$delete=imgsimple("delete-42.png","","DeletSSlCertificate$t('{$ligne["CommonName"]}','$zmd5')");
-	$delete=imgsimple("delete-42.png",null,"Loadjs('$MyPage?delete-certificate-js={$ligne["CommonName"]}&id=$zmd5')");
+		$zmd5=md5(serialize($ligne));
+		$delete=imgsimple("delete-42.png","","DeletSSlCertificate$t('{$ligne["CommonName"]}','$zmd5')");
+		$delete=imgsimple("delete-42.png",null,"Loadjs('$MyPage?delete-certificate-js={$ligne["CommonName"]}&id=$zmd5')");
 	
 	$jsEdit="Loadjs('$MyPage?certificate-edit-js=yes&CommonName={$ligne["CommonName"]}&t=$t');";
 	$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\"
@@ -478,13 +479,24 @@ function items(){
 		$pfx="<center><a href=\"$MyPage?pfx={$ligne["CommonName"]}\"><img src='img/pfx-42.png'></a></center>";
 		
 	}
+	$treste=null;
+	$DateFrom=$ligne["DateFrom"];
+	$DateTo=$ligne["DateTo"];
+	if($DateTo<>"0000-00-00"){
+		$t1=time();
+		$t2=strtotime("$DateTo 00:00:00");
+		$treste=$tpl->javascript_parse_text(distanceOfTimeInWords($t1,$t2));
+	}else{
+		$DateTo="-";
+	}
 	
-	
+	$UsedBy=UsedBy($ligne["CommonName"]);
 	
 	$data['rows'][] = array(
 		'id' => "$zmd5",
 		'cell' => array(
-			"<span style='font-size:20px;color:$color'>$urljs{$ligne["CommonName"]}</a>$AsProxyCertificate</span>",
+			"<span style='font-size:20px;color:$color'>$urljs{$ligne["CommonName"]}</a>$AsProxyCertificate<br>$treste</span>$UsedBy",
+			"<span style='font-size:20px;color:$color'>$urljs{$DateTo}</a></span>",
 			"<span style='font-size:20px;color:$color'>$urljs{$ligne["OrganizationName"]}</a></span>",
 			"<span style='font-size:20px;color:$color'>$urljs{$ligne["OrganizationalUnit"]}</a></span>",
 			"<span style='font-size:20px;color:$color'>$urljs{$ligne["emailAddress"]}</a></span>",
@@ -687,6 +699,20 @@ function tools_main(){
 			"Loadjs('openssl.x509-client.progress.php?generate-x509=$commonNameEnc')",22)."
 		<div style='font-size:16px;margin-top:15px'>{generate_x509_client_explain}</div>
 		";	
+
+
+	$tr[]="<center style='margin-bottom:10px'>".button("{generate_pfx}",
+			"Loadjs('certificate.center.pfx.progress.php?CommonName=$commonNameEnc')",22)."</center>";
+	
+	$tr[]="<center style='margin-bottom:10px'>".button("{import_pvk_file}",
+			"Loadjs('certificates.center.pvk.upload.php?CommonName=$commonNameEnc')",22)."</center>";	
+	
+	
+	$tr[]="<center style='margin-bottom:10px'>".button("{import_pfx_file}",
+			"Loadjs('certificates.center.pfx.upload.php?CommonName=$commonNameEnc')",22)."</center>";
+	
+	
+	
 	
 	
 	$table=@implode("<p>&nbsp;</p>", $tr);
@@ -721,4 +747,64 @@ function SquidValidatePerform(){
 	
 	
 }
+function UsedBy($certificate){
+	include_once(dirname(__FILE__)."/ressources/class.mysql.squid.builder.php");
+	$EnableNginx=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableNginx"));
+	$SQUIDEnable=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SQUIDEnable"));
+	$LighttpdArticaCertificateName=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/LighttpdArticaCertificateName"));
+	$SquidGuardWebSSLCertificate=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidGuardWebSSLCertificate"));
+	$ArticaSplashHotSpotCertificate=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/ArticaSplashHotSpotCertificate"));
+	$FINAL=array();
+	
+	if($certificate==$LighttpdArticaCertificateName){
+		$FINAL[]="<li style='font-size:16px'>Artica WebConsole (9000)</li>";
+	}
+	if($certificate==$SquidGuardWebSSLCertificate){
+		$FINAL[]="<li style='font-size:16px'>Web error page service</li>";
+	}
+	if($certificate==$ArticaSplashHotSpotCertificate){
+		$FINAL[]="<li style='font-size:16px'>HotSpot Service</li>";
+	}	
+	
+	$RP=array();
+	if($EnableNginx==1){
+		$q=new mysql_squid_builder();
+		$sql="SELECT reverse_www.servername FROM reverse_sources,reverse_www WHERE reverse_sources.ID = reverse_www.cache_peer_id AND reverse_sources.certificate='$certificate'";
+		
+		$results=$q->QUERY_SQL($sql);
+		while ($ligne = mysql_fetch_assoc($results)) {
+			$RP[$ligne["servername"]]="<li style='font-size:16px'>Reverse Proxy: <strong>{$ligne["servername"]}></strong></li>";
+			
+		}
+		$sql="SELECT servername FROM reverse_www WHERE certificate='$certificate'";
+		
+		$results=$q->QUERY_SQL($sql);
+		while ($ligne = mysql_fetch_assoc($results)) {
+			$RP[$ligne["servername"]]="<li style='font-size:16px'>Reverse Proxy: <strong>{$ligne["servername"]}</strong></li>";
+				
+		}
+		
+		if(count($RP)>0){
+			while (list ($num, $ligne) = each ($RP) ){
+				$FINAL[]=$ligne;
+			}
+			
+		}
 
+	}
+	
+	
+	if($SQUIDEnable==1){
+		$q=new mysql_squid_builder();
+		$sql="SELECT PortName,port FROM proxy_ports WHERE UseSSL=1 AND sslcertificate='$certificate'";
+		$results=$q->QUERY_SQL($sql);
+		while ($ligne = mysql_fetch_assoc($results)) {
+			$ligne["PortName"]=utf8_encode($ligne["PortName"]);
+			$FINAL[]="<li style='font-size:16px'>Web Proxy: <strong>{$ligne["PortName"]} ({$ligne["port"]})</strong></li>";
+		
+		}
+	}
+	
+	if(count($FINAL)>0){return ".<ul>".@implode("", $FINAL)."</ul>";}
+	
+}

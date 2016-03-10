@@ -11,7 +11,7 @@ include_once(dirname(__FILE__) . '/ressources/class.users.menus.inc');
 include_once(dirname(__FILE__) . '/ressources/class.dhcpd.inc');
 include_once(dirname(__FILE__) . '/ressources/class.computers.inc');
 include_once(dirname(__FILE__) . '/ressources/class.tcpip.inc');
-include_once(dirname(__FILE__) . '/ressources/class.influx.inc');
+include_once(dirname(__FILE__) . '/ressources/class.postgres.inc');
 include_once(dirname(__FILE__)."/framework/frame.class.inc");
 include_once(dirname(__FILE__).'/framework/class.unix.inc');
 
@@ -440,19 +440,12 @@ function update_commit($ip,$mac,$hostname){
 	
 	if(preg_match("#^(.+?)\.#", $hostname,$re)){$hostname=$re[1];}
 	localsyslog("Commit: IP:$ip,$mac,$hostname");
-	
-	$influx=new influx();
-	$array["tags"]["ACTION"]="COMMIT";
-	$array["tags"]["HOSTNAME"]="$hostname";
-	$array["tags"]["IPADDR"]="$ip";
-	$array["tags"]["MAC"]="$mac";
-	$array["fields"]["RQS"]=1;
-	$influx->insert("dhcpd", $array);
+	CreateComputerLogs($ip,$mac,$hostname);
 }
 function parseLeases(){
 	$unix=new unix();
 	$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".parseLeases.pid";
-	$pidTime="/etc/artica-postfix/pids/".basename(__FILE__).".parseLeases.time";
+	$pidTime="/etc/artica-postfix/pids/exec.dhcpd-leases.php.parseLeases.time";
 	
 	
 	if($unix->process_exists(@file_get_contents($pidfile,basename(__FILE__)))){
@@ -488,6 +481,8 @@ function parseLeases(){
 	
 	$BaseWorkDir="/var/log/artica-postfix/DHCP-LEASES";
 	@mkdir($BaseWorkDir,0755,true);
+	
+	
 	if (!$handle = opendir($BaseWorkDir)) {
 		echo "Failed open $BaseWorkDir\n";
 		return;
@@ -517,36 +512,18 @@ function parseLeases(){
 
 function CreateComputerLogs($ip,$mac,$hostname){
 	
-	$q=new mysql();
-	if(!isset($GLOBALS["dhcpd_hosts_checked"])){
-		$sql="CREATE TABLE IF NOT EXISTS `dhcpd_hosts` (
-				`MAC` VARCHAR(60) NOT NULL PRIMARY KEY,
-				`created` DATETIME,
-				`updated` DATETIME,
-				`ipaddr` varchar(60) NOT NULL,
-				`hostname` VARCHAR(128),
-				KEY `ipaddr` (`ipaddr`),
-				KEY `hostname` (`hostname`)
-				)  ENGINE = MYISAM;";
-		
-		$q->QUERY_SQL($sql,"artica_backup");
-		if(!$q->ok){return false;}
-		$GLOBALS["dhcpd_hosts_checked"]=true;
-	}
+	$q=new postgres_sql();
+	if(!isset($GLOBALS["dhcpd_hosts_checked"])){$q->CREATE_DHCPD_TABLES();}
 	
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT MAC FROM dhcpd_hosts
-			WHERE MAC='$mac'","artica_backup"));
+	$ligne=pg_fetch_array($q->QUERY_SQL("SELECT mac FROM dhcpd_hosts WHERE mac='$mac'"));
 	
 	
 	$time=date("Y-m-d H:i:s");
 	if($ligne["MAC"]==null){
-		
-		$q->QUERY_SQL("INSERT IGNORE INTO dhcpd_hosts (MAC,`created`,`updated`,`ipaddr`,`hostname`) 
-				VALUES('$mac','$time','$time','$ip','$hostname')","artica_backup");
+		$q->QUERY_SQL("INSERT INTO dhcpd_hosts (MAC,created`,updated,ipaddr,hostname) VALUES('$mac','$time','$time','$ip','$hostname')");
 		
 	}else{
-		$q->QUERY_SQL("UPDATE dhcpd_hosts SET `ipaddr`='$ip',`hostname`='$hostname',`updated`='$time'
-				WHERE MAC='$mac'","artica_backup");
+		$q->QUERY_SQL("UPDATE dhcpd_hosts SET ipaddr='$ip',hostname='$hostname',updated='$time' WHERE mac='$mac'");
 		
 	}
 	

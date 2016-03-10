@@ -126,7 +126,7 @@ public
        function DomainName():string;
 
 
-       function DISKS_INODE_DEV():string;
+
        function DISK_FORMAT_UNIX(dev:string):string;
        procedure FSTAB_ADD(dev:string;mount_point:string);
        function DISK_USB_EXISTS(uuid:string):boolean;
@@ -6968,74 +6968,7 @@ end;
 
 
 
-function Tsystem.DISKS_INODE_DEV():string;
-var
-   l:TstringList;
-   i:Integer;
-   RegExpr:TRegExpr;
-   tmp:string;
-   res:string;
-   xxxlogs:tlogs;
-   ss:integer;
-   cmd:string;
-   timemin:integer;
-begin
-     res:='';
 
-   timemin:=FILE_TIME_BETWEEN_MIN('/etc/artica-postfix/inodes.caches');
- xxxlogs:=Tlogs.Create;
-   if(timemin<10) then begin
-      res:=trim(xxxlogs.ReadFromFile('/etc/artica-postfix/inodes.caches'));
-      if verbosed then writeln('/etc/artica-postfix/inodes.caches -> ',length(res),' bytes ',timemin,'Mn/10');
-      if length(res)>5 then begin
-            result:=res;
-            xxxlogs.free;
-            exit;
-      end;
-   end;
-
-   if not fileexists(LOCATE_FDISK()) then begin
-      if verbosed then writeln('LOCATE_FDISK:: -> null');
-      exit;
-   end;
-
-
-   tmp:=FILE_TEMP();
-   cmd:=LOCATE_DF() + ' -i -h >'+ tmp + ' 2>&1';
-   if verbosed then writeln(cmd);
-   xxxlogs.Debuglogs(cmd);
-   fpsystem(cmd);
-   if not FileExists(tmp) then exit;
-   l:=TstringList.Create;
-   l.LoadFromFile(tmp);
-   DeleteFile(tmp);
-   RegExpr:=TRegExpr.Create;
-
-   RegExpr.Expression:='^\/dev\/(.+?)\s+([0-9,]+)([A-Z])\s+([0-9,]+)([A-Z])\s+([0-9,]+)([A-Z])\s+([0-9,]+)%';
-   for i:=0 to l.Count-1 do begin
-       if RegExpr.Exec(l.Strings[i]) then begin
-          ss:=0;
-          res:=res + RegExpr.Match[1]+':'+RegExpr.Match[2]+RegExpr.Match[3]+':'+RegExpr.Match[4]+RegExpr.Match[5]+':'+RegExpr.Match[6]+RegExpr.Match[7]+':' +RegExpr.Match[8]+ ';';
-          try
-          ss:=StrToInt(RegExpr.Match[8]);
-          except
-            xxxlogs.Debuglogs('Fatal error while try to transfrom '+RegExpr.Match[8]);
-          end;
-          if ss>98 then begin
-             xxxlogs.NOTIFICATION('[ARTICA]: ('+HOSTNAME_g()+') warning too many files !! on device ' + RegExpr.Match[1],'You need to check number of files on this disk, ' + RegExpr.Match[1] + ' has '+RegExpr.Match[8] +'% used','system');
-          end;
-      end else begin
-          xxxlogs.Debuglogs(l.Strings[i]+'->Failed '+RegExpr.Expression);
-       end;
-   end;
-
-   result:=res;
-   xxxlogs.WriteToFile(res,'/etc/artica-postfix/inodes.caches');
-   FreeAndNil(l);
-   FreeAndNil(RegExpr);
-
-end;
-//#############################################################################
 
 
 

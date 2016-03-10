@@ -247,6 +247,31 @@ class artica_meta{
 		$this->SEND_GLOBAL_CONFIG();
 	}
 	
+	public function SendTempStats(){
+		$dir="/usr/share/artica-postfix/ressources/interface-cache";
+		$unix=new unix();
+		$files=$unix->DirFiles($dir);
+		while (list ($filename,$none) = each ($files)){
+			$fullpath="$dir/$filename";
+			$MAIN["filename"]=@file_get_contents($fullpath);
+		}
+		
+		$filetemp=$unix->FILE_TEMP();
+		$filecompress=$unix->FILE_TEMP().".gz";
+		
+		@file_put_contents($filetemp, serialize($MAIN));
+		if(!$unix->compress($filetemp, $filecompress)){
+			@unlink($filecompress);
+			@unlink($filetemp);
+			return;
+		}
+		
+		$this->SendFile("$filecompress","INTERFACE_CACHE");
+		@unlink($filecompress);
+		@unlink($filetemp);
+	}
+	
+	
 	public function SendSquidPerfs(){
 		if(isset($GLOBALS["PING"]["SendSquidPerfs"])){return;}
 		$GLOBALS["PING"]["SendSquidPerfs"]=true;
@@ -562,6 +587,47 @@ class artica_meta{
 	}	
 	
 	
+	public function retreive_dump_sql($expectedmd5=null){
+		$unix=new unix();
+		if($expectedmd5==null){return false;}
+		$targetfilename=$unix->FILE_TEMP().".gz";
+		$tmp_path=$unix->TEMP_DIR();
+		if(!$this->get_meta_file("/meta-updates/dump.sql.gz",$targetfilename)){
+			$this->events("/meta-updates/dump.sql.gz, failed to download", __FUNCTION__,__FILE__,__LINE__);
+			return false;
+		}
+		$this->events("/meta-updates/dump.sql.gz, success to download", __FUNCTION__,__FILE__,__LINE__);
+		
+		if(!$unix->uncompress($targetfilename, "$tmp_path/dump.sql")){
+			$this->events("/meta-updates/dump.sql.gz, failed to uncompress", __FUNCTION__,__FILE__,__LINE__);
+			@unlink($targetfilename);
+			return false;
+		}
+		
+		$md5_file=md5_file($targetfilename);
+		$this->events("/meta-updates/dump.sql.gz, MD5 = $md5_file / expected=$expectedmd5", __FUNCTION__,__FILE__,__LINE__);
+		@unlink($targetfilename);
+		if($expectedmd5<>$md5_file){
+			$this->events("/meta-updates/dump.sql.gz, MD5 not matches.", __FUNCTION__,__FILE__,__LINE__);
+			return false;
+		}
+		
+		$q=new mysql();
+		$q->CREATE_DATABASE("metaclient");
+		$pattern_cmdline=$q->MYSQL_CMDLINES;
+		$mysql=$unix->find_program("mysql");
+		
+		
+		$cmdline="$mysql $pattern_cmdline metaclient < \"$tmp_path/dump.sql\"";
+		$this->events($cmdline, __FUNCTION__,__FILE__,__LINE__);
+		system($cmdline);
+		@unlink("$tmp_path/dump.sql");
+		
+		
+		return true;
+		
+	}
+	
 	
 	public function ping($NocheckOrder=FALSE){
 		
@@ -598,7 +664,15 @@ class artica_meta{
 			$sock->SET_INFO("ArticaLinkAutoconnect", $array["ArticaLinkAutoconnect"]);
 		}
 		
+		if(isset($array["ArticaMetaDumpSQLMD5"])){
+			if(function_exists("client_progress")){client_progress("ArticaMetaDumpSQLMD5:{$array["ArticaMetaDumpSQLMD5"]}",31);}
+			if($GLOBALS["VERBOSE"]){echo "Server sends ArticaMetaDumpSQLMD5:{$array["ArticaMetaDumpSQLMD5"]}\n";}
+			$sock->SET_INFO("ArticaMetaDumpSQLMD5", $array["ArticaMetaDumpSQLMD5"]);
+		}else{
+			
+		}
 		
+		$this->events("Order NocheckOrder=$NocheckOrder", __FUNCTION__,__FILE__,__LINE__);
 		if(!$NocheckOrder){
 			if(isset($array["ORDERS"])){
 				$this->events("ORDERS is an array...", __FUNCTION__,__FILE__,__LINE__);
@@ -607,7 +681,7 @@ class artica_meta{
 					$this->events("Checking ".count($ORDERS), __FUNCTION__,__FILE__,__LINE__);
 					$this->parse_orders($ORDERS);}
 			}else{
-				$this->events("No order defined...", __FUNCTION__,__FILE__,__LINE__);
+				$this->events("No order defined \$array[\"ORDERS\"] not found...", __FUNCTION__,__FILE__,__LINE__);
 			}
 			
 			if(isset($array["POLICIES"])){
@@ -1257,7 +1331,11 @@ class artica_meta{
 		file_put_contents("$BASCONF/password", $array["PASS"]);
 		system("/usr/share/artica-postfix/bin/artica-install --slapdconf");
 		system('/usr/share/artica-postfix/bin/process1 --checkout --force --verbose '. time());
-		shell_exec("/etc/init.d/slapd restart --framework=". basename(__FILE__));
+		
+		$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
+		if($EnableOpenLDAP==1){
+			shell_exec("/etc/init.d/slapd restart --framework=". basename(__FILE__));
+		}
 		system("$php /usr/share/artica-postfix/exec.change.password.php");
 		meta_admin_mysql(2, "Success change Manager credentials to {$array["USER"]} to password value of ".strlen($array["PASS"])." characters", null,__FILE__,__LINE__);
 		$this->removeorder($orderid);
@@ -1734,7 +1812,7 @@ private function ACTION_INSTALL_SOFT_INCREMENTS($tgzfile){
 		$size=$size/1024;
 		$size=round($size,2);
 		meta_admin_mysql(2, "Extracting $tempdir/artica.tgz ( $size MB )", null,__FILE__,__LINE__);
-		shell_exec("$tar xf $tempdir/artica.tgz -C /usr/share/");
+		shell_exec("$tar xpf $tempdir/artica.tgz -C /usr/share/");
 		meta_admin_mysql(2, "Removing $tempdir", null,__FILE__,__LINE__);
 		shell_exec("$rm -rf $tempdir");
 		

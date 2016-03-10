@@ -14,7 +14,7 @@
 	
 	
 	$user=new usersMenus();
-	if($user->AsSystemAdministrator==false){
+	if($user->AsWebMaster==false){
 		$tpl=new templates();
 		echo "alert('". $tpl->javascript_parse_text("{ERROR_NO_PRIVS}")."');";
 		die();exit();
@@ -24,8 +24,9 @@
 	if(isset($_GET["vsftpd-status"])){vsftpd_status();exit;}
 	if(isset($_GET["vsftpd-config"])){vsftpd_config();exit;}
 	if(isset($_GET["vsftpd-settings"])){vsftpd_settings();exit;}
-	if(isset($_POST["EnableVSFTPDDaemon"])){EnableVSFTPDDaemon();exit;}
+	if(isset($_POST["EnableProFTPD"])){EnableVSFTPDDaemon();exit;}
 	if(isset($_POST["VsFTPDPassive"])){vsftpd_settings_save();exit;}
+	if(isset($_POST["ProFTPDLeftMenu"])){ProFTPDLeftMenu();exit;}
 tabs();
 
 
@@ -34,15 +35,21 @@ function tabs(){
 	$page=CurrentPageName();
 	$array["status"]="{status}";
 	$array["vsftpd-settings"]="{settings}";
-	$array["events"]="{events}";
+	$array["proftpd-members"]="{members}";
+	//$array["events"]="{events}";
 	
 	while (list ($num, $ligne) = each ($array) ){
 		if($num=="events"){
-			$html[]=$tpl->_ENGINE_parse_body("<li><a href=\"sarg.events.php?popup=yes\"><span style='font-size:18px'>$ligne</span></a></li>\n");
+			$html[]=$tpl->_ENGINE_parse_body("<li><a href=\"sarg.events.php?popup=yes\"><span style='font-size:26px'>$ligne</span></a></li>\n");
 			continue;
 		}
+		
+		if($num=="proftpd-members"){
+			$html[]=$tpl->_ENGINE_parse_body("<li><a href=\"proftpd.members.php\"><span style='font-size:26px'>$ligne</span></a></li>\n");
+			continue;
+		}		
 	
-		$html[]=$tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes\"><span style='font-size:18px'>$ligne</span></a></li>\n");
+		$html[]=$tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes\"><span style='font-size:26px'>$ligne</span></a></li>\n");
 	
 	}
 	
@@ -56,10 +63,10 @@ function status(){
 	$tpl=new templates();
 	$page=CurrentPageName();
 	$users=new usersMenus();
-	if(!$users->VSFTPD_INSTALLED){$error="<p class=text-error style='font-size:18px'>{error_vsftpd_not_installed}</p>";}
+	
 	
 $html="
-<div style='font-size:26px'>vsFTPD daemon</div>$error
+<div style='font-size:26px;margin-bottom:30px'>{APP_PROFTPD}</div>$error
 <table style='width:100%'>
 <tr>
 	<td valign='top' style='width:30%'><div id='vsftpd-status'></div></td>
@@ -82,9 +89,9 @@ function vsftpd_status(){
 	$sock=new sockets();
 	$ini=new Bs_IniHandler();
 	$page=CurrentPageName();
-	$ini->loadString(base64_decode($sock->getFrameWork('vsftpd.php?status=yes')));
+	$ini->loadString(base64_decode($sock->getFrameWork('proftpd.php?status=yes')));
 	
-	$html=DAEMON_STATUS_ROUND("APP_VSFTPD",$ini,null,0)."
+	$html=DAEMON_STATUS_ROUND("APP_PROFTPD",$ini,null,0)."
 	<div style='margin-top:15px;text-align:right'>".imgtootltip("refresh-32.png","{refresh}","LoadAjax('vsftpd-status','$page?vsftpd-status=yes');")."</div>";
 	
 	echo $tpl->_ENGINE_parse_body($html);
@@ -104,6 +111,7 @@ function vsftpd_settings(){
 	$VsFTPDLocalUmask=$sock->GET_INFO("VsFTPDLocalUmask");
 	if($VsFTPDFileOpenMode==null){$VsFTPDFileOpenMode="0666";}
 	if($VsFTPDLocalUmask==null){$VsFTPDLocalUmask="077";}
+	$ProFTPDRootLogin=intval($sock->GET_INFO("ProFTPDRootLogin"));
 	
 	$VsFTPDLocalMaxRate=intval($sock->GET_INFO("VsFTPDLocalMaxRate"));
 	
@@ -138,7 +146,12 @@ function vsftpd_settings(){
 		<tr>
 			<td class=legend style='font-size:18px'>{directories_permissions}:</td>
 			<td>". Field_array_Hash($umask,"VsFTPDLocalUmask",$VsFTPDLocalUmask,"style:font-size:18px")."</td>
-		</tr>		
+		</tr>	
+		<tr>
+			<td class=legend style='font-size:18px'>{PermitRootLogin}:</td>
+			<td style='font-size:18px'>". Field_checkbox_design("ProFTPDRootLogin",1,"$ProFTPDRootLogin")."</td>
+		</tr>
+		
 		<tr>
 			<td class=legend style='font-size:18px'>{max_rate}:</td>
 			<td style='font-size:18px'>". field_text("VsFTPDLocalMaxRate","$VsFTPDLocalMaxRate","font-size:18px;width:110px")."&nbsp;Ko/s</td>
@@ -153,9 +166,11 @@ var x_Save$t= function (obj) {
 	var results=obj.responseText;
 	if(results.length>3){alert(results);return;}
 	if(document.getElementById('vsftpd_tabs')){RefreshTab('vsftpd_tabs');}
+	Loadjs('proftpd.progress.php');
 }	
 	
 function Save$t(){
+	var ProFTPDRootLogin=0;
 	var XHR = new XHRConnection();
 	XHR.appendData('VsFTPDPassive',document.getElementById('VsFTPDPassive').value);
 	XHR.appendData('VsFTPDPassiveAddr',document.getElementById('VsFTPDPassiveAddr').value);
@@ -165,8 +180,8 @@ function Save$t(){
 	XHR.appendData('VsFTPDFileOpenMode',document.getElementById('VsFTPDFileOpenMode').value);
 	XHR.appendData('VsFTPDLocalUmask',document.getElementById('VsFTPDLocalUmask').value);
 	XHR.appendData('VsFTPDLocalMaxRate',document.getElementById('VsFTPDLocalMaxRate').value);
-	
-	
+	if(document.getElementById('ProFTPDRootLogin').checked){ProFTPDRootLogin=1;}
+	XHR.appendData('ProFTPDRootLogin',ProFTPDRootLogin);
 	XHR.sendAndLoad('$page', 'POST',x_Save$t);	
 }
 </script>			
@@ -187,8 +202,9 @@ function vsftpd_settings_save(){
 	$sock->SET_INFO("VsFTPDFileOpenMode", $_POST["VsFTPDFileOpenMode"]);
 	$sock->SET_INFO("VsFTPDLocalUmask", $_POST["VsFTPDLocalUmask"]);
 	$sock->SET_INFO("VsFTPDLocalMaxRate", $_POST["VsFTPDLocalMaxRate"]);
+	$sock->SET_INFO("ProFTPDRootLogin", $_POST["ProFTPDRootLogin"]);
 	
-	$sock->getFrameWork("vsftpd.php?restart=yes");
+	
 	
 }
 
@@ -196,20 +212,25 @@ function vsftpd_config(){
 	$tpl=new templates();
 	$page=CurrentPageName();	
 	$sock=new sockets();
-	$EnableVSFTPDDaemon=intval($sock->GET_INFO("EnableVSFTPDDaemon"));
+	$EnableProFTPD=intval($sock->GET_INFO("EnableProFTPD"));
 	$VSFTPDPort=intval($sock->GET_INFO("VSFTPDPort"));
+	$ProFTPDLeftMenu=intval($sock->GET_INFO("ProFTPDLeftMenu"));
 	if($VSFTPDPort==0){$VSFTPDPort=21;}
 	$t=time();
 	$html="<div style='width:98%' class=form>
-		". Paragraphe_switch_img("{enable_ftp_service}", "{enable_ftp_service_vsftpd_explain}","EnableVSFTPDDaemon",
-				$EnableVSFTPDDaemon,null,650)."
+		". Paragraphe_switch_img("{enable_ftp_service}", "{enable_ftp_service_vsftpd_explain}","EnableProFTPD",
+				$EnableProFTPD,null,980)."
 			<table style='width:100%'>
+				<tr>
+					<td class=legend style='font-size:26px'>{add_to_menu}:</td>
+					<td>". Field_checkbox_design("ProFTPDLeftMenu",1,$ProFTPDLeftMenu,"ProFTPDLeftMenuCheck()")."</td>
+				</tr>						
 			<tr>
-				<td class=legend style='font-size:18px'>{listen_port}:</td>
-				<td>". Field_text("VSFTPDPort",$VSFTPDPort,"font-size:18px;width:110px")."</td>
+				<td class=legend style='font-size:26px'>{listen_port}:</td>
+				<td>". Field_text("VSFTPDPort",$VSFTPDPort,"font-size:26px;width:150px")."</td>
 			</tr>
 			</table>
-			<div style='text-align:right'><hr>". button("{apply}","Save$t();",26)."</div>
+			<div style='text-align:right'><hr>". button("{apply}","Save$t();",30)."</div>
 			</div>
 	<script>
 var x_Save$t= function (obj) {
@@ -217,14 +238,33 @@ var x_Save$t= function (obj) {
 	var results=obj.responseText;
 	if(results.length>3){alert(results);return;}
 	if(document.getElementById('vsftpd_tabs')){RefreshTab('vsftpd_tabs');}
+	Loadjs('proftpd.progress.php');
 }	
 	
 function Save$t(){
 	var XHR = new XHRConnection();
-	XHR.appendData('EnableVSFTPDDaemon',document.getElementById('EnableVSFTPDDaemon').value);
+	XHR.appendData('EnableProFTPD',document.getElementById('EnableProFTPD').value);
 	XHR.appendData('VSFTPDPort',document.getElementById('VSFTPDPort').value);
 	XHR.sendAndLoad('$page', 'POST',x_Save$t);	
 }
+
+var xProFTPDLeftMenuCheck=function (obj) {
+	var results=obj.responseText;
+	if(results.length>0){alert(results);}
+	AjaxTopMenu('template-top-menus','admin.top.menus.php');			
+}
+
+function ProFTPDLeftMenuCheck(){
+	var XHR = new XHRConnection();
+	if(document.getElementById('ProFTPDLeftMenu').checked){
+		XHR.appendData('ProFTPDLeftMenu',1);
+	}else{
+		XHR.appendData('ProFTPDLeftMenu',0);
+	}
+	XHR.sendAndLoad('$page', 'POST',xProFTPDLeftMenuCheck);
+}
+
+
 </script>			
 			";
 	
@@ -234,8 +274,12 @@ echo $tpl->_ENGINE_parse_body($html);
 }
 function EnableVSFTPDDaemon(){
 	$sock=new sockets();
-	$sock->SET_INFO("EnableVSFTPDDaemon", $_POST["EnableVSFTPDDaemon"]);
+	$sock->SET_INFO("EnableProFTPD", $_POST["EnableProFTPD"]);
 	$sock->SET_INFO("VSFTPDPort", $_POST["VSFTPDPort"]);
-	$sock->getFrameWork("vsftpd.php?restart=yes");
+	
+}
+function ProFTPDLeftMenu(){
+	$sock=new sockets();
+	$sock->SET_INFO("ProFTPDLeftMenu", $_POST["ProFTPDLeftMenu"]);
 }
 

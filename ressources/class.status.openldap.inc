@@ -37,6 +37,16 @@ function openldap(){
 	$pid_path=GetVersionOf("openldap-pid");
 	$master_pid=trim(@file_get_contents($pid_path));
 	$bin_path=$GLOBALS["CLASS_UNIX"]->LOCATE_SLPAD_PATH();
+	
+	if(!is_file("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP")){
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP", 1);
+	}
+	if(!is_file("/etc/artica-postfix/settings/Daemons/RestartOpenLDAP")){
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/RestartOpenLDAP", 1);
+	}	
+	
+	$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
+	$RestartOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/RestartOpenLDAP"));
 
 	if($GLOBALS["VERBOSE"]){
 		echo "pid_path = $pid_path\n";
@@ -68,11 +78,26 @@ function openldap(){
 
 
 	if(is_file($squidbin)){
-		if($SquidPerformance>2){$l[]="service_disabled=0";return @implode("\n", $l);}
-		if($EnableIntelCeleron==1){$l[]="service_disabled=0";return @implode("\n", $l);}
+		if($SquidPerformance>2){
+			openldap_disable_cron();
+			$l[]="service_disabled=0";
+			return @implode("\n", $l);
+		}
+		if($EnableIntelCeleron==1){
+			openldap_disable_cron();
+			$l[]="service_disabled=0";
+			return @implode("\n", $l);
+		}
 	}
 
-
+	if($EnableOpenLDAP==0){
+		openldap_disable_cron();
+		$l[]="service_disabled=0";
+		return @implode("\n", $l);
+	}
+	
+	if($RestartOpenLDAP==1){openldap_enable_cron();}
+	if($RestartOpenLDAP==0){openldap_disable_cron();}
 
 	$l[]="service_disabled=1";
 	$l[]="pid_path=$pid_path";
@@ -112,13 +137,15 @@ function openldap(){
 		shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} ".dirname(__FILE__)."/exec.verifldap.php --ou >/dev/null 2>&1 &");
 	}
 
-	$RestartLDAPEach=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/RestartLDAPEach"));
-	if(!is_numeric($RestartLDAPEach)){$RestartLDAPEach=4320;}
-	if($RestartLDAPEach>0){
-		$ProcessTime=$GLOBALS["CLASS_UNIX"]->PROCCESS_TIME_MIN($master_pid);
-		if($ProcessTime>$RestartLDAPEach){
-			system_admin_events("Local LDAP service TTL {$ProcessTime}mn exceed {$RestartLDAPEach}mn [action=restart]",__FUNCTION__,__FILE__,__LINE__,"system");
-			shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} /etc/init.d/slapd restart --framework=". basename(__FILE__)." >/dev/null 2>&1 &");
+	if($RestartOpenLDAP==0){
+		$RestartLDAPEach=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/RestartLDAPEach"));
+		if(!is_numeric($RestartLDAPEach)){$RestartLDAPEach=4320;}
+		if($RestartLDAPEach>0){
+			$ProcessTime=$GLOBALS["CLASS_UNIX"]->PROCCESS_TIME_MIN($master_pid);
+			if($ProcessTime>$RestartLDAPEach){
+				system_admin_events("Local LDAP service TTL {$ProcessTime}mn exceed {$RestartLDAPEach}mn [action=restart]",__FUNCTION__,__FILE__,__LINE__,"system");
+				shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} /etc/init.d/slapd restart --framework=". basename(__FILE__)." >/dev/null 2>&1 &");
+			}
 		}
 	}
 
@@ -130,3 +157,15 @@ function openldap(){
 
 }
 //========================================================================================================================================================
+function openldap_disable_cron(){
+	if(!is_file("/etc/cron.d/openldap-restart")){return;}
+	@unlink("/etc/cron.d/openldap-restart");
+	shell_exec("/etc/init.d/cron reload");
+}
+
+function openldap_enable_cron(){
+	if(is_file("/etc/cron.d/openldap-restart")){return;}
+	Popuplate_cron_make("openldap-restart","30 6,12,3 * * *","exec.initslapd.php --restart --force --framework=cron-daemon");
+	shell_exec("/etc/init.d/cron reload");
+}
+

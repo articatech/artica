@@ -337,7 +337,25 @@ function ping(){
 		writelogs_meta("Ping Failed $articaMeta->ping_error", __FUNCTION__, __FILE__, __LINE__);
 		client_progress("Ping the Meta server {failed}...",110);
 		return;
+	}
+	
+	$ArticaMetaDumpSQLMD5=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/ArticaMetaDumpSQLMD5"));
+	$ArticaMetaDumpSQLClientMD5=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/ArticaMetaDumpSQLClientMD5"));
+	$articaMeta->events("ArticaMetaDumpSQLMD5       = $ArticaMetaDumpSQLMD5",__FUNCTION__,__FILE__,__LINE__);
+	$articaMeta->events("ArticaMetaDumpSQLClientMD5 = $ArticaMetaDumpSQLClientMD5",__FUNCTION__,__FILE__,__LINE__);
+	
+	if($ArticaMetaDumpSQLMD5<>null){
+		if($ArticaMetaDumpSQLMD5<>$ArticaMetaDumpSQLClientMD5){
+			if($articaMeta->retreive_dump_sql($ArticaMetaDumpSQLMD5)){
+				$articaMeta->events("Update ArticaMetaDumpSQLClientMD5 key with $ArticaMetaDumpSQLMD5",__FUNCTION__,__FILE__,__LINE__);
+				@file_put_contents("/etc/artica-postfix/settings/Daemons/ArticaMetaDumpSQLClientMD5", $ArticaMetaDumpSQLMD5);
+				$php=$unix->LOCATE_PHP5_BIN();
+				system("$php /usr/share/artica-postfix/exec.squid-meta.php");
+			}
 		}
+		
+	}
+	
 		
 	$took=$unix->distanceOfTimeInWords($T1,time(),true);
 	client_progress("Ping the Meta server {succes} {took} $took...",90);

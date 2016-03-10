@@ -13,10 +13,20 @@ class squid_bandwith_builder{
 	var $rules_explain=array();
 	var $delay_is_acls=array();
 	var $additionalsAcls=array();
+	var $array_squid_quotas=array();
+	private $array_squid_qotas_lines=array();
+	private $ERRORS=array();
+	private $delay_pools_number=0;
 	private $ok=false;
 	private $SquidDisableAllFilters=0;
 	private $SquidUrgency=0;
 	private $EnableSquidBandWidthGlobal=0;
+	private $EnableSquidQuotasBandwidth=0;
+	private $InfluxSyslogRemote=0;
+	private $InfluxUseRemote=0;
+	private $EnableKerbAuth=0;
+	private $ActiveDirectoryEmergency=0;
+	private $EnableMacAddressFilter=0;
 	var $AS_ROOT=false;
 	
 	function squid_bandwith_builder($noload=false){
@@ -27,8 +37,19 @@ class squid_bandwith_builder{
 			$this->SquidDisableAllFilters=intval($sock->GET_INFO("SquidDisableAllFilters"));
 			$this->SquidUrgency=intval($sock->GET_INFO("SquidUrgency"));
 			$this->EnableSquidBandWidthGlobal=intval($sock->GET_INFO("EnableSquidBandWidthGlobal"));
+			$this->EnableSquidQuotasBandwidth=intval($sock->GET_INFO("EnableSquidQuotasBandwidth"));
+			$this->EnableKerbAuth=intval($sock->GET_INFO("EnableKerbAuth"));
+			$this->ActiveDirectoryEmergency=intval($sock->GET_INFO("ActiveDirectoryEmergency"));
+			$this->EnableMacAddressFilter=intval($sock->GET_INFO("EnableMacAddressFilter"));
 			
+			$sock=new sockets();
+			$this->InfluxUseRemote=intval($sock->GET_INFO("InfluxUseRemote"));
+			if($this->InfluxUseRemote==1){
+				$this->InfluxSyslogRemote=intval($sock->GET_INFO("InfluxSyslogRemote"));
+				if($this->InfluxSyslogRemote==1){$this->EnableSquidQuotasBandwidth=0;}
+			}
 			
+			if($this->ActiveDirectoryEmergency==1){$this->EnableKerbAuth=0;}
 			
 			$this->loadRules();
 		}
@@ -57,28 +78,131 @@ class squid_bandwith_builder{
 		$q=new mysql();
 		$results=$q->QUERY_SQL($sql,"artica_backup");
 		if(!$q->ok){
+			$this->ERRORS[]="# MySQL Error Line :".__LINE__;
 			writelogs("$q->mysql_error",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);
 			return;
 		}
 		
 		if(function_exists("build_progress_bandwidth")){build_progress_bandwidth("{limit_rate} {reconfigure}",55);}
-		$this->delay_pools="delay_pools ".mysql_num_rows($results);
-		if($GLOBALS["VERBOSE"]){echo "$sql -> $this->delay_pools element(s)\n";}
+		if($GLOBALS["VERBOSE"]){echo "$sql -> ". mysql_num_rows($results)." element(s)\n";}
 		
-		$count=0;
-		if($this->EnableSquidBandWidthGlobal==1){$count=1;}
+		$this->delay_pools_number=0;
+		$this->ERRORS[]="# EnableSquidBandWidthGlobal = $this->EnableSquidBandWidthGlobal Line:".__LINE__;
+		if($this->EnableSquidBandWidthGlobal==1){$this->delay_pools_number=1;}
 		
 		
 		while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
 			$delay_class=$this->get_delay_class($ligne);
 			if($delay_class==0){continue;}
-			$count=$count+1;
-			$this->rules_array[$count]=$ligne["ID"];
-			$this->rules_name[$count]=$ligne["rulename"];
+			$this->delay_pools_number=$this->delay_pools_number+1;
+			$this->rules_array[$this->delay_pools_number]=$ligne["ID"];
+			$this->rules_name[$this->delay_pools_number]=$ligne["rulename"];
 			
-			$this->delay_class[]="delay_class $count $delay_class";
-			$this->delay_parameters[]=$this->get_delay_parameters($count,$delay_class,$ligne);
+			$this->delay_class[]="delay_class $this->delay_pools_number $delay_class";
+			$this->delay_parameters[]=$this->get_delay_parameters($this->delay_pools_number,$delay_class,$ligne);
 		}
+		$this->ERRORS[]="# EnableSquidQuotasBandwidth = $this->EnableSquidQuotasBandwidth Line:".__LINE__;
+		if($this->EnableSquidQuotasBandwidth==1){
+			@mkdir("/etc/squid3/bandwidths",0755,true);
+			@chown("/etc/squid3/bandwidths", "squid");
+			@chmod("/etc/squid3/bandwidths", 0755);
+			$delay_class_mode[0]=4;
+			$delay_class_mode[1]=4;
+			$delay_class_mode[2]=1;
+			$delay_class_mode[3]=4;
+			$delay_class_mode[4]=1;
+			
+			$sql="SELECT * FROM bandquotas WHERE enabled=1";
+			$q=new mysql_squid_builder();
+			$results=$q->QUERY_SQL($sql);
+			if(!$q->ok){
+				$this->ERRORS[]="# MySQL Error Line $q->mysql_error Line:".__LINE__;
+			}
+				
+			$this->ERRORS[]="# bandquotas = ".mysql_num_rows($results)." entrie(s) Line:".__LINE__;
+			while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
+				$this->delay_pools_number=$this->delay_pools_number+1;
+				$BandwidthLimit=$ligne["BandwidthLimit"];
+				
+				$this->ERRORS[]="# delay_class Number:$this->delay_pools_number -> $BandwidthLimit Rule:{$ligne["ID"]} Group type:{$ligne["GroupType"]} Line:".__LINE__;
+				$this->array_squid_quotas[$ligne["ID"]]=$this->delay_pools_number;
+				$this->array_squid_qotas_lines[]="delay_class $this->delay_pools_number {$delay_class_mode[$ligne["GroupType"]]}";
+				
+				if($delay_class_mode[$ligne["GroupType"]]==1){
+					$this->array_squid_qotas_lines[]="delay_parameters $this->delay_pools_number $BandwidthLimit/$BandwidthLimit";
+				}
+				if($delay_class_mode[$ligne["GroupType"]]==4){
+					$this->array_squid_qotas_lines[]="delay_parameters $this->delay_pools_number -1/-1 -1/-1 -1/-1 $BandwidthLimit/$BandwidthLimit";
+				}
+				
+				if($ligne["GroupType"]==2){
+					//IP ADDRESS
+					$FileAcls="/etc/squid3/bandwidths/Group{$ligne["ID"]}.acl";
+					if(!is_file($FileAcls)){@touch($FileAcls);}
+					@chown($FileAcls, "squid");
+					$this->array_squid_qotas_lines[]="acl SquidQuota{$ligne["ID"]} src \"$FileAcls\"";
+					$this->array_squid_qotas_lines[]="delay_access $this->delay_pools_number allow SquidQuota{$ligne["ID"]}";
+					$this->array_squid_qotas_lines[]="delay_access $this->delay_pools_number deny all";
+					$this->array_squid_qotas_lines[]="";
+					$this->array_squid_qotas_lines[]="";
+					continue;
+				}
+				if($ligne["GroupType"]==0){
+					//Active Directory group.
+					if($this->EnableKerbAuth==0){continue;}
+					$FileAcls="/etc/squid3/bandwidths/Group{$ligne["ID"]}.acl";
+					if(!is_file($FileAcls)){@touch($FileAcls);}
+					@chown($FileAcls, "squid");
+					$this->array_squid_qotas_lines[]="acl SquidQuota{$ligne["ID"]} proxy_auth -i \"$FileAcls\"";
+					$this->array_squid_qotas_lines[]="delay_access $this->delay_pools_number allow SquidQuota{$ligne["ID"]}";
+					$this->array_squid_qotas_lines[]="delay_access $this->delay_pools_number deny all";
+					$this->array_squid_qotas_lines[]="";
+					$this->array_squid_qotas_lines[]="";
+					continue;
+				}
+				if($ligne["GroupType"]==1){
+					//Unique Member
+					if($this->EnableKerbAuth==0){continue;}
+					$FileAcls="/etc/squid3/bandwidths/Group{$ligne["ID"]}.acl";
+					if(!is_file($FileAcls)){@touch($FileAcls);}
+					@chown($FileAcls, "squid");
+					$this->array_squid_qotas_lines[]="acl SquidQuota{$ligne["ID"]} proxy_auth -i \"$FileAcls\"";
+					$this->array_squid_qotas_lines[]="delay_access $this->delay_pools_number allow SquidQuota{$ligne["ID"]}";
+					$this->array_squid_qotas_lines[]="delay_access $this->delay_pools_number deny all";
+					$this->array_squid_qotas_lines[]="";
+					$this->array_squid_qotas_lines[]="";
+					continue;
+				}
+				if($ligne["GroupType"]==3){
+					if($this->EnableMacAddressFilter==0){continue;}
+					$FileAcls="/etc/squid3/bandwidths/Group{$ligne["ID"]}.acl";
+					if(!is_file($FileAcls)){@touch($FileAcls);}
+					@chown($FileAcls, "squid");
+					$this->array_squid_qotas_lines[]="acl SquidQuota{$ligne["ID"]} arp \"$FileAcls\"";
+					$this->array_squid_qotas_lines[]="delay_access $this->delay_pools_number allow SquidQuota{$ligne["ID"]}";
+					$this->array_squid_qotas_lines[]="delay_access $this->delay_pools_number deny all";
+					$this->array_squid_qotas_lines[]="";
+					$this->array_squid_qotas_lines[]="";
+					continue;
+				}
+				
+				if($ligne["GroupType"]==4){
+					if($this->EnableMacAddressFilter==0){continue;}
+					$FileAcls="/etc/squid3/bandwidths/Group{$ligne["ID"]}.acl";
+					if(!is_file($FileAcls)){@touch($FileAcls);}
+					@chown($FileAcls, "squid");
+					$this->array_squid_qotas_lines[]="acl SquidQuota{$ligne["ID"]} src \"$FileAcls\"";
+					$this->array_squid_qotas_lines[]="delay_access $this->delay_pools_number allow SquidQuota{$ligne["ID"]}";
+					$this->array_squid_qotas_lines[]="delay_access $this->delay_pools_number deny all";
+					$this->array_squid_qotas_lines[]="";
+					$this->array_squid_qotas_lines[]="";
+					continue;
+				}				
+				
+			}
+		}
+		
+		
 		if(function_exists("build_progress_bandwidth")){build_progress_bandwidth("{limit_rate} {reconfigure}",60);}
 	}
 	
@@ -126,6 +250,8 @@ class squid_bandwith_builder{
 		return $delay;
 		
 	}
+	
+	
 	
 	public function get_delay_parameters($count,$delay_class,$ligne){
 		$total_net_max=intval($ligne["total_net_max"]);
@@ -236,7 +362,7 @@ class squid_bandwith_builder{
 		if(count($LimitBDWIP)>0){
 			$FIN[]=@implode("\n", $LimitBDWIP);
 		}
-		$FIN[]="delay_pools 1";
+		
 		$FIN[]="delay_class 1 1";
 		if(count($LimitBDWDOM)>0){
 			$FIN[]="delay_access 1 allow LimitBDWDOM";
@@ -260,6 +386,14 @@ class squid_bandwith_builder{
 		$conf=array();
 		$conf[]="";
 		$conf[]="#--------- Bandwith limitations (".__CLASS__."/".__FUNCTION__."()/".__LINE__.")";
+		$conf[]="# EnableSquidQuotasBandwidth = $this->EnableSquidQuotasBandwidth";
+		$conf[]=@implode("\n", $this->ERRORS);
+		$conf[]="# delay_pools_number = $this->delay_pools_number";
+		if($this->delay_pools_number==0){
+			@file_put_contents("/etc/squid3/acls_bandwidth.conf", @implode("\n", $conf));
+			return true;
+		}
+		$conf[]="delay_pools $this->delay_pools_number";
 		
 		if($this->SquidUrgency==1){
 			if(function_exists("build_progress_bandwidth")){build_progress_bandwidth("{limit_rate} {emergency}",110);}
@@ -278,16 +412,24 @@ class squid_bandwith_builder{
 		if($this->EnableSquidBandWidthGlobal==1){
 			if(function_exists("build_progress_bandwidth")){build_progress_bandwidth("{limit_rate} GlobalRules",60);}
 			$conf[]=$this->GlobalRules();
-			if(!$this->ok){return false;}
 		}
+		
+		if($this->EnableSquidQuotasBandwidth==1){
+			if(count($this->rules_array)==0){
+				$conf[]=@implode("\n", $this->array_squid_qotas_lines);
+			}
+		}
+		
+		
 		
 		$logprix=__CLASS__."/".__FUNCTION__;
 		if(count($this->rules_array)==0){
-			$conf[]="# NO RULES after compilation (".__CLASS__."/".__FUNCTION__."()/".__LINE__.")";
-			@file_put_contents("/etc/squid3/acls_bandwidth.conf", @implode("\n", $conf));
-			if($GLOBALS["VERBOSE"]){echo "rules_array 0 element (die())\n";}
-			if(function_exists("build_progress_bandwidth")){build_progress_bandwidth("{limit_rate} {done}",95);}
-			return true;
+				$conf[]="# NO RULES after compilation (".__CLASS__."/".__FUNCTION__."()/".__LINE__.")";
+				@file_put_contents("/etc/squid3/acls_bandwidth.conf", @implode("\n", $conf));
+				if($GLOBALS["OUTPUT"]){echo "rules_array 0 element (die())\n";}
+				if(function_exists("build_progress_bandwidth")){build_progress_bandwidth("{limit_rate} {done}",95);}
+				return true;
+			
 		}
 	
 		
@@ -323,7 +465,6 @@ class squid_bandwith_builder{
 			$conf[]=@implode("\n",$this->acls);
 			$conf[]="";
 			$conf[]="#Rules definitions";
-			$conf[]=$this->delay_pools;
 			$conf[]=@implode("\n",$this->delay_class);
 			$conf[]=@implode("\n",$this->delay_parameters);
 			$conf[]="";
@@ -332,6 +473,9 @@ class squid_bandwith_builder{
 			$conf[]="delay_initial_bucket_level 50";
 			$conf[]="";
 		}
+		
+		$conf[]=@implode("\n", $this->array_squid_qotas_lines);
+		
 		if(function_exists("build_progress_bandwidth")){build_progress_bandwidth("{limit_rate} acls_bandwidth.conf {done}",95);}
 		@file_put_contents("/etc/squid3/acls_bandwidth.conf", @implode("\n", $conf));
 		return true;

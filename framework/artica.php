@@ -32,6 +32,9 @@ if(isset($_GET["meta-metaclienteventsmaster-uuid"])){artica_meta_client_eventsma
 if(isset($_GET["meta-metaclientSquidRealtimeev-uuid"])){artica_meta_client_squid_relatime_ev();exit;}
 if(isset($_GET["meta-metaclient-dumpsql-uuid"])){artica_meta_client_mysql_dump();exit;}
 if(isset($_GET["meta-metaclient-scan-upload-dirs"])){artica_meta_client_uploaddirs();exit;}
+
+if(isset($_GET["meta-server-dumpgz"])){artica_meta_server_dump_gz();exit;}
+
 if(isset($_GET["scan-categories"])){artica_meta_scan_categories();exit;}
 
 if(isset($_GET["build-meta-schedules"])){artica_meta_client_build_schedules();exit;}
@@ -139,6 +142,25 @@ function snapshot(){
 		writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
 		shell_exec($cmd);
 }
+
+function artica_meta_server_dump_gz(){
+	$GLOBALS["PROGRESS_FILE"]="/usr/share/artica-postfix/ressources/logs/web/artica-meta.proxy.acls.progress";
+	$GLOBALS["LOG_FILE"]="/usr/share/artica-postfix/ressources/logs/web/artica-meta.proxy.acls.progress.txt";
+	@unlink($GLOBALS["PROGRESS_FILE"]);
+	@unlink($GLOBALS["LOG_FILE"]);
+	@touch($GLOBALS["PROGRESS_FILE"]);
+	@touch($GLOBALS["LOG_FILE"]);
+	@chmod($GLOBALS["PROGRESS_FILE"],0777);
+	@chmod($GLOBALS["LOG_FILE"],0777);
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.artica-meta-server.php --export-tables >{$GLOBALS["LOG_FILE"]} 2>&1 &";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);	
+	
+}
+
 
 function snapshot_import(){
 	$GLOBALS["PROGRESS_FILE"]="/usr/share/artica-postfix/ressources/logs/web/snapshot.upload.progress";

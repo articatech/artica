@@ -48,6 +48,7 @@ function page(){
 	$virtual_interfaces=$tpl->_ENGINE_parse_body("{virtual_interfaces}");
 	$reboot_network=$tpl->javascript_parse_text("{reboot_network}");
 	$users=new usersMenus();
+	$title=$tpl->javascript_parse_text("{virtual_interfaces}");
 
 	$tablewidth=874;
 	$servername_size=412;
@@ -61,12 +62,12 @@ function page(){
 	
 	$buttons="
 	buttons : [
-	{name: '<b>$new_virtual_ip$v4</b>', bclass: 'add', onpress : VirtualIPAdd$t},$new_virtual_ipv6
-	{name: '<b>$apply_network_configuration</b>', bclass: 'Reconf', onpress : BuildNetConf$t},
+	{name: '<strong style=font-size:18px>$new_virtual_ip$v4</strong>', bclass: 'add', onpress : VirtualIPAdd$t},$new_virtual_ipv6
+	{name: '<strong style=font-size:18px>$apply_network_configuration</strong>', bclass: 'Reconf', onpress : BuildNetConf$t},
 
 	],";
 	$html="
-	<table class='table-$t' style='display: none' id='table-$t' style='width:100%'></table>
+	<table class='SYSTEM_NICS_VIRTUALS_LIST' style='display: none' id='SYSTEM_NICS_VIRTUALS_LIST' style='width:100%'></table>
 		<table class=form>
 		<tr>
 			<td class=legend>$broadcast_has_ipaddr</td>
@@ -80,16 +81,16 @@ function page(){
 <script>
 VirtualIPMem='';
 $(document).ready(function(){
-$('#table-$t').flexigrid({
+$('#SYSTEM_NICS_VIRTUALS_LIST').flexigrid({
 	url: '$page?virtual-list=yes&t=$t',
 	dataType: 'json',
 	colModel : [
-		{display: '&nbsp;', name : 'icon', width : 44, sortable : false, align: 'center'},
-		{display: '$nic', name : 'ID', width :148, sortable : true, align: 'left'},
-		{display: '$tcp_address', name : 'ipaddr', width :124, sortable : true, align: 'left'},
-		{display: '$netmask', name : 'netmask', width : 124, sortable : true, align: 'left'},
-		{display: '$organization', name : 'org', width : 313, sortable : true, align: 'left'},
-		{display: '&nbsp;', name : 'none2', width : 31, sortable : false, align: 'center'},
+		{display: '&nbsp;', name : 'icon', width : 60, sortable : false, align: 'center'},
+		{display: '<span style=font-size:22px>$nic</span>', name : 'ID', width :230, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>$tcp_address</span>', name : 'ipaddr', width :230, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>$netmask</span>', name : 'netmask', width : 230, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>$organization</span>', name : 'org', width : 313, sortable : true, align: 'left'},
+		{display: '&nbsp;', name : 'none2', width : 60, sortable : false, align: 'center'},
 		
 	],
 	$buttons
@@ -101,66 +102,65 @@ $('#table-$t').flexigrid({
 	sortname: 'nic',
 	sortorder: 'asc',
 	usepager: true,
-	title: '',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 320,
+	height: 550,
 	singleSelect: true
 	
 	});   
 });
 
-		function VirtualIPAdd$t(){
-			YahooWin2(windows_size,'system.nic.config.php?virtual-popup-add=yes&default-datas={$_GET["default-datas"]}&t=$t&function-after={$_GET["function-after"]}','$virtual_interfaces');
-		
-		}
+function VirtualIPAdd$t(){
+	YahooWin2(725,'system.nic.config.php?virtual-popup-add=yes&default-datas={$_GET["default-datas"]}&t=$t&function-after={$_GET["function-after"]}','$virtual_interfaces');
+}
 
 		
-		function VirtualIPAddv6$t(){
-			YahooWin2(windows_size,'system.nic.config.php?virtual-popup-addv6=yes&default-datas={$_GET["default-datas"]}&t=$t&function-after={$_GET["function-after"]}','$virtual_interfaces ipV6');
-		}
+function VirtualIPAddv6$t(){
+	YahooWin2(725,'system.nic.config.php?virtual-popup-addv6=yes&default-datas={$_GET["default-datas"]}&t=$t&function-after={$_GET["function-after"]}','$virtual_interfaces ipV6');
+}
 		
-		function VirtualsEdit$t(ID){
-			YahooWin2(500,'system.nic.config.php?virtual-popup-add=yes&t=$t&ID='+ID,'$virtual_interfaces');
-		}
+function VirtualsEdit$t(ID){
+	YahooWin2(725,'system.nic.config.php?virtual-popup-add=yes&t=$t&ID='+ID,'$virtual_interfaces');
+}
 		
-		function VirtualsEdit6$t(ID){
-			YahooWin2(500,'system.nic.config.php?virtual-popup-addv6=yes&t=$t&ID='+ID,'$virtual_interfaces');
-		}		
+function VirtualsEdit6$t(ID){
+	YahooWin2(725,'system.nic.config.php?virtual-popup-addv6=yes&t=$t&ID='+ID,'$virtual_interfaces');
+}		
 
-		var X_VirtualIPAddSave$t=function (obj) {
-			var results=obj.responseText;
-			if(results.length>5){alert(results);return;}	
-			$('#rowVirtualNic'+VirtualIPMem).remove();
-		}		
+var X_VirtualIPAddSave$t=function (obj) {
+	var results=obj.responseText;
+	if(results.length>5){alert(results);return;}	
+	$('#rowVirtualNic'+VirtualIPMem).remove();
+}		
 
-		function VirtualsDelete$t(ID){
-			var DisableNetworksManagement=$DisableNetworksManagement;
-			if(DisableNetworksManagement==1){alert('$ERROR_NO_PRIVS');return;}		
-			VirtualIPMem=ID;
-			var XHR = new XHRConnection();
-			XHR.appendData('virt-del',ID);
-			XHR.sendAndLoad('system.nic.config.php', 'GET',X_VirtualIPAddSave$t);
-		}
+function VirtualsDelete$t(ID){
+	var DisableNetworksManagement=$DisableNetworksManagement;
+	if(DisableNetworksManagement==1){alert('$ERROR_NO_PRIVS');return;}		
+	VirtualIPMem=ID;
+	var XHR = new XHRConnection();
+	XHR.appendData('virt-del',ID);
+	XHR.sendAndLoad('system.nic.config.php', 'GET',X_VirtualIPAddSave$t);
+}
 
 		
-		function FreeWebDelete(server,dns,md){
-			FreeWebIDMEM=md;
-			if(confirm('$delete_freeweb_text')){
-				var XHR = new XHRConnection();
-				if(dns==1){if(confirm('$delete_freeweb_dnstext')){XHR.appendData('delete-dns',1);}else{XHR.appendData('delete-dns',0);}}
-				XHR.appendData('delete-servername',server);
-    			XHR.sendAndLoad('freeweb.php', 'GET',x_FreeWebDelete);
-			}
-		}	
+function FreeWebDelete(server,dns,md){
+	FreeWebIDMEM=md;
+	if(confirm('$delete_freeweb_text')){
+		var XHR = new XHRConnection();
+		if(dns==1){if(confirm('$delete_freeweb_dnstext')){XHR.appendData('delete-dns',1);}else{XHR.appendData('delete-dns',0);}}
+		XHR.appendData('delete-servername',server);
+    	XHR.sendAndLoad('freeweb.php', 'GET',x_FreeWebDelete);
+	}
+}	
 		
-		var X_BuildNetConf$t= function (obj) {
-			var results=obj.responseText;
-			if(results.length>0){alert(results);}
-			$('#table-$t').flexReload();
-		}		
+var X_BuildNetConf$t= function (obj) {
+	var results=obj.responseText;
+	if(results.length>0){alert(results);}
+	$('#SYSTEM_NICS_VIRTUALS_LIST').flexReload();
+}		
 
 		function BuildNetConf$t(){
 			
@@ -209,21 +209,15 @@ function nics_list(){
 	$FORCE_FILTER=null;
 	
 	if($q->COUNT_ROWS($table,$database)==0){
-		writelogs("$table, no row",__FILE__,__FUNCTION__,__FILE__,__LINE__);
-		$data['page'] = $page;$data['total'] = $total;$data['rows'] = array();
-		echo json_encode($data);
+		json_error_show("No interface");
 		return ;
 	}
 	if(isset($_POST["sortname"])){if($_POST["sortname"]<>null){$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";}}	
 	if(isset($_POST['page'])) {$page = $_POST['page'];}
 	
+	$searchstring=string_to_flexquery();
 
-	if($_POST["query"]<>null){
-		$_POST["query"]="*".$_POST["query"]."*";
-		$_POST["query"]=str_replace("**", "*", $_POST["query"]);
-		$_POST["query"]=str_replace("**", "*", $_POST["query"]);
-		$_POST["query"]=str_replace("*", "%", $_POST["query"]);
-		$search=$_POST["query"];
+	if($searchstring<>null){
 		$searchstring="AND (`{$_POST["qtype"]}` LIKE '$search')";
 		$sql="SELECT COUNT(*) as TCOUNT FROM `$table` WHERE 1 $FORCE_FILTER $searchstring";
 		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,$database));
@@ -288,7 +282,7 @@ function nics_list(){
 		if($ligne["org"]=="crossroads"){
 			$ligne["org"]=$tpl->_ENGINE_parse_body("<a href=\"javascript:blur();\" 
 			OnClick=\"javascript:Loadjs('postfix.multiple.crossroads.php?ipaddr=". urlencode($ligne["ipaddr"])."');\" 
-			style='font-size:14px;text-decoration:underline;font-weight:bold'>{load_balancer}</a>");
+			style='font-size:24px;text-decoration:underline;font-weight:bold'>{load_balancer}</a>");
 			$img="folder-dispatch-22-grey.png";
 			if($interfaces[$eth]<>null){$img="folder-dispatch-22.png";}
 			
@@ -297,15 +291,15 @@ function nics_list(){
 	
 		
 		$edit="<a href=\"javascript:blur();\" 
-		OnClick=\"javascript:VirtualsEdit$t({$ligne["ID"]})\" style='font-size:16px;font-weight:bold;color:$color;text-decoration:underline'>";
+		OnClick=\"javascript:VirtualsEdit$t({$ligne["ID"]})\" style='font-size:24px;font-weight:bold;color:$color;text-decoration:underline'>";
 		$delete="<a href=\"javascript:blur();\" 
 		OnClick=\"javascript:VirtualsDelete$t({$ligne["ID"]})\" 
-		style='font-size:16px;text-decoration:underline'><img src='img/delete-32.png'></a>";
+		style='font-size:24px;text-decoration:underline'><img src='img/delete-32.png'></a>";
 		
 		if($ligne["ipv6"]==1){
 			$edit="<a href=\"javascript:blur();\" 
 			OnClick=\"javascript:VirtualsEdit6$t({$ligne["ID"]})\" 
-			style='font-size:16px;font-weight:bold;color:$color;text-decoration:underline'>";
+			style='font-size:24px;font-weight:bold;color:$color;text-decoration:underline'>";
 			$ligne["netmask"]="/{$ligne["netmask"]}";
 		}
 		
@@ -313,12 +307,13 @@ function nics_list(){
 	$data['rows'][] = array(
 		'id' => "VirtualNic{$ligne['ID']}",
 		'cell' => array(
-		"<img src='img/$img'>"
-		,"<span style='font-size:16px;color:$color;font-weight:bold'>$eth_text</span>",
-		"<span style='font-size:16px'>$edit{$ligne["ipaddr"]}</a></span>",
-		"<span style='font-size:16px'>$edit{$ligne["netmask"]}</a></span>",
-		"<span style='font-size:16px;color:$color'>{$ligne["org"]}</span>"
-		,$delete )
+		"<center><img src='img/$img'></center>"
+		,"<span style='font-size:24px;color:$color;font-weight:bold'>$eth_text</span>",
+		"<span style='font-size:24px'>$edit{$ligne["ipaddr"]}</a></span>",
+		"<span style='font-size:24px'>$edit{$ligne["netmask"]}</a></span>",
+		"<span style='font-size:24px;color:$color'>{$ligne["org"]}</span>",
+		"<center>$delete</center>"
+		)
 		);
 	}
 	

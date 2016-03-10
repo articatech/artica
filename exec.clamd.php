@@ -95,6 +95,12 @@ function reload($aspid=false){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}, clamd not installed\n";}
 		return;
 	}
+	
+	$EnableClamavDaemon=$sock->EnableClamavDaemon();
+	if($EnableClamavDaemon==0){
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} service disabled (see sock->EnableClamavDaemon)\n";}
+		return;
+	}
 
 	if(!$aspid){
 		$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
@@ -172,14 +178,17 @@ function start($aspid=false){
 	@mkdir("/var/run/clamav",0755,true);
 	@mkdir("/var/lib/clamav",0755,true);
 	@mkdir("/var/log/clamav",0755,true);
+	$ClamUser=$unix->ClamUser();
 	
-	$unix->chown_func("clamav", "clamav","/var/clamav");
-	$unix->chown_func("clamav", "clamav","/var/run/clamav");
-	$unix->chown_func("clamav", "clamav","/var/lib/clamav");
-	$unix->chown_func("clamav", "clamav","/var/log/clamav");
+	
+	
+	$unix->chown_func("$ClamUser", "$ClamUser","/var/clamav");
+	$unix->chown_func("$ClamUser", "$ClamUser","/var/run/clamav");
+	$unix->chown_func("$ClamUser", "$ClamUser","/var/lib/clamav");
+	$unix->chown_func("$ClamUser", "$ClamUser","/var/log/clamav");
 	
 	$clamd_version=clamd_version();
-	
+	build();
 	$cmd="$nohup $Masterbin --config-file=/etc/clamav/clamd.conf >/dev/null 2>&1 &";
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} service version $clamd_version\n";}
 	shell_exec($cmd);
@@ -213,6 +222,9 @@ function start($aspid=false){
 		if($unix->is_socket("/var/run/clamav/clamav.sock")){
 			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Apply permissions on clamav.sock\n";}
 			@chmod("/var/run/clamav/clamav.sock", 0777);
+			if(is_file("/usr/bin/c-icap")){
+				shell_exec("$nohup /etc/init.d/c-icap reload >/dev/null 2>&1 &");
+			}
 		}else{
 			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} socket failed\n";}
 		}
@@ -312,12 +324,6 @@ function stop($aspid=false){
 function build(){
 	
 	$unix=new unix();
-	
-
-
-	
-	
-	
 	$sock=new sockets();
 	$ClamavStreamMaxLength=$sock->GET_INFO("ClamavStreamMaxLength");
 	$ClamavMaxRecursion=$sock->GET_INFO("ClamavMaxRecursion");
@@ -336,6 +342,8 @@ function build(){
 	
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} MaxFileSize: {$ClamavMaxFileSize}M\n";}
 	
+	$ClamUser=$unix->ClamUser();
+	
 	$dirs[]="/var/clamav";
 	$dirs[]="/var/run/clamav";
 	$dirs[]="/var/lib/clamav";
@@ -344,10 +352,10 @@ function build(){
 	while (list ($i, $directory) = each ($dirs) ){
 		@mkdir($directory,0755,true);
 		@chmod($directory, 0755);
-		@chown($directory, "clamav");
-		@chgrp($directory, "clamav");
+		@chown($directory, $ClamUser);
+		@chgrp($directory, $ClamUser);
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Permissions on $directory\n";}
-		$unix->chown_func("clamav","clamav", $directory."/*");
+		$unix->chown_func($ClamUser,$ClamUser, $directory."/*");
 	
 	}
 	$ClamavTemporaryDirectory2=dirname($ClamavTemporaryDirectory);
@@ -359,7 +367,7 @@ function build(){
 	$unix->SystemCreateUser("clamav","clamav");
 	$f[]="LocalSocket /var/run/clamav/clamav.sock";
 	$f[]="FixStaleSocket true";
-	$f[]="User clamav";
+	$f[]="User $ClamUser";
 	$f[]="AllowSupplementaryGroups true";
 	$f[]="ScanMail true";
 	$f[]="ScanArchive true";
@@ -408,7 +416,7 @@ function build(){
 	$f[]="LogTime true";
 	$f[]="LogFileUnlock false";
 	$f[]="LogFileMaxSize 0";
-	$f[]="TemporaryDirectory /var/clamav/tmp";	
+	
 	
 	@file_put_contents("/etc/clamav/clamd.conf", @implode("\n", $f));
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} /etc/clamav/clamd.conf done\n";}

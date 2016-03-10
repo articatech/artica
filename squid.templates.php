@@ -63,6 +63,7 @@ function tabs(){
 	$array["skin-gene"]='{default_settings}';
 	$array["skin-popup"]='{squid_templates_error}';
 	$array["skin-logo"]='{logo}';
+	$array["ftp_template"]='{ftp_template}';
 	}else{
 		$array["popup"]='{squid_templates_error}';
 	}
@@ -82,6 +83,12 @@ function tabs(){
 			$tab[]="<li><a href=\"squid.templates.skin.php?skin-logo=yes\"><span style='font-size:{$fontsize}px'>$ligne</span></a></li>\n";
 			continue;
 		}
+		
+		if($num=="ftp_template"){
+			$tab[]="<li><a href=\"squid.ftp.template.php\"><span style='font-size:{$fontsize}px'>$ligne</span></a></li>\n";
+			continue;
+		}		
+			
 				
 		$tab[]="<li><a href=\"$page?$num=yes&viatabs=yes\"><span style='font-size:{$fontsize}px'>$ligne</span></a></li>\n";
 			
@@ -152,6 +159,10 @@ function status(){
 	$SquidTemplatesMicrosoft=$sock->GET_INFO("SquidTemplatesMicrosoft");
 	$t=time();
 	$html="
+	<div style='font-size:30px;margin-bottom:30px'>{proxy_error_pages}</div>	
+
+	<div style='font-size:20px' class=explain>{proxy_error_pages_explain}</div>
+	
 	<div style='width:98%' class=form>
 	". Paragraphe_switch_img("{use_simple_template_mode}", 
 			"{use_simple_template_mode_squid_explain}",

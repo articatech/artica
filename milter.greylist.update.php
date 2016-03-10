@@ -38,6 +38,7 @@ function page(){
 	if($MilterGreylistExternalDBSchedule==0){$MilterGreylistExternalDBSchedule=4;}
 	$MilterGreyListPatternTime=intval($sock->GET_INFO("MilterGreyListPatternTime"));
 	$MilterGreyListPatternCount=intval($sock->GET_INFO("MilterGreyListPatternCount"));
+	$EnableArticaTechSpamAssassin=intval($sock->GET_INFO("EnableArticaTechSpamAssassin"));
 	$schedules[1]="1 {hour}";
 	$schedules[2]="2 {hours}";
 	$schedules[4]="4 {hours}";
@@ -47,6 +48,10 @@ function page(){
 	
 	$p=Paragraphe_switch_img("{EnableMilterGreylistExternalDB}", "{EnableMilterGreylistExternalDB_explain}","EnableMilterGreylistExternalDB-$t",$EnableMilterGreylistExternalDB,null,960);
 	
+	$p1=Paragraphe_switch_img("{EnableArticaTechSpamAssassin}", "{EnableArticaTechSpamAssassin_explain}","EnableArticaTechSpamAssassin-$t",$EnableArticaTechSpamAssassin,null,960);
+	
+	
+	
 	$field=Field_array_Hash($schedules, "MilterGreylistExternalDBSchedule-$t",$MilterGreylistExternalDBSchedule,"blur()",null,0,"font-size:26px");
 	
 	
@@ -55,7 +60,7 @@ function page(){
 	
 	<div style='width:98%' class=form>
 	$p
-	
+	$p1
 	
 	<table style='width:100%'>
 	<tbody>
@@ -78,6 +83,7 @@ function page(){
 	
 function Save$t(){
 	var XHR = new XHRConnection();
+	XHR.appendData('EnableArticaTechSpamAssassin', document.getElementById('EnableArticaTechSpamAssassin-$t').value);
 	XHR.appendData('MilterGreylistExternalDBSchedule', document.getElementById('MilterGreylistExternalDBSchedule-$t').value);
 	XHR.appendData('EnableMilterGreylistExternalDB', document.getElementById('EnableMilterGreylistExternalDB-$t').value);
 	XHR.sendAndLoad('$page', 'POST',xSave$t);

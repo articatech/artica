@@ -22,6 +22,9 @@ class squid_ecap_builder{
 	private $eCAPClamavMaxSize=0;
 	private $EnableeCapClamav=0;
 	private $EnableeCapGzip=0;
+	private $eCAPClamavEmergency=0;
+	private $EnableYoutubeLocker=0;
+	private $YoutubeLockerSize=240;
 	var $AS_ROOT=false;
 	
 	function squid_ecap_builder($noload=false){
@@ -34,6 +37,9 @@ class squid_ecap_builder{
 			$this->EnableeCapClamav=intval($sock->GET_INFO("EnableeCapClamav"));
 			$this->EnableeCapGzip=intval($sock->GET_INFO("EnableeCapGzip"));
 			$this->eCAPClamavMaxSize=intval($sock->GET_INFO("eCAPClamavMaxSize"));
+			$this->eCAPClamavEmergency=intval($sock->GET_INFO("eCAPClamavEmergency"));
+			$this->EnableYoutubeLocker=intval($sock->GET_INFO("EnableYoutubeLocker"));
+			$this->YoutubeLockerSize=intval($sock->GET_INFO("YoutubeLockerSize"));
 		}
 		
 		
@@ -52,7 +58,18 @@ class squid_ecap_builder{
 	
 	public function compile(){
 		$ACLS_TRUE=false;
+		if($this->SquidUrgency==1){
+			@file_put_contents("/etc/squid3/acls_ecap.conf", "\n");
+			return null;
+		}
+		if($this->SquidDisableAllFilters==1){
+			@file_put_contents("/etc/squid3/acls_ecap.conf", "\n");
+			return null;
+		}
 		if($this->EnableeCapClamav==1){$ACLS_TRUE=true;}
+		if($this->EnableYoutubeLocker==1){$ACLS_TRUE=true;}
+		if($this->EnableeCapGzip==1){$ACLS_TRUE=true;}
+		
 		if($ACLS_TRUE){
 			$f[]="ecap_enable on";
 			$this->build_progress("{ecap_plugins}: {building_acls}",55);
@@ -69,7 +86,7 @@ class squid_ecap_builder{
 		if(count($this->acls_doms)>0){
 			$f[]=@implode("\n", $this->acls_doms);
 		}
-		
+		$f[]=$this->ecap_youtube_locker();
 		$f[]=$this->ecap_clamav();
 		$f[]=$this->ecap_gzip();
 		
@@ -107,8 +124,31 @@ class squid_ecap_builder{
 	}
 	
 	
+	private function ecap_youtube_locker(){
+		
+		if($this->EnableYoutubeLocker==0){
+			$f[]="# Youtube locker disabled";
+			return @implode($f, "\n");
+		}
+		if($this->YoutubeLockerSize==0){$this->YoutubeLockerSize=144;}
+		
+		@unlink("/usr/lib/ecap_adapter_reslocker.so");
+		@copy("/usr/share/artica-postfix/bin/install/squid/ecap_adapter_reslocker.so","/usr/lib/ecap_adapter_reslocker.so");
+		@chmod("/usr/lib/ecap_adapter_reslocker.so",0755);
+		$f[]="#eCAP Youtube Locker..";
+		$f[]="acl html5player url_regex -i ^http.*\.ytimg.com\/yts\/jsbin\/html5player.*\/html5player\-new.js";
+		$f[]="request_header_access Accept-Encoding deny html5player";
+		$f[]="loadable_modules /usr/lib/ecap_adapter_reslocker.so";
+		$f[]="ecap_service ecapModifier respmod_precache uri=ecap://www.unveiltech.com/ecap_modifying ytmax={$this->YoutubeLockerSize}p bypass=on";
+		$f[]="adaptation_access ecapModifier allow html5player";
+		$f[]="adaptation_access ecapModifier deny all";
+		return @implode("\n", $f);
+	}
+	
+	
 	private function ecap_clamav(){
 		$f[]="#eCAP Clamav..";
+		if($this->eCAPClamavEmergency==1){$f[]="# eCAPClamavEmergency is enabled";return @implode($f, "\n");}
 		if($this->SquidUrgency==1){$f[]="# SquidUrgency is enabled";return @implode($f, "\n");}
 		if($this->SquidDisableAllFilters==1){$f[]="# SquidDisableAllFilters is enabled";return @implode($f, "\n");}
 		if($this->EnableeCapClamav==0){$f[]="# EnableeCapClamav is disabled";return @implode($f, "\n");}
@@ -211,10 +251,13 @@ class squid_ecap_builder{
 		$results=$q->QUERY_SQL($sql);
 			
 		$this->acl[]="# Do not Scan AV for these Mime types: ". mysql_num_rows($results)." items in ".__CLASS__."/".__FUNCTION__." Line:".__LINE__;
-	
+		$this->acl[]="acl bypass_scan_types_req req_mime_type -i ^image/png";
+		$this->acl[]="acl bypass_scan_types_rep req_mime_type -i ^image/png";
+		
 			
 		while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
 			$www=trim($ligne["pattern"]);
+			if($www=="image/png"){continue;}
 			$www_def=$www;
 			if($www==null){continue;}
 			$this->acls[]="acl bypass_scan_types_req req_mime_type -i ^$www";

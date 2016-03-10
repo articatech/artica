@@ -21,7 +21,7 @@ function Page(){
 	$tpl=new templates();
 	
 	$sock=new wifidog_settings($ruleid);
-	$wifidog_templates=new wifidog_templates($_GET["ruleid"]);
+	$wifidog_templates=new wifidog_templates($ruleid);
 	$ArticaHotSpotNowPassword=intval($sock->GET_INFO("ArticaHotSpotNowPassword"));
 	$ENABLED_REDIRECT_LOGIN=intval($sock->GET_INFO("ENABLED_REDIRECT_LOGIN"));
 	$USE_TERMS=intval($sock->GET_INFO("USE_TERMS"));
@@ -36,11 +36,19 @@ function Page(){
 	$Timez[15]="15 {minutes}";
 	$Timez[30]="30 {minutes}";
 	$Timez[60]="1 {hour}";
-	
-	
-	
+	$Timez[120]="2 {hours}";
+	$Timez[180]="3 {hours}";
+	$Timez[360]="6 {hours}";
+	$Timez[720]="12 {hours}";
+	$Timez[1440]="1 {day}";
+	$Timez[2880]="2 {days}";
+	$Timez[4320]="3 {days}";
+	$Timez[5760]="4 {days}";
+	$Timez[7200]="5 {days}";
+	$Timez[10080]="1 {week}";
+	$Timez[20160]="2 {weeks}";
 	$html="
-	<div style='width:100%;font-size:30px;margin-bottom:20px'>{self_register} SMTP</div>		
+	<div style='width:100%;font-size:30px;margin-bottom:20px'>{self_register} SMTP {rule}:$ruleid</div>		
 	<div style='width:98%' class=form>
 			
 ". Paragraphe_switch_img("{enable_hotspot_smtp}", 
@@ -50,26 +58,59 @@ function Page(){
 	<tr>
 		<td class=legend style='font-size:22px' style='width:600px'>{max_time_register}:</td>
 		<td>". Field_array_Hash($Timez,"REGISTER_MAX_TIME-$t", $REGISTER_MAX_TIME,"style:font-size:22px")."</td>
+	</tr>
+
+	<tr>
+		<td class=legend style='font-size:22px' style='width:600px'>{passphrase}:</td>
+		<td style='width:760px'>". Field_checkbox_design("REGISTER_GENERIC_PASSWORD-$t",1, 
+				$wifidog_templates->REGISTER_GENERIC_PASSWORD,"REGISTER_GENERIC_PASSWORDCheck$t()")."</td>
+	</tr>
+	</table>
+	<div id='REGISTER_GENERIC_PASSWORD-DIV$t'>
+	<table style='width:100%'>
+	<tr>
+		<td class=legend style='font-size:22px'>{passphrase_label}:</td>
+		<td><textarea 
+			style='width:100%;height:150px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
+			Courier,monospace;background-color:white;color:black' id='REGISTER_GENERIC_LABEL-$t'>". $wifidog_templates->REGISTER_GENERIC_LABEL."</textarea>
+		</td>
 	</tr>	
+	<tr>
+		<td class=legend style='font-size:22px'>{passphrase}:</td>
+		<td><textarea 
+			style='width:100%;height:150px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
+			Courier,monospace;background-color:white;color:black' id='REGISTER_GENERIC_PASSTXT-$t'>". $wifidog_templates->REGISTER_GENERIC_PASSTXT."</textarea>
+		</td>
+	</tr>	
+	<tr>
+		<td class=legend style='font-size:22px'>{error_text}:</td>
+		<td><textarea 
+			style='width:540px;height:150px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
+			Courier,monospace;background-color:white;color:black' id='REGISTER_GENERIC_PASSERR-$t'>". $wifidog_templates->REGISTER_GENERIC_PASSERR."</textarea>
+		</td>
+	</tr>
+	</table>
+	</div>
+	<table style='width:100%'>
 	<tr>
 		<td class=legend style='font-size:22px'>{smtp_register_message}:</td>
 		<td><textarea 
 			style='width:100%;height:150px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
-			Courier,monospace;background-color:white;color:black' id='REGISTER_MESSAGE-$t'>$wifidog_templates->REGISTER_MESSAGE</textarea>
+			Courier,monospace;background-color:white;color:black' id='REGISTER_MESSAGE-$t'>". $wifidog_templates->REGISTER_MESSAGE."</textarea>
 		</td>
 	</tr>					
 	<tr>
 		<td class=legend style='font-size:22px'>{smtp_register_subject}:</td>
 		<td style='width:860px'><textarea 
 			style='width:100%;height:40px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
-			Courier,monospace;background-color:white;color:black' id='REGISTER_SUBJECT-$t'>$wifidog_templates->REGISTER_SUBJECT</textarea>
+			Courier,monospace;background-color:white;color:black' id='REGISTER_SUBJECT-$t'>".$wifidog_templates->REGISTER_SUBJECT."</textarea>
 		</td>
 	</tr>
 	<tr>
 		<td class=legend style='font-size:22px'>{smtp_confirm}:</td>
 		<td style='width:860px'><textarea 
-			style='width:100%;height:40px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
-			Courier,monospace;background-color:white;color:black' id='CONFIRM_MESSAGE-$t'>$wifidog_templates->CONFIRM_MESSAGE</textarea>
+			style='width:100%;height:140px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
+			Courier,monospace;background-color:white;color:black' id='CONFIRM_MESSAGE-$t'>".$wifidog_templates->CONFIRM_MESSAGE."</textarea>
 		</td>
 	</tr>
 	
@@ -79,7 +120,7 @@ function Page(){
 		<td class=legend style='font-size:22px'>{lost_password_text}:</td>
 		<td style='width:860px'><textarea 
 			style='width:100%;height:40px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
-			Courier,monospace;background-color:white;color:black' id='LostPasswordLink-$t'>$wifidog_templates->LostPasswordLink</textarea>
+			Courier,monospace;background-color:white;color:black' id='LostPasswordLink-$t'>".$wifidog_templates->LostPasswordLink."</textarea>
 		</td>
 	</tr>
 	
@@ -138,8 +179,10 @@ function Page(){
 		XHR.appendData('LostPasswordLink',encodeURIComponent(document.getElementById('LostPasswordLink-$t').value));
 		XHR.appendData('REGISTER_MAX_TIME',encodeURIComponent(document.getElementById('REGISTER_MAX_TIME-$t').value));
 		XHR.appendData('CONFIRM_MESSAGE',encodeURIComponent(document.getElementById('CONFIRM_MESSAGE-$t').value));
-		
-		
+		if(document.getElementById('REGISTER_GENERIC_PASSWORD-$t').checked){XHR.appendData('REGISTER_GENERIC_PASSWORD',1);}else{XHR.appendData('REGISTER_GENERIC_PASSWORD',0); }
+		XHR.appendData('REGISTER_GENERIC_LABEL',encodeURIComponent(document.getElementById('REGISTER_GENERIC_LABEL-$t').value));
+		XHR.appendData('REGISTER_GENERIC_PASSTXT',encodeURIComponent(document.getElementById('REGISTER_GENERIC_PASSTXT-$t').value));
+		XHR.appendData('REGISTER_GENERIC_PASSERR',encodeURIComponent(document.getElementById('REGISTER_GENERIC_PASSERR-$t').value));
 		
 		
 		
@@ -153,6 +196,18 @@ function Page(){
 		XHR.sendAndLoad('$page', 'POST',xSave$t);
 		
 	}
+function REGISTER_GENERIC_PASSWORDCheck$t(){
+
+	document.getElementById('REGISTER_GENERIC_PASSWORD-DIV$t').style.display = 'none';  
+	
+	if(document.getElementById('REGISTER_GENERIC_PASSWORD-$t').checked){
+		document.getElementById('REGISTER_GENERIC_PASSWORD-DIV$t').style.display = 'block';  
+
+	}
+	
+}
+REGISTER_GENERIC_PASSWORDCheck$t();	
+
 </script>";	
 	
 	echo $tpl->_ENGINE_parse_body($html);
@@ -164,15 +219,22 @@ function Save(){
 	$sock=new wifidog_settings($_POST["ruleid"]);
 	unset($_POST["ruleid"]);
 	while (list ($key, $value) = each ($_POST) ){
-		$value=url_decode_special($value);
+		$value=url_decode_special_tool($value);
 		$sock->SET_INFO($key, $value);
 		
 	}
+	
+	
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
 	
 }
 
 function tests_smtp(){
 	//ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);
+	
+	include_once(dirname(__FILE__)."/ressources/externals/mime/mime.inc");
+	
 	header("content-type: application/x-javascript");
 	$sock=new sockets();
 	$sock=new wifidog_settings($_GET["ruleid"]);
@@ -186,34 +248,38 @@ function tests_smtp(){
 	$tpl=new templates();
 	$smtp_sender=$sock->GET_INFO("smtp_sender");
 	
+	if($GLOBALS["VERBOSE"]){echo "new Mail_mime....<br>\n";}
+	
+	
+	include_once(dirname(__FILE__)."/ressources/externals/mime/mime.inc");
+	$message = new Mail_mime("\r\n");
 	
 
-
-	$smtp_senderTR=explode("@",$smtp_sender);
-	$instance=$smtp_senderTR[1];
-
-	$random_hash = md5(date('r', time()));
-
-	$body[]="Return-Path: <$smtp_sender>";
-	$body[]="Date: ". date("D, d M Y H:i:s"). " +0100 (CET)";
-	$body[]="From: $smtp_sender";
-	$body[]="Subject: {$wifidog_templates->REGISTER_SUBJECT}";
-	$body[]="To: $smtp_sender";
-	$body[]="";
-	$body[]="";
-	$body[]=$wifidog_templates->REGISTER_MESSAGE;
-	$body[]=$URL_REDIRECT;
-	$body[]="";
-	$body[]="";
-
-	$finalbody=@implode("\r\n", $body);
+	$text = "<p style=font-size:18px>$wifidog_templates->REGISTER_MESSAGE</p><p>
+	<hr><center><a href=\"$URL_REDIRECT\" style='font-size:22px;text-decoration:underline'>$URL_REDIRECT</a></center></p>";
+	
+	$message->setFrom($smtp_sender);
+	$message->addTo($smtp_sender);
+	$message->setSubject($wifidog_templates->REGISTER_SUBJECT);
+	$message->setTXTBody(strip_tags($text)); // for plain-text
+	$message->setHTMLBody($text);
+	$finalbody = $message->getMessage();
+	
+	
+	if($GLOBALS["VERBOSE"]){echo 
+	$finalbody."<hr>\n";}
+	
+	
 
 
 	$webauth_msmtp=new webauth_msmtp($smtp_sender, $finalbody,$smtp_sender,$_GET["ruleid"]);
 	if($webauth_msmtp->Send()){
-		echo "alert('".$tpl->javascript_parse_text("{$wifidog_templates->REGISTER_SUBJECT}\nTo $smtp_sender: {success}")."');";
+		echo "alert('Rule: {$_GET["ruleid"]} $smtp_sender ".$tpl->javascript_parse_text("{$wifidog_templates->REGISTER_SUBJECT}\nTo $smtp_sender: {success}")."');";
 		return;
 
+	}else{
+		echo "alert('Rule: {$_GET["ruleid"]} $smtp_sender Method 1 ".$tpl->javascript_parse_text($webauth_msmtp->logs)."');";
+		
 	}
 
 

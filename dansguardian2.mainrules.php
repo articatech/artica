@@ -410,6 +410,7 @@ function rules_toolbox_left(){
 	$CountDeCategories=numberFormat(count($tablescat),0,""," ");
 	
 	
+	$categoryuris_malware=numberFormat($q->COUNT_ROWS("categoryuris_malware"),0,""," ");
 	
 	
 	$disable_service=$tpl->_ENGINE_parse_body("{disable_service}");
@@ -599,7 +600,24 @@ function rules_toolbox_left(){
 			</tr>
 			</table>
 		</td>
-	</tr>";
+	</tr>
+	<tr>
+		<td valign='middle' width=1%><img src='img/check-32.png'></td>
+		<td valign='middle' width=99%>
+			<table style='width:100%'>
+			<tr>
+				<td valign='middle' width=1%><img src='img/arrow-right-16.png'></td>
+				<td valign='middle' $mouse style='font-size:13px;text-decoration:underline' 
+				OnClick=\"javascript:Loadjs('squid.categories.urls.php?popup-js=yes&category=malware&tablesize=695');\" nowrap><b><span style='font-size:13px;text-decoration:underline'>$categoryuris_malware Malware Uris</span></td>
+			</tr>
+			</table>
+		</td>
+	</tr>	
+	
+	
+	
+	
+	";
 	
 
 	
@@ -1136,13 +1154,6 @@ function rules_table_list(){
 	$MyPage=CurrentPageName();
 	$q=new mysql_squid_builder();
 	$webfilter=new webfilter_rules();
-	if(!$q->FIELD_EXISTS("webfilter_rules", "zOrder")){
-		$q->QUERY_SQL("ALTER TABLE `webfilter_rules` ADD `zOrder` SMALLINT(2) NOT NULL,ADD INDEX ( `zOrder` )");
-	}
-		
-	
-	if(!$q->FIELD_EXISTS("webfilter_rules", "AllSystems")){$q->QUERY_SQL("ALTER TABLE `webfilter_rules` ADD `AllSystems` smallint(1),ADD INDEX ( `AllSystems` )");}	
-	if(!$q->ok){json_error_show("$q->mysql_error");}
 	$sock=new sockets();
 	$EnableGoogleSafeSearch=$sock->GET_INFO("EnableGoogleSafeSearch");
 	if(!is_numeric($EnableGoogleSafeSearch)){$EnableGoogleSafeSearch=1;}

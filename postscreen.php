@@ -46,7 +46,7 @@ function popup(){
 	$array["index"]='{index}';
 	$array["settings"]="{parameters}";
 	$array["dnsbl"]="{dnsbl}";
-	$array["white"]="{hosts}:{white list}";
+
 
 
 // Total downloaded: 100%, Result: Retranslation successful and update is not requested

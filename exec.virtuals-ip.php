@@ -416,6 +416,9 @@ function etc_hosts(){
 		}
 		
 		if(trim($ligne["hostname"])==null){continue;}
+		if(preg_match("#^google\.#", $ligne["hostname"])){
+			$ligne["alias"]="www.{$ligne["hostname"]}";
+		}
 		
 		if(trim($ligne["alias"])<>null){$ligne["alias"]="\t{$ligne["alias"]}";}
 		$lineExe=trim("{$ligne["ipaddr"]}\t{$ligne["hostname"]}{$ligne["alias"]}");
@@ -470,6 +473,7 @@ function vlan_delete($ID){
 	if(!isset($GLOBALS["moprobebin"])){$GLOBALS["moprobebin"]=$unix->find_program("modprobe");}
 	if(!isset($GLOBALS["vconfigbin"])){$GLOBALS["vconfigbin"]=$unix->find_program("vconfig");}
 	if(!isset($GLOBALS["ifconfig"])){$GLOBALS["ifconfig"]=$unix->find_program("ifconfig");}
+	if(!isset($GLOBALS["ethtoolbin"])){$GLOBALS["ethtoolbin"]=$unix->find_program("ethtool");}
 	if(!isset($GLOBALS["ipbin"])){$GLOBALS["ipbin"]=$unix->find_program("ip");}	
 	$ligne=@mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
 	$eth="{$ligne["nic"]}";
@@ -491,6 +495,7 @@ function virtip_delete($ID){
 	if(!isset($GLOBALS["moprobebin"])){$GLOBALS["moprobebin"]=$unix->find_program("modprobe");}
 	if(!isset($GLOBALS["vconfigbin"])){$GLOBALS["vconfigbin"]=$unix->find_program("vconfig");}
 	if(!isset($GLOBALS["ifconfig"])){$GLOBALS["ifconfig"]=$unix->find_program("ifconfig");}
+	if(!isset($GLOBALS["ethtoolbin"])){$GLOBALS["ethtoolbin"]=$unix->find_program("ethtool");}
 	if(!isset($GLOBALS["ipbin"])){$GLOBALS["ipbin"]=$unix->find_program("ip");}
 	$ligne=@mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
 	$eth="{$ligne["nic"]}:{$ligne["ID"]}";
@@ -1144,7 +1149,7 @@ function build(){
 	$GLOBALS["SCRIPTS_TOP"][]="# [".__LINE__."]";
 	$datas=$nic->networks_disabled();
 	
-	
+
 	
 	
 	$sh=array();
@@ -1383,6 +1388,15 @@ function build(){
 		$sh[]="$nohup $mount -a >/dev/null 2>&1 &";
 	}
 	
+	$sh[]="if [ -x /bin/iptables-iproute2.sh ] ; then";
+	$sh[]="	/bin/iptables-iproute2.sh || true";
+	$sh[]="fi";
+	
+	
+	
+	
+	
+	
 	$sh[]="# [".__LINE__."] Reloading DHCPD (if exists)";
 	$sh[]="$echo \"Reloading DHCP server ( if exists )\"";
 	$sh[]="$php5 /usr/share/artica-postfix/exec.dhcpd.compile.php --reload-if-run 2>&1 || true";	
@@ -1451,6 +1465,16 @@ function build(){
 	if(is_file('/sbin/chkconfig')){
 		shell_exec("/sbin/chkconfig --add artica-ifup >/dev/null 2>&1");
 		shell_exec("/sbin/chkconfig --level 1234 artica-ifup on >/dev/null 2>&1");
+	}
+	
+	if(is_file("/bin/iptables-iproute2.sh")){@unlink("/bin/iptables-iproute2.sh");}
+	
+	if(isset($GLOBALS["SCRIPTS_IPTABLES"])){
+		$sh_iptables[]="#!/bin/sh -e";
+		$sh_iptables[]=@implode("\n", $GLOBALS["SCRIPTS_IPTABLES"]);
+		$sh_iptables[]="";
+		@file_put_contents("/bin/iptables-iproute2.sh", @implode("\n", $sh_iptables));
+		@chmod("/bin/iptables-iproute2.sh",0755);
 	}
 
 	
@@ -1534,7 +1558,7 @@ function bridges_build(){
 	$GLOBALS["bridges_build_executed"]=true;
 	$unix=new unix();
 	$iptables=$unix->find_program("iptables");
-	$sysctl=$unix->find_program("sysctl");
+	
 	$php5=$unix->LOCATE_PHP5_BIN();
 	$iptables_rules=array();
 	$sql="SELECT * FROM iptables_bridge ORDER BY ID DESC";
@@ -1551,6 +1575,7 @@ function bridges_build(){
 	$GLOBALS["SCRIPTS"][]="# [".__LINE__."]:". mysql_num_rows($results). " rule(s)";
 	$GLOBALS["SCRIPTS"][]="$php5 ". __FILE__." --iptables-bridge-delete";
 	if(mysql_num_rows($results)==0){return;}
+	$sysctl=$unix->find_program("sysctl");
 	$GLOBALS["SCRIPTS"][]="$sysctl -w net.ipv4.ip_forward=1";
 	
 	$NetBuilder=new system_nic();
@@ -1782,12 +1807,14 @@ function routes_main(){
 	$MetricCount=0;
 	$unix=new unix();
 	LoadProcNetDev();
+	$RULES_TABLES=array();
 	$GLOBALS["ifconfig"]=$unix->find_program("ifconfig");
 	$GLOBALS["routebin"]=$unix->find_program("route");
 	$GLOBALS["echobin"]=$unix->find_program("echo");
 	$GLOBALS["ipbin"]=$unix->find_program("ip");
 	$GLOBALS["vconfigbin"]=$unix->find_program("vconfig");
 	$GLOBALS["moprobebin"]=$unix->find_program("modprobe");	
+	$GLOBALS["ethtoolbin"]=$unix->find_program("ethtool");
 	
 	
 	
@@ -1812,8 +1839,11 @@ function routes_main(){
 	
 	$endcmdsline=array();
 	$q=new mysql();
+	if(!$q->FIELD_EXISTS("nics","UseSPAN","artica_backup")){$sql="ALTER TABLE `nics` ADD `UseSPAN` smallint(1) NOT NULL DEFAULT 0,ADD INDEX ( `UseSPAN` )";$q->QUERY_SQL($sql,'artica_backup');}
+	
 	$NetBuilder=new system_nic();
 	$NetBuilder->LoadTools();
+	$php=$unix->LOCATE_PHP5_BIN();
 	
 	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."]";
 	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] *******************************";
@@ -1825,8 +1855,7 @@ function routes_main(){
 	//$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["routebin"]} add -net 127.0.0.0 netmask 255.255.255.0 lo";
 	
 	
-	
-	$sql="SELECT * FROM  `nics` WHERE defaultroute=1 ORDER BY Interface";
+	$sql="SELECT * FROM  `nics` WHERE defaultroute=1 AND enabled=1 and UseSPAN=0 ORDER BY Interface";
 	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
 	$eth=trim($ligne["Interface"]);
 	$metric=$ligne["metric"];
@@ -1844,6 +1873,39 @@ function routes_main(){
 	$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["echobin"]} \"254	main\" >> /etc/iproute2/rt_tables";
 	$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["echobin"]} \"253	default\" >> /etc/iproute2/rt_tables";
 	$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["echobin"]} \"0	unspec\" >> /etc/iproute2/rt_tables";
+	
+	
+	$GLOBALS["SCRIPTS_ROUTES"][]="$php /usr/share/artica-postfix/exec.network.ip-rules.flush.php";
+	
+	
+	/*$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} rule add from all lookup local";
+	$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} rule add from all lookup main";
+	$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} rule add from all lookup default";
+*/
+	
+	
+	
+	
+	if($q->TABLE_EXISTS("routing_rules", "artica_backup")){
+		$routing_rules=$q->QUERY_SQL("SELECT * FROM routing_rules WHERE enabled=1","artica_backup");
+		if(!$q->ok){echo "Starting......: ".date("H:i:s")." Mysql error : $q->mysql_error\n";return;}
+		
+		while ($routing_ligne = mysql_fetch_assoc($routing_rules)) {
+			$RouteName=$routing_ligne["RouteName"];
+			$nic=$routing_ligne["nic"];
+			$ID=$routing_ligne["ID"];
+			$RULES_TABLES[$nic]=$ID;
+			$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] Advanced route for $nic table ID $ID";
+			$GLOBALS["SCRIPTS_ROUTES"][]="while ip rule delete from 0/0 to 0/0 table $RouteName 2>/dev/null; do true; done";
+			$GLOBALS["SCRIPTS_ROUTES"][]="while ip rule delete dev $nic 2>/dev/null; do true; done";
+			
+			if($nic==$eth){$eth=null;}
+			
+			$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["echobin"]} \"$ID $RouteName\" >> /etc/iproute2/rt_tables";
+		}
+	}
+	
+	
 	
 	
 	if($eth<>null){
@@ -1880,39 +1942,47 @@ function routes_main(){
 	
 	
 	if(!isset($GLOBALS["DEFAULT_ROUTE_SET"])){
-		$GLOBALS["SCRIPTS_ROUTES"][]="# [eth0] is set as default route metric `$metric`.";
-		$GLOBALS["SCRIPTS_ROUTES"][]="#[$eth/".__FUNCTION__."/".__LINE__." IP:{$ligne["IPADDR"]}/$CDIR gateway:{$ligne["GATEWAY"]} Source Based Routing=$SourceBasedRouting";
-		$nic=new system_nic("eth0");
-		if($nic->GATEWAY<>null){
-			$eth="eth0";
-			$GLOBALS["DEFAULT_ROUTE_SET"]="eth0";
-			$CDIR=$NetBuilder->GetCDIRNetwork($nic->IPADDR,$nic->NETMASK);
-			$SourceBasedRouting=$nic->SourceBasedRouting;
-			$md5net=md5($CDIR);
-			$GLOBALS["MD5NET"][$md5net]=true;
-			$metric=$nic->metric;
-			$metric_text=null;
-			if($metric>0){
-				if($MetricCount==0){$MetricCount++;$metric=1;}
-				$metric_text=" metric $metric";
-			}
-
-			if($SourceBasedRouting==0){
-				if(isGatewayGood($nic->GATEWAY)){
-					$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["routebin"]} add -host {$nic->GATEWAY} dev ".$NetBuilder->NicToOther($eth);
-					$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["routebin"]} add -net 0.0.0.0 gw {$nic->GATEWAY} dev ".$NetBuilder->NicToOther($eth).$metric_text;
-				}
-			}
 			
-			if($SourceBasedRouting==1){
-				routes_source_add($NetBuilder->NicToOther($eth),$nic->IPADDR,$nic->GATEWAY,$CDIR,__LINE__);
-			}
+			if(!isset($RULES_TABLES["eth0"])){
+				$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] [eth0] is set as default route metric `$metric`.";
+				$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] [eth0] IP:{$ligne["IPADDR"]}/$CDIR gateway:{$ligne["GATEWAY"]} Source Based Routing=$SourceBasedRouting";
+				$nic=new system_nic("eth0");
+				$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] [eth0] UseSPAN: $nic->UseSPAN";
 				
+				if($nic->UseSPAN==1){$nic->GATEWAY=null;}
+				if($nic->GATEWAY<>null){
+					$eth="eth0";
+					$GLOBALS["DEFAULT_ROUTE_SET"]="eth0";
+					$CDIR=$NetBuilder->GetCDIRNetwork($nic->IPADDR,$nic->NETMASK);
+					$SourceBasedRouting=$nic->SourceBasedRouting;
+					$md5net=md5($CDIR);
+					$GLOBALS["MD5NET"][$md5net]=true;
+					$metric=$nic->metric;
+					$metric_text=null;
+					if($metric>0){
+						if($MetricCount==0){$MetricCount++;$metric=1;}
+						$metric_text=" metric $metric";
+					}
+		
+					if($SourceBasedRouting==0){
+						if(isGatewayGood($nic->GATEWAY)){
+							$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["routebin"]} add -host {$nic->GATEWAY} dev ".$NetBuilder->NicToOther($eth);
+							$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["routebin"]} add -net 0.0.0.0 gw {$nic->GATEWAY} dev ".$NetBuilder->NicToOther($eth).$metric_text;
+						}
+					}
+					
+					if($SourceBasedRouting==1){
+						routes_source_add($NetBuilder->NicToOther($eth),$nic->IPADDR,$nic->GATEWAY,$CDIR,__LINE__);
+					}
+						
+				}
+		}else{
+			$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] DEFAULT_ROUTE_SET eth0 use a routing table ID {$RULES_TABLES["eth0"]}";
 		}
 	}
 
 	$GLOBALS["rt_tables_number"]=0;
-	$sql="SELECT * FROM `nics` WHERE enabled=1 ORDER BY Interface";
+	$sql="SELECT * FROM `nics` WHERE enabled=1 AND UseSPAN=0 ORDER BY Interface";
 	$q=new mysql();
 	$results=$q->QUERY_SQL($sql,"artica_backup");
 	if(!$q->ok){echo "Starting......: ".date("H:i:s")." Mysql error : $q->mysql_error\n";return;}
@@ -1923,13 +1993,17 @@ function routes_main(){
 		$eth=str_replace("\n", "", $eth);
 		$eth=trim($eth);
 		if($eth==null){continue;}
+		if(isset($RULES_TABLES[$eth])){
+			$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] nic_routes $eth use a routing table ID {$RULES_TABLES[$eth]}";
+			continue;
+		}
 		$SourceBasedRouting=intval($ligne["SourceBasedRouting"]);
 		$IPADDR=$ligne["IPADDR"];
 		$GLOBALS["SCRIPTS_ROUTES"][]="#";
 		$GLOBALS["SCRIPTS_ROUTES"][]="#";
 		
 		if(!isset($GLOBALS["PROC_NET_DEV"][$eth])){
-			$GLOBALS["SCRIPTS_ROUTES"][]="# [$eth/".__LINE__."] Not found in PROC_NET_DEV Hardware error";
+			$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] $eth Not found in PROC_NET_DEV Hardware error";
 			continue;
 			
 		}
@@ -1944,13 +2018,10 @@ function routes_main(){
 		
 		if(isset($GLOBALS["DEFAULT_ROUTE_SET"])){if($GLOBALS["DEFAULT_ROUTE_SET"]==$eth){continue;}}
 		
-		$GLOBALS["SCRIPTS_ROUTES"][]="# [$eth/".__LINE__."] SourceBasedRouting:$SourceBasedRouting Main route $eth gateway {$ligne["GATEWAY"]} netmask {$ligne["NETMASK"]} ipaddr: {$ligne["IPADDR"]}";
+		$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] $eth SourceBasedRouting:$SourceBasedRouting Main route $eth gateway '{$ligne["GATEWAY"]}' netmask '{$ligne["NETMASK"]}' ipaddr: '{$ligne["IPADDR"]}'";
 		
 		if(isset($eth_SKIP[$eth])){echo "Starting......: ".date("H:i:s")." $eth skipping\n";$GLOBALS["SCRIPTS_ROUTES"][]="# [$eth] skipped";continue;}
 		if($ligne["GATEWAY"]==null){$GLOBALS["SCRIPTS_ROUTES"][]="# [$eth/".__LINE__."] GATEWAY = null skipped";continue;}
-		
-		
-		
 		if($ligne["GATEWAY"]=="0.0.0.0"){$GLOBALS["SCRIPTS_ROUTES"][]="# [$eth/".__LINE__."] GATEWAY = 0.0.0.0 skipped";continue;}
 		if($ligne["NETMASK"]=="0.0.0.0"){$GLOBALS["SCRIPTS_ROUTES"][]="# [$eth/".__LINE__."] NETMASK = 0.0.0.0 skipped";continue;}	
 		if(trim($ligne["NETMASK"])==null){$GLOBALS["SCRIPTS_ROUTES"][]="# [$eth/".__LINE__."] NETMASK = null skipped";continue;}
@@ -2039,9 +2110,6 @@ function routes_main(){
 		
 	}
 	
-	
-	
-	
 	$sql="SELECT * FROM nic_routes ORDER BY `zOrder`";
 	$results=$q->QUERY_SQL($sql,"artica_backup");
 	
@@ -2054,6 +2122,11 @@ function routes_main(){
 	
 	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
 		$type=$ligne["type"];
+		$ligne["nic"]=trim($ligne["nic"]);
+		if(isset($RULES_TABLES[$ligne["nic"]])){
+			$GLOBALS["SCRIPTS_ROUTES"][]="# nic_routes {$ligne["nic"]} use a routing table ID {$RULES_TABLES[$ligne["nic"]]} [".__LINE__."]";
+			continue;
+		}
 		$nicz=new system_nic($ligne["nic"]);
 		$ligne["SourceBasedRouting"]=intval($nic->SourceBasedRouting);
 		
@@ -2080,7 +2153,202 @@ function routes_main(){
 		while (list ($index, $line) = each ($endcmdsline) ){ $GLOBALS["SCRIPTS_ROUTES"][]=$line; }
 	}
 	
+	$GLOBALS["SCRIPTS_ROUTES"][]="# ".count($GLOBALS["SCRIPTS_ROUTES_RTTABLE"])." SCRIPTS_ROUTES_RTTABLE items";
+	if(count($GLOBALS["SCRIPTS_ROUTES_RTTABLE"])>0){
+		while (list ($index, $line) = each ($GLOBALS["SCRIPTS_ROUTES_RTTABLE"]) ){ $GLOBALS["SCRIPTS_ROUTES"][]=$line; }
+	}
+	routes_table();
 }
+
+
+function routes_table(){
+	$unix=new unix();
+	$q=new mysql();
+	$iptables=$unix->find_program("iptables");
+	$php=$unix->LOCATE_PHP5_BIN();
+	$MARKLOG="-m comment --comment \"ArticaIpRoute2\"";
+	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."]";
+	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."]";
+	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] ************************************************";
+	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] ADVANCED ROUTING";
+	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] ************************************************";
+	
+	if(!$q->TABLE_EXISTS("routing_rules", "artica_backup")){
+		$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] routing_rules table does not exists";
+		return;
+	}
+	
+
+	
+	
+	
+	$sql="SELECT nic FROM routing_rules WHERE enabled=1 GROUP BY nic";
+	$results=$q->QUERY_SQL($sql,"artica_backup");
+	
+	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] routing_rules ".mysql_num_rows($results)." items";
+	if(mysql_num_rows($results)==0){
+		return;
+	}
+	
+	$GLOBALS["SCRIPTS_IPTABLES"][]="$php /usr/share/artica-postfix/exec.iptables-deleteroutes.php || true";
+	
+	while ($ligne = mysql_fetch_assoc($results)) {
+		$nic=$ligne["nic"];
+		$nicClass=new system_nic($nic);
+		$IPADDR=$nicClass->IPADDR;
+		$GLOBALS["SCRIPTS_IPTABLES"][]="$iptables -t nat -I POSTROUTING -o $nic $MARKLOG -j MASQUERADE || true";
+		$GLOBALS["SCRIPTS_IPTABLES"][]="$iptables -t nat -I POSTROUTING -o $nic $MARKLOG -j SNAT --to-source $IPADDR || true";
+		
+			
+	}
+	
+	
+	$GLOBALS["SCRIPTS_ROUTES"][]="#";
+	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."]";
+	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] Enable IP Forwarding and disable Reverse Path filter";
+	$sysctl=$unix->find_program("sysctl");
+	$GLOBALS["SCRIPTS_ROUTES"][]="$sysctl -w net.ipv4.ip_forward=1";
+	$GLOBALS["SCRIPTS_ROUTES"][]="$sysctl -w net.ipv4.conf.default.rp_filter=0 >/dev/null 2>&1";
+	$GLOBALS["SCRIPTS_ROUTES"][]="$sysctl -w net.ipv4.conf.all.rp_filter=0 >/dev/null 2>&1";
+	$GLOBALS["SCRIPTS_ROUTES"][]="for f in /proc/sys/net/ipv4/conf/*/rp_filter; do echo 0 >| \$f ; done";
+	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."]";
+	$GLOBALS["SCRIPTS_ROUTES"][]="#";
+	
+	
+
+	
+	while ($ligne = mysql_fetch_assoc($results)) {
+		$nic=$ligne["nic"];
+		$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] routing_rules flush table and rules from $nic";
+		$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} route flush dev $nic || true";
+		$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} rule del dev $nic || true";
+	}
+	
+	
+		$sql="SELECT * FROM routing_rules WHERE enabled=1";
+		$results=$q->QUERY_SQL($sql,"artica_backup");
+		if(!$q->ok){echo "Starting......: ".date("H:i:s")." Mysql error : $q->mysql_error\n";return;}
+	
+		
+		while ($ligne = mysql_fetch_assoc($results)) {
+			$RouteName=$ligne["RouteName"];
+			
+			
+			$ID=$ligne["ID"];
+			$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] routing_rules table $RouteName";
+			routes_table_sources($ID,$nic,$RouteName);
+			
+			
+			
+			
+			
+		}
+}
+
+function routes_table_sources($ruleid,$eth,$RouteName){
+	$unix=new unix();
+	$q=new mysql();
+	$route=$unix->find_program("route");
+	$nicClass=new system_nic($eth);
+	
+	if($nicClass->enabled==0){
+		$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] $eth is disabled";
+		return;
+	}
+	if($nicClass->UseSPAN==1){
+		$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] $eth is on SPAN MODE";
+		return;
+	}
+	
+	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] Default route for $eth $nicClass->GATEWAY";
+	
+	
+	$GLOBALS["SCRIPTS_ROUTES"][]="while ip rule delete from $nicClass->IPADDR 2>/dev/null; do true; done";
+	
+	if($nicClass->GATEWAY<>null){
+		if($nicClass->GATEWAY<>"0.0.0.0"){
+			$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] Add the default route defined for $eth";
+			$GLOBALS["SCRIPTS_ROUTES"][]="$route add -host $nicClass->GATEWAY dev $eth";
+			$GLOBALS["SCRIPTS_ROUTES"][]="$route add default gw $nicClass->GATEWAY dev $eth";
+			$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} route add default via $nicClass->GATEWAY dev $eth table $RouteName";
+			$GLOBALS["SCRIPTS_ROUTES"][]="#";
+		}
+	}
+	
+	$GLOBALS["SCRIPTS_ROUTES"][]="# [".__LINE__."] All packets from $nicClass->IPADDR goes to $RouteName";
+	$GLOBALS["SCRIPTS_ROUTES"][]="#";
+	
+	$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} rule add from $nicClass->IPADDR lookup $RouteName prio $nicClass->metric";
+	
+	$results=$q->QUERY_SQL("SELECT * FROM routing_rules_dest WHERE ruleid='$ruleid' AND type=3 ORDER BY zOrder,metric","artica_backup");
+	
+	
+	while ($ligne = mysql_fetch_assoc($results)) {
+		if($ligne["gateway"]==$nic->GATEWAY){continue;}
+		$GLOBALS["SCRIPTS_ROUTES"][]="$route add -host {$ligne["gateway"]} dev $eth";
+		$GLOBALS["SCRIPTS_ROUTES"][]="$route add default gw {$ligne["gateway"]} dev $eth";
+		$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} route add default via {$ligne["gateway"]} dev $eth table $RouteName prio {$ligne["metric"]} || true";
+	}
+	
+	
+	
+	$results=$q->QUERY_SQL("SELECT * FROM routing_rules_src WHERE ruleid='$ruleid' ORDER BY zOrder","artica_backup");
+	$CuntOfSources=0;
+	while ($ligne = mysql_fetch_assoc($results)) {
+		$CuntOfSources++;
+		$pattern=$ligne["pattern"];
+		$gateway=$ligne["gateway"];
+		$priority=$ligne["metric"];
+		$priority_cmd=null;
+		
+		if($priority>0){$priority_cmd=" priority $priority";}
+		$type=$ligne["type"];
+		
+		if($type==3){
+			$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} rule add nat $gateway from $pattern dev $eth table $RouteName{$priority_cmd} || true";
+			continue;
+		}
+		if($type==4){
+			$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} rule add type blackhole from $pattern dev $eth table $RouteName{$priority_cmd} || true";
+			continue;
+		}
+		
+		if($type==5){
+			$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} rule add type prohibit from $pattern dev $eth table $RouteName{$priority_cmd} || true";
+			continue;
+		}		
+		
+		$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} rule add from $pattern dev $eth lookup $RouteName{$priority_cmd} || true";
+		
+		
+	}
+	
+	
+	$results=$q->QUERY_SQL("SELECT * FROM routing_rules_dest WHERE ruleid='$ruleid' ORDER BY zOrder,metric","artica_backup");
+	
+	
+	while ($ligne = mysql_fetch_assoc($results)) {
+		$pattern=$ligne["pattern"];
+		$priority=$ligne["metric"];
+		$priority_cmd=null;
+		
+		if($priority>0){$priority_cmd=" priority $priority";}
+		
+		if($ligne["gateway"]==null){
+			$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} route add $pattern dev $eth  proto kernel  scope link  src $nicClass->IPADDR {$priority_cmd}";
+			$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} rule add to $pattern dev $eth lookup $RouteName{$priority_cmd} || true";
+			continue;
+		}
+		
+		
+		$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} route add {$ligne["pattern"]} via {$ligne["gateway"]} dev $eth table $RouteName{$priority_cmd} || true";
+	}
+	
+	$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} route flush cache || true";
+	
+}
+
+
 
 function routes_default_add($eth,$ipsrc,$gateway,$network,$metric_text,$calledByLine){
 	$unix=new unix();

@@ -12,10 +12,10 @@
 		die();exit();
 	}
 
-	if(isset($_GET["popup"])){popup();exit;}
+
 	if(isset($_GET["postmaster"])){save();exit;}
 	
-js();	
+popup();	
 	
 function js(){
 	$tpl=new templates();
@@ -45,29 +45,21 @@ function popup(){
 	
 	
 	$html="
-	<div id='postmasterdiv'>
+	<div id='postmasterdiv' style='width:80%;margin:30px' class=form>
+	<center>
 	<table style='width:100%'>
-	<tr>
-		<td valign='top'><img src='img/postmaster-90.png'></td>
-		<td valign='top'>
-			<div style='font-size:16px;padding:5px'>{postmaster_text}
-			<br>{postmaster_explain}
-			</div>
-			<table style='width:100%'>
-				<tr>
-					<td class=legend style='font-size:13px'>{postmaster}:</td>
-					<td width=1%>". Field_text("postmaster_email",$email,"font-size:13px;padding:3px;width:120px")."</td>
-					<td width=1%><strong style='font-size:13px'>@</td>
-					<td width=1%>". Field_array_Hash($hash,"postmaster_domain",$domain,null,null,0,"font-size:13px;padding:3px")."</td>
-				</tr>
-				<tr>
-					<td colspan=4 align='right'>
-						<hr>". button("{apply}","SavePostMasterForm()")."</td>
-				</tr>
-			</table>
-		</td>
-	</tr>
+		<tr>
+			<td class=legend style='font-size:26px' nowrap>". texttooltip("{postmaster}","{postmaster_text}").":</td>
+			<td width=1%>". Field_text("postmaster_email",$email,"font-size:26px;padding:3px;width:480px")."</td>
+			<td width=1%><strong style='font-size:26px'>@</td>
+			<td width=1%>". Field_array_Hash($hash,"postmaster_domain",$domain,null,null,0,"font-size:26px;padding:3px")."</td>
+		</tr>
+		<tr>
+		<td colspan=4 align='right'>
+			<hr>". button("{apply}","SavePostMasterForm()",40)."</td>
+		</tr>
 	</table>
+	</center>
 	</div>
 	
 	<script>
@@ -75,13 +67,11 @@ function popup(){
 	var x_SavePostMasterForm= function (obj) {
 		var results=trim(obj.responseText);
 		if(results.length>0){alert(results);}
-		YahooWinHide();
 	}	
 	
 	function SavePostMasterForm(){
 		var XHR = new XHRConnection();
 		XHR.appendData('postmaster',document.getElementById('postmaster_email').value+'@'+document.getElementById('postmaster_domain').value);
-		document.getElementById('postmasterdiv').innerHTML='<div style=\"width:100%\"><center style=\"margin:20px;padding:20px\"><img src=\"img/wait_verybig.gif\"></center></div>';
 		XHR.sendAndLoad('$page', 'GET',x_SavePostMasterForm);
 	}
 		
@@ -116,6 +106,7 @@ function save(){
 	
 	$sock=new sockets();
 	$sock->SET_INFO("PostfixPostmaster",$email);
+	
 	$sock->getFrameWork("cmd.php?postfix-hash-aliases=yes");
 	$sock->getFrameWork("cmd.php?postmaster-cron=yes");
 	

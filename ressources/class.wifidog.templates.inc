@@ -4,6 +4,7 @@ class wifidog_templates{
 	private $ruleid;
 	private $headerAdd;
 	public $MainTitle;
+	public $FORM_HEAD;
 	public $backgroundColor=null;
 	public $FontColor=null;
 	public $TitleColor=null;
@@ -28,6 +29,10 @@ class wifidog_templates{
 	public $REGISTER_MESSAGE_EXPLAIN=null;
 	public $REGISTER_MESSAGE_SUCCESS=null;
 	public $REGISTER_MESSAGE=null;
+	public $REGISTER_GENERIC_PASSWORD=0;
+	public $REGISTER_GENERIC_LABEL=null;
+	public $REGISTER_GENERIC_PASSTXT=null;
+	public $REGISTER_GENERIC_PASSERR=null;
 	public $REGISTER_SUBJECT=null;
 	public $CONFIRM_MESSAGE=null;
 	public $RegisterTitle=null;
@@ -39,9 +44,18 @@ class wifidog_templates{
 	public $ArticaSplashHotSpotRedirectText=null;
 	public $LabelUsername=null;
 	public $LabelPassword=null;
+	public $SMS_SMTP_SUBJECT=null;
+	public $SMS_SMTP_BODY=null;
+	public $SMS_CONFIRM_MESSAGE=null;
+	public $SMS_BUTTON=null;
+	public $SMS_INTRO=null;
+	public $SMS_FIELD=null;
+	public $SMS_FONT_SIZE=0;
 	public $BackgroundTOP=0;
 	public $BackgroundBottom=0;
 	public $FooterText=null;
+	public $RECOVER_MESSAGE=null;
+	public $FormFontColor=null;
 	function wifidog_templates($ruleid,$headerAdd=null){
 		$this->ruleid=$ruleid;
 		$this->headerAdd=$headerAdd;
@@ -55,7 +69,7 @@ class wifidog_templates{
 			$tpl=new templates();
 			$sock=new wifidog_settings($this->ruleid);
 			$this->WelcomeMessage=utf8_decode($sock->GET_INFO("WelcomeMessage"));
-			$this->RegisterTitle=utf8_decode($sock->GET_INFO("RegisterTitle"));
+			$this->RegisterTitle=$sock->GET_INFO("RegisterTitle");
 			
 			
 			$this->backgroundColor=$sock->GET_INFO("backgroundColor");
@@ -80,24 +94,45 @@ class wifidog_templates{
 			$this->SizePage=intval($sock->GET_INFO("SizePage"));
 			$this->MarginPage=intval($sock->GET_INFO("MarginPage"));
 			$this->BackgroundRepeat=$sock->GET_INFO("BackgroundRepeat");
-			$this->ConnectionButton=utf8_decode($sock->GET_INFO("ConnectionButton"));
-			$this->FooterText=utf8_decode($sock->GET_INFO("FooterText"));
+			$this->ConnectionButton=$sock->GET_INFO("ConnectionButton");
+			$this->FooterText=$sock->GET_INFO("FooterText");
+			$this->FormFontColor=$sock->GET_INFO("FormFontColor");
 			
 			$this->LabelUsername=utf8_decode($sock->GET_INFO("LabelUsername"));
 			$this->LabelPassword=utf8_decode($sock->GET_INFO("LabelPassword"));
 			
-			$this->TERMS_EXPLAIN=utf8_decode($sock->GET_INFO("TERMS_EXPLAIN"));
+			$this->TERMS_EXPLAIN=$sock->GET_INFO("TERMS_EXPLAIN");
 			$this->TERMS_CONDITIONS=utf8_decode($sock->GET_INFO("TERMS_CONDITIONS"));
-			$this->REGISTER_MESSAGE_EXPLAIN=utf8_decode($sock->GET_INFO("REGISTER_MESSAGE_EXPLAIN"));
-			$this->REGISTER_MESSAGE_SUCCESS=utf8_decode($sock->GET_INFO("REGISTER_MESSAGE_SUCCESS"));
-			$this->REGISTER_MESSAGE=utf8_decode($sock->GET_INFO("REGISTER_MESSAGE"));
-			$this->REGISTER_SUBJECT=utf8_decode($sock->GET_INFO("REGISTER_SUBJECT"));
-			$this->LostPasswordLink=utf8_decode($sock->GET_INFO("LostPasswordLink"));
+			$this->REGISTER_MESSAGE_EXPLAIN=$sock->GET_INFO("REGISTER_MESSAGE_EXPLAIN");
+			$this->REGISTER_MESSAGE_SUCCESS=$sock->GET_INFO("REGISTER_MESSAGE_SUCCESS");
+			
+			$this->REGISTER_MESSAGE=$sock->GET_INFO("REGISTER_MESSAGE");
+			$this->REGISTER_SUBJECT=$sock->GET_INFO("REGISTER_SUBJECT");
+			$this->LostPasswordLink=$sock->GET_INFO("LostPasswordLink");
+			$this->CONFIRM_MESSAGE=$sock->GET_INFO("CONFIRM_MESSAGE");
+		
+			$this->SMS_SMTP_SUBJECT=$sock->GET_INFO("SMS_SMTP_SUBJECT");
+			$this->SMS_SMTP_BODY=$sock->GET_INFO("SMS_SMTP_BODY");
+			$this->SMS_INTRO=$sock->GET_INFO("SMS_INTRO");
+			$this->SMS_BUTTON=$sock->GET_INFO("SMS_BUTTON");
+			$this->SMS_FIELD=$sock->GET_INFO("SMS_FIELD");	
+			$this->SMS_FONT_SIZE=intval($sock->GET_INFO("SMS_FONT_SIZE"));
+			$this->SMS_CODE_ERROR=$sock->GET_INFO("SMS_CODE_ERROR");
+			$this->FORM_HEAD=$sock->GET_INFO("FORM_HEAD");
+			
+			$this->REGISTER_GENERIC_PASSWORD=intval($sock->GET_INFO("REGISTER_GENERIC_PASSWORD"));
+			$this->REGISTER_GENERIC_LABEL=$sock->GET_INFO("REGISTER_GENERIC_LABEL");
+			$this->REGISTER_GENERIC_PASSTXT=$sock->GET_INFO("REGISTER_GENERIC_PASSTXT");
+			$this->REGISTER_GENERIC_PASSERR=$sock->GET_INFO("REGISTER_GENERIC_PASSERR");
+			
 			$this->ArticaSplashHotSpotRedirectText=utf8_decode($sock->GET_INFO("ArticaSplashHotSpotRedirectText"));
 			
 			if($this->REGISTER_MESSAGE==null){$this->REGISTER_MESSAGE="Hi, in order to activate your account on the HotSpot system,\nclick on the link below";}
 			if($this->REGISTER_SUBJECT==null){$this->REGISTER_SUBJECT="HotSpot account validation";}
 			if($this->CONFIRM_MESSAGE==null){$this->CONFIRM_MESSAGE="Success\nA message as been sent to you.\nPlease check your WebMail system in order to confirm your registration<br>\nYour can surf on internet for %s minutes";}
+			if($this->SMS_CONFIRM_MESSAGE==null){$this->SMS_CONFIRM_MESSAGE="Success\nAn SMS as been sent to you\nPlease check your mobile";}
+			if($this->SMS_FIELD==null){$this->SMS_FIELD="Confirmation code";}
+			if($this->SMS_FONT_SIZE==0){$this->SMS_FONT_SIZE=44;}
 			
 			if($this->FontFamily==null){$this->FontFamily="\"Segoe UI\", \"verdana\"";}
 			if($this->backgroundColor==null){$this->backgroundColor="005447";}
@@ -105,6 +140,7 @@ class wifidog_templates{
 			if($this->FontColor==null){$this->FontColor="FFFFFF";}
 			if($this->TitleColor==null){$this->TitleColor="FFFFFF";}
 			if($this->ButtonFontColor==null){$this->ButtonFontColor="FFFFFF";}
+			if($this->FormFontColor==null){$this->FormFontColor="000000";}
 			
 			if($this->TitleFontSize==0){$this->TitleFontSize=64;}
 			if($this->SubTitleFontSize==0){$this->SubTitleFontSize=32;}
@@ -114,7 +150,7 @@ class wifidog_templates{
 			if($this->FontSize==0){$this->FontSize=16;}
 			if($this->SpacerButton==0){$this->SpacerButton=20;}
 			if($this->Button2014FontSize==0){$this->Button2014FontSize=22;}
-			$this->MainTitle=utf8_decode($sock->GET_INFO("MainTitle"));
+			$this->MainTitle=$sock->GET_INFO("MainTitle");
 			$this->BackgroundPicturePath=$sock->GET_INFO("BackgroundPicturePath");
 			
 			if($this->SizePage==0){$this->SizePage=700;}
@@ -124,6 +160,10 @@ class wifidog_templates{
 			if($this->Button2014BgcolorBorder==null){$this->Button2014BgcolorBorder="4CAE4C";}
 			if($this->BackgroundPicturePath==null){$this->BackgroundPicturePath="/img/wifidog-500.png";}
 			if($this->BackgroundRepeat==null){$this->BackgroundRepeat="no-repeat";}
+			if($this->REGISTER_GENERIC_LABEL==null){$this->REGISTER_GENERIC_LABEL="Unlock password";}
+			if($this->REGISTER_GENERIC_PASSTXT==null){$this->REGISTER_GENERIC_PASSTXT="Thisisapassword";}
+			if($this->REGISTER_GENERIC_PASSERR==null){$this->REGISTER_GENERIC_PASSERR="Please, ask the correct password to your local administrator";}
+			
 			
 			
 			if($this->WelcomeMessage==null){$this->WelcomeMessage="Welcome to our HotSpot system, set here here your user name and password in order to have a free Internet access";}
@@ -136,12 +176,23 @@ class wifidog_templates{
 			if($this->LostPasswordLink==null){$this->LostPasswordLink=$tpl->_ENGINE_parse_body("{lost_password}");}
 			if($this->ConnectionButton==null){$this->ConnectionButton=$tpl->_ENGINE_parse_body("{connection}");}
 			
+			
+			if($this->SMS_SMTP_SUBJECT==null){$this->SMS_SMTP_SUBJECT="sms-%TIME%-1:Account1:pass1:+33612345678:%MOBILE%";}
+			if($this->SMS_SMTP_BODY==null){$this->SMS_SMTP_BODY="message=Your proxy unlock code is %CODE%";}
+			if($this->SMS_INTRO==null){$this->SMS_INTRO="In order to access to Internet, give your cell number in this form.<br>You will receive a confirmation code by SMS";}
+			if($this->SMS_BUTTON==null){$this->SMS_BUTTON="Send me the code";}
+			if($this->SMS_CODE_ERROR==null){$this->SMS_CODE_ERROR="Wrong confirmation code entered, please retry";}
+			
+			
+			
+			
+			
 			if($this->LabelUsername==null){$this->LabelUsername=$tpl->_ENGINE_parse_body("{username}");}
 			if($this->LabelPassword==null){$this->LabelPassword=$tpl->_ENGINE_parse_body("{password}");}
 			
 			
 			if($this->ArticaSplashHotSpotRedirectText==null){$this->ArticaSplashHotSpotRedirectText=$tpl->_ENGINE_parse_body("{please_wait_redirecting_to}");}
-			if($ArticaHotSpotSMTP["RECOVER_MESSAGE"]==null){$ArticaHotSpotSMTP["RECOVER_MESSAGE"]="Hi, in order to recover your password on the HotSpot system,\nclick on the link below";}
+			if($this->RECOVER_MESSAGE==null){$this->RECOVER_MESSAGE="Hi, in order to recover your password on the HotSpot system,\nclick on the link below";}
 			
 			if($this->FormStyle==null){
 				
@@ -185,19 +236,26 @@ class wifidog_templates{
 			if($this->MainTitle==null){$this->MainTitle="HotSpot System";}
 	}
 	
+	public function char($text)
+	{
+		$text = htmlentities($text, ENT_NOQUOTES, "UTF-8");
+		$text = htmlspecialchars_decode($text);
+		return $text;
+	}
+	
 	
 	function build($content){
 		$head=$this->head();
-		$footer="<body></html>";
+		
 		$f[]="$head";
 		$f[]="<div class=mainbody>";
 		$f[]="<DIV class=\"mainContent\" id=\"contentContainer\">";
-		$f[]="<DIV class=\"title\" id=\"mainTitle\">$this->MainTitle</DIV>";
+		$f[]="<DIV class=\"title\" id=\"mainTitle\">". $this->char($this->MainTitle)."</DIV>";
 		$f[]="<DIV class=\"taskSection\" id=\"taskSection\">";
-		$f[]="$content $footer</DIV>";
+		$f[]="$content</div>";
 		$f[]="</div>";
 	
-		$f[]="<center class='footer' style='width:100%'>$this->FooterText</center>";
+		$f[]="<center class='footer' style='width:100%'>".$this->char($this->FooterText)."</center>";
 		$f[]="</body>";
 		$f[]="</html>";
 		return @implode("\n", $f);
@@ -215,12 +273,13 @@ class wifidog_templates{
 		$f[]="<HEAD>";
 		$f[]="<title>$this->MainTitle</title>";
 		$f[]="<META content=\"IE=11.0000\" http-equiv=\"X-UA-Compatible\">";
-		$f[]="<META http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">";
+		$f[]="<META http-equiv=\"Content-Type\" content=\"text/html; charset=ISO-8859-1\">";
 		$f[]=$this->headerAdd;
 		$f[]="<link href=\"/hotspot.php?wifidog-css=$this->ruleid\" rel=\"stylesheet\"  type=\"text/css\"/>";
 		
 		$f[]="<script type=\"text/javascript\">
 		function blur(){ }
+		function Blurz() { }
 		function checkIfTopMostWindow()
 		{
 			if (window.top != window.self)
@@ -284,7 +343,14 @@ class wifidog_templates{
 		$f[]="p.text-error{";
 		$f[]=$this->TextErrorStyle;
 		$f[]="}";
-
+		
+		$f[]=".text-error a {";
+		$f[]=$this->TextErrorStyle;
+		$f[]=";border:0px;";
+		$f[]="margin:0px;";
+		$f[]="padding:0px;";
+		$f[]="border-radius:0px;";
+		$f[]="}";
 		$f[]=".title {";
 		$f[]="    color: #$this->TitleColor;";
 		$f[]="    font-size: {$this->TitleFontSize}px;";
@@ -449,7 +515,14 @@ class wifidog_templates{
 		$f[]="form {";
 		$f[]="   $this->FormStyle";
 		$f[]="}";
-			
+		$f[]="form {";
+		$f[]="   color:#{$this->FormFontColor}";
+		$f[]="}";
+		$f[]="form > p {";
+		$f[]="   color:#{$this->FormFontColor}";
+		$f[]="}";
+		
+		
 		$f[]="li {";
 		$f[]="    margin-top: 8px;";
 		$f[]="}";

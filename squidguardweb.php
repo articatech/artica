@@ -422,10 +422,10 @@ function popup(){
 	
 	
 	if($SquidGuardIPWeb==null){
-			$SquidGuardIPWeb="http://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApachePort."/exec.squidguard.php";
-			$SquidGuardIPWebSSL="https://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApacheSSLPort."/exec.squidguard.php";
-			$fulluri="http://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApachePort."/exec.squidguard.php";
-			$fulluriSSL="https://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApacheSSLPort."/exec.squidguard.php";
+			$SquidGuardIPWeb="http://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApachePort."/ufdbguardd.php";
+			$SquidGuardIPWebSSL="https://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApacheSSLPort."/ufdbguardd.php";
+			$fulluri="http://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApachePort."/ufdbguardd.php";
+			$fulluriSSL="https://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApacheSSLPort."/ufdbguardd.php";
 	}	
 	$SquidGuardIPWeb=str_replace("http://",null,$SquidGuardIPWeb);
 	$SquidGuardIPWeb=str_replace("https://",null,$SquidGuardIPWeb);
@@ -640,13 +640,23 @@ LoadAjaxSilent('squid-guard-http-status','squidguardweb.service.php');
 
 function save(){
 	ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);
+	
+	if(strpos($_GET["servername_squidguard"], "/")>0){
+		$uri=parse_url($_GET["servername_squidguard"]);
+		if(!isset($uri["host"])){
+			echo "Unable to complete invalid value {$_GET["servername_squidguard"]}";
+			return;
+		}
+		$_GET["servername_squidguard"]=$uri["host"];
+	}
+	
 	$sock=new sockets();
 	if($_GET["EnableSquidGuardHTTPService"]==0){
 		$SquidGuardIPWeb=$_GET["fulluri"];
 		$SquidGuardIPWebSSL=$_GET["fulluriSSL"];
 	}else{
-		$SquidGuardIPWeb="http://".$_GET["servername_squidguard"].":".$_GET["listen_port_squidguard"]."/exec.squidguard.php";
-		$SquidGuardIPWebSSL="https://".$_GET["servername_squidguard"].":".$_GET["listen_port_squidguard_ssl"]."/exec.squidguard.php";
+		$SquidGuardIPWeb="http://".$_GET["servername_squidguard"].":".$_GET["listen_port_squidguard"]."/ufdbguardd.php";
+		$SquidGuardIPWebSSL="https://".$_GET["servername_squidguard"].":".$_GET["listen_port_squidguard_ssl"]."/ufdbguardd.php";
 	}
 	
 	

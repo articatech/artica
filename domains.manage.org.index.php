@@ -466,6 +466,7 @@ function DeleteOU(){
 }
 
 function popup_tabs(){
+	$OuOrg=$_GET["ou"];
 	$_GET["ou"]=base64_decode($_GET["ou"]);
 	$_GET["dn"]=urlencode($_GET["dn"]);
 	if(GET_CACHED(__FILE__,__FUNCTION__,"js:{$_GET["ou"]}")){return null;}
@@ -503,36 +504,22 @@ function popup_tabs(){
 	
 	if($usersmenus->AsOrgAdmin){
 		$array["groups"]="{groups2}";
-		$ShowApacheGroupware=$sock->GET_INFO("ShowApacheGroupware");
-		if(!is_numeric($ShowApacheGroupware)){$ShowApacheGroupware=0;}
-		if($EnableGroupWareScreen==1){$array["groupwares"]='{groupwares}';}
-		if(count($lvm_g->disklist)>0){$array["storage"]='{storage}';}
 	}
 	
-	if($user->POSTFIX_INSTALLED){
-		$sock=new sockets();
-		if($user->AsMessagingOrg){
-			$array["postfix"]='{messaging}';
-		}
 
-		if($sock->GET_INFO("EnablePostfixMultiInstance")==1){
-			if($user->AsOrgPostfixAdministrator){$array["postfix-multi"]='{messaging_servers}';}
-		}
-		
-		
-	}
 	
 	$ou_encrypted=base64_encode("{$_GET["ou"]}");
 
-	
-	
-	
-	if($usersmenus->EnableManageUsersTroughActiveDirectory){
-		unset($array["groupwares"]);
-	}
+
 	if(count($array)<7){
 		$fontsize ="style='font-size:14px'";
 	}
+	
+	if(count($array)<4){
+		$fontsize ="style='font-size:20px'";
+	}
+	
+	
 	while (list ($num, $ligne) = each ($array) ){
 		if($num=="postfix-multi"){
 			$a[]="<li><a href=\"domains.postfix.multi.php?org={$_GET["ou"]}&ou={$_GET["ou"]}&dn=$dn\"><span $fontsize>$ligne</span></a></li>\n";	
@@ -560,7 +547,7 @@ function popup_tabs(){
 	
 	
 
-	$html=build_artica_tabs($a, "org_main")."<script>LoadAjaxHidden('count-user-$time','$page?count-de-users={$_GET["ou"]}&ou={$_GET["ou"]}&dn=$dn');</script>";
+	$html=build_artica_tabs($a, "org_main")."<script>LoadAjaxHidden('count-user-$time','$page?count-de-users=$OuOrg&ou=$OuOrg&dn=$dn');</script>";
 	$tpl=new templates();
 	$html=$tpl->_ENGINE_parse_body($html);
 	SET_CACHED(__FILE__,__FUNCTION__,"js:{$_GET["ou"]}",$html);
@@ -575,7 +562,7 @@ function COUNT_DE_USERS(){
 		if($ldap->IsKerbAuth()){
 			$ad=new external_ad_search();
 			echo $ad->CountDeUSerOu($_GET["count-de-users"],$_GET["dn"]);
-			
+			return;
 		}
 		
 		
@@ -590,6 +577,9 @@ function COUNT_DE_USERS(){
 		
 	}	
 	
+	
+	
+	if($GLOBALS["VERBOSE"]){echo "OU: {$_GET["count-de-users"]}<br>\n";}
 	$ldap=new clladp();
 	echo $ldap->CountDeUSerOu($_GET["count-de-users"]);
 }
@@ -1712,10 +1702,11 @@ function organization_users_formatUser($hash){
 }
 function VerifyRights(){
 	$usersmenus=new usersMenus();
+	if($usersmenus->AsOrgAdmin){$_GET["ou"]=$_SESSION["ou"];return true;}
 	if(!$usersmenus->AsSystemAdministrator){$_GET["ou"]=$_SESSION["ou"];}
 	if($usersmenus->AsOrgPostfixAdministrator){return true;}
 	if($usersmenus->AsMessagingOrg){return true;}
-	if(!$usersmenus->AllowChangeDomains){return false;}
+	if(!$usersmenus->AllowChangeDomains){$_GET["ou"]=$_SESSION["ou"];return true;}
 }
 
 function EnableApacheGroupware(){

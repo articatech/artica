@@ -133,10 +133,8 @@ function popup(){
 		
 		var XHR = new XHRConnection();
 		XHR.appendData('EnableSNMPD',document.getElementById('EnableSNMPD').value);
-		XHR.appendData('SNMPDCommunity',document.getElementById('SNMPDCommunity').value);
+		XHR.appendData('SNMPDCommunity',encodeURIComponent(document.getElementById('SNMPDCommunity').value));
 		XHR.appendData('SNMPDNetwork',document.getElementById('SNMPDNetwork').value);
-		
-		
 		XHR.sendAndLoad('$page', 'POST',x_SaveSNMP$t);	
 		
 	}	
@@ -151,6 +149,7 @@ function popup(){
 }
 
 function save(){
+	$_POST["SNMPDCommunity"]=url_decode_special_tool($_POST["SNMPDCommunity"]);
 	$sock=new sockets();
 	$sock->SET_INFO("EnableSNMPD", $_POST["EnableSNMPD"]);
 	$sock->SET_INFO("SNMPDCommunity", $_POST["SNMPDCommunity"]);

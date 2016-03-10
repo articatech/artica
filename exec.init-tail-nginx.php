@@ -19,7 +19,7 @@ include_once(dirname(__FILE__).'/framework/frame.class.inc');
 include_once(dirname(__FILE__).'/framework/class.settings.inc');
 $unix=new unix();
 $GLOBALS["TAIL_STARTUP"]=$unix->LOCATE_PHP5_BIN().' /usr/share/artica-postfix/exec.nginx-tail.php';
-$GLOBALS["log_path"]="/var/log/apache2/access-common.log";
+$GLOBALS["log_path"]="/var/log/apache2/common-access.log";
 $GLOBALS["PID_TAIL_PATH"]="/etc/artica-postfix/exec.nginx-tail.php.pid";
 
 
@@ -117,7 +117,7 @@ function start($aspid=false){
 	if(!is_file("/bin/nginx-tail")){@copy($tail, "/bin/nginx-tail");}
 	@chmod("/bin/nginx-tail",0755);
 	
-	$pid=$unix->PIDOF_PATTERN("/bin/nginx-tail -F -n 0 {$GLOBALS["log_path"]}");
+	$pid=$unix->PIDOF("/bin/nginx-tail");
 	if($unix->process_exists($pid)){
 		for($i=0;$i<20;$i++){
 			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: killing old process pid $pid\n";}

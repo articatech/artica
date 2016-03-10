@@ -1,5 +1,5 @@
 <?php
-$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 if($EnableIntelCeleron==1){die("EnableIntelCeleron==1\n");}
 include_once(dirname(__FILE__).'/ressources/class.os.system.inc');
 include_once(dirname(__FILE__).'/ressources/class.influx.inc');
@@ -50,12 +50,20 @@ function xtsart(){
 	}
 	
 	if($GLOBALS["VERBOSE"]){echo "CPU: $cpuUsage, LOAD: $internal_load, MEM: $ram_used\n";}
-	$array["fields"]["LOAD_AVG"]=$internal_load;
-	$array["fields"]["MEM_STATS"]=intval($ram_used);
-	$array["fields"]["CPU_STATS"]=$cpuUsage;
-	$array["tags"]["proxyname"]=$unix->hostname_g();
-	$influx=new influx();
-	$influx->insert("SYSTEM", $array);
+	
+	$q=new postgres_sql();
+	$q->CREATE_TABLES();
+	
+	$proxyname=$unix->hostname_g();
+	$time=date("Y-m-d H:i:s");
+	$sql="INSERT INTO system (zdate,proxyname,load_avg,mem_stats,cpu_stats)
+	VALUES('$time','$proxyname','$internal_load','".intval($ram_used)."','$cpuUsage')";
+	
+	if($GLOBALS["VERBOSE"]){echo $sql."\n";}
+	$q->QUERY_SQL($sql);
+
+	if(!$q->ok){echo $q->mysql_error."\n";}
+	
 	RXTX();
 	
 	if(system_is_overloaded(basename(__FILE__))){
@@ -100,7 +108,9 @@ function RXTX(){
 	}
 	
 	$q=new influx();
-	
+	$q=new postgres_sql();
+	$date=date("Y-m-d H:i:s");
+	$hostname=$unix->hostname_g();
 	while (list ($Interface, $array) = each ($ARRAY) ){
 		$RX=$array["RX"];
 		$TX=$array["TX"];
@@ -118,13 +128,9 @@ function RXTX(){
 			
 		}
 		
-		$INFLX["fields"]["TX"]=$TX_NEW;
-		$INFLX["fields"]["RX"]=$RX_NEW;
-		$INFLX["tags"]["ETH"]=$Interface;
-		$INFLX["tags"]["proxyname"]=$unix->hostname_g();
 		
-		$q->insert("ethrxtx", $INFLX);
-		$INFLX=array();
+		
+		$q->QUERY_SQL("INSERT INTO ethrxtx (zdate,tx,rx,eth,proxyname) VALUES ('$date','$TX_NEW','$RX_NEW','$Interface','$hostname')");
 	}
 	
 	@file_put_contents("/etc/artica-postfix/RXTX.array", serialize($ARRAY));

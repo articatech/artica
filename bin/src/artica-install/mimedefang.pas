@@ -27,10 +27,10 @@ private
 public
     procedure   Free;
     constructor Create(const zSYS:Tsystem);
-    procedure   MIMEDEFANG_START();
+
     function    INITD():string;
     function    SOCKET_PATH():string;
-    procedure   MIMEDEFANG_STOP();
+
     function    mimedefang_PID():string;
     function    mimedefangmx_PID():string;
 
@@ -107,19 +107,4 @@ begin
 if FileExists('/etc/mail/mimedefang-filter') then exit('/etc/mail/mimedefang-filter');
 end;
 //##############################################################################
-procedure tmimedefang.MIMEDEFANG_STOP();
-begin
-     writeln('Starting mimedefang: running configurator...');
-     fpsystem(SYS.LOCATE_PHP5_BIN()+' /usr/share/artica-postfix/bin/exec.mimedefang.php');
-     fpsystem('/etc/init.d/mimedefang stop');
-end;
-//##############################################################################
-procedure tmimedefang.MIMEDEFANG_START();
-begin
-     writeln('Starting mimedefang: running configurator...');
-     fpsystem(SYS.LOCATE_PHP5_BIN()+' /usr/share/artica-postfix/bin/exec.mimedefang.php');
-     fpsystem('/etc/init.d/mimedefang start');
-    
-end;
-//#########################################################################################
 end.

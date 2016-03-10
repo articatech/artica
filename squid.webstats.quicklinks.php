@@ -416,9 +416,7 @@ function section_architecture_advanced(){
     $anonym=Paragraphe("hearth-blocked-64.png", "{anonymous_browsing}", "{anonymous_browsing_explain}","javascript:Loadjs('squid.anonymous.php')");
     
     $csvstats=Paragraphe("csv-64.png", "{squid_csv_logs}", "{squid_csv_logs_explain}","javascript:Loadjs('squid.csv.php')");
-    
-    $file_descriptors=Paragraphe("64-filetype.png", "{file_descriptors}", "{file_descriptors_squid_explain}",
-    "javascript:Loadjs('squid.file_desc.php')");
+
     
      $snmp=Paragraphe("64-snmp.png", "SNMP", "{squid_snmp_explain}",
     "javascript:Loadjs('squid.snmp.php')");
@@ -520,7 +518,7 @@ $users=new usersMenus();
 		$sock->getFrameWork("squid.php?compil-params=yes");
 	}
 	
-	$COMPILATION_PARAMS=unserialize(base64_decode(file_get_contents($compilefile)));
+	$COMPILATION_PARAMS=unserialize(base64_decode(@file_get_contents($compilefile)));
 	
 	
 	

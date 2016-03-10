@@ -110,7 +110,7 @@ class openvpn{
 		
 	}
 		
-	function Save(){
+	function Save($norestart=false){
 		writelogs("EnableOPenVPNServerMode: {$this->main_array["GLOBAL"]["ENABLE_SERVER"]}",__CLASS__.'/'.__FUNCTION__,__FILE__);
 		$ini=new Bs_IniHandler();
 		if(isset($GLOBALS["CLASS_SOCKETS"])){$sock=$GLOBALS["CLASS_SOCKETS"];}else{$GLOBALS["CLASS_SOCKETS"]=new sockets();$sock=$GLOBALS["CLASS_SOCKETS"];}
@@ -130,8 +130,11 @@ class openvpn{
 		$sock->SaveConfigFile($this->BuildServerConfig(),'ArticaOpenVPNServerSettings');
 		$sock->SaveConfigFile($routes,'OpenVPNRoutes');
 		$sock->SaveConfigFile($ini->toString(),'ArticaOpenVPNSettings');
-		$sock=new sockets();
-		$sock->getFrameWork("cmd.php?restart-openvpn-server");
+		
+			if(!$norestart){
+				$sock=new sockets();
+				$sock->getFrameWork("cmd.php?restart-openvpn-server");
+			}
 		}
 	
 	function BuildCertificate(){
@@ -263,7 +266,7 @@ class openvpn{
 				}
 				$conf=$conf ."mute-replay-warnings\r\n";
 				$conf=$conf ."\r\n";
-				$conf=$conf ."ca $uid-ca.crt\r\n";
+				$conf=$conf ."ca $uid.ca\r\n";
 				$conf=$conf ."cert $uid.crt\r\n";
 				$conf=$conf ."key $uid.key\r\n";
 				$conf=$conf ."ns-cert-type server\r\n";

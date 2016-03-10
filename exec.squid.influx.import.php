@@ -38,7 +38,7 @@ if($argv[1]=="--delete"){delete_mysql($argv[2]);exit;}
 if($argv[1]=="--run-mysql"){run_mysql();exit;}
 if($argv[1]=="--test"){tests_import();exit;}
 if($argv[1]=="--utctime"){utc_time();exit;}
-
+if($argv[1]=="--deleteall"){delete_mysql_all();exit;}
 
 
 $GLOBALS["PROGRESS"]=true;
@@ -68,7 +68,10 @@ function utc_time(){
 	
 	
 }
-
+function delete_mysql_all(){
+	$q=new mysql_squid_builder();
+	$q->QUERY_SQL("TRUNCATE TABLE import_srclogs");
+}
 
 
 function upload_mysql_zip($filename){
@@ -187,7 +190,7 @@ function scan_backup_dir(){
 			build_progress_scandir("{skip} $basename",30);
 			continue;
 		}
-		if(preg_match("#^access-tail#", $basename)){
+		if(!preg_match("#^access-tail#", $basename)){
 			build_progress_scandir("{skip} $basename",30);
 			continue;
 		}
@@ -412,6 +415,20 @@ function Scan($filepath,$md5file=null){
 		echo "No path defined\n";
 		return;
 	}
+	
+	$pid=$unix->PIDOF_PATTERN(basename(__FILE__));
+	$MyPid=getmypid();
+	if($MyPid<>$pid){
+		if($unix->process_exists($pid)){
+			$timeFile=$unix->PROCESS_TIME_INT($pid);
+			$pidCmdline=@file_get_contents("/proc/$pid/cmdline");
+			if($timeFile<30){
+				echo "Already PID $pid is running since {$timeFile}Mn\n";
+				die();
+			}
+		}
+	}
+	
 	$nextFile=null;
 	if(!is_file($filepath)){
 		if($md5file<>null){mysql_progress($md5file,100,3,"$filepath no such file");}

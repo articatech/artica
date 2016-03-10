@@ -2,7 +2,9 @@
 set_time_limit(0);
 $GLOBALS["CATS"][]="agressive";
 $GLOBALS["CATS"][]="astrology";
+$GLOBALS["CATS"][]="youtube";
 $GLOBALS["CATS"][]="audio-video";
+
 $GLOBALS["CATS"][]="automobile/bikes";
 $GLOBALS["CATS"][]="automobile/boats";
 $GLOBALS["CATS"][]="automobile/cars";

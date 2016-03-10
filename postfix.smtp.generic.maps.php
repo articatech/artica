@@ -100,34 +100,34 @@ function item_popup(){
 	<div style='width:98%' class=form>
 	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:22px' nowrap>{source_pattern}:</td>
+		<td class=legend style='font-size:22px' nowrap>".texttooltip("{source_pattern}","position:down:{smtp_generic_maps_explain}").":</td>
 		<td>". Field_text("source_pattern",$ligne["generic_from"],"font-size:22px;padding:3px",null,null,null,false,
 				"smtp_generic_map_add_check$t(event)")."</td>
-		<td width=1%>". help_icon("{smtp_generic_maps_explain}")."</td>
+		
 	</tr>
 	<tr>
-		<td class=legend style='font-size:22px' nowrap>{destination_pattern}:</td>
+		<td class=legend style='font-size:22px' nowrap>". texttooltip("{destination_pattern}","position:down:{smtp_generic_maps_explain}").":</td>
 		<td>". Field_text("destination_pattern",$ligne["generic_to"],"font-size:22px;padding:3px",null,null,null,false,
 				"smtp_generic_map_add_check$t(event)")."</td>
-		<td width=1%>". help_icon("{smtp_generic_maps_explain}")."</td>
+		
 	</tr>
 	<tr>
-		<td class=legend style='font-size:22px' nowrap colspan=2>{outgoing_mails_only}:</td>
+		<td class=legend style='font-size:22px' nowrap>{outgoing_mails_only}:</td>
 		<td>". Field_checkbox_design("smtp_generic_maps-$t", 1,$ligne["smtp_generic_maps"],"smtp_generic_map_check$t()")."</td>
 	</tr>				
 	<tr>
-		<td class=legend style='font-size:22px' nowrap colspan=2>{sender_address}:</td>
+		<td class=legend style='font-size:22px' nowrap >{sender_address}:</td>
 		<td>". Field_checkbox_design("sender_canonical_maps-$t", 1,$ligne["sender_canonical_maps"],"sender_canonical_maps_check$t()")."</td>
 	</tr>	
 	<tr>
-		<td class=legend style='font-size:22px' nowrap colspan=2>{recipient_address}:</td>
+		<td class=legend style='font-size:22px' nowrap>{recipient_address}:</td>
 		<td>". Field_checkbox_design("recipient_canonical_maps-$t", 1,$ligne["recipient_canonical_maps"],"sender_canonical_maps_check$t()")."</td>
 	</tr>							
 				
 				
 				
 	<tr>
-		<td colspan=3 align='right' style='padding-top:30px'><hr>".button($bt,"smtp_generic_map_add$t()",36)."</td>
+		<td colspan=2 align='right' style='padding-top:30px'><hr>".button($bt,"smtp_generic_map_add$t()",36)."</td>
 </tr>
 </table>
 </div>
@@ -243,9 +243,9 @@ function main_table(){
 		$sender=$tpl->javascript_parse_text("{sender}");
 		$buttons="
 		buttons : [
-		{name: '$new_rule', bclass: 'add', onpress : new_rule$t},
-		{name: '$apply', bclass: 'apply', onpress : apply$t},
-		{name: '$about2', bclass: 'help', onpress : Help$t},
+		{name: '<strong style=font-size:18px>$new_rule</strong>', bclass: 'add', onpress : new_rule$t},
+		{name: '<strong style=font-size:18px>$apply</strong>', bclass: 'apply', onpress : apply$t},
+		{name: '<strong style=font-size:18px>$about2</strong>', bclass: 'help', onpress : Help$t},
 		],";
 	
 		$explain=$tpl->javascript_parse_text("{smtp_generic_maps_text}");
@@ -258,12 +258,12 @@ $(document).ready(function(){
 		url: '$page?table-list=yes&ou={$_GET["ou"]}&t=$t',
 		dataType: 'json',
 		colModel : [
-		{display: '$source_pattern', name : 'generic_from', width : 428, sortable : true, align: 'left'},
-		{display: '$destination_pattern', name : 'generic_to', width :260, sortable : true, align: 'left'},
-		{display: 'SMTP', name : 'smtp_generic_maps', width :80, sortable : true, align: 'center'},
-		{display: '$recipient', name : 'recipient_canonical_maps', width :80, sortable : true, align: 'center'},
-		{display: '$sender', name : 'sender_canonical_maps', width :80, sortable : true, align: 'center'},
-		{display: '$delete;', name : 'delete', width : 75, sortable : false, align: 'center'},
+		{display: '<span style=font-size:22px>$source_pattern</span>', name : 'generic_from', width : 428, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>$destination_pattern</span>', name : 'generic_to', width :428, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>SMTP</span>', name : 'smtp_generic_maps', width :100, sortable : true, align: 'center'},
+		{display: '<span style=font-size:22px>$recipient</span>', name : 'recipient_canonical_maps', width :100, sortable : true, align: 'center'},
+		{display: '<span style=font-size:22px>$sender</span>', name : 'sender_canonical_maps', width :100, sortable : true, align: 'center'},
+		{display: '<span style=font-size:22px>$delete</span>', name : 'delete', width : 131, sortable : false, align: 'center'},
 		],
 		$buttons
 		searchitems : [
@@ -273,7 +273,7 @@ $(document).ready(function(){
 		sortname: 'generic_from',
 		sortorder: 'asc',
 		usepager: true,
-		title: '<span style=font-size:26px>$title</span>',
+		title: '<span style=font-size:30px>$title</span>',
 		useRp: true,
 		rp: 50,
 		showTableToggleBtn: false,
@@ -475,10 +475,10 @@ function main_search(){
 		$cell=array();
 		$cell[]="<span $style>$link{$ligne["generic_from"]}</a></span>";
 		$cell[]="<span $style>$link{$ligne["generic_to"]}</a></span>";
-		$cell[]="<span $style><img src='img/$smtp_generic_maps'></a></span>";
-		$cell[]="<span $style><img src='img/$recipient_canonical_maps'></a></span>";
-		$cell[]="<span $style><img src='img/$sender_canonical_maps'></a></span>";
-		$cell[]="<span $style>$delete</a></span>";
+		$cell[]="<center $style><img src='img/$smtp_generic_maps'></a></center>";
+		$cell[]="<center $style><img src='img/$recipient_canonical_maps'></a></center>";
+		$cell[]="<center $style><img src='img/$sender_canonical_maps'></a></center>";
+		$cell[]="<center $style>$delete</a></center>";
 
 		$data['rows'][] = array(
 				'id' => $ligne['uuid'],

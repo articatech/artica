@@ -4,6 +4,9 @@ include_once(dirname(__FILE__)."/frame.class.inc");
 include_once(dirname(__FILE__)."/class.unix.inc");
 if(!isset($GLOBALS["ARTICALOGDIR"])){$GLOBALS["ARTICALOGDIR"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/ArticaLogDir"); if($GLOBALS["ARTICALOGDIR"]==null){ $GLOBALS["ARTICALOGDIR"]="/var/log/artica-postfix"; } }
 
+if(isset($_GET["msftncsi"])){msftncsi();exit;}
+if(isset($_GET["seeker"])){seeker();exit;}
+if(isset($_GET["DirectoriesMonitorSchedules"])){DirectoriesMonitorSchedules();exit;}
 if(isset($_GET["refresh-cpus-progress"])){refresh_cpus_progress();exit;}
 if(isset($_GET["make-writable"])){make_www_writable();exit;}
 if(isset($_GET["phpldapadmin_installed"])){phpldapadmin_installed();exit;}
@@ -314,6 +317,11 @@ function restart_ldap(){
 	$unix=new unix();
 	$nohup=$unix->find_program("nohup");
 	$php=$unix->LOCATE_PHP5_BIN();
+	
+	$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
+	if($EnableOpenLDAP==0){return;}
+	
+	
 	$cmd=trim("$php /usr/share/artica-postfix/exec.initslapd.php >/dev/null 2>&1");
 	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);		
 	shell_exec($cmd);
@@ -1429,6 +1437,28 @@ function optimize(){
 	
 	
 }
+
+function seeker(){
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/seeker.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/seeker.progress.txt";
+	@unlink($GLOBALS["CACHEFILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["CACHEFILE"], 0755);
+	@chmod($GLOBALS["LOGSFILES"], 0755);
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.seeker.php --force --verbose  >{$GLOBALS["LOGSFILES"]} 2>&1 &";
+	writelogs_framework($cmd,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
+
+}
+
+
+
 function optimize_celeron(){
 	$unix=new unix();
 	$php5=$unix->LOCATE_PHP5_BIN();
@@ -1456,12 +1486,12 @@ function disable_ntopng(){
 	$GLOBALS["CACHEFILE"]=$GLOBALS["PROGRESS_FILE"];
 	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/disable-ntopng.log";
 	@unlink($GLOBALS["PROGRESS_FILE"]);
-	@unlink($GLOBALS["LOG_FILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
 	@touch($GLOBALS["PROGRESS_FILE"]);
-	@touch($GLOBALS["LOG_FILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
 	@chmod($GLOBALS["PROGRESS_FILE"], 0755);
-	@chmod($GLOBALS["LOG_FILE"], 0755);
-	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.ntopng.disable.php >{$GLOBALS["LOG_FILE"]} 2>&1 &";
+	@chmod($GLOBALS["LOGSFILES"], 0755);
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.ntopng.disable.php >{$GLOBALS["LOGSFILES"]} 2>&1 &";
 	writelogs_framework($cmd,__FUNCTION__,__FILE__,__LINE__);
 	shell_exec($cmd);
 	
@@ -1653,7 +1683,7 @@ function dashboard_refresh(){
 	@touch($GLOBALS["LOGSFILES"]);
 	@chmod($GLOBALS["CACHEFILE"],0777);
 	@chmod($GLOBALS["LOGSFILES"],0777);
-	system("$nohup $php5 /usr/share/artica-postfix/exec.squid.interface-size.php --flux-hour --force --progress >{$GLOBALS["LOGSFILES"]} 2>&1 &");	
+	system("$nohup $php5 /usr/share/artica-postfix/exec.squid.interface-size.php --force --progress >{$GLOBALS["LOGSFILES"]} 2>&1 &");	
 	
 	
 }
@@ -1911,6 +1941,7 @@ while (list ($num, $line) = each ($results)){
 	if(preg_match("#\(squid-coord-[0-9]+\)#", $PROG)){$PROG="Proxy Service";}
 	if(preg_match("#sshd:#", $PROG)){$PROG="OpenSSH server";}
 	if(preg_match("#\/ufdbgclient\.php#", $PROG)){$PROG="Web Filtering client";}
+	if(preg_match("#suricata#", $PROG)){$PROG="IDS service";}
 	if(preg_match("#\/external_acl_response\.php#", $PROG)){$PROG="Proxy File Watcher";}
 	if(preg_match("#\/external_acl_squid\.php#", $PROG)){$PROG="Proxy ACLs Watcher";}
 	if(preg_match("#\/external_acl_squid_ldap\.php#", $PROG)){$PROG="Proxy Active Directory Watcher";}
@@ -1925,6 +1956,7 @@ while (list ($num, $line) = each ($results)){
 	if(preg_match("#bin\/apache2#", $PROG)){$PROG="Web Service";}
 	if(preg_match("#winbindd -D#", $PROG)){$PROG="Winbind Daemon";}
 	if(preg_match("#apache2\.conf -k start#", $PROG)){$PROG="Web Service";}
+	if(preg_match("#exec\.hypercache-tail#", $PROG)){$PROG="HyperCache Tail logger";}
 	if(preg_match("#exec\.web-community-filter\.php#", $PROG)){$PROG="Cloud Update process";}
 	if(preg_match("#tmp --log-warnings=2 --default-storage-engine=myisam#", $PROG)){$PROG="MySQL Server";}
 	
@@ -1944,6 +1976,19 @@ while (list ($num, $line) = each ($results)){
 	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/ps_mem.array", serialize($MEM));
 	
 	
+}
+
+
+function  DirectoriesMonitorSchedules(){
+	
+	
+	$DirectoriesMonitorH=@file_get_contents("/etc/artica-postfix/settings/Daemons/DirectoriesMonitorH");
+	$DirectoriesMonitorM=@file_get_contents("/etc/artica-postfix/settings/Daemons/DirectoriesMonitorM");
+	$schedule="$DirectoriesMonitorM $DirectoriesMonitorH * * *";
+	$unix=new unix();
+	writelogs_framework("/etc/cron.d/DirectoriesMonitor -> $schedule" ,__FUNCTION__,__FILE__,__LINE__);
+	$unix->Popuplate_cron_make("DirectoriesMonitor",$schedule,"exec.philesight.php --directories");
+	shell_exec("/etc/init.d/cron reload &");
 }
 
 
@@ -1974,37 +2019,93 @@ function EnableBandwithCalculation(){
 	shell_exec("/etc/init.d/cron reload");
 }
 function EnableMilterGreylistExternalDB(){
+	$unix=new unix();
+	$nohup=$unix->find_program("nohup");
+	$php5=$unix->LOCATE_PHP5_BIN();
+	
 	$EnableMilterGreylistExternalDB=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableMilterGreylistExternalDB"));
 	$BandwithCalculationSchedule=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableMilterGreylistExternalDB"));
-
+	$EnableArticaTechSpamAssassin=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaTechSpamAssassin"));
+	
+	
 	if($EnableMilterGreylistExternalDB==0){
 		writelogs_framework("/etc/cron.d/artica-miltergreylist -> 0" ,__FUNCTION__,__FILE__,__LINE__);
 		if(is_file("/etc/cron.d/artica-miltergreylist")){
 			@unlink("/etc/cron.d/artica-miltergreylist");
 			shell_exec("/etc/init.d/cron reload");
-			return;
+			
 		}
 	}
 	
 	if($EnableMilterGreylistExternalDB==1){
-		$unix=new unix();
-		$nohup=$unix->find_program("nohup");
-		$php5=$unix->LOCATE_PHP5_BIN();
 		shell_exec("$nohup $php5 /usr/share/artica-postfix/exec.milter-greylist.update.php >/dev/null 2>&1 &");
 	}
+	
+	shell_exec("$nohup $php5 /usr/share/artica-postfix/exec.spamassassin.update-rules.php >/dev/null 2>&1 &");
+	
+	
 
 	$schedules[1]="0 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22 * * *";
-	$schedules[2]="0 2,4,6,8,10,12,14,16,18,20,22 * * *";
-	$schedules[4]="0 4,8,12,16,20 * * *";
-	$schedules[8]="0 8,16 * * *";
+	$schedules[2]="0 0,2,4,6,8,10,12,14,16,18,20,22 * * *";
+	$schedules[4]="0 0,4,8,12,16,20 * * *";
+	$schedules[8]="0 0,8,16 * * *";
 	$schedules[24]="0 1 * * *";
 	$schedule=$schedules[$BandwithCalculationSchedule];
 
-	$unix=new unix();
-	writelogs_framework("/etc/cron.d/artica-miltergreylist -> $schedule" ,__FUNCTION__,__FILE__,__LINE__);
-	$unix->Popuplate_cron_make("artica-miltergreylist",$schedule,"exec.milter-greylist.update.php");
-	shell_exec("/etc/init.d/cron reload");
+	
+	if($EnableMilterGreylistExternalDB==1){
+		writelogs_framework("/etc/cron.d/artica-miltergreylist -> $schedule" ,__FUNCTION__,__FILE__,__LINE__);
+		$unix->Popuplate_cron_make("artica-miltergreylist",$schedule,"exec.milter-greylist.update.php");
+		shell_exec("/etc/init.d/cron reload");
+	}
+	
+	if($EnableArticaTechSpamAssassin==1){
+		writelogs_framework("/etc/cron.d/artica-spamassupd -> $schedule" ,__FUNCTION__,__FILE__,__LINE__);
+		$unix->Popuplate_cron_make("artica-spamassupd",$schedule,"exec.milter-greylist.update.php");
+		shell_exec("/etc/init.d/cron reload");
+	}else{
+		if(is_file("/etc/cron.d/artica-spamassupd")){
+			@unlink("/etc/cron.d/artica-spamassupd");
+			shell_exec("/etc/init.d/cron reload");
+			
+		}
+		
+	}	
+	
+	
 }
+
+
+function msftncsi(){
+	$EnableMsftncsi=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableMsftncsi"));
+	$msftncsiSchedule=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/msftncsiSchedule"));
+	
+	if($EnableMsftncsi==0){
+		if(is_file("/etc/cron.d/artica-msftncsi")){
+			@unlink("/etc/cron.d/artica-msftncsi");
+			shell_exec("/etc/init.d/cron reload");
+			return;
+		}
+	}
+	
+	$schedules[1]="* * * * *";
+	$schedules[2]="*/2 * * * *";
+	$schedules[4]="*/4 * * * *";
+	$schedules[5]="*/5 * * * *";
+	$schedules[8]="*/8 * * * *";
+	$schedules[10]="*/10 * * * *";
+	$schedules[30]="*/30 * * * *";
+	$schedules[60]="0 * * * *";
+	$schedule=$schedules[$msftncsiSchedule];
+
+	$unix=new unix();
+	writelogs_framework("/etc/cron.d/artica-msftncsi -> $schedule" ,__FUNCTION__,__FILE__,__LINE__);
+	$unix->Popuplate_cron_make("artica-msftncsi",$schedule,"exec.msftncsi.php");
+	shell_exec("/etc/init.d/cron reload");
+	
+}
+
+
 function phpldapadmin_installed(){
 	
 	if(is_file("/usr/share/phpldapadmin/index.php")){

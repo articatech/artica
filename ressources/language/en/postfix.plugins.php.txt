@@ -55,7 +55,7 @@ very good detections rate</APP_KAS3_DEF>
 It is a robust and scalable antivirus solution provided by Kaspersky Lab INC.[br]Writen in C, It is used in very large companies and provide
 very good detections rate</APP_KAVMILTER_DEF>
 <APP_MAILARCHIVER_DEFS>Open Mail Archiver is a milter plugin written by AlexeyPu that perform messages dump in the fly.[br]This main software is in charge to save mails into a temporary folder.[br]
-Artica will parse mails and save it into Mysql Database in order to retreive them...</APP_MAILARCHIVER_DEFS>
+Artica will parse mails and save it into MySQL Database in order to retreive them...</APP_MAILARCHIVER_DEFS>
 <APP_MAILFROMD_DEF>Mailfromd is a general-purpose mail filtering daemon for Sendmail and Postfix.[br]
  It is able to filter both incoming and outgoing messages using a filter program, written in mail filtering language (MFL).[br]
  The daemon interfaces with the MTA using Milter protocol.[br]

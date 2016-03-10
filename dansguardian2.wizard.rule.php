@@ -354,6 +354,8 @@ function step5(){
 	$final="<script>
 			YahooWin5Hide();
 			Loadjs('dansguardian2.compile.php');
+			CacheOff();
+			LoadAjaxRound('main-ufdb-frontend','ufdbguard.status.php');
 				
 		</script>";
 		
@@ -460,6 +462,7 @@ function step5(){
 	}
 	if($WizardUFDB["CATZ"]==3){
 		$array["audio-video"]=true;
+		$array["youtube"]=true;
 		$array["webtv"]=true;
 		$array["music"]=true;
 		$array["movies"]=true;

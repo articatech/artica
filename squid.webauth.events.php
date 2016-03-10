@@ -90,7 +90,7 @@ function BuildTable$t(){
 		{display: '', name : 'severity', width :31, sortable : true, align: 'center'},
 		{display: '<span style=font-size:18px>$date</span>', name : 'zDate', width :150, sortable : true, align: 'left'},
 		{display: '<span style=font-size:18px>$events</span>', name : 'subject', width : 1074, sortable : false, align: 'left'},
-		{display: '<span style=font-size:18px>$daemon</span>', name : 'filename', width :145, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$daemon</span>', name : 'filename', width :131, sortable : true, align: 'left'},
 		],
 		$buttons
 	

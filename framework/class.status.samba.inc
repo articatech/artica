@@ -3,9 +3,17 @@
 
 function Samba_must_be_enabled($enabled=0){
 	
+	$squid=$GLOBALS["CLASS_UNIX"]->LOCATE_SQUID_BIN();
+	if(is_file($squid)){
+		if(!is_file("/etc/artica-postfix/SQUID_APPLIANCE")){@touch("/etc/artica-postfix/SQUID_APPLIANCE");}
+	}
+	
+	
 	if(is_file("/etc/artica-postfix/SQUID_APPLIANCE")){
 		if(is_file("/etc/artica-postfix/settings/Daemons/EnableKerbAuth")){
-			return @intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableKerbAuth"));
+			$EnableKerbAuth=@intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableKerbAuth"));
+			if($GLOBALS["VERBOSE"]){echo "Samba_must_be_enabled: EnableKerbAuth == $EnableKerbAuth\n";}
+			return $EnableKerbAuth;
 		}
 		
 	}
@@ -25,8 +33,6 @@ function smbd(){
 		if(is_file("/home/artica/samba.tar.gz.old")){
 			$tar=$GLOBALS["CLASS_UNIX"]->find_program("tar");
 			shell_exec2("$tar xf /home/artica/samba.tar.gz.old -C /");
-				
-
 			$smbd_bin=$GLOBALS["CLASS_UNIX"]->find_program("smbd");
 			if($smbd_bin==null){
 				shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} /usr/share/artica-postfix/compile-samba.php >/dev/null 2>&1 &");
@@ -35,7 +41,7 @@ function smbd(){
 		return;
 	}
 
-	if(!$GLOBALS["CLASS_USERS"]->SAMBA_INSTALLED){
+	if(!is_file($smbd_bin)){
 		if($GLOBALS["VERBOSE"]){echo __FUNCTION__." not installed\n";}
 		return null;
 	}
@@ -43,7 +49,9 @@ function smbd(){
 	$AsCategoriesAppliance=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/AsCategoriesAppliance"));
 	if($enabled==null){$enabled=1;}
 	if($AsCategoriesAppliance==1){$enabled=0;}
-	$enabled=Samba_must_be_enabled($enabled);
+	
+	
+	if($GLOBALS["VERBOSE"]){echo "smbd: Enabled ? = $enabled\n";}
 
 	if($enabled==1){
 		$pid_path=$GLOBALS["CLASS_UNIX"]->LOCATE_SMBD_PID();
@@ -180,78 +188,85 @@ function rpcbind(){
 	
 }
 
+function winbind_wbinfo_if_available(){
+	$unix=new unix();
+	$wbinfo=$GLOBALS["CLASS_UNIX"]->find_program("wbinfo");
+	exec("$wbinfo -t 2>&1",$results);
+
+	while (list ($md5, $line) = each ($results) ){
+		if(preg_match("#WBC_ERR_WINBIND_NOT_AVAILABLE#",$line)){
+			squid_admin_mysql(0, "Warning WBC_ERR_WINBIND_NOT_AVAILABLE [action=start winbindd]", @implode("\n", $results),__FILE__,__LINE__);
+			shell_exec("/etc/init.d/winbind start");
+			return;
+		}
+
+	}
+
+}
+
 
 function winbindd(){
 	$master_pid=null;
 	
-	if(!$GLOBALS["CLASS_USERS"]->WINBINDD_INSTALLED){
+	$winbindd=$GLOBALS["CLASS_UNIX"]->find_program("winbindd");
+	
+	if(!is_file($winbindd)){
 		if($GLOBALS["VERBOSE"]){echo __FUNCTION__." not installed\n";}
 		return null;
 	}
 
 	if(is_file("/etc/artica-postfix/WORDPRESS_APPLIANCE")){
 		$master_pid=winbind_pid();
-		if(!$GLOBALS["CLASS_UNIX"]->process_exists($master_pid)){
+		if($GLOBALS["CLASS_UNIX"]->process_exists($master_pid)){
+			squid_admin_mysql(1,"[NTLM]: WORDPRESS_APPLIANCE Stopping winbindd daemon (not necessary to use it)",@implode("\n",$f),__FILE__,__LINE__);
 			shell_exec2("/etc/init.d/winbind stop");
+			return;
 		}
 	}
 
-	if(!$GLOBALS["CLASS_USERS"]->SAMBA_INSTALLED){
-		if($GLOBALS["VERBOSE"]){echo __FUNCTION__." not installed\n";}
-		$master_pid=winbind_pid();
-		if(!$GLOBALS["CLASS_UNIX"]->process_exists($master_pid)){
-			shell_exec2("/etc/init.d/winbind stop");
-		}
-		return null;
-	}
-
-
-
-
-
-	$enabled=$GLOBALS["CLASS_SOCKETS"]->GET_INFO("SambaEnabled");
+	$enabled=intval($GLOBALS["CLASS_SOCKETS"]->GET_INFO("SambaEnabled"));
+	
+	$f[]="SambaEnabled......................: $enabled";
+	
+	
 	$DisableWinbindd=$GLOBALS["CLASS_SOCKETS"]->GET_INFO("DisableWinbindd");
 	$DisableSambaFileSharing=$GLOBALS["CLASS_SOCKETS"]->GET_INFO("DisableSambaFileSharing");
+	$f[]="DisableSambaFileSharing...........: $DisableSambaFileSharing";
+	
+	
 	$EnableSambaActiveDirectory=$GLOBALS["CLASS_SOCKETS"]->GET_INFO("EnableSambaActiveDirectory");
 	$AsCategoriesAppliance=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/AsCategoriesAppliance"));
-
-	$squid=$GLOBALS["CLASS_UNIX"]->LOCATE_SQUID_BIN();
-	if(is_file($squid)){
-		$EnableKerbAuth=$GLOBALS["CLASS_SOCKETS"]->GET_INFO("EnableKerbAuth");
-		
-		if(!is_numeric($EnableKerbAuth)){$EnableKerbAuth=0;}
-		if($EnableKerbAuth==1){$DisableWinbindd=0;}
-	}
-
-
 
 	if(!is_numeric($EnableSambaActiveDirectory)){$EnableSambaActiveDirectory=0;}
 	if(!is_numeric($DisableWinbindd)){$DisableWinbindd=0;}
 	if($EnableSambaActiveDirectory==1){$DisableWinbindd=0;}
 	if($DisableSambaFileSharing==1){if($EnableSambaActiveDirectory==0){$enabled=0;}}
 
-	if($DisableWinbindd==1){$enabled=0;}
+	if($DisableWinbindd==1){
+		$f[]="DisableWinbindd...................: $DisableWinbindd -> Disable Samba";
+		$enabled=0;
+	}
 	if(!is_numeric($enabled)){$enabled=1;}
 	$enabled=Samba_must_be_enabled($enabled);
 
 
 	if($AsCategoriesAppliance==1){
+		$f[]="AsCategoriesAppliance...................: $AsCategoriesAppliance -> Disable Samba";
 		$DisableWinbindd=1;
 		$enabled=0;
 	}
 
+		$f[]="Samba_must_be_enabled...................: Samba_must_be_enabled($enabled) =" .Samba_must_be_enabled($enabled);
+		$f[]="AsCategoriesAppliance...................: $AsCategoriesAppliance";
+		$f[]="enabled.................................: $enabled";
+		$f[]="DisableWinbindd.........................: $DisableWinbindd";
+		$f[]="EnableSambaActiveDirectory..............: $EnableSambaActiveDirectory";
 
-	if(is_file("/etc/artica-postfix/SQUID_APPLIANCE")){
-		if($EnableKerbAuth==0){$enabled=0;}
-
-	}
-
-	if($GLOBALS["VERBOSE"]){
-		echo "enabled.................................: $enabled\n";
-		echo "DisableWinbindd.........................: $DisableWinbindd\n";
-		echo "EnableSambaActiveDirectory..............: $EnableSambaActiveDirectory\n";
-
-	}
+		if($GLOBALS["VERBOSE"]){
+			echo @implode("\n", $f);
+		}
+	
+	
 
 	$l[]="[SAMBA_WINBIND]";
 	$l[]="service_name=APP_SAMBA_WINBIND";
@@ -265,14 +280,7 @@ function winbindd(){
 
 	$master_pid=winbind_pid();
 	if($enabled==0){
-		if($GLOBALS["CLASS_UNIX"]->process_exists($master_pid)){
-			squid_admin_mysql(1,"[NTLM]: Stopping winbindd daemon (not necessary to use it)");
-			if(!$GLOBALS["DISABLE_WATCHDOG"]){
-				shell_exec2("{$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} /usr/share/artica-postfix/exec.winbindd.php --stop");
-			}
-		}
 		$l[]="running=0\ninstalled=1";$l[]="";
-		winbindd_logs(true);
 		return implode("\n",$l);
 
 	}
@@ -309,10 +317,6 @@ function winbindd(){
 
 	}
 
-
-
-
-
 	if(!$GLOBALS["CLASS_UNIX"]->process_exists($master_pid)){
 		if($enabled==1){
 			Winbindd_events("Winbindd service Failed -> start it",__FUNCTION__,__LINE__);
@@ -326,13 +330,19 @@ function winbindd(){
 	}
 	if(!$GLOBALS["DISABLE_WATCHDOG"]){
 		if($enabled==1){if(strlen($smbcontrol)>3){winbindd_ping();}}
+		winbind_wbinfo_if_available();
+		winbindd_logs();
+		$xtime=$GLOBALS["CLASS_UNIX"]->file_time_min("/etc/artica-postfix/pids/exec.adusers.php.impcomputers.time");
+		if($xtime>240){
+			shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} ".dirname( __FILE__)."/exec.adusers.php --computers schedule-id=0 >/dev/null 2>&1 &");
+		}
+		
 	}
 
 	$l[]="running=1";
 	$l[]=GetMemoriesOf($master_pid);
 	$l[]="";
-	winbindd_logs();
-	shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} ".dirname( __FILE__)."/exec.adusers.php --computers schedule-id=0 >/dev/null 2>&1 &");
+	
 
 	return implode("\n",$l);return;
 }

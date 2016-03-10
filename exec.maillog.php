@@ -18,6 +18,7 @@ events("Memory: ".round(((memory_get_usage()/1024)/1000),2) ." after includes cl
 include_once(dirname(__FILE__).'/ressources/class.postfix.maillog.inc');
 events("Memory: ".round(((memory_get_usage()/1024)/1000),2) ." after includes class.postfix.maillog.inc line: ".__LINE__);
 include_once(dirname(__FILE__).'/ressources/class.amavis.maillog.inc');
+include_once(dirname(__FILE__).'/ressources/class.postgres.inc');
 
 events("Memory: ".round(((memory_get_usage()/1024)/1000),2) ." after includes class.amavis.maillog.inc line: ".__LINE__);
 include_once(dirname(__FILE__).'/ressources/class.mysql.inc');
@@ -120,6 +121,8 @@ ini_set('error_reporting', E_ALL);
 ini_set('error_prepend_string',null);
 ini_set('error_append_string',null);
 ini_set("error_log", "{$GLOBALS["ARTICALOGDIR"]}/postfix-logger.debug");
+$postgres=new postgres_sql();
+$postgres->SMTP_TABLES();
 
 
 $pipe = fopen("php://stdin", "r");
@@ -172,7 +175,9 @@ if(strpos($buffer,"DKIM-Signature\" header added")>0){return;}
 if(strpos($buffer,"DKIM verification successful")>0){return;}
 if(strpos($buffer,": decided action=PREPEND X-policyd-weight: using cached result;")>0){return;} 
 if(strpos($buffer," mode select: verifying")>0){return;} 
-if(strpos($buffer,"Message canceled by rule")>0){return;} 
+if(strpos($buffer,"Message canceled by rule")>0){return;}
+if(strpos($buffer,"no signing table match for")>0){return;}
+if(strpos($buffer,"Connection closed because of timeout")>0){return;}
 //if(strpos($buffer,") SPAM-TAG, <")>0){return;} 
 if(strpos($buffer,") mail checking ended: version_server=")>0){return;} 
 if(strpos($buffer,") check_header:")>0){return;} 
@@ -255,6 +260,7 @@ if(strpos($buffer,") inspect_dsn: not a bounce")>0){return;}
 if(strpos($buffer,") local delivery:")>0){return;} 
 if(strpos($buffer,") DSN: NOTIFICATION: ")>0){return;}
 if(strpos($buffer,") SEND via PIPE:")>0){return;}
+if(strpos($buffer,"Discarding because filter instructed us to")>0){return;}
 if(strpos($buffer,") Checking for banned types and")>0){return;}
 if(strpos($buffer,"skipping mailbox user")>0){return;}
 if(strpos($buffer,"artica-plugin:")>0){return;} 
@@ -473,6 +479,10 @@ if(preg_match("#ESMTP::.+?\/var\/amavis\/tmp\/amavis#",$buffer)){return null;}
 if(preg_match("#zarafa-dagent.+?Client disconnected#",$buffer)){return null;}
 if(preg_match("#zarafa-dagent.+?Failed to resolve recipient#",$buffer)){return null;}
 
+// MIMEDFANG
+if(strpos($buffer,"stderr: netset: cannot include")>0){return;}
+if(strpos($buffer,"MySQL: from=<")>0){return;}
+
 if(strpos($buffer, "MGREYSTATS")>0){$md5=md5($buffer);@file_put_contents("{$GLOBALS["ARTICALOGDIR"]}/MGREYSTATS/$md5", $buffer);return;}
 
 if(stripos($buffer,"opendkim")>0){
@@ -480,11 +490,248 @@ if(stripos($buffer,"opendkim")>0){
 	if(parse_opendkim($buffer)){return;}
 }
 
-
-
-
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#NOQUEUE: (discard|Quarantine): RCPT from\s+(.*?):.*?Message infected \[(.*?)\];.*?\[(.*?)\].*?from=<(.*?)> to=<(.*?)>#",$buffer,$re)){
+	$date=date("Y-m-d H:i:s");
+	$postgres=new postgres_sql();
+	$hostname=$re[2];
+	$ipaddr=$re[4];
+	$reason="Infected:{$re[3]}";
+	$mailfrom=$re[5];
+	$mailto=$re[6];
+	$helo=$re[2];
+	if($hostname=="unknown"){$hostname=gethostbyaddr($ipaddr);}
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;
+}
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#NOQUEUE: MXCommand: connect: Connection refused: Is multiplexor running#",$buffer,$re)){
+	$file="/etc/artica-postfix/pids/NOQUEUE.MXCommand.Connection.refused.multiplexor.running".__LINE__.".err";
+	$timefile=file_time_min($file);
+	if($timefile>0){
+		events("Connection refused: Is multiplexor running ?? --> restart [OK] {$timefile}Mn");
+		postfix_admin_mysql(1, "Policies service: (multiplexor running ?) Connection refused [action=restart]", $buffer,__FILE__,__LINE__);
+		shell_exec("{$GLOBALS["NOHUP_PATH"]} /etc/init.d/mimedefang restart >/dev/null 2>&1 &");
+		@unlink($file);
+		@file_put_contents($file, time());
+		return;
+	}
+}
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#Slave [0-9]+ stderr: bayes: cannot open bayes databases (.*?)\/bayes_.*?: lock failed: Interrupted system call#",$buffer,$re)){
+	postfix_admin_mysql(1, "Spamassassin: bayes issue (lock failed) [action=notify]", $buffer,__FILE__,__LINE__);
+	return;
+}
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#milter-reject: END-OF-MESSAGE from\s+(.*?)\[(.+?)\]: 4.3.0 virus found (.*?); from=<(.*?)>\s+to=<(.+?)>#",$buffer,$re)){
+	$date=date("Y-m-d H:i:s");
+	$postgres=new postgres_sql();
+	$hostname=$re[1];
+	$ipaddr=$re[2];
+	$reason="Virus {$re[3]}";
+	$mailfrom=$re[4];
+	$mailto=$re[5];
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;	
+}
 
 // ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#NOQUEUE: reject: RCPT from (.*?):\s+554.*?Client host \[(.*?)\] blocked using Spamassassin.*?from=<(.*?)> to=<(.*?)>#",$buffer,$re)){
+	$date=date("Y-m-d H:i:s");
+	$postgres=new postgres_sql();
+	$hostname=$re[1];
+	$ipaddr=$re[2];
+	$reason="Antispam denied";
+	$mailfrom=$re[3];
+	$mailto=$re[4];
+	$helo=$re[5];
+	if($hostname=="unknown"){$hostname=gethostbyaddr($ipaddr);}
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;
+}
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#NOQUEUE: Quarantine: RCPT from (.*?):\s+554.*?Client host \[(.*?)\] blocked using Spamassassin.*?from=<(.*?)> to=<(.*?)>#",$buffer,$re)){
+	$date=date("Y-m-d H:i:s");
+	$postgres=new postgres_sql();
+	$hostname=$re[1];
+	$ipaddr=$re[2];
+	$reason="Quarantine";
+	$mailfrom=$re[3];
+	$mailto=$re[4];
+	$helo=$re[5];
+	if($hostname=="unknown"){$hostname=gethostbyaddr($ipaddr);}
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;
+}
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#NOQUEUE: milter-reject: RCPT from (.*?)\[(.*?)\]: 451.*?Greylisting in action.*?; from=<(.*?)> to=<(.*?)>.*?helo=<(.*?)>#",$buffer,$re)){
+	$date=date("Y-m-d H:i:s");
+	$postgres=new postgres_sql();
+	$hostname=$re[1];
+	$ipaddr=$re[2];
+	$reason="Greylisted";
+	$mailfrom=$re[3];
+	$mailto=$re[4];
+	$helo=$re[5];
+	if($hostname=="unknown"){$hostname=$helo;}
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;
+}
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#mimedefang.*?Could not connect to clamd daemon#",$buffer,$re)){
+	events("Antivirus issue while checking mail [action=restart clamd]");
+	$file="/etc/artica-postfix/pids/mimedefang.Could.not.connect.to.clamd.daemon";
+	$timefile=file_time_min($file);
+	if($timefile>0){
+		postfix_admin_mysql(0, "Antivirus issue while checking mail [action=restart clamd]", null,__FILE__,__LINE__);
+		shell_exec("{$GLOBALS["NOHUP_PATH"]} /etc/init.d/clamav-daemon restart >/dev/null 2>&1 &");
+		@unlink($file);
+		@file_put_contents($file, time());
+		return;
+	}
+}
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#warning: connect to Milter service unix:.*?mimedefang\.sock: No such file or directory#",$buffer,$re)){
+	events("mimedefang.sock: No such file or directory --> restart ?");
+	$file="/etc/artica-postfix/pids/Milter.service.mimedefang.".__LINE__.".sock";
+	$timefile=file_time_min($file);
+	if($timefile>0){
+		events("mimedefang.sock: No such file or directory --> restart [OK] {$timefile}Mn");
+		postfix_admin_mysql(1, "mimedefang.sock: No such file or directory [action=restart]", null,__FILE__,__LINE__);
+		shell_exec("{$GLOBALS["NOHUP_PATH"]} /etc/init.d/mimedefang restart >/dev/null 2>&1 &");
+		@unlink($file);
+		@file_put_contents($file, time());
+		return;
+	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#warning: connect to Milter service unix:.*?milter-greylist\.sock: Connection refused#",$buffer,$re)){
+	events("milter-greylist.sock: Connection refused --> restart ?");
+	$file="/etc/artica-postfix/pids/Milter.service.miltergreylist.".__LINE__.".sock";
+	$timefile=file_time_min($file);
+	if($timefile>0){
+		events("milter-greylist.sock: --> restart [OK] {$timefile}Mn");
+		postfix_admin_mysql(1, "milter-greylist.sock: Connection refused [action=restart]", null,__FILE__,__LINE__);
+		shell_exec("{$GLOBALS["NOHUP_PATH"]} /etc/init.d/milter-greylist restart >/dev/null 2>&1 &");
+		@unlink($file);
+		@file_put_contents($file, time());
+		return;
+	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#NOQUEUE: reject: RCPT from\s+(.*?)\[(.*?)\]:\s+554.*?blocked using\s+(.*?); Client host blocked using\s+(.*?),.*?from=<(.*?)> to=<(.*?)>.*?helo=<(.*?)>#",$buffer,$re)){
+	$date=date("Y-m-d H:i:s");
+	$postgres=new postgres_sql();
+	$hostname=$re[1];
+	$ipaddr=$re[2];
+	$Service=$re[3];
+	$Service2=$re[4];
+	$mailfrom=$re[5];
+	$mailto=$re[6];
+	$helo=$re[7];
+	if($hostname=="unknown"){$hostname=$helo;}
+	if(strlen($Service2)>3){$Service=$Service2;}
+	$reason="Rbl:$Service";
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;
+}
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#NOQUEUE: reject: RCPT from unknown\[(.*?)\]: 450 4.7.1 Client host rejected: cannot find your reverse hostname.*?from=<(.*?)> to=<(.*?)>.*?helo=<(.*?)>#",$buffer,$re)){
+	$date=date("Y-m-d H:i:s");
+	$postgres=new postgres_sql();
+	$ipaddr=$re[1];
+	$mailfrom=$re[2];
+	$mailto=$re[3];
+	$hostname=$re[4];
+	$reason="Reverse not found";
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;
+}
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#NOQUEUE: reject:\s+RCPT from unknown\[([0-9\.]+)\].*?Client host rejected: cannot find your hostname.*?from=<(.*?)>\s+to=<(.*?)>#",$buffer,$re)){
+	$date=date("Y-m-d H:i:s");
+	$postgres=new postgres_sql();
+	$hostname=$re[1];
+	$ipaddr=$re[1];
+	$mailfrom=$re[2];
+	$mailto=$re[3];
+	$reason="Hostname not found";
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;
+	
+}
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#NOQUEUE: reject:\s+RCPT from (.*?)\[([0-9\.]+)\].*?Client host rejected: Go Away.+?from=<(.*?)>\s+to=<(.*?)>#",$buffer,$re)){
+	$date=date("Y-m-d H:i:s");
+	$postgres=new postgres_sql();
+	$hostname=$re[1];
+	$ipaddr=$re[2];
+	$mailfrom=$re[3];
+	$mailto=$re[4];
+	$reason="Blacklisted";
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;
+}
+// ---------------------------------------------------------------------------------------------------------------
+
+if(preg_match("#NOQUEUE: reject: RCPT from unknown\[(.*?)\]: 450.*?<(.*?)>: Sender address rejected: Domain not found; from=<(.*?)> to=<(.*?)>.*?helo=<(.*?)>#",$buffer,$re)){
+	$date=date("Y-m-d H:i:s");
+	$postgres=new postgres_sql();
+	$hostname=$re[5];
+	$ipaddr=$re[1];
+	$mailfrom=$re[3];
+	$mailto=$re[4];
+	$reason="Unknown sender domain";
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;	
+}
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#NOQUEUE: reject: RCPT from (.*?)\[(.*?)\]: 450.*?Sender address rejected: Domain not found; from=<(.*?)> to=<(.*?)>#",$buffer,$re)){
+	$date=date("Y-m-d H:i:s");
+	$postgres=new postgres_sql();
+	$hostname=$re[1];
+	$ipaddr=$re[2];
+	$mailfrom=$re[3];
+	$mailto=$re[4];
+	$reason="Unknown sender domain";
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;	
+}
+// ---------------------------------------------------------------------------------------------------------------
+
+if(preg_match("#NOQUEUE: reject: RCPT from unknown\[(.*?)\]: 450.*?Client host rejected: cannot find your reverse hostname,.*?from=<(.*?)> to=<(.*?)>#",$buffer,$re)){
+	$date=date("Y-m-d H:i:s");
+	$postgres=new postgres_sql();
+	$hostname="Unknown";
+	$ipaddr=$re[1];
+	$mailfrom=$re[2];
+	$mailto=$re[3];
+	$reason="Unknown reverse hostname";
+	$VALUES="('$date','$hostname','$mailfrom','$mailto','$ipaddr','$reason')";
+	$postgres->QUERY_SQL("INSERT INTO smtprefused (zdate,hostname,mailfrom,mailto,ipaddr,reason) VALUES $VALUES");
+	return true;	
+}
+
+
+if(preg_match("#reject#",$buffer)){
+	events("NOT TRAPPED \"$buffer\"");
+	
+}
+
+
 if(preg_match("#unknown group name:\s+postdrop#i", $buffer,$re)){
 	shell_exec("{$GLOBALS["GROUPADD"]} postdrop >/dev/null 2>&1");
 	return;
@@ -633,13 +880,27 @@ if(preg_match("#createuser\[.+?User store\s+'(.+?)'\s+createdi#",$buffer,$re)){
 	return;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+if(preg_match("#clamav-milter.*?No clamd server appears to be available#",$buffer,$re)){
+	$file="/etc/artica-postfix/croned.1/clamav-milter.".md5("No clamd server appears to be available");
+	$timefile=file_time_min($file);
+	if($timefile>5){
+		postfix_admin_mysql(0, "Milter Antivirus issue! [action=update signatures]", $buffer,__FILE__,__LINE__);
+		$cmd="{$GLOBALS["NOHUP_PATH"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.freshclam.php --execute >/dev/null 2>&1 &";
+		@unlink($file);@file_put_contents($file,"#");
+		events("$cmd");
+		shell_exec_maillog($cmd);
+	}
+	return;
+}
+// ---------------------------------------------------------------------------------------------------------------
 if(preg_match("#milter-greylist:.+?bind failed: Address already in use#",$buffer,$re)){
 	$file="/etc/artica-postfix/croned.1/milter-greylist.".md5("cannot start MX sync, bind failed: Address already in use");
 	$timefile=file_time_min($file);
 	if($timefile>5){
 		email_events("milter-greylist: double service issue",
 		"milter-greylist\n$buffer\nArtica will restart milter-greylist service","smtp");
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 		$cmd="{$GLOBALS["NOHUP_PATH"]} /etc/init.d/milter-greylist restart >/dev/null 2>&1 &";
 		events("$cmd");
 		shell_exec_maillog($cmd);
@@ -656,7 +917,7 @@ if(strpos($buffer,"inet_interfaces: no local interface found")>0){
 	if($timefile>10){
 		email_events("{$re[1]}: misconfiguration on inet_interfaces",
 		"Postfix claim \n$buffer\n\nIf this event is resended\nplease Check Artica Technology support service.","postfix");
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 		$cmd=trim("{$GLOBALS["NOHUP_PATH"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.postfix.maincf.php --interfaces >/dev/null 2>&1 &");
 		events("$cmd");
 		shell_exec_maillog($cmd);
@@ -679,7 +940,7 @@ if(preg_match("#(.+?)\/smtpd\[.+?fatal:\s+config variable inet_interfaces#", $bu
 	if($timefile>10){
 		email_events("{$re[1]}: misconfiguration on inet_interfaces",
 		"Postfix claim \n$buffer\n\nIf this event is resended\nplease Check Artica Technology support service.","postfix");
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 		if($re[1]=="postfix"){
 			$cmd=trim("{$GLOBALS["NOHUP_PATH"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.postfix.maincf.php --interfaces >/dev/null 2>&1 &");
 			events("$cmd");
@@ -715,7 +976,7 @@ if(preg_match("#(.+?)\/smtpd\[.+?fatal:\s+config variable inet_interfaces#", $bu
 			email_events("Postfix: postfwd2 plugin is not available",
 			"Postfix claim \n$buffer\nArtica will try to start postfwd2.","postfix");
 			shell_exec_maillog(trim("{$GLOBALS["NOHUP_PATH"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.postfwd2.php --start >/dev/null 2>&1"));
-			@file_put_contents($file,"#");
+			@unlink($file);@file_put_contents($file,"#");
 		}else{events("Postfix: Postfwd2 issue... -> Connection refused: {$timefile}Mn/5Mn");}
 		return;
 	}	
@@ -727,7 +988,7 @@ if(preg_match("#(.+?)\/smtpd\[.+?fatal:\s+config variable inet_interfaces#", $bu
 			email_events("Postfix: policyd plugin is not available",
 			"Postfix claim \n$buffer\nArtica will try to start policyd Daemon.","postfix");
 			shell_exec_maillog(trim("{$GLOBALS["NOHUP_PATH"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.postfwd2.php --start >/dev/null 2>&1"));
-			@file_put_contents($file,"#");
+			@unlink($file);@file_put_contents($file,"#");
 		}else{events("Postfix: Postfwd2 issue... -> Connection refused: {$timefile}Mn/5Mn");}
 		return;
 	}
@@ -757,7 +1018,7 @@ if(preg_match("#(.+?)\/smtpd\[.+?fatal:\s+config variable inet_interfaces#", $bu
 			if(!is_file("/usr/local/sbin/amavisd-milter")){
 				email_events("Postfix: amavisd-milter is not installed !, change the postfix method",
 				"postfix claim \n$buffer\nit seems that amavisd-milter is not installed\nArtica will re-install amavisd-milter or just\nChange amavis hooking to after-queue in order to use amavis main daemon.","postfix");
-				@file_put_contents($file,"#");
+				@unlink($file);@file_put_contents($file,"#");
 				$cmd=trim("{$GLOBALS["NOHUP_PATH"]} /usr/share/artica-postfix/bin/artica-make APP_AMAVISD_MILTER >/dev/null 2>&1 &");
 				shell_exec_maillog($cmd);
 				return;
@@ -780,7 +1041,7 @@ if(preg_match("#(.+?)\/smtpd\[.+?fatal:\s+config variable inet_interfaces#", $bu
 				email_events("Postfix: Connect to zarafa LMTP port Connection refused zarafa-lmtp will be restarted",
 				"postfix claim \n$buffer\nArtica will try to restart zarafa-lmtp daemon.","postfix");
 				shell_exec_maillog(trim("{$GLOBALS["NOHUP_PATH"]} /etc/init.d/artica-postfix restart zarafa-lmtp >/dev/null 2>&1 &"));
-				@file_put_contents($file,"#");
+				@unlink($file);@file_put_contents($file,"#");
 			}else{events("Postfix: Connect to zarafa LMTP port Connection refused: {$timefile}Mn/5Mn");}
 		return;			
 		}
@@ -795,7 +1056,7 @@ if(preg_match("#smtp\[.+?:\s+connect to 127\.0\.0\.1\[127\.0\.0\.1\]:([0-9]+):\s
 			email_events("Postfix: Connect to amavis port {$re[1]} Connection refused Amavis will be restarted",
 			"postfix claim \n$buffer\nArtica will try to restart amavis daemon.","postfix");
 			shell_exec_maillog(trim("{$GLOBALS["NOHUP_PATH"]} /etc/init.d/amavis restart --by-exec-maillog >/dev/null 2>&1 &"));
-			@file_put_contents($file,"#");
+			@unlink($file);@file_put_contents($file,"#");
 		}else{events("Postfix: Connect to amavis port {$re[1]} Connection refused: {$timefile}Mn/5Mn");}
 		return;			
 		
@@ -848,7 +1109,7 @@ if(preg_match("#fatal: dict_open: unsupported dictionary type: pcre:  Is the pos
 		email_events("Postfix: pcre missing",
 		"postfix claim \n$buffer\nArtica will try to upgrade postfix.","postfix");
 		shell_exec_maillog(trim("{$GLOBALS["NOHUP_PATH"]} /usr/share/artica-postfix/bin/artica-make APP_POSTFIX >/dev/null 2>&1 &"));
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 	}else{events("Postfix: pcre missing: {$timefile}Mn/20Mn");}
 	return;			
 }
@@ -868,7 +1129,7 @@ if(preg_match("#zarafa-gateway.+?POP3, POP3S, IMAP and IMAPS are all four disabl
 	if($timefile>10){
 		email_events("Zarafa mail server: No mailbox protocol ?",
 		"Zarafa claim \n$buffer\nYou have disabled all mailboxes protocols.\nMeans that zarafa-gateway is not necessary ???\nAre you sure ??","mailbox");
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 	}else{events("Postfix: Zarafa-gateway No services enabled...: {$timefile}Mn/10Mn");}
 	return;			
 }
@@ -884,7 +1145,7 @@ if(preg_match("#kavmilter\[.+?Cannot read template file:\s+(.+?)$#",$buffer,$re)
 		"kavmilter claim \n$buffer\nArtica will try to repair.","postfix");
 		shell_exec_maillog("/bin/touch {$re[1]}");
 		shell_exec_maillog(trim("{$GLOBALS["NOHUP_PATH"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.kavmilter.php --templates >/dev/null 2>&1 &"));
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 	}else{events("kavmilter: {$re[1]} missing: {$timefile}Mn/5Mn");}
 	return;		
 }
@@ -899,7 +1160,7 @@ if(preg_match("#kavmilter\[.+?Can't load keys: No active key. Only skip actions 
 	if($timefile>10){
 		email_events("Kaspersky Milter: no license !!",
 		"kavmilter claim \n$buffer\nPlease disable kavmilter plugin or perform a license key activation","postfix");
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 	}else{events("kavmilter: kavmilter: key missing: {$timefile}Mn/5Mn");}
 	return;		
 }
@@ -922,7 +1183,7 @@ if(preg_match("#imaps\[.+?Fatal error: tls_start_servertls.+?failed#",$buffer,$r
 	if($timefile>5){
 		shell_exec_maillog(trim("{$GLOBALS["NOHUP_PATH"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.cyrus.php --imaps-failed >/dev/null 2>&1 &"));
 		@unlink($file);
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 	}else{events("Cyrus-imap wait:{$timefile}Mn/5Mn");}
 	return;		
 }
@@ -937,7 +1198,7 @@ if(preg_match("#fatal: file.+?main\.cf: parameter setgid_group: unknown group na
 		$unix=new unix();
 		$groupadd=$unix->find_program("groupadd");
 		shell_exec_maillog("$groupadd {$re[1]}&");
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 	}else{events("Postfix: Postfix: group {$re[1]} is not available: {$timefile}Mn/5Mn");}
 	return;		
 }
@@ -953,7 +1214,7 @@ if(preg_match("#fatal: parameter inet_interfaces: no local interface found for (
 		@unlink("/etc/artica-postfix/MEM_INTERFACES");
 		shell_exec_maillog(trim("{$GLOBALS["NOHUP_PATH"]} {$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.virtuals-ip.php >/dev/null 2>&1 &"));
 		@unlink($file);
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 	}else{events("Postfix: Interface {$re[1]} is not available: {$timefile}Mn/5Mn");}
 	return;		
 }
@@ -968,7 +1229,7 @@ if(preg_match("#qmgr\[.+?fatal: incorrect version of Berkeley DB: compiled again
 		"Postfix claim \n$buffer\nArtica will upgrade/re-install your postfix version.","postfix");
 		@unlink($file);
 		shell_exec_maillog(trim("{$GLOBALS["NOHUP_PATH"]} /usr/share/artica-postfix/bin/artica-make APP_POSTFIX 2>&1 &"));
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 	}else{events("Postfix : incorrect version of Berkeley DB wait:{$timefile}Mn/5Mn");}
 	return;		
 }
@@ -981,7 +1242,7 @@ if(preg_match('#smtpd\[.+? warning: unknown smtpd restriction: "(.+?)"#',$buffer
 		"Postfix claim \n$buffer\nArtica will try to fix the problem.\nif this error is sended again, please contact Artica Support team.","postfix");
 		@unlink($file);
 		shell_exec_maillog(trim("{$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.postfix.maincf.php --smtp-sender-restrictions &"));
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 	}else{events("Postfix : incorrect parameters on smtpd restriction wait:{$timefile}Mn/5Mn");}
 	return;		
 }
@@ -993,7 +1254,7 @@ if(preg_match('#spamc\[.+?connect to spamd on (.+?)\s+failed,.+?Connection refus
 		email_events("Spamassassin: Connection refused on {$re[1]}",
 		"Spamassassin claim \n$buffer\nYou should have less issues and better performances using Amavisd-new instead Spamassassin only","postfix");
 		@unlink($file);
-		@file_put_contents($file,"#");
+		@unlink($file);@file_put_contents($file,"#");
 	}else{events("Spamassassin : {$re[1]} Connection refused wait:{$timefile}Mn/5Mn");}
 	return;		
 }
@@ -1587,16 +1848,24 @@ if(preg_match("#smtpd\[.+?warning:\s+(.+?):\s+hostname\s+(.+?)\s+verification fa
 }
 
 if(preg_match('#warning.+?\[([0-9\.]+)\]:\s+SASL LOGIN authentication failed: authentication failure#',$buffer,$re)){
-	$GLOBALS["maillog_tools"]->Postfix_Addconnection_error($re[2],$re[1],"Login failed");
+	$GLOBALS["maillog_tools"]->Postfix_Addconnection_error($re[1],$re[1],"Login failed");
+	
+	$ipaddr=$re[1];
+	if(!isset($GLOBALS["SMTP_HACK"][$ipaddr]["SASL_LOGIN"])){$GLOBALS["SMTP_HACK"][$ipaddr]["SASL_LOGIN"]=0;}
+	$Count=intval($GLOBALS["SMTP_HACK"][$ipaddr]["SASL_LOGIN"]);
+	
+	
 	if($GLOBALS["SMTP_HACK_CONFIG_RATE"]["SASL_LOGIN"]>0){
-		$GLOBALS["SMTP_HACK"][$re[1]]["SASL_LOGIN"]=$GLOBALS["SMTP_HACK"][$re[1]]["SASL_LOGIN"]+1;
-	  events("Postfix Hack:bad SASL login {$re[1]}:{$GLOBALS["SMTP_HACK"][$re[1]]["SASL_LOGIN"]} retries/{$GLOBALS["SMTP_HACK_CONFIG_RATE"]["SASL_LOGIN"]} max attempts");
-		if($GLOBALS["SMTP_HACK"][$re[1]]["SASL_LOGIN"]>=$GLOBALS["SMTP_HACK_CONFIG_RATE"]["SASL_LOGIN"]){
-			events("Postfix Hack:smtp_hack_perform -> {$GLOBALS["SMTP_HACK"][$re[1]]} SASL_LOGIN");
-			smtp_hack_perform($re[1],$GLOBALS["SMTP_HACK"][$re[1]],"SASL_LOGIN");
-			unset($GLOBALS["SMTP_HACK"][$re[1]]);	
+		$Count++;
+	 	events("Postfix Hack:bad SASL login $Count retries/{$GLOBALS["SMTP_HACK_CONFIG_RATE"]["SASL_LOGIN"]} max attempts");
+		if($Count>=$GLOBALS["SMTP_HACK_CONFIG_RATE"]["SASL_LOGIN"]){
+			events("Postfix Hack:smtp_hack_perform -> $ipaddr SASL_LOGIN");
+			smtp_hack_perform($ipaddr,$GLOBALS["SMTP_HACK"][$ipaddr],"SASL_LOGIN");
+			unset($GLOBALS["SMTP_HACK"][$ipaddr]);
+			return;	
 		}
 	}
+	$GLOBALS["SMTP_HACK"][$ipaddr]["SASL_LOGIN"]=$Count;
 	return null;
 }
 
@@ -2699,7 +2968,7 @@ if(preg_match("#smtp\[.+?:\s+(.+?):\s+host.+?\[(.+?)\]\s+refused to talk to me:#
 	return null;
 }
 
-if(preg_match("#\/cleanup.*?:\s+([A-Z0-9]+):\s+redirect:.*?from\s+(.+?)\[([0-9\.]+)\];\s+from=<(.*?)>\s+to=<(.*?)>#", $line,$re)){
+if(preg_match("#\/cleanup.*?:\s+([A-Z0-9]+):\s+redirect:.*?from\s+(.+?)\[([0-9\.]+)\];\s+from=<(.*?)>\s+to=<(.*?)>#", $buffer,$re)){
 	$GLOBALS["maillog_tools"]->event_messageid_rejected($re[1],"Redirect",$re[2],$re[5],$re[4],$re[3]);
 	return null;
 }
@@ -2912,11 +3181,12 @@ events_not_filtered("Not Filtered:\"$buffer\"");
 
 
 function events($text){
+		if(!isset($GLOBALS["MYPID"])){$GLOBALS["MYPID"]=getmypid();}
 		$filename=basename(__FILE__);
+		$logFile="{$GLOBALS["ARTICALOGDIR"]}/postfix-logger.debug";
 		$size=filesize($logFile);
 		if($size>5000000){unlink($logFile);}
-		$logFile="{$GLOBALS["ARTICALOGDIR"]}/postfix-logger.debug";
-		error_log("$filename $text");
+		error_log("[{$GLOBALS["MYPID"]}]: $filename $text");
 }
 		
 
@@ -3012,7 +3282,7 @@ function amavis_socket_error($line){
 	}
 	@unlink($file);
 	@mkdir("/etc/artica-postfix/cron.1");
-	@file_put_contents($file,"#");	
+	@unlink($file);@file_put_contents($file,"#");	
 }
 
 function mailbox_unknown($line,$to){
@@ -3020,7 +3290,7 @@ function mailbox_unknown($line,$to){
 	if(file_time_min($file)<15){return null;}
 	email_events("Warning unknown mailbox $to","Postfix claim: $to mailbox is not available you should create an alias or mailbox $line","mailbox");
 	@unlink($file);
-	@file_put_contents($file,"#");	
+	@unlink($file);@file_put_contents($file,"#");	
 	
 }
 
@@ -3083,7 +3353,7 @@ function cyrus_socket_error($buffer,$socket){
 	email_events("cyrus-imapd socket error: $socket","Postfix claim \"$buffer\", Artica will restart cyrus",'mailbox');
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET('/etc/init.d/cyrus-imapd restart');
 	@unlink($file);
-	@file_put_contents($file,"#");
+	@unlink($file);@file_put_contents($file,"#");
 }
 
 
@@ -3103,7 +3373,7 @@ if($GLOBALS["ActAsSMTPGatewayStatistics"]==0){return;}
 	email_events("SpamAssassin error Regex","SpamAssassin claim \"$buffer\", Artica will run /usr/bin/sa-update to fix it",'postfix');
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET("/usr/share/artica-postfix/bin/artica-update --spamassassin --force");
 	@unlink($file);
-	@file_put_contents($file,"#");	
+	@unlink($file);@file_put_contents($file,"#");	
 	if(!is_file($file)){
 		events("error writing time file:$file");
 	}	
@@ -3115,7 +3385,7 @@ function miltergreylist_error($buffer,$socket){
 	email_events("Milter Greylist error: $socket","System claim \"$buffer\", Artica will restart milter-greylist",'postfix');
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET('/etc/init.d/milter-greylist restart');
 	@unlink($file);
-	@file_put_contents($file,"#");
+	@unlink($file);@file_put_contents($file,"#");
 }
 
 
@@ -3130,7 +3400,7 @@ function MilterClamavError($buffer,$socket){
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET("/bin/chown -R postfix:postfix ". dirname($socket));
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET("postqueue -f");
 	@unlink($file);
-	@file_put_contents($file,"#");	
+	@unlink($file);@file_put_contents($file,"#");	
 	
 }
 function AmavisConfigErrorInPostfixRestart($buffer){
@@ -3141,7 +3411,7 @@ function AmavisConfigErrorInPostfixRestart($buffer){
 	
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET("/etc/init.d/postfix restart-single");
 	@unlink($file);
-	@file_put_contents($file,"#");		
+	@unlink($file);@file_put_contents($file,"#");		
 }
 function ImBlackListed($server,$buffer){
 	if($GLOBALS["ActAsSMTPGatewayStatistics"]==0){return;}
@@ -3149,7 +3419,7 @@ function ImBlackListed($server,$buffer){
 	if(file_time_min($file)<15){return null;}	
 	email_events("Your are blacklisted from $server","Postfix claim \"$buffer\", try to investigate why or contact our technical support",'postfix');
 	@unlink($file);
-	@file_put_contents($file,"#");		
+	@unlink($file);@file_put_contents($file,"#");		
 }
 
 
@@ -3169,7 +3439,7 @@ function postfix_compile_db($hash_file,$buffer){
 	events("DB Problem -> $hash_file -> $cmd");
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET($unix->find_program("postfix"). " reload");		
 	@unlink($file);
-	@file_put_contents($file,"#");		
+	@unlink($file);@file_put_contents($file,"#");		
 	
 }
 
@@ -3190,7 +3460,7 @@ function postfix_compile_missing_db($hash_file,$buffer){
 	events("DB Problem -> $hash_file -> $cmd");
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET($unix->find_program("postfix"). " reload");		
 	@unlink($file);
-	@file_put_contents($file,"#");		
+	@unlink($file);@file_put_contents($file,"#");		
 	
 }
 
@@ -3201,7 +3471,7 @@ function cyrus_bad_login($router,$ip,$user,$error){
 	@unlink($file);
 	email_events("User $user cannot login to mailbox","cyrus claim \"$error\" for $user (router:$router, ip:$ip),
 	 please,send the right password to $user",'mailbox');
-	@file_put_contents($file,"#");		
+	@unlink($file);@file_put_contents($file,"#");		
 }
 
 function smtp_sasl_failed($router,$ip,$buffer){
@@ -3211,7 +3481,7 @@ function smtp_sasl_failed($router,$ip,$buffer){
 	if(file_time_min($file)<15){return null;}
 	@unlink($file);
 	email_events("SMTP authentication failed from $router","Postfix claim \"$buffer\" for ip address $ip",'postfix');
-	@file_put_contents($file,"#");		
+	@unlink($file);@file_put_contents($file,"#");		
 }
 
 function kavmilter_expired($buffer){
@@ -3225,7 +3495,7 @@ function kavmilter_expired($buffer){
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET($cmd);
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET("/etc/init.d/artica-postfix stop kavmilter");
 	email_events("Kaspersky For Mail server, license expired","Postfix claim \"$buffer\" Artica will disable Kaspersky and restart postfix",'postfix');
-	@file_put_contents($file,"#");
+	@unlink($file);@file_put_contents($file,"#");
 	}
 
 function hackPOP($ip,$logon,$buffer){
@@ -3266,7 +3536,7 @@ function zarafa_store_error($buffer){
 	events("$cmd");
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET($cmd);
 	email_events("Zarafa mailbox server store error","Zarafa claim \"$buffer\" Artica will try to reactivate stores and accounts",'mailbox');
-	@file_put_contents($file,"#");	
+	@unlink($file);@file_put_contents($file,"#");	
 }
 
 function postfix_nosuch_fileor_directory($service,$targetedfile,$buffer){
@@ -3288,7 +3558,7 @@ function postfix_nosuch_fileor_directory($service,$targetedfile,$buffer){
 		$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET($cmd);
 		email_events("missing database ". basename($targetedfile),"Service postfix/$service claim \"$buffer\" Artica will create a blank $targetedfile",'smtp');
 		$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET("postfix reload");
-		@file_put_contents($file,"#");	
+		@unlink($file);@file_put_contents($file,"#");	
 		return;		
 	 }
 	
@@ -3299,7 +3569,7 @@ function postfix_nosuch_fileor_directory($service,$targetedfile,$buffer){
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET($cmd);
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET("postfix reload");
 	email_events("missing ". basename($targetedfile),"Service postfix/$service claim \"$buffer\" Artica will create a blank $targetedfile",'smtp');
-	@file_put_contents($file,"#");		
+	@unlink($file);@file_put_contents($file,"#");		
 }
 function postfix_baddb($service,$targetedfile,$buffer){
 	if($GLOBALS["ActAsSMTPGatewayStatistics"]==0){return;}
@@ -3315,7 +3585,7 @@ function postfix_baddb($service,$targetedfile,$buffer){
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET($cmd);
 	email_events("corrupted database ". basename($file),"Service postfix/$service claim \"$buffer\" Artica will rebuild $targetedfile.db",'smtp');
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET("postfix reload");
-	@file_put_contents($file,"#");	
+	@unlink($file);@file_put_contents($file,"#");	
 	return;			
 }
 
@@ -3328,7 +3598,7 @@ function multi_instances_reconfigure($buffer){
 	events(__FUNCTION__. " <$cmd>");
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET($cmd);	
 	email_events("multi-instances not correctly set","Service postfix claim \"$buffer\" Artica will rebuild multi-instances settings",'smtp');
-	@file_put_contents($file,"#");	
+	@unlink($file);@file_put_contents($file,"#");	
 	return;		
 }
 
@@ -3344,7 +3614,7 @@ function postfix_bind_error($ip,$port,$buffer){
 	events(__FUNCTION__. " <$cmd>");
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET($cmd);	
 	email_events("Unable to bind $ip:$port","Service postfix claim \"$buffer\" Artica will restart all daemons to fix it",'smtp');
-	@file_put_contents($file,"#");	
+	@unlink($file);@file_put_contents($file,"#");	
 	return;	
 }
 
@@ -3363,7 +3633,7 @@ function mailbox_corrupted($buffer,$mail){
 	find ~cyrus -type f | grep quota\nremove the quota files for the affected mailbox(es)\nrun
 	reconstruct -r -f user/mailboxoftheuser\n\n
 	if you cannot perform this operation, you can open a ticket on artica technology company http://www.artica-technology.com' ",'mailbox');
-	@file_put_contents($file,"#");	
+	@unlink($file);@file_put_contents($file,"#");	
 	return;		
 }
 
@@ -3376,7 +3646,7 @@ function mailbox_overquota($buffer,$mail){
 	}	
 	@unlink($file);
 	email_events("mailbox $mail Over Quota","Service postfix claim \"$buffer\" try to increase quota for $mail' ",'mailbox');
-	@file_put_contents($file,"#");	
+	@unlink($file);@file_put_contents($file,"#");	
 	return;		
 }
 
@@ -3390,7 +3660,7 @@ function zarafa_rebuild_db($table,$buffer){
 	@unlink($file);
 	email_events("Zarafa missing Mysql table $table","Service Zarafa claim \"$buffer\" artica will destroy the zarafa database in order to let the Zarafa service create a new one' ",'mailbox');
 	$GLOBALS["CLASS_UNIX"]->THREAD_COMMAND_SET("{$GLOBALS["PHP5_BIN"]} ".dirname(__FILE__)."/exec.mysql.build.php --rebuild-zarafa");
-	@file_put_contents($file,"#");	
+	@unlink($file);@file_put_contents($file,"#");	
 	return;		
 	
 }
@@ -3553,7 +3823,7 @@ function amavis_sa_update($buffer){
 	$file="/etc/artica-postfix/pids/".__FUNCTION__.".error.time";
 	if(file_time_min($file)<15){events("-> detected $buffer, need to wait 15mn");return null;}	
 	@unlink($file);
-	@file_put_contents($file,"#");	
+	@unlink($file);@file_put_contents($file,"#");	
 	shell_exec_maillog(trim($cmd));
 	events("$cmd");
 	return;			

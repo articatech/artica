@@ -2880,10 +2880,7 @@ function LDAP_SAVE(){
 	if(isset($_GET["RestartLDAPEach"])){$sock->SET_INFO("RestartLDAPEach",$_GET["RestartLDAPEach"]);}
 	
 	
-	if(!isset($GLOBALS["cmd.php?ldap-restart=yes"])){
-		$sock->getFrameWork("cmd.php?ldap-restart=yes");
-		$GLOBALS["cmd.php?ldap-restart=yes"]=true;
-	}
+	
 	
 }
 
@@ -3199,10 +3196,7 @@ function LDAP_CONFIG_NET_ADD(){
 	$SavedNets=explode("\n",$sock->GET_INFO('LdapListenIPAddr'));
 	$SavedNets[]=$_GET["LdapListenIPAddr"];
 	$sock->SaveConfigFile(@implode("\n",$SavedNets),"LdapListenIPAddr");
-	if(!isset($GLOBALS["cmd.php?ldap-restart=yes"])){
-		$sock->getFrameWork("cmd.php?ldap-restart=yes");
-		$GLOBALS["cmd.php?ldap-restart=yes"]=true;
-	}
+	
 }
 function LDAP_CONFIG_NET_ADD_OTHER(){
 	if(trim($_GET["ldap_other_network_card"])==null){return;}
@@ -3210,10 +3204,7 @@ function LDAP_CONFIG_NET_ADD_OTHER(){
 	$SavedNets=explode("\n",$sock->GET_INFO('LdapListenIPAddr'));
 	$SavedNets[]=$_GET["ldap_other_network_card"];
 	$sock->SaveConfigFile(@implode("\n",$SavedNets),"LdapListenIPAddr");
-	if(!isset($GLOBALS["cmd.php?ldap-restart=yes"])){
-		$sock->getFrameWork("cmd.php?ldap-restart=yes");
-		$GLOBALS["cmd.php?ldap-restart=yes"]=true;
-	}	
+	
 }
 
 function LDAP_CONFIG_NET_DEL(){
@@ -3221,10 +3212,7 @@ function LDAP_CONFIG_NET_DEL(){
 	$SavedNets=explode("\n",$sock->GET_INFO('LdapListenIPAddr'));
 	unset($SavedNets[$_GET["ldapDelNet"]]);
 	$sock->SaveConfigFile(@implode("\n",$SavedNets),"LdapListenIPAddr");
-	if(!isset($GLOBALS["cmd.php?ldap-restart=yes"])){
-		$sock->getFrameWork("cmd.php?ldap-restart=yes");
-		$GLOBALS["cmd.php?ldap-restart=yes"]=true;
-	}
+	
 }
 
 
@@ -3773,10 +3761,7 @@ function LDAP_SYNCPROV_SAVE(){
 		$u=new user($_GET["sync_user"]);
 		$sock->SET_INFO("SyncProvUserDN",$u->dn);
 	}
-	if(!isset($GLOBALS["cmd.php?ldap-restart=yes"])){
-		$sock->getFrameWork("cmd.php?ldap-restart=yes");
-		$GLOBALS["cmd.php?ldap-restart=yes"]=true;
-	}
+	
 }
 
 function LighttpdArticaDisabled(){

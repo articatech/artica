@@ -48,6 +48,7 @@ if(isset($_GET["mysql-crash"])){mysql_crash();exit;}
 if(isset($_GET["failover-progress-unlink"])){failover_unlink_progress();exit;}
 if(isset($_GET["artica-quotas-rules"])){artica_quotas_rules_progress();exit;}
 if(isset($_GET["hypercache-progress"])){hypercache_progress();exit;}
+if(isset($_GET["hypercache-progress-rules"])){hypercache_progress_rules();exit;}
 if(isset($_GET["hypercache-dedup-ping"])){hypercache_dedup_ping();exit;}
 if(isset($_GET["whitelist-ntlm"])){whitelist_ntlm_progress();exit;}
 if(isset($_GET["failover-progress"])){failover_progress();exit;}
@@ -786,6 +787,27 @@ function hypercache_progress(){
 	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
 
 
+}
+
+function hypercache_progress_rules(){
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/web/squid.hypercache.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/squid.hypercache.progress.txt";
+	@unlink($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);$array["POURC"]=2;$array["TEXT"]="{please_wait}";@file_put_contents($GLOBALS["CACHEFILE"], serialize($array));
+	
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["LOGSFILES"],0777);
+	
+	$unix=new unix();
+	$nohup=$unix->find_program("nohup");
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$cmd=trim("$nohup $php5 /usr/share/artica-postfix/exec.hypercache-dedup.php --rules --progress >{$GLOBALS["LOGSFILES"]} 2>&1 &");
+	shell_exec($cmd);
+	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
+	
+	
 }
 
 function recategorize_week(){
@@ -2290,6 +2312,16 @@ function articadb_update_now(){
 function articadb_size(){
 	$unix=new unix();
 	$du=$unix->find_program("du");
+	
+	if(!function_exists("system_is_overloaded")){
+		include_once("/usr/share/artica-postfix/ressources/class.os.system.inc");
+	}
+	if(function_exists("system_is_overloaded")){
+		if(system_is_overloaded()){
+			echo "<articadatascgi>0</articadatascgi>";
+			return 0;}
+	}
+	
 	$ArticaDBPath=@file_get_contents("/etc/artica-postfix/settings/Daemons/ArticaDBPath");
 	if($ArticaDBPath==null){$ArticaDBPath="/opt/articatech";}
 	$cmd="$du -hs $ArticaDBPath/data 2>&1";
@@ -3129,7 +3161,9 @@ function failover_unlink_progress(){
 	@chmod($GLOBALS["CACHEFILE"],0777);$array["POURC"]=2;$array["TEXT"]="{please_wait}";@file_put_contents($GLOBALS["CACHEFILE"], serialize($array));
 	@chmod($GLOBALS["LOGSFILES"],0777);
 
-	$cmd=trim("$nohup $php5 /usr/share/artica-postfix/exec.failover.php --unlink >{$GLOBALS["LOGSFILES"]} 2>&1 &");
+	if(isset($_GET["force"])){$addon=" --force";}
+	
+	$cmd=trim("$nohup $php5 /usr/share/artica-postfix/exec.failover.php --unlink{$addon} >{$GLOBALS["LOGSFILES"]} 2>&1 &");
 	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
 	shell_exec($cmd);
 

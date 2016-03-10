@@ -52,8 +52,14 @@ if(preg_match("#--verbose#", @implode(" ", $argv))){
 
   if($argv[1]=="--groups"){
 	  	$GLOBALS["VERBOSE"]=true;
+	  	$GLOBALS["DEBUG_GROUPS"]=true;
 	    $GROUPZ=$external_acl_squid_ldap->GetGroupsFromMember($argv[2]);
-	   print_r($GROUPZ);
+	    
+	    echo "********************* GROUPS ***********************\n";
+	    echo count($GROUPZ)."\n\n";
+	    print_r($GROUPZ);
+	    echo "\n\n************************************************\n\n\n";
+	    
 	   echo "********************* RECURSIVE ***********************\n";
 	   $external_acl_squid_ldap->ADLdap_getgroups($argv[2]);
 	   $infos=$external_acl_squid_ldap->ADLdap_userinfos($argv[2]);
@@ -68,7 +74,7 @@ while (!feof(STDIN)) {
  
   
  if($content<>null){
- 	
+ 	$AS_TAG=false;
  	if($GLOBALS["DEBUG_GROUPS"]>0){ WLOG("receive content...\"$content\""); }
  	$array=explode(" ",$content);
  	$member=trim($array[0]);
@@ -82,6 +88,10 @@ while (!feof(STDIN)) {
  	
  	$group=AccountDecode($group);
  	$group=strtolower($group);
+ 	if(preg_match("#^tag:(.+)#", $group,$re)){
+ 		$AS_TAG=true;
+ 		$group=trim(strtolower($re[1]));
+ 	}
  	
  	if($group==-1){
  		$log=null;
@@ -118,6 +128,8 @@ while (!feof(STDIN)) {
  		}
  		
  		if($GLOBALS["DEBUG_GROUPS"] >0){  WLOG("[CHECK]: Method[{$GLOBALS["AdStatsGroupMethod"]}]OK clt_conn_tag=$FirstGroup log=$FirstGroup,$ou");}
+ 		
+ 		
  		fwrite(STDOUT, "OK clt_conn_tag=$FirstGroup log=$FirstGroup,$ou\n");
  		continue;
 	}
@@ -127,6 +139,8 @@ while (!feof(STDIN)) {
  	
  	if($GLOBALS["DEBUG_GROUPS"] >0){ WLOG("GetGroupsFromMember($member) -> `$member` [1] = \"$group\" count:$count"); }
  	$GROUPY=$external_acl_squid_ldap->GetGroupsFromMember($member);
+ 	
+ 	
  	if(count($GROUPY)>0){
  		while (list ($a, $b) = each ($GROUPY) ){
  			$a=trim(strtolower($a));
@@ -176,6 +190,9 @@ while (!feof(STDIN)) {
  		
  		if($ANSWER){continue;}
  		if($GLOBALS["DEBUG_GROUPS"] >0){  WLOG("$member is not a member of block number $group"); }
+ 		
+ 		if($AS_TAG){fwrite(STDOUT, "OK tag=everyone\n");continue;}
+ 		
  		fwrite(STDOUT, "ERR\n");
  		continue;
  	}
@@ -196,11 +213,13 @@ while (!feof(STDIN)) {
  	
  	if(isset($GROUPZ[$group])){
  		if($GLOBALS["DEBUG_GROUPS"] >0){  WLOG("[SEND]: OK $member is a member of \"$group\"");}
+ 		if($AS_TAG){fwrite(STDOUT, "OK tag=$group\n");continue;}
  		fwrite(STDOUT, "OK tag=$GroupName\n");
  		continue;
  	}
 
  	if($GLOBALS["DEBUG_GROUPS"] >0){  WLOG("$member IS NOT a member of `$group`"); }
+ 	if($AS_TAG){fwrite(STDOUT, "OK tag=everyone\n");continue;}
  	fwrite(STDOUT, "ERR\n");
 
 	}
@@ -780,9 +799,24 @@ function WLOG($text=null){
 function ufdbguard_checks($id){
 	LoadSettings();
 	if($GLOBALS["VERBOSE"]){$GLOBALS["output"]=true;echo "OPEN: /etc/squid3/ufdb.groups.$id.db\n";}
+	
+	
+	if(!is_file("/etc/squid3/ufdb.groups.$id.db")){
+		if($GLOBALS["output"]){
+			echo "Cannot perform this operation\nYou have to create correctly a Web filtering rule\nIncluding blacklists and whitelists\nAnd compile your Web filtering rules in order to dump groups\n";
+			
+		}
+		return null;
+	}
+	
 	$arrayGROUPS=unserialize(@file_get_contents("/etc/squid3/ufdb.groups.$id.db"));
 	$FINAL=array();
 	$Hash=array();
+	
+	
+	if($GLOBALS["VERBOSE"]){echo "DUMP: ARRAY ***********************\n";}
+	if($GLOBALS["VERBOSE"]){print_r($arrayGROUPS);}
+	if($GLOBALS["VERBOSE"]){echo "***********************************\n";}
 	
 	if(isset($arrayGROUPS["EXT-LDAP"])){
 		if($GLOBALS["VERBOSE"]){echo "Found:EXT-LDAP\n";}
@@ -816,8 +850,13 @@ function ufdbguard_checks($id){
 
 	
 	if(isset($arrayGROUPS["AD"])){
+		
+		
+		
 		while (list ($index, $DNenc) = each ($arrayGROUPS["AD"]) ){
 			$DN=base64_decode($DNenc);
+			if($GLOBALS["output"]){echo "Loading Active Directory groups...\n";}
+			if($GLOBALS["output"]){echo "Branch $DN\n";}
 			if($GLOBALS["VERBOSE"]){echo "DN, $DN\n";}
 			$ldapExt=new external_acl_squid_ldap();
 			$members=$ldapExt->AdLDAP_MembersFromGroup($DN);

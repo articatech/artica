@@ -30,7 +30,7 @@ if($argv[1]=='--test-white'){$iptablesClass=new iptables_chains();$GLOBALS["IPTA
 if($argv[1]=='--export-drop'){ExportDrop();die();}
 if($argv[1]=='--transfert-white'){ParseResolvMX();die();}
 if($argv[1]=='--upgrade-white'){UpgradeWhiteList();die();}
-if($argv[1]=='--ipdeny'){ipdeny();die();}
+
 if($argv[1]=='--perso'){perso();die();}
 if($argv[1]=='--nginx'){FW_NGINX_RULES();die();}
 if($argv[1]=='--spamhaus'){FW_SPAMHAUS_RULES();die();}
@@ -107,47 +107,26 @@ events("restoring datas iptables-restore < /etc/artica-postfix/iptables.new.conf
 file_put_contents("/etc/artica-postfix/iptables.new.conf",$conf);
 system("$iptables_restore < /etc/artica-postfix/iptables.new.conf");
 }
-function iptables_ipdeny_delete_all(){
-$unix=new unix();
-$iptables_save=$unix->find_program("iptables-save");
-$iptables_restore=$unix->find_program("iptables-restore");	
-events("Exporting datas iptables-save > /etc/artica-postfix/iptables.conf");
-system("$iptables_save > /etc/artica-postfix/iptables.conf");
-$data=file_get_contents("/etc/artica-postfix/iptables.conf");
-$datas=explode("\n",$data);
-$pattern="#.+?ArticaIpDeny#";
-$c=0;	
-while (list ($num, $ligne) = each ($datas) ){
-		if($ligne==null){continue;}
-		if(preg_match($pattern,$ligne)){$c++;continue;}
-		events("skip rule $ligne from deletion");
-		$conf=$conf . $ligne."\n";
-		}
-echo "Ban country $c removed rules...\n";
-events("restoring datas iptables-restore < /etc/artica-postfix/iptables.new.conf");
-file_put_contents("/etc/artica-postfix/iptables.new.conf",$conf);
-system("$iptables_restore < /etc/artica-postfix/iptables.new.conf");
-}
 function iptables_perso_delete_all(){
-$unix=new unix();
-$iptables_save=$unix->find_program("iptables-save");
-$iptables_restore=$unix->find_program("iptables-restore");		
-events("Exporting datas iptables-save > /etc/artica-postfix/iptables.conf");
-system("$iptables_save > /etc/artica-postfix/iptables.conf");
-$data=file_get_contents("/etc/artica-postfix/iptables.conf");
-$datas=explode("\n",$data);
-$pattern="#.+?ArticaPersoRules#";
-$c=0;	
-while (list ($num, $ligne) = each ($datas) ){
+	$unix=new unix();
+	$iptables_save=$unix->find_program("iptables-save");
+	$iptables_restore=$unix->find_program("iptables-restore");
+	events("Exporting datas iptables-save > /etc/artica-postfix/iptables.conf");
+	system("$iptables_save > /etc/artica-postfix/iptables.conf");
+	$data=file_get_contents("/etc/artica-postfix/iptables.conf");
+	$datas=explode("\n",$data);
+	$pattern="#.+?ArticaPersoRules#";
+	$c=0;
+	while (list ($num, $ligne) = each ($datas) ){
 		if($ligne==null){continue;}
 		if(preg_match($pattern,$ligne)){$c++;continue;}
 		events("skip rule $ligne from deletion");
 		$conf=$conf . $ligne."\n";
-		}
-echo "Ban country $c removed rules...\n";
-events("restoring datas iptables-restore < /etc/artica-postfix/iptables.new.conf");
-file_put_contents("/etc/artica-postfix/iptables.new.conf",$conf);
-system("$iptables_restore < /etc/artica-postfix/iptables.new.conf");
+	}
+	echo "Ban country $c removed rules...\n";
+	events("restoring datas iptables-restore < /etc/artica-postfix/iptables.new.conf");
+	file_put_contents("/etc/artica-postfix/iptables.new.conf",$conf);
+	system("$iptables_restore < /etc/artica-postfix/iptables.new.conf");
 }
 function iptables_nginx_delete_all(){
 	$unix=new unix();
@@ -465,56 +444,9 @@ function FW_SPAMHAUS_RULES($aspid=false){
 }
 
 
-function ipdeny(){
-	$unix=new unix();
-	$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
-	$pid=@file_get_contents($pidfile);
-	if($unix->process_exists($pid,basename(__FILE__))){echo "Already running pid $pid\n";return;}		
-	
-	
-	
-	if($GLOBALS["VERBOSE"]){echo "iptables_ipdeny_delete_all()\n";}
-	iptables_ipdeny_delete_all();
-	
-	$sock=new sockets();
-	$EnableIpBlocks=$sock->GET_INFO("EnableIpBlocks");	
-	if($EnableIpBlocks<>1){return ;}
-	$sql="SELECT * FROM ipblocks_set";
-	$q=new mysql();
-	$list=array("af"=>"afghanistan","al"=>"albania","dz"=>"algeria","as"=>"samoa","ad"=>"andorra","ao"=>"angola","ai"=>"anguilla","ag"=>"barbuda","ar"=>"argentina","am"=>"armenia","aw"=>"aruba","au"=>"australia","at"=>"austria","az"=>"azerbaijan","bs"=>"bahamas","bh"=>"bahrain","bd"=>"bangladesh","bb"=>"barbados","by"=>"belarus","be"=>"belgium","bz"=>"belize","bj"=>"benin","bm"=>"bermuda","bt"=>"bhutan","bo"=>"bolivia","ba"=>"herzegovina","bw"=>"botswana","br"=>"brazil","io"=>"territory","bn"=>"darussalam","bg"=>"bulgaria","bf"=>"faso","bi"=>"burundi","kh"=>"cambodia","cm"=>"cameroon","ca"=>"canada","ky"=>"islands","cf"=>"republic","cl"=>"chile","cn"=>"china","co"=>"colombia","cd"=>"the","ck"=>"islands","cr"=>"rica","ci"=>"ivoire","hr"=>"croatia","cu"=>"cuba","cy"=>"cyprus","cz"=>"republic","dk"=>"denmark","dj"=>"djibouti","do"=>"republic","ec"=>"ecuador","eg"=>"egypt","sv"=>"salvador","er"=>"eritrea","ee"=>"estonia","et"=>"ethiopia","fo"=>"islands","fj"=>"fiji","fi"=>"finland","fr"=>"france","gf"=>"guiana","pf"=>"polynesia","ga"=>"gabon","gm"=>"gambia","ge"=>"georgia","de"=>"germany","gh"=>"ghana","gi"=>"gibraltar","gr"=>"greece","gl"=>"greenland","gd"=>"grenada","gu"=>"guam","gt"=>"guatemala","gw"=>"bissau","gy"=>"guyana","ht"=>"haiti","hn"=>"honduras","hk"=>"kong","hu"=>"hungary","is"=>"iceland","in"=>"india","id"=>"indonesia","ir"=>"of","iq"=>"iraq","ie"=>"ireland","il"=>"israel","it"=>"italy","jm"=>"jamaica","jp"=>"japan","jo"=>"jordan","kz"=>"kazakhstan","ke"=>"kenya","ki"=>"kiribati","kr"=>"of","kw"=>"kuwait","kg"=>"kyrgyzstan","la"=>"republic","lv"=>"latvia","lb"=>"lebanon","ls"=>"lesotho","lr"=>"liberia","ly"=>"jamahiriya","li"=>"liechtenstein","lt"=>"lithuania","lu"=>"luxembourg","mo"=>"macao","mk"=>"of","mg"=>"madagascar","mw"=>"malawi","my"=>"malaysia","mv"=>"maldives","ml"=>"mali","mt"=>"malta","mr"=>"mauritania","mu"=>"mauritius","mx"=>"mexico","fm"=>"of","md"=>"of","mc"=>"monaco","mn"=>"mongolia","ma"=>"morocco","mz"=>"mozambique","mm"=>"myanmar","na"=>"namibia","nr"=>"nauru","np"=>"nepal","nl"=>"netherlands","an"=>"antilles","nc"=>"caledonia","nz"=>"zealand","ni"=>"nicaragua","ne"=>"niger","ng"=>"nigeria","nu"=>"niue","nf"=>"island","mp"=>"islands","no"=>"norway","om"=>"oman","pk"=>"pakistan","pw"=>"palau","ps"=>"occupied","pa"=>"panama","pg"=>"guinea","py"=>"paraguay","pe"=>"peru","ph"=>"philippines","pl"=>"poland","pt"=>"portugal","pr"=>"rico","qa"=>"qatar","ro"=>"romania","ru"=>"federation","rw"=>"rwanda","kn"=>"nevis","lc"=>"lucia","ws"=>"samoa","sm"=>"marino","sa"=>"arabia","sn"=>"senegal","sc"=>"seychelles","sl"=>"leone","sg"=>"singapore","sk"=>"slovakia","si"=>"slovenia","sb"=>"islands","za"=>"africa","es"=>"spain","lk"=>"lanka","sd"=>"sudan","sr"=>"suriname","sz"=>"swaziland","se"=>"sweden","ch"=>"switzerland","sy"=>"republic","tw"=>"china","tj"=>"tajikistan","tz"=>"of","th"=>"thailand","tg"=>"togo","to"=>"tonga","tt"=>"tobago","tn"=>"tunisia","tr"=>"turkey","tm"=>"turkmenistan","tv"=>"tuvalu","ug"=>"uganda","ua"=>"ukraine","ae"=>"emirates","gb"=>"kingdom","us"=>"states","uy"=>"uruguay","uz"=>"uzbekistan","vu"=>"vanuatu","ve"=>"venezuela","vn"=>"nam","vg"=>"british","ye"=>"yemen","zm"=>"zambia","zw"=>"zimbabwe");
-	$results=$q->QUERY_SQL($sql,'artica_backup');
-	if(!$q->ok){echo "<H2>$q->mysql_error</H2><code>$sql</code>";}
-	while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
-		echo "Ban country {$list[$ligne["country"]]} {$ligne["country"]}\n";
-		ipdeny_perform($ligne["country"]);
-	}	
-}
 
-function ipdeny_perform($country){
-	$unix=new unix();
-	$iptables=$unix->find_program("iptables");	
-	$sql="SELECT * FROM ipblocks_db WHERE country='$country'";
-	$list=array("af"=>"afghanistan","al"=>"albania","dz"=>"algeria","as"=>"samoa","ad"=>"andorra","ao"=>"angola","ai"=>"anguilla","ag"=>"barbuda","ar"=>"argentina","am"=>"armenia","aw"=>"aruba","au"=>"australia","at"=>"austria","az"=>"azerbaijan","bs"=>"bahamas","bh"=>"bahrain","bd"=>"bangladesh","bb"=>"barbados","by"=>"belarus","be"=>"belgium","bz"=>"belize","bj"=>"benin","bm"=>"bermuda","bt"=>"bhutan","bo"=>"bolivia","ba"=>"herzegovina","bw"=>"botswana","br"=>"brazil","io"=>"territory","bn"=>"darussalam","bg"=>"bulgaria","bf"=>"faso","bi"=>"burundi","kh"=>"cambodia","cm"=>"cameroon","ca"=>"canada","ky"=>"islands","cf"=>"republic","cl"=>"chile","cn"=>"china","co"=>"colombia","cd"=>"the","ck"=>"islands","cr"=>"rica","ci"=>"ivoire","hr"=>"croatia","cu"=>"cuba","cy"=>"cyprus","cz"=>"republic","dk"=>"denmark","dj"=>"djibouti","do"=>"republic","ec"=>"ecuador","eg"=>"egypt","sv"=>"salvador","er"=>"eritrea","ee"=>"estonia","et"=>"ethiopia","fo"=>"islands","fj"=>"fiji","fi"=>"finland","fr"=>"france","gf"=>"guiana","pf"=>"polynesia","ga"=>"gabon","gm"=>"gambia","ge"=>"georgia","de"=>"germany","gh"=>"ghana","gi"=>"gibraltar","gr"=>"greece","gl"=>"greenland","gd"=>"grenada","gu"=>"guam","gt"=>"guatemala","gw"=>"bissau","gy"=>"guyana","ht"=>"haiti","hn"=>"honduras","hk"=>"kong","hu"=>"hungary","is"=>"iceland","in"=>"india","id"=>"indonesia","ir"=>"of","iq"=>"iraq","ie"=>"ireland","il"=>"israel","it"=>"italy","jm"=>"jamaica","jp"=>"japan","jo"=>"jordan","kz"=>"kazakhstan","ke"=>"kenya","ki"=>"kiribati","kr"=>"of","kw"=>"kuwait","kg"=>"kyrgyzstan","la"=>"republic","lv"=>"latvia","lb"=>"lebanon","ls"=>"lesotho","lr"=>"liberia","ly"=>"jamahiriya","li"=>"liechtenstein","lt"=>"lithuania","lu"=>"luxembourg","mo"=>"macao","mk"=>"of","mg"=>"madagascar","mw"=>"malawi","my"=>"malaysia","mv"=>"maldives","ml"=>"mali","mt"=>"malta","mr"=>"mauritania","mu"=>"mauritius","mx"=>"mexico","fm"=>"of","md"=>"of","mc"=>"monaco","mn"=>"mongolia","ma"=>"morocco","mz"=>"mozambique","mm"=>"myanmar","na"=>"namibia","nr"=>"nauru","np"=>"nepal","nl"=>"netherlands","an"=>"antilles","nc"=>"caledonia","nz"=>"zealand","ni"=>"nicaragua","ne"=>"niger","ng"=>"nigeria","nu"=>"niue","nf"=>"island","mp"=>"islands","no"=>"norway","om"=>"oman","pk"=>"pakistan","pw"=>"palau","ps"=>"occupied","pa"=>"panama","pg"=>"guinea","py"=>"paraguay","pe"=>"peru","ph"=>"philippines","pl"=>"poland","pt"=>"portugal","pr"=>"rico","qa"=>"qatar","ro"=>"romania","ru"=>"federation","rw"=>"rwanda","kn"=>"nevis","lc"=>"lucia","ws"=>"samoa","sm"=>"marino","sa"=>"arabia","sn"=>"senegal","sc"=>"seychelles","sl"=>"leone","sg"=>"singapore","sk"=>"slovakia","si"=>"slovenia","sb"=>"islands","za"=>"africa","es"=>"spain","lk"=>"lanka","sd"=>"sudan","sr"=>"suriname","sz"=>"swaziland","se"=>"sweden","ch"=>"switzerland","sy"=>"republic","tw"=>"china","tj"=>"tajikistan","tz"=>"of","th"=>"thailand","tg"=>"togo","to"=>"tonga","tt"=>"tobago","tn"=>"tunisia","tr"=>"turkey","tm"=>"turkmenistan","tv"=>"tuvalu","ug"=>"uganda","ua"=>"ukraine","ae"=>"emirates","gb"=>"kingdom","us"=>"states","uy"=>"uruguay","uz"=>"uzbekistan","vu"=>"vanuatu","ve"=>"venezuela","vn"=>"nam","vg"=>"british","ye"=>"yemen","zm"=>"zambia","zw"=>"zimbabwe");
-	$q=new mysql();
-	$results=$q->QUERY_SQL($sql,'artica_backup');
-	while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
-		$cmd="$iptables -A INPUT -s {$ligne["cdir"]} -p tcp -j LOG --log-prefix \"IPDENY {$list["$country"]} - $country DROP: \" -m comment --comment \"ArticaIpDeny\"";
-		$commands[]=$cmd;
-	}
 
-	if($GLOBALS["VERBOSE"]){echo count($commands)." should be performed\n";}
-	
-	if(is_array($commands)){
-		while (list ($index, $line) = each ($commands) ){
-			$results=array();
-			exec($line,$results);
-			if($GLOBALS["VERBOSE"]){echo $line."\n".@implode("\n", $results);}
-		}
-	}
-	
-	echo "Ban country {$list["$country"]} $country ". count($commands)." entries done\n";
-	
-}
+
 
 
 

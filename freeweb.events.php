@@ -99,7 +99,7 @@ echo $html;
 }
 
 function events_list(){
-
+	include_once(dirname(__FILE__)."/ressources/class.status.logs.inc");
 	$sock=new sockets();
 	$users=new usersMenus();
 	

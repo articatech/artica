@@ -34,6 +34,7 @@ function xstart(){
 	$timeFile="/etc/artica-postfix/pids/exec.system.last.php.xstart.php.time";
 	$pidfile="/etc/artica-postfix/pids/exec.system.last.php.xstart.php.pid";
 	$unix=new unix();
+	$RARRAY=array();
 if(!$GLOBALS["VERBOSE"]){
 	$pid=$unix->get_pid_from_file($pidfile);
 	if($unix->process_exists($pid)){return;}	

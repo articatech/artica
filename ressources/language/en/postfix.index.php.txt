@@ -44,9 +44,9 @@ but they may still be created locally as the result of configuration or software
 <enable_amavis_text>Amavisd-new is an Interface between Postfix and virus scanner/content filters.
 it provide Anti-Spam features with SpamAssassin and Antivirus scanner with ClamAV.</enable_amavis_text>
 <enable_APP_MAILARCHIVER>Enable Open Mail Archiver plugin</enable_APP_MAILARCHIVER>
-<enable_APP_MAILARCHIVER_text>If you set it to green, all mails that will be sent to Internet or sent to mailboxes (excluding blocked mails) will be backuped to Mysql database.[br]
-In this case, your users will be allowed to search/resend backuped mails[br][br]If you don't want to use this feature, set it to red...[br][br]
-Artica use MailArchiver software that be found here :[br] https://www.milter.org/milter/61</enable_APP_MAILARCHIVER_text>
+<enable_APP_MAILARCHIVER_text>If you set it to green, messages (excluding blocked mails and according backup rules ) will be backuped on this server.[br]
+In this case, your users will be allowed to search/resend backuped mails[br]If you don't want to use this feature, set it to red...[br]
+</enable_APP_MAILARCHIVER_text>
 <enable_assp>Activate Anti-Spam SMTP Proxy</enable_assp>
 <enable_assp_text>An open source platform-independent SMTP Proxy server which implements whitelists, Bayesian, and basic anti-virus filtering to rid the planet of the blight of unsolicited email</enable_assp_text>
 <enable_backup>Enable Backup On the fly</enable_backup>
@@ -66,7 +66,7 @@ In other case,if you set to red, mails will be rejected and a failed error will 
 <enable_postfix_autoblock>Enable Postfix Instant IpTables</enable_postfix_autoblock>
 <enable_postfix_autoblock_text>If you turn to green, artica will add IpTables rules in order to deny Senders IP addresses that reach the maximal events you set.</enable_postfix_autoblock_text>
 <enable_spamasssin>Enable SpamAssassin</enable_spamasssin>
-<enable_spamasssin_text>This option enable or disable spamassassin-milter, has the standard Open Source anti-spam plugin.</enable_spamasssin_text>
+<enable_spamasssin_text>This option enable or disable the Anti-Spam feature , has the standard Open Source anti-spam plugin called SpamAssassin.</enable_spamasssin_text>
 <error_notice_recipient>Notifications error recipient</error_notice_recipient>
 <error_notice_recipient_text>The recipient of postmaster notifications about mail delivery problems that are caused by policy, resource, software or protocol errors</error_notice_recipient_text>
 <feature_not_installed>This plugin is not installed</feature_not_installed>

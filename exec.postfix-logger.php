@@ -185,7 +185,7 @@ if($argv[1]=='--amavis'){
 	$pid=getmypid();
 	$pidefile="/etc/artica-postfix/croned.1/".basename(__FILE__).".pid";
 	if(is_file($pidefile)){
-		$currentpid=trim(file_get_contents($pidefile));
+		$currentpid=trim(@file_get_contents($pidefile));
 		if($currentpid<>$pid){
 			if($unix->process_exists($currentpid)){
 			write_syslog("Already instance $currentpid executed aborting...",__FILE__);
@@ -226,7 +226,7 @@ function OnlyPOstfix(){
 	
 	$pidefile="/etc/artica-postfix/pids/".basename(__FILE__).".onlypostfix.pid";
 	if(is_file($pidefile)){
-		$currentpid=trim(file_get_contents($pidefile));
+		$currentpid=trim(@file_get_contents($pidefile));
 		if($currentpid<>$pid){
 			if(is_dir('/proc/'.$currentpid)){
 			write_syslog("Already instance executed aborting...",__FILE__);

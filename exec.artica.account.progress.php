@@ -41,7 +41,7 @@ function start(){
 	
 	$username=trim($POSTED["change_admin"]);
 	$password=trim($POSTED["change_password"]);
-	
+	$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
 	
 	
 	
@@ -105,8 +105,11 @@ function start(){
 	system("/usr/share/artica-postfix/bin/artica-install --slapdconf");
 	build_progress("Refresh global settings",40);
 	system('/usr/share/artica-postfix/bin/process1 --checkout --force --verbose '. time());
-	build_progress("Restarting LDAP server",45);
-	shell_exec("/etc/init.d/slapd restart --framework=". basename(__FILE__));
+	
+	if($EnableOpenLDAP==1){
+		build_progress("Restarting LDAP server",45);
+		shell_exec("/etc/init.d/slapd restart --framework=". basename(__FILE__));
+	}
 	build_progress("Update others services",50);
 	
 	system("$php /usr/share/artica-postfix/exec.change.password.php");

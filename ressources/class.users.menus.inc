@@ -75,6 +75,7 @@ class usersMenus {
 	public $AllowEmailing=false;
 	public $AllowOpenVPN=false;
 	public $AsAnAdministratorGeneric=false;
+	public $CGROUPS_INSTALLED=false;
 	public $AllowAddUsers=false;
 	public $AllowViewStatistics=false;
 	public $AllowChangeAntiSpamSettings=false;
@@ -139,7 +140,7 @@ class usersMenus {
 	public $APACHE_INSTALLED=false;
 	public $cyrus_sync_installed=false;
 	public $AllowManageOwnComputers=false;
-	public $POLICYD_WEIGHT_PORT;
+	public $POLICYD_WEIGHT_PORT=12525;
 	public $CRYPTSETUP_INSTALLED=false;
 	public $ZABBIX_INSTALLED=true;
 	public $HAMACHI_INSTALLED=true;
@@ -274,7 +275,7 @@ class usersMenus {
 	public $CLAMAV_INSTALLED=false;
 	public $CLAMD_INSTALLED=false;
 	public $CLAMSCAN_INSTALLED=false;
-	public $CLAMAV_SOCKET="";
+	
 	public $ClamavMilterEnabled=0;
 	public $CLAMAV_MILTER_SOCKET;
 	public $CLAMAV_MILTER_INSTALLED=false;
@@ -349,7 +350,7 @@ class usersMenus {
 	public $C_ICAP_DNSBL=false;
 	public $MILTERGREYLIST_SOCKET="";
 	public $OPENVPN_INSTALLED=false;
-	public $spamassassin_conf_path="";
+	public $spamassassin_conf_path="/etc/spamassassin/local.cf";
 	public $EnableNonEncryptedLdapSession=1;
 	public $SMARTMONTOOLS_INSTALLED=false;
 	public $XAPIAN_PHP_INSTALLED=false;
@@ -481,7 +482,7 @@ class usersMenus {
 	public $AS_VPS_CLIENT=false;
 	public $AS_DEBIAN_FAMILY=false;
 	public $VLAN_INSTALLED=false;
-	public $disks_inodes="";
+	
 	public $LOSETUP_INSTALLED;
 	public $SNORT_INSTALLED=false;
 	public $APP_EYEOS_INSTALLED=false;
@@ -523,7 +524,6 @@ class usersMenus {
 	public $APACHE_APPLIANCE=false;
 	public $APACHE_MOD_SUEXEC=false;
 	public $APACHE_MOD_FCGID=false;
-	public $CGROUPS_INSTALLED=false;	
 	public $APACHE_MOD_LOGSSQL=false;
 	public $MYCOSI_APPLIANCE=false;
 	public $LOAD_BALANCE_APPLIANCE=false;
@@ -688,7 +688,6 @@ class usersMenus {
 			$this->roundcube_installed=$_GLOBAL["roundcube_installed"];
 			$this->ChangeAutoInterface=$_GLOBAL["ChangeAutoInterface"];
 			$this->aveserver_pattern_date=$_GLOBAL["aveserver_pattern_date"];
-			$this->disks_inodes=trim($_GLOBAL["disks_inodes"]);
 			if(isset($_GLOBAL["POSTFIX_STATUS"])){$this->POSTIFX_STATUS=$_GLOBAL["POSTFIX_STATUS"];}
 			if(isset($_GLOBAL["KAS_STATUS"])){$this->KAS_STATUS=$_GLOBAL["KAS_STATUS"];}
 			if(isset($_GLOBAL["CYRUS_STATUS"])){$this->CYRUS_STATUS=$_GLOBAL["CYRUS_STATUS"];}
@@ -711,6 +710,14 @@ class usersMenus {
 			if(isset($_GLOBAL["SQUID_INSTALLED"])){$this->SQUID_INSTALLED=$_GLOBAL["SQUID_INSTALLED"];;}
 			if(isset($_GLOBAL["NGINX_INSTALLED"])){$this->NGINX_INSTALLED=$_GLOBAL["NGINX_INSTALLED"];;}
 			if(isset($_GLOBAL["KAV4PROXY_INSTALLED"])){$this->KAV4PROXY_INSTALLED=$_GLOBAL["KAV4PROXY_INSTALLED"];;}
+			
+			if(is_file("/etc/artica-postfix/settings/Daemons/Kav4ProxyInstalled")){
+				if(intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/Kav4ProxyInstalled"))==1){
+					$this->KAV4PROXY_INSTALLED=true;
+				}
+			}
+			
+			
 			if(isset($_GLOBAL["SQUID_PID"])){$this->SQUID_PID=$_GLOBAL["SQUID_PID"];;}
 			if(isset($_GLOBAL["SQUID_NTLM_AUTH"])){$this->SQUID_NTLM_AUTH=$_GLOBAL["SQUID_NTLM_AUTH"];;}
 			if(isset($_GLOBAL["SQUID_BIN_VERSION"])){$this->SQUID_BIN_VERSION=$_GLOBAL["SQUID_BIN_VERSION"];;}
@@ -719,7 +726,11 @@ class usersMenus {
 			if(isset($_GLOBAL["KAV4PROXY_VERSION"])){$this->KAV4PROXY_VERSION=$_GLOBAL["KAV4PROXY_VERSION"];;}
 			if(isset($_GLOBAL["SQUID_CACHMGR"])){$this->SQUID_CACHMGR=$_GLOBAL["SQUID_CACHMGR"];;}
 			if(isset($_GLOBAL["APACHE_DIR_SITES_ENABLED"])){$this->APACHE_DIR_SITES_ENABLED=$_GLOBAL["APACHE_DIR_SITES_ENABLED"];;}
+			
+			
 			if(isset($_GLOBAL["APACHE_MODULES_PATH"])){$this->APACHE_MODULES_PATH=$_GLOBAL["APACHE_MODULES_PATH"];;}
+			if(is_file("/etc/artica-postfix/settings/Daemons/ApacheModulesPath")){$this->APACHE_MODULES_PATH=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/ApacheModulesPath"));}
+			
 			if(isset($_GLOBAL["MYCOSI_APPLIANCE"])){$this->MYCOSI_APPLIANCE=$_GLOBAL["MYCOSI_APPLIANCE"];;}
 			if(isset($_GLOBAL["ARPD_INSTALLED"])){$this->ARPD_INSTALLED=$_GLOBAL["ARPD_INSTALLED"];}
 			if(isset($_GLOBAL["AS_KIMSUFFI"])){$this->AS_KIMSUFFI=$_GLOBAL["AS_KIMSUFFI"];}
@@ -741,7 +752,7 @@ class usersMenus {
 			if(isset($_GLOBAL["EJABBERD_INSTALLED"])){$this->EJABBERD_INSTALLED=$_GLOBAL["EJABBERD_INSTALLED"];;}
 			if(isset($_GLOBAL["PYMSNT_INSTALLED"])){$this->PYMSNT_INSTALLED=$_GLOBAL["PYMSNT_INSTALLED"];;}
 			if(isset($_GLOBAL["PYICQT_INSTALLED"])){$this->PYICQT_INSTALLED=$_GLOBAL["PYICQT_INSTALLED"];;}
-			if(isset($_GLOBAL["HAPROXY_INSTALLED"])){$this->HAPROXY_INSTALLED=$_GLOBAL["HAPROXY_INSTALLED"];;}
+			if(intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/HaProxyInstalled"))==1){$this->HAPROXY_INSTALLED=true;}else{$this->HAPROXY_INSTALLED=false;}
 			if(isset($_GLOBAL["SSHFS_INSTALLED"])){$this->SSHFS_INSTALLED=$_GLOBAL["SSHFS_INSTALLED"];;}
 			if(isset($_GLOBAL["BTRFS_INSTALLED"])){$this->BTRFS_INSTALLED=$_GLOBAL["BTRFS_INSTALLED"];;}
 			if(isset($_GLOBAL["APP_ARKEIA_INSTALLED"])){$this->APP_ARKEIA_INSTALLED=$_GLOBAL["APP_ARKEIA_INSTALLED"];;}
@@ -835,9 +846,30 @@ class usersMenus {
 			if(isset($_GLOBAL["MAILFROMD_SOCKET"])){$this->MAILFROMD_SOCKET=$_GLOBAL["MAILFROMD_SOCKET"];}
 			if(isset($_GLOBAL["CLAMAV_INSTALLED"])){$this->CLAMAV_INSTALLED=$_GLOBAL["CLAMAV_INSTALLED"];}
 			if(isset($_GLOBAL["CLAMSCAN_INSTALLED"])){$this->CLAMSCAN_INSTALLED=$_GLOBAL["CLAMSCAN_INSTALLED"];}
-			if(isset($_GLOBAL["CLAMAV_SOCKET"])){$this->CLAMAV_SOCKET=$_GLOBAL["CLAMAV_SOCKET"];}
-			if(isset($_GLOBAL["CLAMAV_MILTER_SOCKET"])){$this->CLAMAV_MILTER_SOCKET=$_GLOBAL["CLAMAV_MILTER_SOCKET"];}
-			if(isset($_GLOBAL["CLAMAV_MILTER_INSTALLED"])){$this->CLAMAV_MILTER_INSTALLED=$_GLOBAL["CLAMAV_MILTER_INSTALLED"];}
+			
+			
+			
+			
+			
+			if(is_file("/etc/artica-postfix/settings/Daemons/ClamAVMilterInstalled")){
+				if(intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/ClamAVMilterInstalled"))==1){
+					$this->CLAMAV_MILTER_INSTALLED=true;
+				}
+			}
+			
+			if(is_file("/etc/artica-postfix/settings/Daemons/MimeDefangInstalled")){
+				if(intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/MimeDefangInstalled"))==1){
+					$this->MIMEDEFANG_INSTALLED=true;
+				}
+			}
+			
+			if(!$this->MIMEDEFANG_INSTALLED){
+				if(is_file("/usr/local/bin/mimedefang")){
+					$this->MIMEDEFANG_INSTALLED=true;
+				}
+			}
+			
+			
 			if(isset($_GLOBAL["SPAMASS_MILTER_INSTALLED"])){$this->SPAMASS_MILTER_INSTALLED=$_GLOBAL["SPAMASS_MILTER_INSTALLED"];}
 			if(isset($_GLOBAL["SPAMASS_MILTER_SOCKET"])){$this->SPAMASS_MILTER_SOCKET=$_GLOBAL["SPAMASS_MILTER_SOCKET"];}
 			if(isset($_GLOBAL["roundcube_folder"])){$this->roundcube_folder=$_GLOBAL["roundcube_folder"];}
@@ -847,8 +879,8 @@ class usersMenus {
 			if(isset($_GLOBAL["pyzor_installed"])){$this->pyzor_installed=$_GLOBAL["pyzor_installed"];}
 			if(isset($_GLOBAL["spfmilter_installed"])){$this->spfmilter_installed=$_GLOBAL["spfmilter_installed"];}
 			if(isset($_GLOBAL["netbiosname"])){$this->netbiosname=$_GLOBAL["netbiosname"];}
-			if(isset($_GLOBAL["MIMEDEFANG_INSTALLED"])){$this->MIMEDEFANG_INSTALLED=$_GLOBAL["MIMEDEFANG_INSTALLED"];}
-			if(isset($_GLOBAL["MIMEDEFANG_SOCKET"])){$this->MIMEDEFANG_SOCKET=$_GLOBAL["MIMEDEFANG_SOCKET"];}
+			
+			
 			if(isset($_GLOBAL["GRAPHDEFANG_INSTALLED"])){$this->GRAPHDEFANG_INSTALLED=$_GLOBAL["GRAPHDEFANG_INSTALLED"];}
 			if(isset($_GLOBAL["MHONARC_INSTALLED"])){$this->MHONARC_INSTALLED=$_GLOBAL["MHONARC_INSTALLED"];}
 			if(isset($_GLOBAL["MHONARC_VERSION"])){$this->MHONARC_VERSION=$_GLOBAL["MHONARC_VERSION"];}
@@ -923,7 +955,6 @@ class usersMenus {
 			$this->p3scan_installed=$_GLOBAL["p3scan_installed"];
 			$this->syslogng_installed=$_GLOBAL["syslogng_installed"];
 			$this->AsDebianSystem=$_GLOBAL["AsDebianSystem"];
-			$this->disks_size=$_GLOBAL["disks_size"];
 			if(trim($this->hostname)==null){$this->hostname=$this->fqdn;}
 			$this->cpumhz=$_GLOBAL["cpumhz"];
 			$this->preload_installed=$_GLOBAL["preload_installed"];
@@ -1152,7 +1183,13 @@ class usersMenus {
 			$this->APACHE_APPLIANCE=$_GLOBAL["APACHE_APPLIANCE"];
 			$this->APACHE_MOD_SUEXEC=$_GLOBAL["APACHE_MOD_SUEXEC"];
 			$this->APACHE_MOD_FCGID=$_GLOBAL["APACHE_MOD_FCGID"];
-			$this->CGROUPS_INSTALLED=$_GLOBAL["CGROUPS_INSTALLED"];
+			
+			$CGROUPS_INSTALLED=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/CGROUPS_INSTALLED"));
+			if($CGROUPS_INSTALLED==1){
+				$this->CGROUPS_INSTALLED=true;
+			}else{
+				$this->CGROUPS_INSTALLED=false;
+			}
 			$this->APACHE_MOD_LOGSSQL=$_GLOBAL["APACHE_MOD_LOGSSQL"];
 			if(isset($_GLOBAL["squid_kerb_auth_path"])){$this->squid_kerb_auth_path=$_GLOBAL["squid_kerb_auth_path"];}
 			
@@ -1245,12 +1282,13 @@ class usersMenus {
 			$this->SetTimeZone();
 			$page=$this->CurrentPageName();
 			$this->SessionExpired();
+			$this->aghjkyrtij();
 			if($GLOBALS["posix_getuid"]==0){if($this->roundcube_installed){$this->roundcube_detect_version();}}
 			
 			//Parse privileges
 			if(!$GLOBALS["AS_ROOT"]){
-				if($page=="admin.index.php"){
-					writelogs("->_ParsePrivieleges()",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);
+				if($GLOBALS["VERBOSE"]){
+					echo "<span style='color:red'>->_ParsePrivieleges()" .__CLASS__.'/'.__FUNCTION__."/".basename(__FILE__)."/".__LINE__."</span><br>\n";
 				}
 				$priv=$this->_ParsePrivieleges();
 				$this->priv=$this->_TranslateRights($priv);			
@@ -1291,8 +1329,15 @@ class usersMenus {
 			
 			
 			
+			
+			
+			
+			
 		
 	}
+	
+	
+
 	
 	private function postfixmutli(){
 	if(!$this->POSTMULTI){return false;}
@@ -2576,6 +2621,13 @@ private function MAILBOXES_MENUS($array=array()){
 		return $GLOBALS["_TranslateRights"];
 		
 	}
+	private function aghjkyrtij(){
+		$objzrtg=base64_decode("Q09SUF9MSUNFTlNF");
+		$fguih=base64_decode("L2V0Yy9hcnRpY2EtcG9zdGZpeC9zZXR0aW5ncy9EYWVtb25zL0NPUlBfTElDRU5TRQ==");
+		if(!is_file($fguih)){return; }
+		$bndfvs=trim(@file_get_contents($fguih));
+		if(base64_decode($bndfvs)=="TRUE"){$this->$objzrtg=true;}
+	}
 	
 	function IfIsAnuser($log=false){
 			
@@ -2645,12 +2697,20 @@ private function MAILBOXES_MENUS($array=array()){
 	
 	function _ParsePrivieleges($content=null){
 		$trace=debug_backtrace();
+		if($GLOBALS["DEBUG_PRIVS"]){echo "<span style='color:red;font-size:26px'>_ParsePrivieleges</span>
+				<textarea style='width:100%;height:240px'>$content</textarea>";
+		}
 		
 		if(isset($trace[1])){$called=" called by ". basename($trace[1]["file"])." {$trace[1]["function"]}() line {$trace[1]["line"]}";}
 		if(!isset($GLOBALS["posix_getuid"])){$GLOBALS["posix_getuid"]=1000;if(function_exists("posix_getuid")){$GLOBALS["posix_getuid"]=posix_getuid();}}
 		$posix_getuid=$GLOBALS["posix_getuid"];
 		$priv=array();
 		include_once(dirname(__FILE__)."/class.privileges.inc");
+		
+		if($GLOBALS["VERBOSE"]){
+			echo "privileges({$_SESSION["uid"]})" .__CLASS__.'/'.__FUNCTION__."/".basename(__FILE__)."/".__LINE__."<br>\n";
+		}
+		
 		if($GLOBALS["DEBUG_PRIVS"]){writelogs("class.privileges.inc ->privileges({$_SESSION["uid"]}) $called",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);}
 		$privs=new privileges($_SESSION["uid"]);
 		if($GLOBALS["DEBUG_PRIVS"]){writelogs("return privs",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);}

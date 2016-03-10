@@ -39,7 +39,7 @@ $('#flexRT$t').flexigrid({
 	dataType: 'json',
 	colModel : [
 		{display: '<strong style=font-size:18px>$zdate</strong>', name : 'zDate', width :238, sortable : true, align: 'left'},
-		{display: '<strong style=font-size:18px>$events</strong>', name : 'events', width : 1214, sortable : false, align: 'left'},
+		{display: '<strong style=font-size:18px>$events</strong>', name : 'events', width : 1174, sortable : false, align: 'left'},
 		],
 	
 	searchitems : [

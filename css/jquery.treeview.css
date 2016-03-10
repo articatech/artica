@@ -28,6 +28,11 @@
 	padding: 3px 0pt 3px 16px;
 }
 
+.treeview a {
+	color:black !important;
+	
+}
+
 .treeview a.selected {
 	background-color: #eee;
 }

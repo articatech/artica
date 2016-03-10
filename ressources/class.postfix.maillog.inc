@@ -606,7 +606,7 @@ class postfix_maillog_buffer{
 	
 	private function connection_failed($reject,$from=null,$to=null,$hostname=null,$ipaddr=null){
 		if($hostname==null){$hostname=$ipaddr;}
-		$GLOBALS["maillog_tools"]->event_message_reject_hostname($reject,$from=null,$to=null,$hostname);
+		$GLOBALS["maillog_tools"]->event_message_reject_hostname($reject,$from=null,$to=null,$hostname,$ipaddr);
 	}
 	
 	private function routed_from($messageid,$mailfrom,$size){
@@ -635,6 +635,11 @@ class postfix_maillog_buffer{
 	private function events($text,$line){
 		$filename=basename(__FILE__);
 		$logFile="/var/log/artica-postfix/postfix-logger.debug";
+		
+		$size=@filesize($logFile);
+		if($size>9000000){@unlink($logFile);}
+		
+		
 		if(!isset($GLOBALS["CLASS_UNIX"])){return;}
 		$GLOBALS["CLASS_UNIX"]->events("$filename $text (line $line)",$logFile);		
 	}	

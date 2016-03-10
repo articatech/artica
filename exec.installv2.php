@@ -11,6 +11,7 @@ include_once(dirname(__FILE__)."/framework/frame.class.inc");
 if(is_file("/etc/artica-postfix/AS_KIMSUFFI")){echo "AS_KIMSUFFI!\n";die();}
 if(preg_match("#--verbose#",implode(" ",$argv))){$GLOBALS["VERBOSE"]=true;ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);}
 if($argv[1]=="--install"){install($argv[2]);exit;}
+if($argv[1]=="--dialog"){install_dialog();exit;}
 
 
 function parsefilename($filename){
@@ -65,6 +66,7 @@ function install($filename){
 	$TMP_DIR=$unix->TEMP_DIR();
 	$UPLOADED_DIR=dirname(__FILE__)."/ressources/conf/upload";
 	$UPLOADED_FILE="$UPLOADED_DIR/$filename";
+	$AS_SURICATA=false;
 	
 	$t=time();
 	build_progress("Analyze...$filename",10);
@@ -160,26 +162,40 @@ function install($filename){
 	$nohup=$unix->find_program("nohup");
 	$php=$unix->LOCATE_PHP5_BIN();
 	$squid=$unix->LOCATE_SQUID_BIN();
+	$modprobe=$unix->find_program("modprobe");
 	build_progress("{extracting} $filename...",50);
 	
 	if(preg_match("#^hotspot#", $filename)){
 		$AS_HOSTPOT=true;
 	}
 	
-	if(preg_match("#^influxdb-#", $filename)){
+	if(preg_match("#^postgres-#", $filename)){
 		$AS_INFLUXDB=true;
 		build_progress("{stopping_service} BigData...",52);
 		echo "Stopping BigData engine\n";
 		sleep(2);
-		system("/etc/init.d/influx-db stop");
+		system("/etc/init.d/artica-postgres stop");
+	}
+	
+	if(preg_match("#^ufdbcat-#", $filename)){
+		$AS_INFLUXDB=true;
+		build_progress("{stopping_service} Categories service...",52);
+		echo "Stopping Categories service\n";
+		sleep(2);
+		system("/etc/init.d/ufdbcat stop");
 	}
 	
 	if(preg_match("#^milter-regex-#", $filename)){
-		$AS_INFLUXDB=true;
 		build_progress("{stopping_service} Milter-regex...",52);
 		sleep(2);
 		system("/etc/init.d/milter-regex stop");
 	}	
+	
+	if(preg_match("#^proftpd-#", $filename)){
+		build_progress("{stopping_service} ProFTPD...",52);
+		sleep(2);
+		system("/etc/init.d/proftpd stop");
+	}
 	
 	
 	if(preg_match("#^postfixp#", $filename)){
@@ -190,7 +206,18 @@ function install($filename){
 		shell_exec("$rm -rf /var/spool/postfix/var/run");
 	}	
 	
-	
+	if(preg_match("#^suricata#", $filename)){
+		$AS_SURICATA=TRUE;
+		$depmod=$unix->find_program("depmod");
+		system("rmmod libxt_ndpi");
+		system("rmmod pf_ring");
+		build_progress("{stopping_service} suricata...",52);
+		
+		
+		sleep(2);
+		system("/etc/init.d/suricata stop");
+		system("/etc/init.d/barnyard stop");
+	}
 	
 	
 	if(preg_match("#^squid32#", $filename)){
@@ -223,13 +250,18 @@ function install($filename){
 	
 	system("/etc/init.d/artica-status reload --force");
 	
+	
+	if(preg_match("#^ufdbcat#", $filename)){
+		build_progress("{restart_services}: Categories service...",53);
+		system("/etc/init.d/ufdbcat restart");
+	}
+	
 	if(preg_match("#^squid32#", $filename)){
-		
 		@unlink(dirname(__FILE__)."/ressources/logs/squid.compilation.params");
+		build_progress("{reconfigure}: Squid-Cache...",54);
+		system("$php /usr/share/artica-postfix/exec.squid.php --build --force");
 		build_progress("{restart_services}: Squid-Cache...",54);
 		system("/etc/init.d/squid restart --force");
-		build_progress("{restart_services}: exec.squid.php...",54);
-		system("$php /usr/share/artica-postfix/exec.squid.php --build --force");
 		build_progress("{restart_services}: exec.squidguard.php...",54);
 		system("$php /usr/share/artica-postfix/exec.squidguard.php --build --force");
 		build_progress("{reconfiguring} {APP_UFDBGUARD}...",54);
@@ -259,12 +291,12 @@ function install($filename){
 		system("$php /usr/share/artica-postfix/exec.initslapd.php --ntopng --force");
 		system("/etc/init.d/ntopng restart --force");
 	}	
-	if(preg_match("#^influxdb-#", $filename)){
+	if(preg_match("#^postgres-#", $filename)){
 		$AS_INFLUXDB=true;
 		build_progress("{starting_service} BigData...",54);
 		echo "Starting BigData engine\n";
 		sleep(2);
-		system("/etc/init.d/influx-db start");
+		system("/etc/init.d/artica-postgres start");
 	}
 	
 	if(preg_match("#^milter-regex-#", $filename)){
@@ -275,12 +307,29 @@ function install($filename){
 		system("/etc/init.d/milter-regex start");
 	}
 	
+	if(preg_match("#^proftpd-#", $filename)){
+		build_progress("{starting_service} Milter-regex...",54);
+		shell_exec("$php /usr/share/artica-postfix/exec.initslapd.php --proftpd >/dev/null 2>&1 &");
+		shell_exec("$php /usr/share/artica-postfix/exec.status.php --proftpd >/dev/null");
+		sleep(2);
+		system("/etc/init.d/proftpd restart");
+	}	
+	
 	if($AS_POSTFIX){
 		build_progress("{starting_service}...",54);
 		system("/etc/init.d/milter-regex restart");
 		system("/etc/init.d/milter-greylist restart");
 		system("/etc/init.d/postfix restart");
 		
+	}
+	
+	if($AS_SURICATA){
+		build_progress("{starting_service}...",54);
+		system("ldconfig");
+		system("$depmod -a");
+		system("$modprobe pf_ring transparent_mode=0 min_num_slots=65534");
+		system("/etc/init.d/suricata start");
+		build_progress("DEPMOD...",54);
 	}
 	
 
@@ -349,4 +398,21 @@ function download_progress( $download_size, $downloaded_size, $upload_size, $upl
 		@chmod($GLOBALS["DOWNLOAD_PROGRESS_FILE"], 0777);
 		$GLOBALS["previousProgress"]=$progress;
 	}
+}
+
+function install_dialog(){
+	$TimeFile="/etc/artica-postfix/install.dialog.time";
+	$unix=new unix();
+	if(!$GLOBALS["FORCE"]){
+		$TimeEx=$unix->file_time_min($TimeFile);
+		if($TimeEx<15){return;}
+	}
+	
+	@unlink($TimeFile);
+	@file_put_contents($TimeFile, time());
+	
+	$dialog=$unix->find_program("dialog");
+	if(is_file($dialog)){return;}
+	$unix->DEBIAN_INSTALL_PACKAGE("dialog");
+	
 }

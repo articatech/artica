@@ -10,6 +10,8 @@ class privileges{
 	private $radiusid=0;
 	
 	function privileges($uid=null,$privilegesuid=null,$radiusid=0){
+		
+		if($GLOBALS["DEBUG_PRIVS"]){echo "<br><span style='color:red;font-size:14px'>privileges($uid)</span><br>\n";}
 		$this->privilegesuid=$privilegesuid;
 		$this->uid=$uid;
 		$this->radiusid=$radiusid;
@@ -29,6 +31,7 @@ class privileges{
 		
 		//if($GLOBALS["VERBOSE"]){$this->SearchPrivileges();}
 		if(!isset($_SESSION["privileges_array"])){
+			if($GLOBALS["DEBUG_PRIVS"]){echo "<br><span style='color:red;font-size:14px'>privileges_array NOT SET</span><br>\n";}
 			if($this->webpage=="admin.index.php"){writelogs("$this->webpage: --> this->SearchPrivileges $called",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);}
 			$this->SearchPrivileges();
 		}
@@ -37,17 +40,23 @@ class privileges{
 		if(count($_SESSION["privileges_array"])==0){
 			$this->ldap=new clladp();
 			if($this->webpage=="admin.index.php"){writelogs("$this->webpage: privileges_array COUNT = 0 this->SearchPrivileges() $called",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);}
+			if($GLOBALS["DEBUG_PRIVS"]){echo "<br><span style='color:red;font-size:14px'>privileges_array COUNT = 0 ->SearchPrivileges()</span><br>\n";}
 			$this->SearchPrivileges();
-			if($this->webpage=="admin.index.php"){$this->DebugPrivs();}
+			if($GLOBALS["DEBUG_PRIVS"]){$this->DebugPrivs();}
 		}
 		
 		if(isset($_SESSION[__CLASS__][$uid]["CONTENT"])){$this->content=$_SESSION[__CLASS__][$uid]["CONTENT"];}
+		
 		if(isset($_SESSION["privileges_array"])){
-			if($this->webpage=="admin.index.php"){
-				writelogs("$this->webpage: Get memory from _SESSION[privileges_array] $called",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);
+			if($GLOBALS["DEBUG_PRIVS"]){
+				echo "<br><span style='color:red;font-size:14px'>privileges_array -> session " .__CLASS__.'/'.__FUNCTION__."/".basename(__FILE__)."/".__LINE__."</span><br>\n";
+				$this->DebugPrivs();
+			
 			}
+		}	
+			
 			$this->privs=$_SESSION["privileges_array"];
-		}
+		
 		return;
 	}
 	private function DebugPrivs(){
@@ -56,9 +65,10 @@ class privileges{
 		
 		while (list ($num, $ligne) = each ($array) ){
 			if($ligne=="yes"){
-				if($this->webpage=="admin.index.php"){writelogs("$this->webpage: $num = [$ligne]",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);continue;}
-				echo "[PRIVS]: $num = [$ligne]\n";
+				echo "<li style='color:red;font-size:14px'>[PRIVS]: $num = <strong>[$ligne]</strong></span></li>\n";
 				
+			}else{
+				echo "<li style='color:red;font-size:14px'>[PRIVS]: $num = <code>[$ligne]</code></span></li>\n";
 			}
 		}
 		

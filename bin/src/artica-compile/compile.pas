@@ -102,7 +102,7 @@ fpsystem('date +%m%d%H >'+dir+'/date.txt');
 J:=TStringList.Create;
 J.LoadFromFile(dir+'/date.txt');
 txt:=trim(J.Strings[0]);
-result:='2.21.'+txt;
+result:='2.39.'+txt;
 fpsystem('/bin/rm '+dir+'/date.txt');
 
 end;
@@ -497,6 +497,7 @@ Execute ('rm -f ' + BasePath + '/bin/stg1xC2m');
 Execute ('rm -f ' + BasePath + '/bin/stGbsK89');
 Execute ('rm -f ' + BasePath + '/bin/stgfFnLn');
 Execute ('rm -f ' + BasePath + '/bin/sthijxla');
+Execute ('rm -f ' + BasePath + '/bin/st45n2VB');
 Execute ('rm -f ' + BasePath + '/bin/stI5Uii9');
 Execute ('rm -f ' + BasePath + '/bin/stIFOQ6A');
 Execute ('rm -f ' + BasePath + '/bin/stiWMsO0');
@@ -915,6 +916,11 @@ Execute ('rm -f ' + BasePath + '/bin/st7lHTjd');
 Execute ('rm -f ' + BasePath + '/bin/stRgTmRp');
 Execute ('rm -f ' + BasePath + '/bin/stSk5lXh');
 Execute ('rm -f ' + BasePath + '/bin/stYpIvJf');
+Execute ('rm -f ' + BasePath + '/bin/st6twrUZ');
+Execute ('rm -f ' + BasePath + '/bin/stayuWqo');
+Execute ('rm -f ' + BasePath + '/bin/stJjYTn7');
+Execute ('rm -f ' + BasePath + '/bin/stp3XM5S');
+Execute ('rm -f ' + BasePath + '/bin/stQLvEtF');
 
 
 Execute ('rm -f ' + BasePath + '/bin/stFScIHg');

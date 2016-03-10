@@ -11,11 +11,12 @@ class external_ad_search{
 	private $debug=false;
 	public $ldap_error;
 	private $ldap_password;
+	private $SquidAddkerAlernates=array();
 	function external_ad_search($connectionEncoded=null){
 		if(!isset($GLOBALS["AS_ROOT"])){
 			if(posix_geteuid()>0){$GLOBALS["AS_ROOT"]=false;}else{$GLOBALS["AS_ROOT"]=true;}
 		}
-		
+		$this->SquidAddkerAlernates=unserialize(@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidAddkerAlernates"));
 		if($connectionEncoded<>null){$this->connectionEncoded=$connectionEncoded;}
 		$this->ADLdap_init();
 		$this->BuildDefault();
@@ -43,7 +44,8 @@ class external_ad_search{
 		$array=$this->KerbAuthInfos;
 		$GLOBALS["SUFFIX"]=$array["LDAP_SUFFIX"];
 		$recursive=false;
-		if($GLOBALS["KerbAuthInfos"]["RECURSIVE_GROUPS"]==1){
+		if(!isset($array["RECURSIVE_GROUPS"])){$array["RECURSIVE_GROUPS"]=0;}
+		if($array["RECURSIVE_GROUPS"]==1){
 			if($GLOBALS["VERBOSE"]){echo "RECURSIVE_GROUPS = TRUE\n";}
 			$recursive=true;
 		}
@@ -62,7 +64,7 @@ class external_ad_search{
 	
 	
 	function CheckUserAuth($username,$password){
-		
+		$password=trim($password);
 		
 		
 		
@@ -99,6 +101,8 @@ class external_ad_search{
 		 		$password);
 		}else{
 			$GLOBALS["CLASS_ACTV"][]=__FUNCTION__.": LINE:".__LINE__.":$username:$password";
+			writelogs("ldap_bind(...,$username,$password)",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);
+			
 			$bind=ldap_bind($this->ldap_connection,
 				"$username",
 				$password);
@@ -279,13 +283,18 @@ class external_ad_search{
 	
 	public function GroupsOfMember($dn){
 		$res=array();
-		if(!$GLOBALS["AS_ROOT"]){if(isset($_SESSION[__CLASS__][__FUNCTION__][$dn])){return $_SESSION[__CLASS__][__FUNCTION__][$dn];}}
+		$KeySession=md5(__CLASS__.__FUNCTION__.$dn);
+		if(!$GLOBALS["AS_ROOT"]){
+			if(isset($_SESSION[$KeySession])){
+				return $_SESSION[$KeySession];
+			}
+		}
 		if(!$this->connect()){return null;}
 		
 		$UserAR=$this->LoadMember($dn);
 		$dn=$UserAR["distinguishedName"][0];
 		$sAMAccountName=$UserAR["sAMAccountName"][0];
-		if($GLOBALS["VERBOSE"]){echo "$dn -> $sAMAccountName\n";}
+		if($GLOBALS["VERBOSE"]){echo "[AD] GroupsOfMember() $dn -> $sAMAccountName<br>\n";}
 		
 		if($sAMAccountName==null){return array();}
 		$searchFilter="(&(objectClass=group)(member=$dn))";
@@ -300,24 +309,29 @@ class external_ad_search{
 			if(!isset($ligne["samaccountname"][0])){continue;}
 			if($ligne["samaccountname"][0]==null){continue;}
 			$MembersCount=0;
-			$GroupName=$ligne["samaccountname"][0];
 			$dn=$ligne["dn"];
+			$GroupName=$ligne["samaccountname"][0];
+			if($GLOBALS["VERBOSE"]){echo "[AD] GroupsOfMember() $dn -> $GroupName<br>\n";}
+			
 			$res[$dn]=$GroupName;
 		}
-		if(!$GLOBALS["AS_ROOT"]){$_SESSION[__CLASS__][__FUNCTION__][$dn]=$res;}
+		if(!$GLOBALS["AS_ROOT"]){$_SESSION[$KeySession]=$res;}
 		return $res;		
 	}
 	
 	
 	public function LoadMember($uid){
+		$KeySession=md5(__CLASS__.__FUNCTION__.$uid);
+		if(!$GLOBALS["AS_ROOT"]){if(isset($_SESSION[$KeySession])){
+			$GLOBALS[$KeySession]=$_SESSION[$KeySession];
+			}
+		}
 		
-		if(!$GLOBALS["AS_ROOT"]){if(isset($_SESSION[__CLASS__][__FUNCTION__][$uid])){$GLOBALS[__CLASS__][__FUNCTION__][$uid]=$_SESSION[__CLASS__][__FUNCTION__][$uid];}}
 		
-		
-		if(isset($GLOBALS[__CLASS__][__FUNCTION__][$uid])){
-			if(isset($GLOBALS[__CLASS__][__FUNCTION__][$uid]["ARTICA_OU"])){
-				$this->ou=$GLOBALS[__CLASS__][__FUNCTION__][$uid]["ARTICA_OU"];
-				return $GLOBALS[__CLASS__][__FUNCTION__][$uid];
+		if(isset($GLOBALS[$KeySession])){
+			if(isset($GLOBALS[$KeySession]["ARTICA_OU"])){
+				$this->ou=$GLOBALS[$KeySession]["ARTICA_OU"];
+				return $GLOBALS[$KeySession];
 			}
 		}
 		if(!$this->connect()){return null;}
@@ -349,8 +363,8 @@ class external_ad_search{
 		}
 		
 		
-		if(!$GLOBALS["AS_ROOT"]){$_SESSION[__CLASS__][__FUNCTION__][$uid]=$attrs;}
-		$GLOBALS[__CLASS__][__FUNCTION__][$uid]=$attrs;
+		if(!$GLOBALS["AS_ROOT"]){$_SESSION[$KeySession]=$attrs;}
+		$GLOBALS[$KeySession]=$attrs;
 		return $attrs;
 	}
 	
@@ -529,15 +543,58 @@ class external_ad_search{
 		
 	}
 	
-	public function DNinfos($dn){
+	private function _DNinfos_local($dn){	
 		$f=array();
+		$func=__FUNCTION__;
 		if(!$this->connect()){
 			if($GLOBALS["VERBOSE"]){echo "<strong style='color:#d32d2d'>{$func}Connection failed</strong><br>\n";}
 			return array();
 		}
 		$searchFilter="(objectClass=*)";
 		$sr =@ldap_read($this->ldap_connection,$dn,"$searchFilter",$f);
-		return @ldap_get_entries($this->ldap_connection,$sr);
+		if(!$sr){
+			if($GLOBALS["VERBOSE"]){echo "<strong style='color:#d32d2d'>$dn -> $searchFilter failed</strong><br>\n";}
+			return array();
+		}
+		$hash=@ldap_get_entries($this->ldap_connection,$sr);
+		if($GLOBALS["VERBOSE"]){echo "<strong style='color:#d32d2d'>$dn -> ". count($hash)."</strong><br>\n";}
+		return $hash;
+		
+	}
+	
+	public function DNinfos($dn){
+		$f=array();
+		$func=__FUNCTION__;
+		if($GLOBALS["VERBOSE"]){echo "<hr>\n";}
+		if($GLOBALS["VERBOSE"]){echo "<strong style='color:#d32d2d'>$dn</strong><br>\n";}
+		$hash=$this->_DNinfos_local($dn);
+		
+		if(count($hash)>1){
+			if($GLOBALS["VERBOSE"]){echo "<strong style='color:#46a346'>OK Active Directory LOCAL</strong><br>\n";}
+			return $hash;
+		}
+		
+		
+		$searchFilter="(objectClass=*)";
+		if(count($this->SquidAddkerAlernates)>0){
+			reset($this->SquidAddkerAlernates);
+			while (list ($workgroup, $MainArray) = each ($this->SquidAddkerAlernates) ){
+			if(!$this->connect($MainArray)){
+				if($GLOBALS["VERBOSE"]){echo "<strong style='color:#d32d2d'>{$func} $workgroup/Connection failed</strong><br>\n";}
+				continue;
+			}
+			$sr =@ldap_read($this->ldap_connection,$dn,"$searchFilter",$f);
+			$hash=@ldap_get_entries($this->ldap_connection,$sr);
+			if(count($hash)>1){
+				if($GLOBALS["VERBOSE"]){echo "<strong style='color:#46a346'>OK Active Directory $workgroup</strong><br>\n";}
+				return $hash;}
+			if($GLOBALS["VERBOSE"]){echo "<strong style='color:#d32d2d'>{$func} $workgroup/{$MainArray["LDAP_SERVER"]} no such DN $dn</strong><br>\n";}
+			}
+		}
+			
+		
+		
+		return array();
 	}
 	
 	public function SearchOuSimple($dn=null){
@@ -751,7 +808,22 @@ class external_ad_search{
 		return $hash;
 	}
 	
+	public function GetDNFromUserid($userid){
+		$array=$this->find_DN($userid);
+		return $array[0]["dn"];
+		
+	}
+	
 	public function find_DN($tofind,$maxentries=0){
+		
+		$KeySession=md5(__CLASS__.__FUNCTION__.$tofind.$maxentries);
+		if(!$GLOBALS["AS_ROOT"]){
+			if(isset($_SESSION[$KeySession])){
+				return $_SESSION[$KeySession];
+			}
+		}
+		
+				
 		if(!$this->connect()){writelogs("Unable to connect",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);return array();}
 		$tofind=str_replace("***", "*", $tofind);
 		$tofind=str_replace("**", "*", $tofind);
@@ -785,7 +857,7 @@ class external_ad_search{
 	
 	
 		writelogs("found ". count($hash)." items",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);
-	
+		if(!$GLOBALS["AS_ROOT"]){$_SESSION[$KeySession]=$hash;}
 		return $hash;
 	
 			
@@ -1208,6 +1280,8 @@ class external_ad_search{
 			if($EnableKerbAuth==1){
 				if($GLOBALS["VERBOSE"]){echo "<span style='color:#d32d2d'>GET_INFO(KerbAuthInfos)</span>";}
 				$array=unserialize(base64_decode($sock->GET_INFO("KerbAuthInfos")));
+				if(!isset($array["LDAP_DN"])){$array["LDAP_DN"]=null;}
+				if(!isset($array["LDAP_PASSWORD"])){$array["LDAP_DN"]=null;}
 				$this->KerbAuthInfos["WINDOWS_DNS_SUFFIX"]=$array["WINDOWS_DNS_SUFFIX"];
 				$this->KerbAuthInfos["WINDOWS_SERVER_NETBIOSNAME"]=$array["WINDOWS_SERVER_NETBIOSNAME"];
 				$this->KerbAuthInfos["ADNETBIOSDOMAIN"]=$array["ADNETBIOSDOMAIN"];
@@ -1217,7 +1291,9 @@ class external_ad_search{
 				$this->KerbAuthInfos["LDAP_SUFFIX"]=$array["LDAP_SUFFIX"];
 				$this->KerbAuthInfos["LDAP_SERVER"]=$array["LDAP_SERVER"];
 				$this->KerbAuthInfos["LDAP_DN"]=$array["LDAP_DN"];
-				$this->KerbAuthInfos["LDAP_PASSWORD"]=$array["LDAP_PASSWORD"];
+				if(isset($array["LDAP_PASSWORD"])){
+					$this->KerbAuthInfos["LDAP_PASSWORD"]=$array["LDAP_PASSWORD"];
+				}
 
 				
 			}
@@ -1266,6 +1342,9 @@ class external_ad_search{
 		if(!$this->connect()){return array();}
 		if($pattern==null){$pattern="*";}
 		$searchFilter="(&(objectClass=group)(sAMAccountName=$pattern))";
+		
+		if($GLOBALS["VERBOSE"]){echo "searchFilter: $searchFilter<br>\n";}
+		
 		$filter=array();
 		$sr =@ldap_list($this->ldap_connection,$dn,"$searchFilter",$filter,null, $maxitems, 20);
 		if (!$sr) {
@@ -1273,6 +1352,7 @@ class external_ad_search{
 				$error=ldap_errno($this->ldap_connection);
 				$errstr=@ldap_err2str($error);
 				$this->error="flexRTGroups:`$error` ($errstr) suffix:{$this->KerbAuthInfos["LDAP_SUFFIX"]} $searchFilter in ".__CLASS__."/".__FUNCTION__." line:".__LINE__;
+				if($GLOBALS["VERBOSE"]){echo "$this->error<br>\n";}
 				return array();
 			}
 		}
@@ -1513,6 +1593,11 @@ class external_ad_search{
 	}
 	
 	
+	function GroupsSearch($ou=null,$tofind,$max=0){
+		return $this->flexRTGroups($tofind,$max);
+	}
+	
+	
 	function UserSearch($ou=null,$tofind,$max=0){
 		$uid=$_SESSION["uid"];
 		if($tofind==null){$tofind='*';}else{$tofind="$tofind*";}
@@ -1566,44 +1651,77 @@ class external_ad_search{
 		return $GLOBALS["CACHE_NETADS"];
 	}
 
-	private function connect(){
-		if($this->KerbAuthInfos["LDAP_SERVER"]==null){
+	private function connect($MainConfig=array()){
+		
+		if($this->ldap_connection){@ldap_close($this->ldap_connection);}
+		$LDAP_SERVER=$this->KerbAuthInfos["LDAP_SERVER"];
+		$LDAP_PORT=intval($this->KerbAuthInfos["LDAP_PORT"]);
+		
+		if(isset($MainConfig["LDAP_SERVER"])){
+			$LDAP_SERVER=$MainConfig["LDAP_SERVER"];
+		}
+		if(isset($MainConfig["LDAP_PORT"])){
+			$LDAP_PORT=intval($MainConfig["LDAP_PORT"]);
+		}
+		if($LDAP_PORT==0){$LDAP_PORT=389;}
+		
+		if($LDAP_SERVER==null){
 			$this->error="connect:: Failed to connect to DC Could not obtain `LDAP_SERVER` ".__CLASS__."/".__FUNCTION__." line:".__LINE__;
 			writelogs("Failed to connect to DC Could not obtain `LDAP_SERVER`",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);
 			return;
 		}
 
-		$this->ldap_connection=@ldap_connect($this->KerbAuthInfos["LDAP_SERVER"],$this->KerbAuthInfos["LDAP_PORT"]);
-		if(!$this->ldap_connection){
-			$this->error="flexRTGroups:Failed to connect to DC {$this->KerbAuthInfos["LDAP_SERVER"]} in ".__CLASS__."/".__FUNCTION__." line:".__LINE__;
-			writelogs("connect:: Failed to connect to DC {$this->KerbAuthInfos["LDAP_SERVER"]}",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);
-			@ldap_close();
+		
+		if($GLOBALS["VERBOSE"]){echo "<strong style='color:#d32d2d'>ldap_connect($LDAP_SERVER,$LDAP_PORT)</strong><br>\n";}
+		$ldap_connection=@ldap_connect($LDAP_SERVER,$LDAP_PORT);
+		if(!$ldap_connection){
+			$this->error="flexRTGroups:Failed to connect to DC {$LDAP_SERVER} in ".__CLASS__."/".__FUNCTION__." line:".__LINE__;
+			writelogs("connect:: Failed to connect to DC {$LDAP_SERVER}",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);
+			if($GLOBALS["VERBOSE"]){echo "<strong style='color:#d32d2d'>Failed to connect to DC {$LDAP_SERVER}:{$LDAP_PORT}</strong><br>\n";}
+			@ldap_close($ldap_connection);
 			return false;
 		}
 		
-		ldap_set_option($this->ldap_connection, LDAP_OPT_PROTOCOL_VERSION, 3);
-		ldap_set_option($this->ldap_connection, LDAP_OPT_REFERRALS, 0);
+		ldap_set_option($ldap_connection, LDAP_OPT_PROTOCOL_VERSION, 3);
+		ldap_set_option($ldap_connection, LDAP_OPT_REFERRALS, 0);
 		
 
 		$Username=$this->BuildAdUser();
+		$Password=$this->KerbAuthInfos["WINDOWS_SERVER_PASS"];
+		
+		if(isset($MainConfig["LDAP_DN"])){
+			if($MainConfig["LDAP_DN"]<>null){$Username=$MainConfig["LDAP_DN"];}
+		}
+		
+		if(isset($MainConfig["LDAP_PASSWORD"])){
+			if($MainConfig["LDAP_PASSWORD"]<>null){$Password=$MainConfig["LDAP_PASSWORD"];}
+			
+		}
+		
+		
 		if(trim($Username)==null){
+			if($GLOBALS["VERBOSE"]){echo "<strong style='color:#d32d2d'>Failed to connect to DC {$LDAP_SERVER}:{$LDAP_PORT} without any username set</strong><br>\n";}
 			$this->error="connect:: Failed to connect to DC without any username set".__CLASS__."/".__FUNCTION__." line:".__LINE__;
 			return false;
 		}
 		$this->UserConnected=$Username;
-		if($GLOBALS['VERBOSE']){echo "<strong style='color:#d32d2d'>Bind as $Username/{$this->KerbAuthInfos["WINDOWS_SERVER_PASS"]}</strong><br>\n";}
-		$bind=ldap_bind($this->ldap_connection, $Username, $this->ldap_password);
+		
+		
+		if($GLOBALS["VERBOSE"]){echo "<strong style='color:#d32d2d'>ldap_bind({$LDAP_SERVER}:{$LDAP_PORT},$Username,$Password)</strong><br>\n";}
+		$bind=ldap_bind($ldap_connection, $Username, $Password);
 		
 		if(!$bind){
-			@ldap_get_option($this->ldap_connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $extended_error);
-			$error=ldap_errno($this->ldap_connection);$errstr=@ldap_err2str($error);
-			$this->error="$error Failed to login as $Username to DC {$this->KerbAuthInfos["LDAP_SERVER"]} `$errstr - $extended_error` in ".__CLASS__."/".__FUNCTION__." line:".__LINE__;
-			writelogs("Er.$error Failed to login as $Username:$this->ldap_password to DC {$this->KerbAuthInfos["LDAP_SERVER"]} `$errstr - $extended_error`",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);
+			@ldap_get_option($ldap_connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $extended_error);
+			$error=ldap_errno($ldap_connection);
+			$errstr=@ldap_err2str($error);
+			if($GLOBALS["VERBOSE"]){echo "<strong style='color:#d32d2d'>Error: $error Failed to login as $Username to DC {$LDAP_SERVER}:{$LDAP_PORT} &laquo;$errstr - $extended_error&raquo;</strong><br>\n";}
+			$this->error="$error Failed to login as $Username to DC {$LDAP_SERVER} `$errstr - $extended_error` in ".__CLASS__."/".__FUNCTION__." line:".__LINE__;
+			writelogs("Er.$error Failed to login as $Username:$Password to DC {$LDAP_SERVER}:{$LDAP_PORT} `$errstr - $extended_error`",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);
 			return false;
 		}
 		
 		
-		
+		$this->ldap_connection=$ldap_connection;
 		
 		
 		return true;
@@ -1616,7 +1734,7 @@ class external_ad_search{
 		$this->KerbAuthInfos["LDAP_DN"]=trim($this->KerbAuthInfos["LDAP_DN"]);
 	
 		if(trim($this->KerbAuthInfos["LDAP_DN"])==null){
-			writelogs("Er.$error LDAP_DN:{$this->KerbAuthInfos["LDAP_DN"]} == NULL`",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);
+			writelogs("Err LDAP_DN:{$this->KerbAuthInfos["LDAP_DN"]} == NULL`",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);
 			$error_plus="LDAP_DN = null";
 			if(preg_match("#^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+#", $this->KerbAuthInfos["WINDOWS_DNS_SUFFIX"])){
 				$SMB=$this->SAMBA_GetNetAdsInfos();

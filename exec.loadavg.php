@@ -1,5 +1,5 @@
 <?php
-$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 if($EnableIntelCeleron==1){die("EnableIntelCeleron==1\n");}
 if(is_file("/usr/bin/cgclassify")){if(is_dir("/cgroups/blkio/php")){shell_exec("/usr/bin/cgclassify -g cpu,cpuset,blkio:php ".getmypid());}}
 $GLOBALS["VERBOSE"]=false;
@@ -68,26 +68,29 @@ function cpustats(){
 	$filecache_mem=dirname(__FILE__)."/ressources/logs/web/INTERFACE_LOAD_AVG2H.db";
 	
 	
-	$now=InfluxQueryFromUTC(strtotime("-24 hour"));
-	$influx=new influx();
-	$sql="SELECT MEAN(CPU_STATS) as cpu,MEAN(LOAD_AVG) as load,MEAN(MEM_STATS) as memory FROM SYSTEM  where proxyname='$hostname' and time > {$now}s GROUP BY time(10m) ORDER BY ASC";
+	
+	
+	
+	$now=date("Y-m-d H:i:s",strtotime("-24 hour"));
+	$q=new postgres_sql();
+	$sql="select zdate,avg(cpu_stats) as cpu, avg(load_avg) as load, avg(mem_stats) as memory 
+	from (select to_timestamp(floor((extract('epoch' from zdate) / 600 )) * 600) AT TIME ZONE 'UTC' as zdate,cpu_stats,load_avg,mem_stats from system where zdate >'$now' and proxyname='$hostname') as t GROUP BY zdate order by zdate";		
+	
+	
 	if($GLOBALS["VERBOSE"]){echo "$sql\n";}
 	
 	
-	$main=$influx->QUERY_SQL($sql);
+	$results=$q->QUERY_SQL($sql);
 	
-	foreach ($main as $row) {
-		$time=InfluxToTime($row->time);
-		if(!is_numeric($row->cpu)){continue;}
-		if(!is_numeric($row->load)){continue;}
-	
-	
-		$min=date("l H:i",$time)."mn";
+	while($ligne=@pg_fetch_assoc($results)){
+		$min=$ligne["zdate"];
+		$cpu=$ligne["cpu"];
+		$load=$ligne["load"];
 		$xdata[]=$min;
-		$ydata[]=round($row->cpu,2);
-		$ydataL[]=round($row->load,2);
-		$ydataM[]=round(($row->memory),2);
-		if($GLOBALS["VERBOSE"]){echo "$min -> $row->cpu | $row->load | $row->memory\n";}
+		$ydata[]=round($cpu,2);
+		$ydataL[]=round($load,2);
+		$ydataM[]=round(($ligne["memory"]/1024),2);
+		
 	}
 	
 	
@@ -114,26 +117,25 @@ function cpustats(){
 	$filecache=dirname(__FILE__)."/ressources/logs/web/cpustats.db";
 	$filecache_load=dirname(__FILE__)."/ressources/logs/web/INTERFACE_LOAD_AVG.db";
 	$filecache_mem=dirname(__FILE__)."/ressources/logs/web/INTERFACE_LOAD_AVG2.db";
-	$now=InfluxQueryFromUTC(strtotime("-168 hour"));
-	$influx=new influx();
-	$sql="SELECT MEAN(CPU_STATS) as cpu,MEAN(LOAD_AVG) as load,MEAN(MEM_STATS) as memory FROM SYSTEM  where proxyname='$hostname' and time > {$now}s GROUP BY time(1h) ORDER BY ASC";
+	$now=date("Y-m-d H:i:s",strtotime("-168 hour"));
+	
+	$sql="select zdate,avg(cpu_stats) as cpu, avg(load_avg) as load, avg(mem_stats) as memory
+	from (select EXTRACT(hour from zdate) AS zdate,cpu_stats,load_avg,mem_stats from system where zdate >'$now' and proxyname='$hostname') as t GROUP BY zdate order by zdate";
+	
+	
+	
 	if($GLOBALS["VERBOSE"]){echo "$sql\n";}
 	
 	
-	$main=$influx->QUERY_SQL($sql);
+	$results=$q->QUERY_SQL($sql);
 	
-	foreach ($main as $row) {
-		$time=InfluxToTime($row->time);
-		if(!is_numeric($row->cpu)){continue;}
-		if(!is_numeric($row->load)){continue;}
-		
-		
-		$min=date("l H:00",$time);
+	while($ligne=@pg_fetch_assoc($results)){	
+		$min=date("l H:00",strtotime($ligne["zdate"]));
 		$xdata[]=$min;
-		$ydata[]=round($row->cpu,2);
-		$ydataL[]=round($row->load,2);
-		$ydataM[]=round(($row->memory/1024),2);
-		if($GLOBALS["VERBOSE"]){echo "$min -> $row->cpu | $row->load | $row->memory\n";}
+		$ydata[]=round($ligne["cpu"],2);
+		$ydataL[]=round($ligne["load"],2);
+		$ydataM[]=round(($ligne["memory"]/1024),2);
+		
 	}
 	
 	

@@ -52,7 +52,7 @@ It will not be uninstalled and you will be able to manage PowerDNS yourself.</Di
 <jGrowlNotifsDisabled>Disable tooltips notifications</jGrowlNotifsDisabled>
 <antispam_filters>Anti-Spam filters</antispam_filters>
 <add_mysql_user_text>Add a new mysql administrator that able to connect to the server</add_mysql_user_text>
-<mysql_users>Mysql users</mysql_users>
+<mysql_users>MySQL users</mysql_users>
 <rebuild_items>Rebuild items</rebuild_items>
 <www_translators>All sites offer language translations</www_translators>
 <SQUID_STATS_TEXT>Squid Statistics area is a Web frontend that provides proxy statistics with charts and graphs and categorized websites</SQUID_STATS_TEXT>
@@ -114,7 +114,7 @@ need to tune the Stream* options.[br]
 This option allows you to specify the upper limit for data size that will be transfered to remote daemon when scanning a single file.[br]
 It should match your MTA's limit for a maximum attachment size</srv_clamav.StreamMaxLength_text>
 <postfix_search_quarantine>This section will parse the quarantine area.Use the form below in order to find your stored messages</postfix_search_quarantine>
-<postfix_search_events>This section will parse the events storage detected by Artica and stored in Mysql Database</postfix_search_events>
+<postfix_search_events>This section will parse the events storage detected by Artica and stored in MySQL Database</postfix_search_events>
 <postfix_search_logs>This section will parse the current mail log file written by the Postfix mail system</postfix_search_logs>
 <from_date>From date</from_date>
 <select_messages>Select messages</select_messages>
@@ -1251,10 +1251,10 @@ If you did not know the zimbra user passord, reset it by using the commandline :
 <APP_EYEOS_TEXT>eyeOS is an open source web desktop following the cloud computing concept that seeks to enable collaboration and communication among users</APP_EYEOS_TEXT>
 <FreewebsStorageDirectory>Websites storage directory</FreewebsStorageDirectory>
 <FreewebsStorageDirectory_text>It is the default path used when creating websites with FreeWebs</FreewebsStorageDirectory>
-<mysql_error>Mysql Error</mysql_error>
+<mysql_error>MySQL Error</mysql_error>
 <mysql_error_popup_credential_text>Artica is unable to connect to mysql server using the default credentials.[br]
-You should create the Mysql username and password in order to fix this issue.[br]
-Here it is the error that artica encounter during a Mysql connection: [br]
+You should create the MySQL username and password in order to fix this issue.[br]
+Here it is the error that artica encounter during a MySQL connection: [br]
 </mysql_error_popup_credential_text>
 <AsComplexPassword>Must use complex password</AsComplexPassword>
 <disconnect_from_this_group>Disconnect from this group</disconnect_from_this_group>
@@ -1780,7 +1780,7 @@ Disable Artica Executor will not remove this task but switch it's process to be 
 Uncheck the box: Around 18Mb memory free.
 </DisableEnableArticaBackgroundService_explain>
 <Reduce_mysql_explain>
-Mysql engine is the SQL database used for saving some Artica settings, and provide content for multiple services.
+MySQL engine is the SQL database used for saving some Artica settings, and provide content for multiple services.
 [br]By default if your sever is higher to 550 Mb artica will turn mysql to maximal performances.[br]
 Maximal performances means maximal memory used.[br]
 Lower config will get 278Mb free.[br]
@@ -1788,8 +1788,8 @@ Very lower config will get 320Mb free[br]
 </Reduce_mysql_explain>
 <lower_config>Lower config</lower_config>
 <very_lower_config>Very lower config</very_lower_config>
-<mysql_ssl_explain>This section help you to allow Mysql using secure connection with SSL</mysql_ssl_explain>
-<mysql_explain_enable_ssl>If you turn to green, you will enable Mysql server in secure connection with SSL</mysql_explain_enable_ssl>
+<mysql_ssl_explain>This section help you to allow MySQL using secure connection with SSL</mysql_ssl_explain>
+<mysql_explain_enable_ssl>If you turn to green, you will enable MySQL server in secure connection with SSL</mysql_explain_enable_ssl>
 <ssl_keys>SSL keys</ssl_keys>
 <ssl_mysql_client_keys>This are the SSL clients keys that you can use in other mysql configuration file.[br]If the next server is an artica server extract this file under /etc/ssl/certs/mysql-client directory</ssl_mysql_client_keys>
 <ActHasSlave>Act has slave</ActHasSlave>
@@ -1934,7 +1934,7 @@ This restriction is useful at the end of a restriction list, to make the default
 <samba_info_latest_ad_explain>In order to get correctly connected trough a Windows Active directory server, check that your server have the latest Samba version.You using the </samba_info_latest_ad_explain>
 <proxyquicktext>Manage your proxy service, url filtering, antivirus and Internet caching</proxyquicktext>
 <Proxy>Proxy</Proxy>
-<mysqldefault_php_text>This is the  Mysql default credentials used for PHP applications (include Artica itself).[br]by default PHP applications default credentials use the same values has Artica Mysql credential</mysqldefault_php_text>
+<mysqldefault_php_text>This is the  MySQL default credentials used for PHP applications (include Artica itself).[br]by default PHP applications default credentials use the same values has Artica Mysql credential</mysqldefault_php_text>
 <UseSamePHPMysqlCredentials>Use same credentials</UseSamePHPMysqlCredentials>
 <EnableBandwithCalculation>Enable bandwidth calculation</EnableBandwithCalculation>
 <EnableBandwithCalculation_explain>If enabled, artica will try to determine your Internet bandwidth</EnableBandwithCalculation>
@@ -1963,7 +1963,7 @@ A large log buffer allows large transactions to run without a need to write the 
 If you have big transactions, making the log buffer larger will save disk I/O.
 This value should be 32Mb.
 </zarafa_innodb_log_buffer_size> 
-<mysql_tuning>Mysql tuning</mysql_tuning>
+<mysql_tuning>MySQL tuning</mysql_tuning>
 <innodb_log_file_size>INNODB log file size</innodb_log_file_size>
 <innodb_log_buffer_size>INNODB log buffer size</innodb_log_buffer_size>
 <enable_tuning_mysql_server>Enable tune MySQL settings</enable_tuning_mysql_server>
@@ -2393,7 +2393,7 @@ There is no sense to add the public IP adress and netmask has inside the VPN rou
 <ExecBackupMaxContainers>Max containers to store</ExecBackupMaxContainers>
 <search_computers>Search computers</search_computers>
 <kavicap_unavailable_text>Connection with Kaspersky For Proxy server is broken, check the connection:</kavicap_unavailable_text>
-<external_artica_mysql_statistics_generator>Use an external Artica Mysql server for statistics</external_artica_mysql_statistics_generator>
+<external_artica_mysql_statistics_generator>Use an external Artica MySQL server for statistics</external_artica_mysql_statistics_generator>
 <external_artica_mysql_statistics_generator_explain>The statistics generation tasks consume performances, you can use an external server in order to perform MySQL tables maintenance.[br]
 In this case, this server will not perform any statistics operations locally.[br]The remote server must be an Artica server.[br]
 It will be in charge of calculate all necessaries statistics.
@@ -2598,7 +2598,7 @@ Check the list below and click on each row in order to display Network interface
 <mysql_defrag>scheduled defragment tables</mysql_defrag>
 <mysql_defrag_text>Define the schedule task that will defragment tables in order to optimize mysql performances</mysql_defrag_text> 
 <mysql_defrag_explain>Select the schedule and databases that will be optimized in order to increase their performances.</mysql_defrag_explain>
-<launch_optimize>Launch the Mysql optimize task</launch_optimize>
+<launch_optimize>Launch the MySQL optimize task</launch_optimize>
 <launch_optimize_text>Perform mysql optimization on saved databases</launch_optimize_text> 
 <SQUID_STATS1>Proxy statistics</SQUID_STATS1>
 <SQUID_STATS_TEXT>Display Proxy statistics graphs and charts</SQUID_STATS_TEXT>

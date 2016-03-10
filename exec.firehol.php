@@ -43,6 +43,8 @@ function build_init($noprogress=false){
 	$GLOBALS["echobin"]=$unix->find_program("echo");
 	$php=$unix->LOCATE_PHP5_BIN();
 	$FireHolEnable=intval($sock->GET_INFO("FireHolEnable"));
+	$KERNEL_VERSION=$unix->KERNEL_VERSION();
+	$modprobe=$unix->find_program("modprobe");
 	$sh[]="#!/bin/sh -e";
 	$sh[]="### BEGIN INIT INFO";
 	$sh[]="# Builded on ". date("Y-m-d H:i:s");
@@ -68,6 +70,7 @@ function build_init($noprogress=false){
 	$sh[]="";
 	$sh[]="";
 	
+
 	$sh[]="FireHolEnable=`cat /etc/artica-postfix/settings/Daemons/FireHolEnable`";
 	$sh[]="EnableArticaHotSpot=`cat /etc/artica-postfix/settings/Daemons/EnableArticaHotSpot`";
 	$sh[]="if [ \$EnableArticaHotSpot -eq 1 ]; then";
@@ -82,7 +85,7 @@ function build_init($noprogress=false){
 	$sh[]="\t{$GLOBALS["echobin"]} \"FireWall: EnableArticaHotSpot is '\$EnableArticaHotSpot'\"";
 	$sh[]="if [ \$FireHolEnable -eq 0 ]; then";
 		$sh[]="{$GLOBALS["echobin"]} \"FireWall: disabled, checking transparent rules.\"";
-		$sh[]="if [ -f \"\/usr/local/sbin/firehol\" ]; then";
+		$sh[]="if [ -f \"/usr/local/sbin/firehol\" ]; then";
 			$sh[]="\t/usr/local/sbin/firehol stop";
 		$sh[]="fi";
 		$sh[]="\tif [ -e \"/etc/init.d/iptables-transparent\" ]; then";
@@ -101,8 +104,19 @@ function build_init($noprogress=false){
 	
 	
 	$sh[]="if [ \$FireHolEnable -eq 1 ]; then";
+	
+	if(is_file("/lib/modules/$KERNEL_VERSION/extra/xt_ndpi.ko")){
+		$sh[]="#xt_ndpi installed";
+		$sh[]="\t{$GLOBALS["echobin"]} \"FireWall: Loading xt_ndpi module.\"";
+		$sh[]="$modprobe xt_ndpi || true";
+	}else{
+		$sh[]="#xt_ndpi not installed";
+	}
+	
+	$sh[]="";
+	
 		$sh[]="\t{$GLOBALS["echobin"]} \"FireWall: Starting\"";
-		$sh[]="if [ -f \"\/usr/local/sbin/firehol\" ]; then";
+		$sh[]="if [ -f \"/usr/local/sbin/firehol\" ]; then";
 		$sh[]="\t/usr/local/sbin/firehol start";
 		$sh[]="fi";
 		$sh[]="\t{$GLOBALS["echobin"]} \"FireWall: Started\"";
@@ -115,14 +129,23 @@ function build_init($noprogress=false){
 	$sh[]="\t\t{$GLOBALS["echobin"]} \"FireWall: Start WCCP rules\"";
 	$sh[]="\t\t/etc/init.d/proxy-wccp verif || true";
 	$sh[]="\tfi";
+	
+	$sh[]="\t\t{$GLOBALS["echobin"]} \"FireWall: Start MikrotiK rules\"";
 	$sh[]="\t$php ".dirname(__FILE__)."/exec.mikrotik.php >/dev/null 2>&1";
+	
+	$sh[]="\tif [ -e \"/bin/suricata-fw.sh\" ]; then";
+	$sh[]="\t\t{$GLOBALS["echobin"]} \"FireWall: Start IDS rules\"";
+	$sh[]="\t\t/bin/suricata-fw.sh || true";
+	$sh[]="\tfi";
+	
+	
 	
 	
 	$sh[]="{$GLOBALS["echobin"]} \"FireWall: done\"";
 	$sh[]=";;";
 	$sh[]="  stop)";
 	$sh[]="\t{$GLOBALS["echobin"]} \"FireWall: Stopping\"";
-	$sh[]="if [ -f \"\/usr/local/sbin/firehol\" ]; then";
+	$sh[]="if [ -f \"/usr/local/sbin/firehol\" ]; then";
 	$sh[]="\t/usr/local/sbin/firehol stop";
 	$sh[]="fi";
 	$sh[]="if [ \$FireHolEnable -eq 1 ]; then";
@@ -161,18 +184,23 @@ function build_init($noprogress=false){
 	$sh[]="\t$php ".dirname(__FILE__)."/exec.iptables-stats-app.php >/dev/null 2>&1";
 	
 	$sh[]="\tif [ -e \"/etc/init.d/proxy-wccp\" ]; then";
-	$sh[]="\t\t{$GLOBALS["echobin"]} \"FireWall: restart WCCP rules\"";
+	$sh[]="\t\t{$GLOBALS["echobin"]} \"FireWall: reconfigure WCCP rules\"";
 	$sh[]="\t\t/etc/init.d/proxy-wccp restart || true";
 	$sh[]="\tfi";
 	
 	$sh[]="\tif [ -e \"/etc/init.d/iptables-statsapp\" ]; then";
-	$sh[]="\t\t{$GLOBALS["echobin"]} \"FireWall: restart Stats-Appliances rules\"";
+	$sh[]="\t\t{$GLOBALS["echobin"]} \"FireWall: reconfigure Stats-Appliances rules\"";
 	$sh[]="\t\t/etc/init.d/iptables-statsapp restart || true";
 	$sh[]="\tfi";
 	
 	$sh[]="\tif [ -e \"/bin/iptables-parents.sh\" ]; then";
-	$sh[]="\t\t{$GLOBALS["echobin"]} \"FireWall: restart Firewall (Proxy parent) rules\"";
+	$sh[]="\t\t{$GLOBALS["echobin"]} \"FireWall: reconfigure Firewall (Proxy parent) rules\"";
 	$sh[]="\t\t/bin/iptables-parents.sh || true";
+	$sh[]="\tfi";
+	
+	$sh[]="\tif [ -e \"/bin/suricata-fw.sh\" ]; then";
+	$sh[]="\t\t{$GLOBALS["echobin"]} \"FireWall: reconfigure IDS rules\"";
+	$sh[]="\t\t/bin/suricata-fw.sh || true";
 	$sh[]="\tfi";
 	
 	
@@ -184,7 +212,8 @@ function build_init($noprogress=false){
 		$sh[]="\t{$GLOBALS["echobin"]} \"FireWall: Reconfiguring\"";
 		$sh[]="\t$php ".__FILE__." --reconfigure >/dev/null 2>&1";
 		$sh[]="\t{$GLOBALS["echobin"]} \"FireWall: Restarting\"";
-		$sh[]="\t/usr/local/sbin/firehol restart";
+		$sh[]="\t/usr/local/sbin/firehol stop || true";
+		$sh[]="\t/usr/local/sbin/firehol start || true";
 	$sh[]="fi";
 	$sh[]="if [ \$FireHolEnable -eq 0 ]; then";
 		$sh[]="{$GLOBALS["echobin"]} \"FireWall: disabled, down Transparent rules\"";
@@ -216,6 +245,11 @@ function build_init($noprogress=false){
 	$sh[]="\t\t/bin/iptables-parents.sh || true";
 	$sh[]="\tfi";
 	$sh[]="\t$php ".dirname(__FILE__)."/exec.mikrotik.php >/dev/null 2>&1";
+	
+	$sh[]="\tif [ -e \"/bin/suricata-fw.sh\" ]; then";
+	$sh[]="\t\t{$GLOBALS["echobin"]} \"FireWall: restart IDS rules\"";
+	$sh[]="\t\t/bin/suricata-fw.sh || true";
+	$sh[]="\tfi";
 	
 	$sh[]=";;";
 	
@@ -345,7 +379,12 @@ function reconfigure_progress(){
 		build_init();
 		build_progress("{building_rules}",80);
 		system("$php /usr/share/artica-postfix/exec.squid.transparent.php");
+		build_progress("{building_rules}",81);
+		system("$php /usr/share/artica-postfix/exec.secure.gateway.php");
+		build_progress("{building_rules}",82);
+		if(is_file("/bin/artica-secure-gateway.sh")){system("/bin/artica-secure-gateway.sh");}
 		build_progress("FireWall service:{disabled}",100);
+
 		return;
 	}
 	
@@ -375,14 +414,18 @@ function stop_service(){
 	
 }
 function start_service(){
-
+	$unix=new unix();
 	build_progress("{start_firewall}",10);
 	if(!is_file("/usr/local/sbin/firehol")){
 		echo "Not installed...\n";
 		build_progress("{start_firewall} {failed}",110);
 		return;
 	}
-
+	
+	$KERNEL_VERSION=$unix->KERNEL_VERSION();
+	$modprobe=$unix->find_program("modprobe");
+	
+	if(is_file("/lib/modules/$KERNEL_VERSION/extra/xt_ndpi.ko")){shell_exec("$modprobe xt_ndpi");}
 	system("/usr/local/sbin/firehol start");
 	build_progress("{start_firewall} {success}",100);
 

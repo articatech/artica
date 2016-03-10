@@ -102,7 +102,7 @@ and account allowed to add new server into your Artica Meta organization</Artica
 <free_web_servers_text>Enable/disable the FreeWebs service that allow to create web servers spaces for registered users.</free_web_servers_text>
 <enable_freeweb>Enable FreeWeb service</enable_freeweb>
 <enable_freeweb_text>FreeWeb is a service that enable web free spaces for any users.[br]this is not the same of Artica Groupware that allows to install pre-defined groupwares.[br]
-FreeWeb just provides virtual domain, Mysql Database, FTP access in order to allow installing/Pushing any web content pages.[br]
+FreeWeb just provides virtual domain, MySQL Database, FTP access in order to allow installing/Pushing any web content pages.[br]
 FreeWeb run on standard ports (80/443) and using the Apache server in order to provide the main service.</enable_freeweb_text> 
 <delete_freeweb_text>Are your sure to delete this item ? All datas will be deleted</delete_freeweb_text>
 <ENABLE_APACHE_GROUPWARE>Enable Apache groupware service</ENABLE_APACHE_GROUPWARE>
@@ -231,7 +231,7 @@ give the target LDAP/Active Directory server name server or IP address and click
 <resolv_domains>Resolve SMTP domains</resolv_domains>
 <result_attribute>Result attribute</result_attribute>
 <search_remote_database>Search remote database</search_remote_database>
-<APP_MYSQLHOTCOPY>MysqlHotCopy</APP_MYSQLHOTCOPY>
+<APP_MYSQLHOTCOPY>MySQLHotCopy</APP_MYSQLHOTCOPY>
 <SAMBA_LDAP_EXTERN_TEXT>This section allows you to change the LDAP backend database to a remote one.[br]By default, Artica use it's own LDAP database in order to helps you to manage users and access control.[br]
 You can use your own LDAP Database by setting access in this form</SAMBA_LDAP_EXTERN_TEXT>
 

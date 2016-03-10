@@ -91,7 +91,7 @@ function balancer_js(){
 	$tpl=new templates();
 	$new_service=$tpl->_ENGINE_parse_body("{new_service}");
 	if($_GET["servicename"]==null){$title=$new_service;}else{$title=$_GET["servicename"];}
-	echo "YahooWin3(850,'$page?balancer-tabs=yes&servicename={$_GET["servicename"]}&t={$_GET["t"]}','$title')";
+	echo "YahooWin3(990,'$page?balancer-tabs=yes&servicename={$_GET["servicename"]}&t={$_GET["t"]}','$title')";
 	
 }
 
@@ -161,12 +161,12 @@ $('#table-$t').flexigrid({
 	dataType: 'json',
 	colModel : [
 		{display: '&nbsp;', name : 'none', width : 65, sortable : true, align: 'center'},
-		{display: '$servicename', name : 'servicename', width : 208, sortable : true, align: 'left'},
-		{display: '$backends', name : 'none2', width : 275, sortable : false, align: 'left'},
-		{display: 'IN', name : 'enabled', width : 100, sortable : true, align: 'left'},
-		{display: 'OUT', name : 'delete', width : 100, sortable : false, align: 'left'},
-		{display: '$requests', name : 'delete', width : 94, sortable : false, align: 'left'},
-		{display: 'CMD', name : 'delete', width : 45, sortable : false, align: 'center'},
+		{display: '<span style=font-size:22px>$servicename</span>', name : 'servicename', width : 284, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>$backends</span>', name : 'none2', width : 404, sortable : false, align: 'left'},
+		{display: '<span style=font-size:22px>IN</span>', name : 'enabled', width : 124, sortable : true, align: 'right'},
+		{display: '<span style=font-size:22px>OUT</span>', name : 'delete', width : 124, sortable : false, align: 'right'},
+		{display: '<span style=font-size:22px>$requests</span>', name : 'delete', width : 124, sortable : false, align: 'right'},
+		{display: '<span style=font-size:22px>CMD</span>', name : 'delete', width : 124, sortable : false, align: 'center'},
 		
 	],
 
@@ -179,12 +179,12 @@ $('#table-$t').flexigrid({
 	sortname: 'servicename',
 	sortorder: 'asc',
 	usepager: true,
-	title: '$title',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 15,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 450,
+	height: 550,
 	singleSelect: true
 	
 	});   
@@ -335,7 +335,8 @@ $typof=array(0=>"frontend", 1=>"backend", 2=>"server", 3=>"socket");
 			$img="warning42.png";
 			$button=imgsimple("32-run.png",null,$downser);
 		}
-		if($status=="DOWN"){
+		
+		if(preg_match("#DOWN#", $status)){
 			$downser="HaProxyUpserv('$arraySRV');";
 			$button=null;
 			$img="error-42.png";
@@ -344,17 +345,18 @@ $typof=array(0=>"frontend", 1=>"backend", 2=>"server", 3=>"socket");
 		}
 		
 			
-			
+		if($type=="backend"){continue;}	
+		if($pxname=="admin_page"){continue;}
 		
 		$data['rows'][] = array(
 		'id' => "$md5",
-		'cell' => array("<img src='img/$img'>",
-		"<span style='font-size:18px;color:$color'>$pxname</span>",
-		"<span style='font-size:18px;color:$color'>$svname ($type - $status)</span>",
-		"<span style='font-size:18px;color:$color'>$bin</span>",
-		"<span style='font-size:18px;color:$color'>$bout</span>",
-		"<span style='font-size:18px;color:$color'>$req_tot</span>",
-		"<span style='font-size:18px;color:$color'>$button</span>",
+		'cell' => array("<center><img src='img/$img'></center>",
+		"<span style='font-size:22px;color:$color'>$pxname</span>",
+		"<span style='font-size:22px;color:$color'>$svname ($type - $status)</span>",
+		"<span style='font-size:22px;color:$color'>$bin</span>",
+		"<span style='font-size:22px;color:$color'>$bout</span>",
+		"<span style='font-size:22px;color:$color'>$req_tot</span>",
+		"<center style='font-size:22px;color:$color'>$button</center>",
 		
 		$disable,$delete)
 		);
@@ -434,28 +436,30 @@ function balancers(){
 	$delete_service=$tpl->javascript_parse_text("{delete_this_service}");
 	$service=$tpl->_ENGINE_parse_body("{service}");
 	$status=$tpl->_ENGINE_parse_body("{status}");
+	$Apply=$tpl->javascript_parse_text("{apply}");
 	$t=time();		
 	$view_script=$tpl->_ENGINE_parse_body("{view_script}");
 	$html="
-	<table class='table-$t' style='display: none' id='table-$t' style='width:99%'></table>
+	<table class='MAIN_HAPROXY_BALANCERS_TABLE' style='display: none' id='MAIN_HAPROXY_BALANCERS_TABLE' style='width:99%'></table>
 <script>
 var tmp$t='';
 $(document).ready(function(){
-$('#table-$t').flexigrid({
+$('#MAIN_HAPROXY_BALANCERS_TABLE').flexigrid({
 	url: '$page?balancers-list=yes&t=$t',
 	dataType: 'json',
 	colModel : [
-		{display: '$servicename', name : 'servicename', width : 465, sortable : true, align: 'left'},
-		{display: '$interface', name : 'listen_ip', width : 210, sortable : false, align: 'left'},
-		{display: '$backends', name : 'none2', width : 67, sortable : false, align: 'center'},
-		{display: '$enabled', name : 'enabled', width : 31, sortable : true, align: 'center'},
-		{display: '$delete', name : 'delete', width : 83, sortable : false, align: 'center'},
+		{display: '<span style=font-size:18px>$servicename</span>', name : 'servicename', width : 595, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$interface</span>', name : 'listen_ip', width : 296, sortable : false, align: 'left'},
+		{display: '<span style=font-size:18px>$backends</span>', name : 'none2', width : 210, sortable : false, align: 'center'},
+		{display: '<span style=font-size:18px>$enabled</span>', name : 'enabled', width : 113, sortable : true, align: 'center'},
+		{display: '<span style=font-size:18px>$delete</span>', name : 'delete', width : 122, sortable : false, align: 'center'},
 		
 	],
 buttons : [
-	{name: '$new_service', bclass: 'add', onpress : HaProxyAdd},
-	{name: '$view_script', bclass: 'Script', onpress : HaBackConf},
-	{name: '$status:<strong id=haproxy-status-$t></strong>', bclass: 'Net', onpress : ZoomHapProxStatus},
+	{name: '<strong style=font-size:18px>$new_service</strong>', bclass: 'add', onpress : HaProxyAdd},
+	{name: '<strong style=font-size:18px>$view_script</strong>', bclass: 'Script', onpress : HaBackConf},
+	{name: '<strong style=font-size:18px>$Apply</strong>', bclass: 'apply', onpress : HaApply},
+	{name: '<strong style=font-size:18px>$status:</strong><strong id=haproxy-status-$t></strong>', bclass: 'Net', onpress : ZoomHapProxStatus},
 		],	
 	searchitems : [
 		{display: '$servicename', name : 'servicename'},
@@ -469,7 +473,7 @@ buttons : [
 	rp: 15,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 450,
+	height: 550,
 	singleSelect: true
 	
 	});   
@@ -486,6 +490,10 @@ function ZoomHapProxStatus(){
 	YahooWin2('300','$page?popup-status=yes','$status');
 }
 
+function HaApply(){
+	Loadjs('haproxy.progress.php');
+}
+
 
 	var x_DeleteSquidAclGroup= function (obj) {
 		var res=obj.responseText;
@@ -498,7 +506,7 @@ function ZoomHapProxStatus(){
 	var x_EnableDisableHaService= function (obj) {
 		var res=obj.responseText;
 		if(res.length>3){alert(res);return;}
-		$('#table-$t').flexReload();
+		$('#MAIN_HAPROXY_BALANCERS_TABLE').flexReload();
 	}
 	
 	var x_EnableDisableHaServiceSilent= function (obj) {
@@ -534,7 +542,7 @@ function ZoomHapProxStatus(){
 
 	function HaProxyStatusRoll$t(){
 		if(document.getElementById('haproxy-status-$t')){
-			LoadAjaxTiny('haproxy-status-$t','$page?haproxy-status=yes');
+			LoadAjaxSilent('haproxy-status-$t','$page?haproxy-status=yes');
 			setTimeout('HaProxyStatusRoll$t()',15000);
 		}
 	
@@ -625,10 +633,11 @@ function balancers_list(){
 	$data['rows'][] = array(
 		'id' => "BF$md5",
 		'cell' => array("<a href=\"javascript:blur();\"  OnClick=\"javascript:Loadjs('$MyPage?balancer-js=yes&servicename={$ligne['servicename']}&t={$_GET["t"]}');\" 
-		style='font-size:22px;text-decoration:underline;color:$color'>{$ligne['servicename']}</span>",
-		"<span style='font-size:22px;color:$color'>$interface</span>",
-		"<span style='font-size:22px;color:$color'>$Tcount</span>",
-		$disable,$delete)
+		style='font-size:24px;text-decoration:underline;color:$color'>{$ligne['servicename']}</span>",
+		"<span style='font-size:24px;color:$color'>$interface</span>",
+		"<span style='font-size:24px;color:$color'>$Tcount</span>",
+		"<center>$disable</center>",
+		"<center>$delete</center>")
 		);
 	}
 	
@@ -644,8 +653,9 @@ function backends_settings(){
 	$tpl=new templates();
 	$servicename=$_GET["servicename"];
 	$backendname=$_GET["backendname"];
-	
+	$smtp_disable=0;
 	$hapServ=new haproxy_multi($servicename);
+	if($hapServ->loadbalancetype==2){$smtp_disable=1;}
 	$UseSMTPProto=$hapServ->MainConfig["UseSMTPProto"];
 	if(!is_numeric($UseSMTPProto)){$UseSMTPProto=0;}
 	
@@ -685,6 +695,7 @@ function backends_settings(){
 	if(!is_numeric($hap->MainConfig["fall"])){$hap->MainConfig["fall"]=3;}
 	if(!is_numeric($hap->MainConfig["rise"])){$hap->MainConfig["rise"]=2;}
 	if(!is_numeric($hap->MainConfig["maxconn"])){$hap->MainConfig["maxconn"]=10000;}
+	if(!is_numeric($hap->MainConfig["asSquidArtica"])){$hap->MainConfig["asSquidArtica"]=0;}
 	
 	$ip=new networking();
 	$Interfaces=$ip->Local_interfaces();
@@ -696,65 +707,75 @@ function backends_settings(){
 	<div id='$t-defaults'></div>
 	<table style='width:99%;margin-bottom:15px' class=form>
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{backendname}:</td>
-				<td>". Field_text("backendname-$t",$backendname,"font-size:16px;padding:3px;width:270px")."</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>{backendname}:</td>
+				<td>". Field_text("backendname-$t",$backendname,"font-size:20px;padding:3px;width:540px")."</td>
+				
 			</tr>
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{outgoing_address}:</td>
-				<td>". Field_array_Hash($Interfaces,"localInterface-$t",$hap->localInterface,"style:font-size:16px;padding:3px;")."</td>
-				<td>". icon_help("{haproxy_local_interface_help}")."</td>
+				<td class=legend style='font-size:20px' nowrap>". texttooltip("{outgoing_address}","{haproxy_local_interface_help}").":</td>
+				<td>". Field_array_Hash($Interfaces,"localInterface-$t",$hap->localInterface,"style:font-size:20px;padding:3px;")."</td>
+				
 			</tr>
 						
 						
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{listen_ip}:</td>
-				<td width=99%>". field_ipv4("listen_ip-$t",$hap->listen_ip,"font-size:16px;")."</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>{listen_ip}:</td>
+				<td width=99%>". field_ipv4("listen_ip-$t",$hap->listen_ip,"font-size:20px;")."</td>
+				
 			</tr>
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{listen_port}:</td>
-				<td>". Field_text("listen_port-$t",$hap->listen_port,"font-size:16px;padding:3px;width:70px")."</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>{listen_port}:</td>
+				<td>". Field_text("listen_port-$t",$hap->listen_port,"font-size:20px;padding:3px;width:70px")."</td>
+				
 			</tr>
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{postfix_send_proxy}:</td>
-				<td width=99%>". Field_checkbox("postfix-send-proxy-$t",1,$hap->MainConfig["postfix-send-proxy"],"UseSMTPSendProxy$t()")."</td>
-				<td>&nbsp;</td>
-			</tr>			
-			<tr>
-				<td class=legend style='font-size:16px' nowrap>{weight}:</td>
-				<td>". Field_text("bweight-$t",$hap->bweight,"font-size:16px;padding:3px;width:70px")."</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>Artica Proxy:</td>
+				<td width=99%>". Field_checkbox_design("asSquidArtica-$t",1,$hap->MainConfig["asSquidArtica"])."</td>
+				
+			</tr>										
+			";
+	
+	if($smtp_disable==0){
+			$html=$html."<tr>
+				<td class=legend style='font-size:20px' nowrap>{postfix_send_proxy}:</td>
+				<td width=99%>". Field_checkbox_design("postfix-send-proxy-$t",1,$hap->MainConfig["postfix-send-proxy"],"UseSMTPSendProxy$t()")."</td>
+				
+			</tr>
+			";
+	}			
+		$html=$html."<tr>
+				<td class=legend style='font-size:20px' nowrap>{weight}:</td>
+				<td>". Field_text("bweight-$t",$hap->bweight,"font-size:20px;padding:3px;width:70px")."</td>
+				
 			</tr>
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{max_connections}:</td>
-				<td>". Field_text("maxconn-$t",$hap->MainConfig["maxconn"],"font-size:16px;padding:3px;width:100px")."</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>{max_connections}:</td>
+				<td>". Field_text("maxconn-$t",$hap->MainConfig["maxconn"],"font-size:20px;padding:3px;width:100px")."</td>
+				
 			</tr>			
 			
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{check_interval}:</td>
-				<td style='font-size:16px;'>".
-				 Field_text("inter-$t",$hap->MainConfig["inter"],"font-size:16px;padding:3px;width:100px",null,"intercalc$t()",null,false,"intercalc$t()",false).
+				<td class=legend style='font-size:20px' nowrap>{check_interval}:</td>
+				<td style='font-size:20px;'>".
+				 Field_text("inter-$t",$hap->MainConfig["inter"],"font-size:20px;padding:3px;width:100px",null,"intercalc$t()",null,false,"intercalc$t()",false).
 				 
 				 "&nbsp;{milliseconds}&nbsp;<span id='inter-span-$t'></span></td>
-				 <td>&nbsp;</td>
+				
 			</tr>			
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{failed_number}:</td>
-				<td style='font-size:16px;'>
-				". Field_text("fall-$t",$hap->MainConfig["fall"],"font-size:16px;padding:3px;width:100px").
+				<td class=legend style='font-size:20px' nowrap>{failed_number}:</td>
+				<td style='font-size:20px;'>
+				". Field_text("fall-$t",$hap->MainConfig["fall"],"font-size:20px;padding:3px;width:100px").
 				"&nbsp;{attempts}&nbsp;<span id='fall-span-$t'></span></td>
-				<td>&nbsp;</td>
+				
 			</tr>			
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{success_number}:</td>
-				<td style='font-size:16px;'>". Field_text("rise-$t",$hap->MainConfig["rise"],"font-size:16px;padding:3px;width:70px")."&nbsp;{attempts}</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>{success_number}:</td>
+				<td style='font-size:20px;'>". Field_text("rise-$t",$hap->MainConfig["rise"],"font-size:20px;padding:3px;width:70px")."&nbsp;{attempts}</td>
+				
 			</tr>				
 			<tr>			
-				<td colspan=3 align='right'>". button("$buttonname","SaveHaProxyBackend()",18)."</td>
+				<td colspan=2 align='right'>". button("$buttonname","SaveHaProxyBackend()",30)."</td>
 			</tr>						
 	</table>
 $toolbox
@@ -765,7 +786,8 @@ $toolbox
 			var results=obj.responseText;
 			document.getElementById('$t-defaults').innerHTML='';
 			if(results.length>2){alert(results);return;}
-			$('#table-$tt').flexReload();
+			$('#HAPROXY_BACKENDS_TABLE').flexReload();
+			$('#MAIN_HAPROXY_BALANCERS_TABLE').flexReload();
 			if(servicename.length==0){YahooWin4Hide();return;}
 			RefreshTab('main_config_backendservice');
 		}
@@ -775,7 +797,8 @@ $toolbox
 			var results=obj.responseText;
 			document.getElementById('$t-defaults').innerHTML='';
 			if(results.length>2){alert(results);return;}
-			$('#table-$tt').flexReload();
+			$('#HAPROXY_BACKENDS_TABLE').flexReload();
+			$('#MAIN_HAPROXY_BALANCERS_TABLE').flexReload();
 			YahooWin4Hide();
 			
 		}		
@@ -797,9 +820,13 @@ $toolbox
     		XHR.appendData('inter',document.getElementById('inter-$t').value);
     		XHR.appendData('fall',document.getElementById('fall-$t').value);
     		XHR.appendData('rise',document.getElementById('rise-$t').value);
-    		if(document.getElementById('postfix-send-proxy-$t').checked){XHR.appendData('postfix-send-proxy',1);}else{XHR.appendData('postfix-send-proxy',0);}
+    		if(document.getElementById('postfix-send-proxy-$t')){
+    			if(document.getElementById('postfix-send-proxy-$t').checked){XHR.appendData('postfix-send-proxy',1);}else{XHR.appendData('postfix-send-proxy',0);}
+    		}
+    		if(document.getElementById('asSquidArtica-$t').checked){XHR.appendData('asSquidArtica',1);}else{XHR.appendData('asSquidArtica',0);}
     		
-			AnimateDiv('$t-defaults');
+    		
+			
     		XHR.sendAndLoad('$page', 'POST',x_SaveHaProxyBackend$t);
 			
 		}	
@@ -830,9 +857,12 @@ $toolbox
 		function CheckService$t(){
 			 var backendname='$backendname';
 			 var UseSMTPProto=$UseSMTPProto;
-			 document.getElementById('postfix-send-proxy-$t').disabled=false;
+			 var smtp_disable=$smtp_disable;
 			 if(backendname.length>2){document.getElementById('backendname-$t').disabled=true;}
-			 if(UseSMTPProto==1){document.getElementById('postfix-send-proxy-$t').disabled=false;}
+			 if(document.getElementById('postfix-send-proxy-$t')){
+			 	if(UseSMTPProto==1){document.getElementById('postfix-send-proxy-$t').disabled=false;}
+			 }
+			 
 		}
 		
 CheckService$t();		
@@ -843,6 +873,10 @@ echo $tpl->_ENGINE_parse_body($html);
 }
 
 function backends_save(){
+	
+
+	
+	
 	$hap=new haproxy_backends($_POST["servicename"], $_POST["backendname"]);
 	$hap->listen_ip=$_POST["listen_ip"];
 	$hap->listen_port=$_POST["listen_port"];
@@ -852,6 +886,9 @@ function backends_save(){
 	$hap->MainConfig["fall"]=$_POST["fall"];
 	$hap->MainConfig["rise"]=$_POST["rise"];
 	$hap->MainConfig["maxconn"]=$_POST["maxconn"];
+	$hap->MainConfig["asSquidArtica"]=$_POST["asSquidArtica"];
+	
+	
 	if(isset($_POST["postfix-send-proxy"])){$hap->MainConfig["postfix-send-proxy"]=$_POST["postfix-send-proxy"];}
 
 	$hap->save();
@@ -879,118 +916,117 @@ function balancer_settings(){
 	$ips["*"]="{all}";
 	$buttonname="{apply}";
 	if($servicename==null){$buttonname="{add}";}
-	$mode=array(0=>"tcp",1=>"http");
+	$mode=array(0=>"TCP",1=>"HTTP Web",2=>"HTTP Proxy");
 	if(!isset($hap->MainConfig["smtpchk_EHLO"])){$hap->MainConfig["smtpchk_EHLO"]=$users->hostname;}
 	if(!is_numeric($hap->MainConfig["contimeout"])){$hap->MainConfig["contimeout"]=4000;}
 	if(!is_numeric($hap->MainConfig["srvtimeout"])){$hap->MainConfig["srvtimeout"]=50000;}
 	if(!is_numeric($hap->MainConfig["clitimeout"])){$hap->MainConfig["clitimeout"]=15000;}
 	if(!is_numeric($hap->MainConfig["retries"])){$hap->MainConfig["retries"]=3;}
 	if(!is_numeric($hap->MainConfig["UseCookies"])){$hap->MainConfig["UseCookies"]=0;}
+	if(!is_numeric($hap->MainConfig["NTLM_COMPATIBILITY"])){$hap->MainConfig["NTLM_COMPATIBILITY"]=0;}
 	
 	
 	
-	$algo[null]="{none}";
-	$algo["source"]="{strict-hashed-ip}";
-	$algo["roundrobin"]="{round-robin}";	
-	$algo["leastconn"]="{leastconn}";	
 	
 	$t=time();
 	$html="
 	<div id='$t-defaults'></div>
 	<table style='width:99%' class=form>
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{servicename}:</td>
-				<td>". Field_text("servicename-$t",$servicename,"font-size:16px;padding:3px;width:270px")."</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>{servicename}:</td>
+				<td>". Field_text("servicename-$t",$servicename,"font-size:20px;padding:3px;width:500px")."</td>
+				
 			</tr>	
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{listen_ip}:</td>
-				<td width=99%>". Field_array_Hash($ips,"listen_ip-$t",$hap->listen_ip,"style:font-size:16px;padding:3px")."</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>{listen_ip}:</td>
+				<td width=99%>". Field_array_Hash($ips,"listen_ip-$t",$hap->listen_ip,"style:font-size:20px;padding:3px")."</td>
+				
 			</tr>
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{listen_port}:</td>
-				<td>". Field_text("listen_port-$t",$hap->listen_port,"font-size:16px;padding:3px;width:70px")."</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>{listen_port}:</td>
+				<td>". Field_text("listen_port-$t",$hap->listen_port,"font-size:20px;padding:3px;width:70px")."</td>
+				
 			</tr>
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{method}:</td>
-				<td width=99%>". Field_array_Hash($mode,"mode-$t",$hap->loadbalancetype,"MethodChk$t()",null,0,"font-size:16px;padding:3px")."</td>
-				<td><span id='mode-options-$t'></span></td>
+				<td class=legend style='font-size:20px' nowrap>{method}:</td>
+				<td width=99%>". Field_array_Hash($mode,"mode-$t",$hap->loadbalancetype,"MethodChk$t()",null,0,"font-size:20px;padding:3px")."&nbsp;<span id='mode-options-$t'></span></td>
+				
 			</tr>	
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{tunnel_mode}:</td>
-				<td width=99%>". Field_checkbox("tunnel_mode-$t",1,$hap->tunnel_mode,"tunnel_modeChk$t()")."</td>
-				<td><span id='mode-tunnel_mode-$t'></span></td>
+				<td class=legend style='font-size:20px' nowrap>{tunnel_mode}:</td>
+				<td width=99%>". Field_checkbox_design("tunnel_mode-$t",1,$hap->tunnel_mode,"tunnel_modeChk$t()")."&nbsp;<span id='mode-tunnel_mode-$t'></span></td>
+				
 			</tr>				
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{dispatch_method}:</td>
-				<td width=99%>". Field_array_Hash($algo,"dispatch_mode-$t",$hap->dispatch_mode,"style:font-size:16px;padding:3px")."</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>{dispatch_method}:</td>
+				<td width=99%>". Field_array_Hash($hap->algo,"dispatch_mode-$t",$hap->dispatch_mode,"style:font-size:20px;padding:3px")."</td>
+				
 			</tr>
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{UseCookies}:</td>
-				<td width=99%>". Field_checkbox("UseCookies-$t",1,$hap->MainConfig["UseCookies"])."</td>
+				<td class=legend style='font-size:20px' nowrap>{UseCookies}:</td>
+				<td width=99%>". Field_checkbox_design("UseCookies-$t",1,$hap->MainConfig["UseCookies"])."</td>
+				
+			</tr>			
+			<tr>
+				<td class=legend style='font-size:20px' nowrap>{transparent_mode}:</td>
+				<td width=99%>". Field_checkbox_design("transparent-$t",1,$hap->transparent,"transparentCheck$t()")."</td>
 				<td>&nbsp;</td>
 			</tr>			
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{transparent_mode}:</td>
-				<td width=99%>". Field_checkbox("transparent-$t",1,$hap->transparent,"transparentCheck$t()")."</td>
-				<td>&nbsp;</td>
-			</tr>			
-			<tr>
-				<td class=legend style='font-size:16px' nowrap>{transparent_srcport}:</td>
-				<td width=99%>". Field_text("transparentsrcport-$t",$hap->transparentsrcport,"font-size:16px;padding:3px;width:70px")."</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>{transparent_srcport}:</td>
+				<td width=99%>". Field_text("transparentsrcport-$t",$hap->transparentsrcport,"font-size:20px;padding:3px;width:70px")."</td>
+				
 			</tr>			
 			
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{UseSMTPProto}:</td>
-				<td width=99%>". Field_checkbox("UseSMTPProto-$t",1,$hap->MainConfig["UseSMTPProto"],"UseSMTPProtoChk$t()")."</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>{UseSMTPProto}:</td>
+				<td width=99%>". Field_checkbox_design("UseSMTPProto-$t",1,$hap->MainConfig["UseSMTPProto"],"UseSMTPProtoChk$t()")."</td>
 			</tr>
-
+			<tr>
+				<td class=legend style='font-size:20px' nowrap>". texttooltip("{NTLM_COMPATIBLE}","{HAP_NTLM_COMPATIBLE}").":</td>
+				<td width=99%>". Field_checkbox_design("NTLM_COMPATIBILITY-$t",1,$hap->MainConfig["NTLM_COMPATIBILITY"],"NTLM_COMPATIBILITYCHK$t()")."</td>
+			</tr>
 						
 
 			
 			
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{smtpchk_EHLO}:</td>
-				<td width=99%>". Field_text("smtpchk_EHLO-$t",$hap->MainConfig["smtpchk_EHLO"],"font-size:16px;padding:3px;width:270px")."</td>
-				<td>&nbsp;</td>
+				<td class=legend style='font-size:20px' nowrap>{smtpchk_EHLO}:</td>
+				<td width=99%>". Field_text("smtpchk_EHLO-$t",$hap->MainConfig["smtpchk_EHLO"],"font-size:20px;padding:3px;width:270px")."</td>
+				
 			</tr>
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{contimeout}:</td>
-				<td style='font-size:16px;'>".
-				 Field_text("contimeout-$t",$hap->MainConfig["contimeout"],"font-size:16px;padding:3px;width:100px",null,
+				<td class=legend style='font-size:20px' nowrap>{contimeout}:</td>
+				<td style='font-size:20px;'>".
+				 Field_text("contimeout-$t",$hap->MainConfig["contimeout"],"font-size:20px;padding:3px;width:100px",null,
 				 "contimeoutcalc$t()",null,false,"contimeout$t()",false).
 				 
 				 "&nbsp;{milliseconds}&nbsp;<span id='contimeout-span-$t'></span></td>
-				 <td>&nbsp;</td>
+				 
 			</tr>	
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{srvtimeout}:</td>
-				<td style='font-size:16px;'>".
-				 Field_text("srvtimeout-$t",$hap->MainConfig["srvtimeout"],"font-size:16px;padding:3px;width:100px",null,
+				<td class=legend style='font-size:20px' nowrap>{srvtimeout}:</td>
+				<td style='font-size:20px;'>".
+				 Field_text("srvtimeout-$t",$hap->MainConfig["srvtimeout"],"font-size:20px;padding:3px;width:100px",null,
 				 "contimeoutcalc$t()",null,false,"contimeout$t()",false).
 				 "&nbsp;{milliseconds}&nbsp;<span id='srvtimeout-span-$t'></span></td>
-				 <td>&nbsp;</td>
+				 
 			</tr>	
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{clitimeout}:</td>
-				<td style='font-size:16px;'>".
-				 Field_text("clitimeout-$t",$hap->MainConfig["clitimeout"],"font-size:16px;padding:3px;width:100px",null,
+				<td class=legend style='font-size:20px' nowrap>{clitimeout}:</td>
+				<td style='font-size:20px;'>".
+				 Field_text("clitimeout-$t",$hap->MainConfig["clitimeout"],"font-size:20px;padding:3px;width:100px",null,
 				 "contimeoutcalc$t()",null,false,"contimeout$t()",false).
 				 "&nbsp;{milliseconds}&nbsp;<span id='clitimeout-span-$t'></span></td>
-				 <td>&nbsp;</td>
+				 
 			</tr>				
 			<tr>
-				<td class=legend style='font-size:16px' nowrap>{maxretries}:</td>
-				<td style='font-size:16px;'>".
-				 Field_text("retries-$t",$hap->MainConfig["retries"],"font-size:16px;padding:3px;width:60px",null,
+				<td class=legend style='font-size:20px' nowrap>{maxretries}:</td>
+				<td style='font-size:20px;'>".
+				 Field_text("retries-$t",$hap->MainConfig["retries"],"font-size:20px;padding:3px;width:60px",null,
 				 "blur()",null,false,"blur()",false).
 				 "&nbsp;{times}</td>
-				 <td>&nbsp;</td>
+				 
 			</tr>			
 			
 			
@@ -999,7 +1035,7 @@ function balancer_settings(){
 			
 			
 			<tr>			
-				<td colspan=3 align='right'>". button("$buttonname","SaveHaProxyService()",18)."</td>
+				<td colspan=2 align='right'>". button("$buttonname","SaveHaProxyService()",30)."</td>
 			</tr>						
 	</table>
 	
@@ -1009,7 +1045,7 @@ function balancer_settings(){
 			var results=obj.responseText;
 			document.getElementById('$t-defaults').innerHTML='';
 			if(results.length>2){alert(results);return;}
-			$('#table-$tt').flexReload();
+			$('#MAIN_HAPROXY_BALANCERS_TABLE').flexReload();
 			if(servicename.length==0){YahooWin3Hide();return;}
 			RefreshTab('main_config_haservice');
 		}	
@@ -1052,10 +1088,7 @@ function balancer_settings(){
     		if( document.getElementById('transparent-$t').checked){XHR.appendData('transparent',1);}else{XHR.appendData('transparent',0);}
     		if( document.getElementById('UseCookies-$t').checked){XHR.appendData('UseCookies',1);}else{XHR.appendData('UseCookies',0);}
     		if( document.getElementById('tunnel_mode-$t').checked){XHR.appendData('tunnel_mode',1);}else{XHR.appendData('tunnel_mode',0);}
-    		
-    		
-    		
- 			AnimateDiv('$t-defaults');
+    		if( document.getElementById('NTLM_COMPATIBILITY-$t').checked){XHR.appendData('NTLM_COMPATIBILITY',1);}else{XHR.appendData('NTLM_COMPATIBILITY',0);}
     		XHR.sendAndLoad('$page', 'POST',x_SaveHaProxyService$t);
 			
 		}
@@ -1078,7 +1111,8 @@ function balancer_settings(){
 		 if(method==0){
 		 	document.getElementById('UseSMTPProto-$t').disabled=false;
 		 	document.getElementById('smtpchk_EHLO-$t').disabled=false;
-		 	document.getElementById('UseCookies-$t').disabled=true;		 
+		 	document.getElementById('UseCookies-$t').disabled=true;	
+		 	document.getElementById('NTLM_COMPATIBILITY-$t').disabled=true;	 
 		 
 		 }
 		 LoadAjaxTiny('mode-options-$t','$page?balancer-method-options='+method+'&servicename=$servicename');
@@ -1088,6 +1122,7 @@ function balancer_settings(){
 		}
 		
 		function transparentCheck$t(){
+			 if( document.getElementById('transparent-$t').disabled){return;}
 			 document.getElementById('transparentsrcport-$t').disabled=true;
 			 if( document.getElementById('transparent-$t').checked){
 			 	document.getElementById('transparentsrcport-$t').disabled=false;
@@ -1108,6 +1143,26 @@ function balancer_settings(){
 			 if(servicename.length>2){document.getElementById('servicename-$t').disabled=true;}
 		}
 		
+		function NTLM_COMPATIBILITYCHK$t(){
+			if(document.getElementById('NTLM_COMPATIBILITY-$t').disabled){return;}
+		
+		
+		 	document.getElementById('transparentsrcport-$t').disabled=true;
+		 	document.getElementById('transparent-$t').disabled=true;
+		 	document.getElementById('smtpchk_EHLO-$t').disabled=true;
+		 	document.getElementById('tunnel_mode-$t').disabled=true;
+		 	
+		 	
+		 	
+			if(!document.getElementById('NTLM_COMPATIBILITY-$t').checked){
+				document.getElementById('transparentsrcport-$t').disabled=false;
+				document.getElementById('transparent-$t').disabled=false;
+				document.getElementById('smtpchk_EHLO-$t').disabled=false;
+				document.getElementById('tunnel_mode-$t').disabled=false;
+			}
+		}
+		
+NTLM_COMPATIBILITYCHK$t();		
 CheckService$t();		
 MethodChk$t();	
 UseSMTPProtoChk$t();
@@ -1121,6 +1176,22 @@ echo $tpl->_ENGINE_parse_body($html);
 }
 
 function balancer_save(){
+	
+	$SQUIDEnable=@file_get_contents("/etc/artica-postfix/settings/Daemons/SQUIDEnable");
+	if($SQUIDEnable==1){
+		$q=new mysql_squid_builder();
+		$ligne=@mysql_fetch_array($q->QUERY_SQL("SELECT PortName,ID FROM proxy_ports WHERE port='{$_POST["listen_port"]}'"));
+		$ID=$ligne["ID"];
+		$ID=intval($ID);
+	
+		if($ID>0){
+			$PortName=$ligne["PortName"];
+			echo "Unable to listen {$_POST["listen_port"]}, it used by the HTTP Proxy service $PortName ID $ID\n";
+			return;
+		}
+		}
+	
+	
 	$hap=new haproxy_multi($_POST["servicename"]);
 	$hap->listen_ip=$_POST["listen_ip"];
 	$hap->listen_port=$_POST["listen_port"];
@@ -1133,9 +1204,13 @@ function balancer_save(){
 	$hap->MainConfig["clitimeout"]=$_POST["clitimeout"];
 	$hap->MainConfig["retries"]=$_POST["retries"];
 	$hap->MainConfig["UseCookies"]=$_POST["UseCookies"];
+	$hap->MainConfig["NTLM_COMPATIBILITY"]=$_POST["NTLM_COMPATIBILITY"];
+	
+	
 	$hap->tunnel_mode=$_POST["tunnel_mode"];
 	$hap->transparent=$_POST["transparent"];
 	$hap->transparentsrcport=$_POST["transparentsrcport"];
+	
 	$hap->save();
 	
 }
@@ -1175,17 +1250,33 @@ function balancer_tabs(){
 	$servicename=$_GET["servicename"];
 	$array["balancer-settings"]='{parameters}';
 	$array["balancer-backends"]='{backends}';
+	$array["balancer-groups"]='{groups2}';
+	$array["balancer-acls"]='{acls}';
 	$tpl=new templates();
 	
 	if($servicename==null){
 		unset($array["balancer-backends"]);
 	}
 	
-	$fontsize="style='font-size:16px'";$width="100%";
+	$fontsize="style='font-size:22px'";$width="100%";
 	
 	
 	
 	while (list ($num, $ligne) = each ($array) ){
+		
+		
+		if($num=="balancer-groups"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"haproxy.groups.php?servicename=$servicename&t={$_GET["t"]}\"><span $fontsize>$ligne</span></a></li>\n");
+			continue;
+		}
+		
+		
+		
+			if($num=="balancer-acls"){
+				$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"haproxy.acls.php?servicename=$servicename&t={$_GET["t"]}\"><span $fontsize>$ligne</span></a></li>\n");
+				continue;
+			}
+		
 			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&servicename=$servicename&t={$_GET["t"]}\"><span $fontsize>$ligne</span></a></li>\n");
 	}
 	
@@ -1210,7 +1301,7 @@ function backends_tabs(){
 		unset($array["balancer-backends"]);
 	}
 	
-	$fontsize="style='font-size:16px'";$width="100%";
+	$fontsize="style='font-size:20px'";$width="100%";
 	
 	
 	
@@ -1233,10 +1324,13 @@ function tabs(){
 	$array["status"]='{status}';
 	$array["balancers"]='{balancers}';
 	$array["backend-status"]='{backends_status}';
+	$array["proxy-groups"]='{proxy_objects}';
+	
+	
 	$array["events"]='{events}';
 	$tpl=new templates();
 	
-	$fontsize="style='font-size:18px'";$width="100%";
+	$fontsize="style='font-size:26px'";$width="100%";
 	
 	
 	
@@ -1245,13 +1339,16 @@ function tabs(){
 				$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"haproxy.status.php?$num=yes\"><span $fontsize>$ligne</span></a></li>\n");
 				continue;
 			}
-		
+			if($num=="proxy-groups"){
+				$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"haproxy.acls.grouplist.php\"><span $fontsize>$ligne</span></a></li>\n");
+				continue;
+			}		
 		
 			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes\"><span $fontsize>$ligne</span></a></li>\n");
 	}
 	
 	
-	echo build_artica_tabs($html, "main_config_haproxy",1024)."<script>LeftDesign('load-balance-white-256-opac20.png');</script>";
+	echo build_artica_tabs($html, "main_config_haproxy",1494)."<script>LeftDesign('load-balance-white-256-opac20.png');</script>";
 	
 	
 	
@@ -1277,23 +1374,23 @@ function backends(){
 	$t=time();		
 
 	$html="
-	<table class='table-$t' style='display: none' id='table-$t' style='width:99%'></table>
+	<table class='HAPROXY_BACKENDS_TABLE' style='display: none' id='HAPROXY_BACKENDS_TABLE' style='width:99%'></table>
 <script>
 var tmp$t='';
 $(document).ready(function(){
-$('#table-$t').flexigrid({
+$('#HAPROXY_BACKENDS_TABLE').flexigrid({
 	url: '$page?balancer-backends-list=yes&t=$t&servicename=$servicename',
 	dataType: 'json',
 	colModel : [
-		{display: '$backends', name : 'backendname', width : 271, sortable : true, align: 'left'},
-		{display: '$interface', name : 'listen_ip', width : 233, sortable : false, align: 'left'},
-		{display: '$weight', name : 'bweight', width : 52, sortable : true, align: 'center'},
-		{display: '$enabled', name : 'enabled', width : 31, sortable : true, align: 'center'},
-		{display: '$delete', name : 'delete', width : 70, sortable : false, align: 'center'},
+		{display: '<span style=font-size:18px>$backends</span>', name : 'backendname', width : 339, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$interface</span>', name : 'listen_ip', width : 233, sortable : false, align: 'left'},
+		{display: '<span style=font-size:18px>$weight</span>', name : 'bweight', width : 52, sortable : true, align: 'center'},
+		{display: '<span style=font-size:18px>$enabled</span>', name : 'enabled', width : 97, sortable : true, align: 'center'},
+		{display: '<span style=font-size:18px>$delete</span>', name : 'delete', width : 119, sortable : false, align: 'center'},
 		
 	],
 buttons : [
-	{name: '$new_backend', bclass: 'add', onpress : HaBackendAdd},
+	{name: '<strong style=font-size:18px>$new_backend</strong>', bclass: 'add', onpress : HaBackendAdd},
 
 		],	
 	searchitems : [
@@ -1334,14 +1431,16 @@ function HaBackendAdd() {
 	var x_EnableDisableBackendSilent= function (obj) {
 		var res=obj.responseText;
 		if(res.length>3){alert(res);return;}
-		
+		$('#HAPROXY_BACKENDS_TABLE').flexReload();
+		$('#MAIN_HAPROXY_BALANCERS_TABLE').flexReload();
 	}	
 
 	var x_BackendDelete= function (obj) {
 		var res=obj.responseText;
 		if(res.length>3){alert(res);return;}
 		$('#rowTF'+tmp$t).remove();
-		$('#table-$tt').flexReload();
+		$('#HAPROXY_BACKENDS_TABLE').flexReload();
+		$('#MAIN_HAPROXY_BALANCERS_TABLE').flexReload();
 		
 	}	
 	

@@ -95,7 +95,8 @@ function config($servername){
 		if(!scan($WORKING_DIRECTORY)){
 			build_progress("$servername: {installing}...",42);
 			@mkdir($WORKING_DIRECTORY);
-			shell_exec("$cp -rf /usr/share/wordpress-src/* $WORKING_DIRECTORY/");
+			$cmd="$cp -rf /usr/share/wordpress-src/* $WORKING_DIRECTORY/\n";
+			shell_exec($cmd);
 			if(!scan($WORKING_DIRECTORY)){
 				apache_admin_mysql(0, "Failed to install $servername from /usr/share/wordpress-src", null,__FILE__,__LINE__);
 				build_progress("$servername: {installing} {failed}...",110);
@@ -425,7 +426,7 @@ function scan($maindir){
 	
 
 	
-$f['wp-admin/async-upload.php'] = True;
+
 $f['wp-admin/admin-footer.php'] = True;
 $f['wp-admin/options.php'] = True;
 $f['wp-admin/ms-upgrade-network.php'] = True;
@@ -616,102 +617,6 @@ $f['wp-content/plugins/akismet/wrapper.php'] = True;
 $f['wp-content/plugins/akismet/akismet.php'] = True;
 $f['wp-content/plugins/hello.php'] = True;
 $f['wp-content/themes/index.php'] = True;
-$f['wp-content/themes/twentythirteen/content-image.php'] = True;
-$f['wp-content/themes/twentythirteen/single.php'] = True;
-$f['wp-content/themes/twentythirteen/sidebar.php'] = True;
-$f['wp-content/themes/twentythirteen/comments.php'] = True;
-$f['wp-content/themes/twentythirteen/header.php'] = True;
-$f['wp-content/themes/twentythirteen/content-link.php'] = True;
-$f['wp-content/themes/twentythirteen/inc/back-compat.php'] = True;
-$f['wp-content/themes/twentythirteen/inc/custom-header.php'] = True;
-$f['wp-content/themes/twentythirteen/content-audio.php'] = True;
-$f['wp-content/themes/twentythirteen/index.php'] = True;
-$f['wp-content/themes/twentythirteen/search.php'] = True;
-$f['wp-content/themes/twentythirteen/image.php'] = True;
-$f['wp-content/themes/twentythirteen/taxonomy-post_format.php'] = True;
-$f['wp-content/themes/twentythirteen/content-quote.php'] = True;
-$f['wp-content/themes/twentythirteen/content-chat.php'] = True;
-$f['wp-content/themes/twentythirteen/footer.php'] = True;
-$f['wp-content/themes/twentythirteen/functions.php'] = True;
-$f['wp-content/themes/twentythirteen/content-status.php'] = True;
-$f['wp-content/themes/twentythirteen/tag.php'] = True;
-$f['wp-content/themes/twentythirteen/author.php'] = True;
-$f['wp-content/themes/twentythirteen/archive.php'] = True;
-$f['wp-content/themes/twentythirteen/category.php'] = True;
-$f['wp-content/themes/twentythirteen/sidebar-main.php'] = True;
-$f['wp-content/themes/twentythirteen/page.php'] = True;
-$f['wp-content/themes/twentythirteen/404.php'] = True;
-$f['wp-content/themes/twentythirteen/content-none.php'] = True;
-$f['wp-content/themes/twentythirteen/content-video.php'] = True;
-$f['wp-content/themes/twentythirteen/content.php'] = True;
-$f['wp-content/themes/twentythirteen/author-bio.php'] = True;
-$f['wp-content/themes/twentythirteen/content-aside.php'] = True;
-$f['wp-content/themes/twentythirteen/content-gallery.php'] = True;
-$f['wp-content/themes/twentytwelve/content-image.php'] = True;
-$f['wp-content/themes/twentytwelve/single.php'] = True;
-$f['wp-content/themes/twentytwelve/sidebar.php'] = True;
-$f['wp-content/themes/twentytwelve/comments.php'] = True;
-$f['wp-content/themes/twentytwelve/header.php'] = True;
-$f['wp-content/themes/twentytwelve/content-link.php'] = True;
-$f['wp-content/themes/twentytwelve/inc/custom-header.php'] = True;
-$f['wp-content/themes/twentytwelve/index.php'] = True;
-$f['wp-content/themes/twentytwelve/search.php'] = True;
-$f['wp-content/themes/twentytwelve/image.php'] = True;
-$f['wp-content/themes/twentytwelve/content-quote.php'] = True;
-$f['wp-content/themes/twentytwelve/footer.php'] = True;
-$f['wp-content/themes/twentytwelve/functions.php'] = True;
-$f['wp-content/themes/twentytwelve/content-status.php'] = True;
-$f['wp-content/themes/twentytwelve/tag.php'] = True;
-$f['wp-content/themes/twentytwelve/author.php'] = True;
-$f['wp-content/themes/twentytwelve/archive.php'] = True;
-$f['wp-content/themes/twentytwelve/sidebar-front.php'] = True;
-$f['wp-content/themes/twentytwelve/category.php'] = True;
-$f['wp-content/themes/twentytwelve/content-page.php'] = True;
-$f['wp-content/themes/twentytwelve/page.php'] = True;
-$f['wp-content/themes/twentytwelve/404.php'] = True;
-$f['wp-content/themes/twentytwelve/page-templates/full-width.php'] = True;
-$f['wp-content/themes/twentytwelve/page-templates/front-page.php'] = True;
-$f['wp-content/themes/twentytwelve/content-none.php'] = True;
-$f['wp-content/themes/twentytwelve/content.php'] = True;
-$f['wp-content/themes/twentytwelve/content-aside.php'] = True;
-$f['wp-content/themes/twentyfourteen/content-image.php'] = True;
-$f['wp-content/themes/twentyfourteen/single.php'] = True;
-$f['wp-content/themes/twentyfourteen/sidebar.php'] = True;
-$f['wp-content/themes/twentyfourteen/comments.php'] = True;
-$f['wp-content/themes/twentyfourteen/header.php'] = True;
-$f['wp-content/themes/twentyfourteen/sidebar-content.php'] = True;
-$f['wp-content/themes/twentyfourteen/content-link.php'] = True;
-$f['wp-content/themes/twentyfourteen/inc/customizer.php'] = True;
-$f['wp-content/themes/twentyfourteen/inc/template-tags.php'] = True;
-$f['wp-content/themes/twentyfourteen/inc/featured-content.php'] = True;
-$f['wp-content/themes/twentyfourteen/inc/widgets.php'] = True;
-$f['wp-content/themes/twentyfourteen/inc/back-compat.php'] = True;
-$f['wp-content/themes/twentyfourteen/inc/custom-header.php'] = True;
-$f['wp-content/themes/twentyfourteen/content-audio.php'] = True;
-$f['wp-content/themes/twentyfourteen/index.php'] = True;
-$f['wp-content/themes/twentyfourteen/search.php'] = True;
-$f['wp-content/themes/twentyfourteen/image.php'] = True;
-$f['wp-content/themes/twentyfourteen/sidebar-footer.php'] = True;
-$f['wp-content/themes/twentyfourteen/taxonomy-post_format.php'] = True;
-$f['wp-content/themes/twentyfourteen/content-quote.php'] = True;
-$f['wp-content/themes/twentyfourteen/footer.php'] = True;
-$f['wp-content/themes/twentyfourteen/content-featured-post.php'] = True;
-$f['wp-content/themes/twentyfourteen/featured-content.php'] = True;
-$f['wp-content/themes/twentyfourteen/functions.php'] = True;
-$f['wp-content/themes/twentyfourteen/tag.php'] = True;
-$f['wp-content/themes/twentyfourteen/author.php'] = True;
-$f['wp-content/themes/twentyfourteen/archive.php'] = True;
-$f['wp-content/themes/twentyfourteen/category.php'] = True;
-$f['wp-content/themes/twentyfourteen/content-page.php'] = True;
-$f['wp-content/themes/twentyfourteen/page.php'] = True;
-$f['wp-content/themes/twentyfourteen/404.php'] = True;
-$f['wp-content/themes/twentyfourteen/page-templates/full-width.php'] = True;
-$f['wp-content/themes/twentyfourteen/page-templates/contributors.php'] = True;
-$f['wp-content/themes/twentyfourteen/content-none.php'] = True;
-$f['wp-content/themes/twentyfourteen/content-video.php'] = True;
-$f['wp-content/themes/twentyfourteen/content.php'] = True;
-$f['wp-content/themes/twentyfourteen/content-aside.php'] = True;
-$f['wp-content/themes/twentyfourteen/content-gallery.php'] = True;
 $f['xmlrpc.php'] = True;
 $f['wp-includes/plugin.php'] = True;
 $f['wp-includes/class-wp-customize-manager.php'] = True;
@@ -772,7 +677,6 @@ $f['wp-includes/pomo/mo.php'] = True;
 $f['wp-includes/pomo/translations.php'] = True;
 $f['wp-includes/pomo/streams.php'] = True;
 $f['wp-includes/js/tinymce/wp-tinymce.php'] = True;
-$f['wp-includes/js/tinymce/wp-mce-help.php'] = True;
 $f['wp-includes/revision.php'] = True;
 $f['wp-includes/compat.php'] = True;
 $f['wp-includes/functions.php'] = True;
@@ -897,7 +801,9 @@ $f['wp-blog-header.php'] = True;
 
 	
 	while (list ($filename,$none) = each ($f) ){
-		if(!is_file("$maindir/$filename")){return false;}
+		if(!is_file("$maindir/$filename")){
+			echo "$maindir/$filename - No such file\n";
+			return false;}
 		
 	}
 	
@@ -981,6 +887,10 @@ function duplicate_wordpress($servername){
 	
 	@mkdir($WORKING_DIRECTORY,0755,true);
 	build_progress("$servername: {installing} {from} $srcdir...",42);
+	
+	build_progress("$servername: Copy from $srcdir",42);
+	
+	build_progress("$servername: Copy To $WORKING_DIRECTORY",42);
 	shell_exec("$cp -rfv $srcdir/* $WORKING_DIRECTORY/");
 	$wordpressDB=$free->mysql_database;
 	

@@ -14,6 +14,8 @@
 		exit;
 		
 	}
+	
+	if(isset($_GET["popup-js"])){popup_js();exit;}
 	if(isset($_GET["test-cat"])){test_category();exit;}
 	if(isset($_GET["add-uris-js"])){add_uris_js();exit;}
 	if(isset($_GET["add-uris-popup"])){add_uris_popup();exit;}
@@ -30,6 +32,20 @@
 	if(isset($_POST["RemoveDisabled"])){removedisabled_perform();exit;}
 	if(isset($_POST["WEBTESTS"])){test_category_perform();exit;}
 js();	
+
+function popup_js(){
+	header("content-type: application/x-javascript");
+	$page=CurrentPageName();
+	$tpl=new templates();
+	
+	$start="YahooWin4('735','$page?popup=yes&category={$_GET["category"]}&tablesize={$_GET["tablesize"]}','URLS: {$_GET["category"]}');";
+	$html="
+	$start
+	";
+	echo $html;
+	
+	
+}
 	
 function js(){
 	header("content-type: application/x-javascript");
@@ -237,9 +253,7 @@ if(isset($_GET["rowebsite"])){$rowebsite=$_GET["rowebsite"];$rowebsite=$rowebsit
 	
 echo "
 <span id='FlexReloadWebsiteCategoriesManageDiv'></span>
-<div style='margin-left:-15px'>
-	<table class='$t' style='display: none' id='$t' style='width:99%;'></table>
-</div>
+<table class='$t' style='display: none' id='$t' style='width:99%;'></table>
 <script>
 var MEMMD$t='';
 $(document).ready(function(){

@@ -11,7 +11,7 @@ $pid=getmypid();
 
 
 if(file_exists('/etc/artica-postfix/croned.1/robot.whitelist.pid')){
-	$currentpid=trim(file_get_contents('/etc/artica-postfix/croned.1/robot.whitelist.pid'));
+	$currentpid=trim(@file_get_contents('/etc/artica-postfix/croned.1/robot.whitelist.pid'));
 	echo date('Y-m-d h:i:s')." NewPID PID: $pid\n";
 	echo date('Y-m-d h:i:s')." Current PID: $currentpid\n";
 	if($currentpid<>$pid){

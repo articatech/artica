@@ -126,7 +126,10 @@ function xstart(){
 	@file_put_contents("/etc/artica-postfix/settings/Daemons/SquidUFDBUrgency", 0);
 	@file_put_contents("/etc/artica-postfix/settings/Daemons/SquidSSLUrgency", 0);
 	@file_put_contents("/etc/artica-postfix/settings/Daemons/LogsWarninStop", 0);
+	@file_put_contents("/etc/artica-postfix/settings/Daemons/MacToUidUrgency", 0);
 	@file_put_contents("/etc/artica-postfix/settings/Daemons/ActiveDirectoryEmergency", 0);
+	@file_put_contents("/etc/artica-postfix/settings/Daemons/BasicAuthenticatorEmergency", 0);
+	
 	@chmod("/etc/artica-postfix/settings/Daemons/SquidUrgency",0755);
 	build_progress("{reconfiguring}",30);
 	$php=$unix->LOCATE_PHP5_BIN();

@@ -29,6 +29,14 @@ $GLOBALS["DEBUG_IN_MEM"]=false;
 $GLOBALS["DEBUG_WHITELIST"]=false;
 $GLOBALS["PHISHTANK"]=0;
 $GLOBALS["DEBUG_BLACKLIST"]=false;
+$GLOBALS["DEBUG_DNSBL"]=false;
+$GLOBALS["DEBUG_HTTRACK"]=false;
+$GLOBALS["DEBUG_RANSOMARE"]=false;
+
+$GLOBALS["WindowsUpdateCaching"]=0;
+$GLOBALS["WebFilteringRansomware"]=1;
+$GLOBALS["HTTrackInSquid"]=0;
+
 
 
 if($GLOBALS["VERBOSE"]){
@@ -42,7 +50,7 @@ if($GLOBALS["VERBOSE"]){
 
 
 
-$GLOBALS["UFDBVERS"]="1.1.8";
+$GLOBALS["UFDBVERS"]="1.1.9";
 if(isset($argv)){
 	if(count($argv)>0){
 		$cmdline=@implode(" ", $argv);
@@ -94,14 +102,14 @@ events("HyperCache enabled:{$GLOBALS["SquidEnforceRules"]} {$GLOBALS["HyperCache
 events("HyperCache: redirect to {$GLOBALS["HyperCacheListenAddr"]}:{$GLOBALS["HyperCacheHTTPListenPort"]}");
 events("Google Safe Browsing enabled:{$GLOBALS["EnableGoogleSafeBrowsing"]}");
 events("Squid Version: {$GLOBALS["SQUID_VERSION"]}");
-events("It Chart: {$GLOBALS["EnableITChart"]}");
-events("DEBUG_PROTOCOL: {$GLOBALS["DEBUG_PROTOCOL"]}");
-events("SquidGuardServerName: {$GLOBALS["SquidGuardServerName"]}");
-events("SquidGuardApachePort: {$GLOBALS["SquidGuardApachePort"]}");
+events("It Chart...............: {$GLOBALS["EnableITChart"]}");
+events("DEBUG_PROTOCOL.........: {$GLOBALS["DEBUG_PROTOCOL"]}");
+events("SquidGuardServerName...: {$GLOBALS["SquidGuardServerName"]}");
+events("SquidGuardApachePort...: {$GLOBALS["SquidGuardApachePort"]}");
 events("SquidGuardApacheSSLPort: {$GLOBALS["SquidGuardApacheSSLPort"]}");
-
-
-
+events("WindowsUpdateCaching...: {$GLOBALS["WindowsUpdateCaching"]}");
+events("WebCopy................: {$GLOBALS["HTTrackInSquid"]}");
+events("UpdateUtilityForceProxy: {$GLOBALS["UpdateUtilityForceProxy"]}");
 
 
 $temp = array();
@@ -133,6 +141,7 @@ while (!feof(STDIN)) {
 	$array=explode(" ", $szLine);
 	$extend_1=null;
 	$extend_2=null;
+	$scheme=null;
 	$GLOBALS["LOG_AR"]["MAC"]=null;
 	$GLOBALS["LOG_AR"]["SNI"]=null;
 	$DEBUGHOSTNAME_PORT=0;
@@ -148,6 +157,7 @@ while (!feof(STDIN)) {
 		$GLOBALS["CHANNEL"]=$array[0];
 		$GLOBALS["OUTPUT_CHANNEL"]=true;
 		$URI=$array[1];
+		$GLOBALS["LOG_AR"]["ORGURI"]=$URI;
 		$IP=$array[2];
 		$userid=$array[3];
 		$PROTO=$array[4];
@@ -158,6 +168,7 @@ while (!feof(STDIN)) {
 		
 	}else{
 		$URI=$array[0];
+		$GLOBALS["LOG_AR"]["ORGURI"]=$URI;
 		$IP=$array[1];
 		$userid=$array[2];
 		$PROTO=$array[3];
@@ -183,15 +194,39 @@ while (!feof(STDIN)) {
 		}
 	}	
 	
-	
+	$URI_ORG=$URI;
 	$H=parse_url($URI);
-	$scheme=$H["scheme"];
+	if(isset($H["scheme"])){$scheme=$H["scheme"];}
 	$DEBUGHOSTNAME=$H["host"];
+	
+	if($GLOBALS["DEBUG_PROTOCOL"]){events( "Protocol: host=$DEBUGHOSTNAME ".__LINE__);}
+	
+	
+	
+	
+	
 	if(preg_match("#^(.+?):([0-9]+)#", $DEBUGHOSTNAME,$re)){
 		$DEBUGHOSTNAME=$re[1];
 		$DEBUGHOSTNAME_PORT=intval($re[2]);
 		if($DEBUGHOSTNAME_PORT==80){$DEBUGHOSTNAME_PORT=0;}
 		if($DEBUGHOSTNAME_PORT==443){$DEBUGHOSTNAME_PORT=0;}
+	}
+	
+	
+	if($GLOBALS["DEBUG_PROTOCOL"]){events( "Protocol: host=$DEBUGHOSTNAME ".__LINE__);}
+	if($IpClass->isValid($DEBUGHOSTNAME)){
+		$ASRESOL=false;
+		$resolved=gethostbyaddrCached($DEBUGHOSTNAME);
+		if($resolved<>null){if($resolved<>$DEBUGHOSTNAME){$ASRESOL=true;}}
+		
+		if($ASRESOL){
+			$URI=str_replace($DEBUGHOSTNAME, $resolved, $URI);
+		}else{
+			$URI=str_replace($DEBUGHOSTNAME, ip2long($DEBUGHOSTNAME).".addr", $URI);
+		}
+		
+		
+		if($GLOBALS["DEBUG_PROTOCOL"]){events( "Protocol: host=$DEBUGHOSTNAME URI=$URI".__LINE__);}
 	}
 	
 	
@@ -234,6 +269,35 @@ while (!feof(STDIN)) {
 	if($GLOBALS["DEBUG_BLACKLIST"]){events("$ToUfdb");}
 	if($GLOBALS["DEBUG_PROTOCOL"]){events("$PROTO $URI scheme: $scheme");}
 	
+	
+	if($GLOBALS["WindowsUpdateCaching"]==1){
+		if($PROTO=="GET"){
+			if(!class_exists("UfdbWindowsCache")){include_once(dirname(__FILE__)."/ressources/class.ufdb.windowscache.inc"); }
+			$UfdbWindowsCache=new UfdbWindowsCache($URI,$szLine);
+			if($UfdbWindowsCache->MakeRedirect()){continue;}
+		}
+	}
+	
+	if($GLOBALS["UpdateUtilityForceProxy"]==1){
+		if($PROTO=="GET"){
+			if(!class_exists("UfdbUpdateUtility")){include_once(dirname(__FILE__)."/ressources/class.ufdb.updateutility.inc"); }
+			$UfdbUpdateUtility=new UfdbUpdateUtility($URI,$szLine);
+			if($UfdbUpdateUtility->MakeRedirect()){continue;}
+		}
+	}
+	
+	
+	if($GLOBALS["HTTrackInSquid"]==1){
+		if($GLOBALS["DEBUG_HTTRACK"]){events( "HTTrackInSquid: ENABLED\n");}
+		if(!class_exists("HTTrackInSquid")){include_once(dirname(__FILE__)."/ressources/class.ufdb.HTTrackInSquid.inc"); }
+		$HTTrackInSquid=new HTTrackInSquid($URI,$szLine);
+		if($HTTrackInSquid->MakeRedirect()){continue;}
+	}else{
+		if($GLOBALS["DEBUG_HTTRACK"]){events( "HTTrackInSquid: DISABLED\n");}
+		
+	}
+	
+	
 	if($GLOBALS["EnableITChart"]==1){
 		if(ItCharted($GLOBALS["LOG_AR"])){
 			continue;
@@ -252,11 +316,20 @@ while (!feof(STDIN)) {
 	
 	
 	if($GLOBALS["EnableUfdbGuard"]==1){
+		
+		if($GLOBALS["DEBUG_RANSOMARE"]){events( "$DEBUGHOSTNAME: RANSOMARE = {$GLOBALS["WebFilteringRansomware"]} ".__LINE__);}
 		if($GLOBALS["DebugLoop"]){events( "$DEBUGHOSTNAME: WhitelistedBase ? ".__LINE__);}
 		if(WhitelistedBase($URI)){
 			Output_results(null,__FUNCTION__,__LINE__);
 			continue;
 		}
+		
+		if($GLOBALS["WebFilteringRansomware"]==1){
+			if(Ranswomare($GLOBALS["LOG_AR"])){
+				continue;
+			}
+		}
+		
 		
 		$ToUfdbKey=md5(serialize($GLOBALS["LOG_AR"]));
 		if($GLOBALS["DebugLoop"]){events( "$DEBUGHOSTNAME Is Blacklisted [$ToUfdbKey]?".__LINE__);}
@@ -275,6 +348,14 @@ while (!feof(STDIN)) {
 			}
 				
 		}
+		if($GLOBALS["DEBUG_DNSBL"]){events( "$DEBUGHOSTNAME Is EnableHTTPSURBL Enabled:{$GLOBALS["EnableHTTPSURBL"]} ?".__LINE__);}
+		if($GLOBALS["EnableHTTPSURBL"]==1){
+			if($GLOBALS["DebugLoop"]){events( "$DEBUGHOSTNAME Is SURBL ?".__LINE__);}
+			if(surblclient($GLOBALS["LOG_AR"])){
+				continue;
+			}
+			
+		}
 		
 		
 		if($GLOBALS["DebugLoop"]){events( "Quota size ?".__LINE__);}
@@ -291,7 +372,7 @@ while (!feof(STDIN)) {
 	
 	
 	if($GLOBALS["DebugLoop"]){events( "HyperCacheRules ?".__LINE__);}
-	if(HyperCacheRules($PROTO,$ToVideoCache,$URI,$IP,$userid,$DEBUGHOSTNAME)){
+	if(HyperCacheRules($PROTO,$ToUfdb,$URI,$IP,$userid,$DEBUGHOSTNAME)){
 		if($GLOBALS["HyperCacheDebug"]){events("HyperCacheRules: SEND");}
 		continue;
 	}
@@ -318,7 +399,15 @@ die();
 
 
 
+function gethostbyaddrCached($ipaddr){
+	if(isset($GLOBALS["gethostbyaddr"][$ipaddr])){return $GLOBALS["gethostbyaddr"][$ipaddr];}
+	$GLOBALS["gethostbyaddr"][$ipaddr]=gethostbyaddr($ipaddr);
+	if(count($GLOBALS["gethostbyaddr"])>1500){$GLOBALS["gethostbyaddr"]=array();}
+	
+}
 
+
+$Ipconvert=gethostbyaddr($DEBUGHOSTNAME);
 
 function QuotaSize($IP,$userid,$URI,$sitename,$PARAMS){
 	if(preg_match("#([0-9\.]+)#", $IP,$re)){$IP=$re[1];}
@@ -1292,12 +1381,194 @@ function Unlocked_parse($array,$url,$IP,$userid){
 }
 
 
+function surblclient($ARRAY){
+	$URI=$ARRAY["ORGURI"];
+	if(isset($GLOBALS["URBL_SAFE"])){
+		if(count($GLOBALS["URBL_SAFE"])>10000){$GLOBALS["URBL_SAFE"]=array();}
+	}
+	if(isset($GLOBALS["URBL_UNSAFE"])){
+		if(count($GLOBALS["URBL_UNSAFE"])>10000){$GLOBALS["URBL_UNSAFE"]=array();}
+	}	
+	
+	$H=parse_url($URI);
+	$domain=$H["host"];
+	$userid=$ARRAY["userid"];
+	$PROTO=$ARRAY["PROTO"];
+	$IP=$ARRAY["IP"];
+	
+	$MAC=$ARRAY["MAC"];
+	
+	if(preg_match("#([0-9\.]+)\/(.*)#", $IP,$re)){
+		$hostname=$re[2];
+		$IP=$re[1];
+	}
+	
+	$SquidGuardIPWeb=$GLOBALS["SquidGuardIPWeb"];
+	$CONNECT=false;
+	$KEY=null;
+	
+	
+	
+	
+	if(isset($GLOBALS["URBL_SAFE"][$domain])){
+		if($GLOBALS["DEBUG_DNSBL"]){events( "$domain URBL_SAFE MEMORY ".__LINE__);}
+		return false;}
+	
+	if(!class_exists("Blacklist")){
+		include_once(dirname(__FILE__)."/ressources/surblclient.inc");
+		
+	}
+	
+
+	if(!isset($GLOBALS["URBL_UNSAFE"][$domain])){
+		if($GLOBALS["DEBUG_DNSBL"]){events( "$domain: new Blacklist($URI) ".__LINE__);}
+		$url_c = new Blacklist($URI);
+		
+		if(!$url_c->spam_check) {
+			$GLOBALS["URBL_SAFE"][$domain]=false;
+			return;
+		}
+	
+	}else{
+		if($GLOBALS["DEBUG_DNSBL"]){events( "$domain URBL_UNSAFE MEMORY ".__LINE__);}
+	}
+	
+	
+	$GLOBALS["URBL_UNSAFE"][$domain]=true;
+	$urlenc=urlencode($URI);
+	
+	$returned="{$GLOBALS["SquidGuardIPWeb"]}?rule-id=0SquidGuardIPWeb=".
+			base64_encode($GLOBALS["SquidGuardIPWeb"])."&clientaddr=$IP&clientname=$IP&clientuser=$userid".
+			"&clientgroup=default&targetgroup=DNSBL&url=$urlenc";
+	
+	
+	ufdbgevents("default","DNSBL");
+	Output_results($returned,__FUNCTION__,__LINE__);
+	return true;
+	
+}
+
+function Ranswomare($ARRAY){
+
+	$function=__FUNCTION__;
+	$database="/etc/squid3/ransomwaretracker.db";
+	if(!is_file($database)){
+		if($GLOBALS["DEBUG_RANSOMARE"]){events("$database no such file");}
+		return false;
+	}
+	$URI=$ARRAY["ORGURI"];
+	$urlenc=urlencode($URI);
+	$SquidGuardIPWeb=$GLOBALS["SquidGuardIPWeb"];
+	$userid=$ARRAY["userid"];
+	$PROTO=$ARRAY["PROTO"];
+	$IP=$ARRAY["IP"];
+	$IpClass=new IP();
+	if(preg_match("#([0-9\.]+)\/(.*)#", $IP,$re)){$hostname=$re[2];$IP=$re[1];}
+	
+	
+	if($GLOBALS["DEBUG_RANSOMARE"]){events( "$function: RANSOMARE_FTIME = {$GLOBALS["RANSOMARE_FTIME"]}");}
+	
+	if(!isset($GLOBALS["RANSOMARE_FTIME"])){
+		$GLOBALS["RANSOMARE_FTIME"]=filemtime($database);
+		$GLOBALS["RANSOMARE_DB"]=unserialize(@file_get_contents($database));
+	}
+	if(!isset($GLOBALS["RANSOMARE_DB"])){
+		$GLOBALS["RANSOMARE_FTIME"]=filemtime($database);
+		$GLOBALS["RANSOMARE_DB"]=unserialize(@file_get_contents($database));
+	}
+	
+	$ftime=filemtime($database);
+	if($ftime<>$GLOBALS["RANSOMARE_FTIME"]){
+		$GLOBALS["RANSOMARE_FTIME"]=filemtime($database);
+		$GLOBALS["RANSOMARE_DB"]=unserialize(@file_get_contents($database));
+	}
+	
+	
+	$MAIN=$GLOBALS["RANSOMARE_DB"];
+	$H=parse_url($URI);
+	$domain=$H["host"];
+	if(strpos($domain, ":")>0){$xdomain=explode(":",$domain);$domain=$xdomain[0];}
+	$domain=strtolower($domain);
+	
+	if(preg_match("#(\/|\.)(windowsupdate|microsoft|netflix|google|msftncsi|teamviewer|lastpass|steamusercontent|nflxvideo|kaspersky)\.[a-z]+#", $domain)){
+		if($GLOBALS["DEBUG_RANSOMARE"]){events( "$function: $domain: \"SKIP\"");}
+		return false;
+	}
+
+	
+	if($GLOBALS["DEBUG_RANSOMARE"]){events( "$function: $domain: \"$URI\"");}
+	
+	
+	$returned="{$GLOBALS["SquidGuardIPWeb"]}?rule-id=0SquidGuardIPWeb=".
+			base64_encode($GLOBALS["SquidGuardIPWeb"])."&clientaddr=$IP&clientname=$IP&clientuser=$userid".
+			"&clientgroup=default&targetgroup=ransomware&url=$urlenc";
+	
+	if($IpClass->isValid($domain)){
+		if($GLOBALS["DEBUG_RANSOMARE"]){events( "$function: $domain: Check $domain in ".count($MAIN["IPS"])." IPS");}
+		if(isset($MAIN["IPS"][$domain])){
+			ufdbgevents("default","ransomware");
+			if($GLOBALS["DEBUG_RANSOMARE"]){events( "$function: $domain: TRUE IP");}
+			Output_results($returned,__FUNCTION__,__LINE__);
+			return true;
+		}
+		if($GLOBALS["DEBUG_RANSOMARE"]){events( "$function: $domain: \"PASS [OK]\"");}
+		return false;
+	}
+	
+	
+	$f=new squid_familysite();
+	$familysite=$f->GetFamilySites($domain);
+
+	if($GLOBALS["DEBUG_RANSOMARE"]){events( "$function: $domain: Check $domain in ".count($MAIN["DOMAINS"])." domains");}
+	if(isset($MAIN["DOMAINS"][$domain])){
+		if($GLOBALS["DEBUG_RANSOMARE"]){events( "$domain: TRUE DOMAIN");}
+		ufdbgevents("default","ransomware");
+		Output_results($returned,__FUNCTION__,__LINE__);
+		return true;
+		
+	}
+	
+	if($GLOBALS["DEBUG_RANSOMARE"]){events( "$function: $domain: Check $familysite in ".count($MAIN["DOMAINS"])." domains");}
+	
+	if(isset($MAIN["DOMAINS"][$familysite])){
+		if($GLOBALS["DEBUG_RANSOMARE"]){events( "$function: $domain: TRUE DOMAIN FAMILYSITE");}
+		ufdbgevents("default","ransomware");
+		Output_results($returned,__FUNCTION__,__LINE__);
+		return true;
+	}
+	
+	
+	if($GLOBALS["DEBUG_RANSOMARE"]){events( "$function: $domain: Check $URI in ".count($MAIN["URIS"])." Urls");}
+	if(isset($MAIN["URIS"][$URI])){
+		if($GLOBALS["DEBUG_RANSOMARE"]){events( "$function: $domain: TRUE URL");}
+		ufdbgevents("default","ransomware");
+		Output_results($returned,__FUNCTION__,__LINE__);
+		return true;
+	}
+	
+	if($GLOBALS["DEBUG_RANSOMARE"]){events( "$function: $domain: \"PASS [OK]\"");}
+	
+}
+
+
 function Phistank($ARRAY){
 	$URI=$ARRAY["URI"];
+
+	
+	
+	
+	
 	if(!is_file("/etc/squid3/phistank.db")){
 		if($GLOBALS["VERBOSE"]){events("/etc/squid3/phistank.db no such file");}
 		return false;
 	}
+	
+	
+	$CONNECT=false;
+	$KEY=null;
+	if(isset($ARRAY["MAC"])){$MAC=$ARRAY["MAC"];}
+	
+
 	
 	$H=parse_url($URI);
 	$domain=$H["host"];
@@ -1388,23 +1659,23 @@ function BlackListedBase($url,$IP,$userid,$PROTO){
 	
 	reset_memory();
 	if($GLOBALS["SquidGuardIPWeb"]==null){
-		if($GLOBALS["DEBUG_BLACKLIST"]){events("http://127.0.0.1/exec.squidguard.php");}
-		$GLOBALS["SquidGuardIPWeb"]="http://127.0.0.1/exec.squidguard.php";
+		if($GLOBALS["DEBUG_BLACKLIST"]){events("http://127.0.0.1/ufdbguardd.php");}
+		$GLOBALS["SquidGuardIPWeb"]="http://127.0.0.1/ufdbguardd.php";
 	}
 	$urlenc=urlencode($url);
 	if(preg_match("#([0-9\.]+)#", $IP,$re)){$IP=$re[1];}
 	if($userid=="-"){$userid=null;}
 	$returned="{$GLOBALS["SquidGuardIPWeb"]}?rule-id=0SquidGuardIPWeb=".
 	base64_encode($GLOBALS["SquidGuardIPWeb"])."&clientaddr=$IP&clientname=$IP&clientuser=$userid".
-	"&clientgroup=default&targetgroup=blacklist&url=$urlenc";
+	"&clientgroup=global-blacklist&targetgroup=blacklist&url=$urlenc";
 	
 	
 	if($PROTO=="CONNECT"){
 		$CONNECT=true;
 		if($GLOBALS["SquidGuardWebUseExternalUri"]==1){$returned=$GLOBALS["SquidGuardWebExternalUriSSL"];}else{
-		$returned="https://{$GLOBALS["SquidGuardServerName"]}:{$GLOBALS["SquidGuardApacheSSLPort"]}/exec.squidguard.php?rule-id=0SquidGuardIPWeb=".
+		$returned="https://{$GLOBALS["SquidGuardServerName"]}:{$GLOBALS["SquidGuardApacheSSLPort"]}/ufdbguardd.php?rule-id=0SquidGuardIPWeb=".
 				base64_encode("https://{$GLOBALS["SquidGuardServerName"]}:{$GLOBALS["SquidGuardApacheSSLPort"]}")."&clientaddr=$IP&clientname=$IP&clientuser=$userid".
-				"&clientgroup=default&targetgroup=blacklist&url=$urlenc";
+				"&clientgroup=global-blacklist&targetgroup=blacklist&url=$urlenc";
 		}
 	}
 
@@ -1413,7 +1684,7 @@ function BlackListedBase($url,$IP,$userid,$PROTO){
 		if($GLOBALS["DEBUG_BLACKLIST"]){events("BlackListedBase: $domain -> IN MEMORY [OK]"); }
 		if($GLOBALS["BlacklistedBase"][$domain]){
 			if($GLOBALS["DEBUG_BLACKLIST"]){events("BlackListedBase: $domain -> MEM BLOCK"); }
-			ufdbgevents("blacklist","default");
+			ufdbgevents("blacklist","global-blacklist");
 			Output_results($returned,__FUNCTION__,__LINE__,$CONNECT);
 			return true;
 		}else{
@@ -1643,11 +1914,11 @@ function Output_results($results=null,$function=null,$line=null,$CONNECT=false){
 	
 	if($GLOBALS["DEBUG_OUTPUT"]){ 
 		if($GLOBALS["DebugQuota"]){QuotaEvent("Output_results: BLOCK \"$LineTOSend\" $suffix_channel_loging Line ".__LINE__);}
-		events("Output_results: BLOCK \"$LineTOSend\" $suffix_channel_loging Line ".__LINE__);
+		events("Output_results: BLOCK [BY `$function`] \"$LineTOSend\" $suffix_channel_loging Line ".__LINE__);
 	
 	}
 	if($GLOBALS["DEBUG_PROTOCOL"]){
-		events("Output_results: BLOCK \"$LineTOSend\" $suffix_channel_loging Line ".__LINE__);
+		events("Output_results: BLOCK [BY `$function`] \"$LineTOSend\" $suffix_channel_loging Line ".__LINE__);
 	}
 	
 	events_output("Output_results::[".__LINE__."] [$LineTOSend]");
@@ -1752,6 +2023,7 @@ function WhitelistedBase($url){
 	
 	if($GLOBALS["DEBUG_WHITELIST"]){events("WHITELIST:: Assume $domain FALSE"); }
 	if($GLOBALS["DEBUG_WHITELIST"]){events("WHITELIST:: Assume $familysite FALSE"); }
+	if(!isset($GLOBALS["WhitelistedBase"])){$GLOBALS["WhitelistedBase"]=array();}
 	
 	$CountOf=count($GLOBALS["WhitelistedBase"]);
 	if($GLOBALS["DEBUG_WHITELIST"]){events("WHITELIST:: $CountOf domains in memory"); }
@@ -2035,7 +2307,7 @@ function ask_to_ufdb($datatosend,$PARAMS,$ToUfdbKey){
 	}
 	
 	
-	
+	if($GLOBALS["DEBUG_PROTOCOL"]){events("ask_to_ufdb: * * * SEND * * * \"$datatosend\"",__LINE__);}
 	@socket_write($socket, $datatosend, strlen($datatosend));
 	
 	
@@ -2120,8 +2392,14 @@ function ufdbconfig(){
 	
 	$quota=new ufdbgquota();
 	
+	if(!is_file("/etc/artica-postfix/settings/Daemons/WebFilteringRansomware")){
+		$GLOBALS["WebFilteringRansomware"]=1;
+		@file_put_contents("/etc/artica-postfix/settings/Daemons/WebFilteringRansomware", 1);
+	}
+	
 	
 	$GLOBALS["EnableITChart"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableITChart"));
+	$GLOBALS["HTTrackInSquid"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/HTTrackInSquid"));
 	
 	$GLOBALS["GoogleSafeBrowsingApiKey"]=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/GoogleSafeBrowsingApiKey"));
 	$GLOBALS["EnableGoogleSafeBrowsing"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableGoogleSafeBrowsing"));
@@ -2132,18 +2410,17 @@ function ufdbconfig(){
 	$GLOBALS["HyperCacheBuffer"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/HyperCacheBuffer"));
 	
 	$GLOBALS["SquidUrgency"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidUrgency"));
-	
+	$GLOBALS["UpdateUtilityForceProxy"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/UpdateUtilityForceProxy"));
 	
 	$GLOBALS["HyperCacheHTTPListenPort"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/HyperCacheHTTPListenPort"));
 	if($GLOBALS["HyperCacheHTTPListenPort"]==0){$GLOBALS["HyperCacheHTTPListenPort"]=8700;}
 	
 	$GLOBALS["HyperCacheListenAddr"]=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/HyperCacheListenAddr"));
-	
-	
+	$GLOBALS["EnableHTTPSURBL"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableHTTPSURBL"));
 	$GLOBALS["PHISHTANK"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableSquidPhishTank"));
-	
-	
-	
+	$GLOBALS["WindowsUpdateCaching"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/WindowsUpdateCaching"));
+	$GLOBALS["WindowsUpdateCachingDir"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/WindowsUpdateCachingDir");
+	if($GLOBALS["WindowsUpdateCachingDir"]==null){$GLOBALS["WindowsUpdateCachingDir"]="/home/squid/WindowsUpdate";}
 	$GLOBALS["SquidGuardRedirectSSLBehavior"]=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidGuardRedirectSSLBehavior"));
 	$GLOBALS["SquidGuardRedirectBehavior"]=trim(@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidGuardRedirectBehavior"));
 	$GLOBALS["SquidGuardRedirectHTTPCode"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidGuardRedirectHTTPCode"));
@@ -2305,6 +2582,7 @@ function ufdbguard_value($key){
 function events($text,$line=0){
 	if(trim($text)==null){return;}
 	$pid=$GLOBALS["MYPID"];
+	if(!isset($GLOBALS["LOG_DOM"])){$GLOBALS["LOG_DOM"]="None";}
 	$date=@date("H:i:s");
 	$logFile="/var/log/squid/ufdbgclient.debug";
 	$time_end=tool_microtime_float();
@@ -2499,7 +2777,7 @@ if(preg_match("#([0-9\.]+)\/(.*)#", $IP,$re)){
 	}	
 	
 	if($PROTO=="CONNECT"){$CONNECT=true;}
-	$SquidGuardIPWeb=str_replace("exec.squidguard.php", "itchart.php", $SquidGuardIPWeb);
+	$SquidGuardIPWeb=str_replace("ufdbguardd.php", "itchart.php", $SquidGuardIPWeb);
 	
 	if(!isset($GLOBALS["ITCHARTS_ENABLED"])){
 		$GLOBALS["ITCHARTS_ENABLED"]=unserialize(@file_get_contents("/etc/squid3/itCharts.enabled.db"));

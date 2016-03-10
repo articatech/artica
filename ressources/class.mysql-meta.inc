@@ -1032,6 +1032,17 @@ class mysql_meta{
 				$this->QUERY_SQL($sql,$this->database);
 				if(!$this->ok){echo "<H2>$this->mysql_error</H2>";if(isset($GLOBALS["CLIENT_META_IP"])){echo $sql."\n$this->mysql_error\n";}}
 				
+				
+				$sql="CREATE TABLE IF NOT EXISTS `INTERFACE_CACHE` (
+				`uuid` VARCHAR(90) NOT NULL,
+				`filekey` VARCHAR(90) NOT NULL,
+				`filecontent` longblob,
+				 KEY `filekey` (`filekey`),
+				 KEY `uuid` (`uuid`)
+				) ENGINE=MYISAM;";
+				$this->QUERY_SQL($sql,$this->database);
+				if(!$this->ok){echo "<H2>$this->mysql_error</H2>";if(isset($GLOBALS["CLIENT_META_IP"])){echo $sql."\n$this->mysql_error\n";}}
+				
 
 				$sql="CREATE TABLE IF NOT EXISTS `policies_content` (
 				`policy_id` INT(10) NOT NULL,

@@ -3570,6 +3570,7 @@ function ZARAFA_MAILBOX($uid) {
 	}
 	
 	function ConvertZarafaLanguage(){
+		var XHR = new XHRConnection();
 		var zarafaMbxLang=document.getElementById('zarafaMbxLang').value;
 		if(!confirm('$ZARAFA_MAILBOX_CONVERT '+zarafaMbxLang)){return;}
 		XHR.appendData('ZARAFA_MAILBOX_CONVERT','$uid');

@@ -241,7 +241,7 @@ function ArticaMeta_nightly($source_package){
 		_artica_update_event(2,"Checking Artica-meta repository - DISABLED -",null,__FILE__,__LINE__);
 		return;
 	}
-
+	build_progress_manu("Checking Meta repository",32);
 	echo "Starting......: ".date("H:i:s")." Checking Artica-meta repository - ENABLED -\n";
 	$ArticaMetaStorage=$sock->GET_INFO("ArticaMetaStorage");
 	if($ArticaMetaStorage==null){$ArticaMetaStorage="/home/artica-meta";}
@@ -253,12 +253,14 @@ function ArticaMeta_nightly($source_package){
 		echo "Starting......: ".date("H:i:s")." Checking Artica-meta repository - FAILED ( not an artica package) -\n";
 		return;
 	}
+	build_progress_manu("Checking Meta repository",33);
 	if(is_file("$ArticaMetaStorage/nightlys/$basename")){@unlink("$ArticaMetaStorage/nightlys/$basename");}
 	@copy($source_package, "$ArticaMetaStorage/nightlys/$basename");
 	_artica_update_event(2,"Added $basename into nightly repository",null,__FILE__,__LINE__);
 	meta_admin_mysql(2, "Added $basename into nightly repository", null,__FILE__,__LINE__);
 	$unix=new unix();
 	$php=$unix->LOCATE_PHP5_BIN();
+	build_progress_manu("Checking Meta repository",34);
 	shell_exec("$php ".dirname(__FILE__)."/exec.artica-meta-server.php --force");
 	
 }
@@ -395,6 +397,30 @@ function _artica_update_event($severity,$subject,$text,$file=null,$line=0){
 	if(!function_exists("artica_update_event")){return;}
 	artica_update_event($severity,$subject,$text,$file,$line);
 }
+
+function build_progress_manu($text,$pourc){
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", serialize($array));
+	$unix=new unix();
+	
+	if(function_exists("debug_backtrace")){
+		$trace=debug_backtrace();
+		if(isset($trace[1])){
+			$sourcefile=basename($trace[1]["file"]);
+			$sourcefunction=$trace[1]["function"];
+			$sourceline=$trace[1]["line"];
+		}
+			
+	}
+	
+	$unix->events("{$pourc}) $text","/var/log/artica.updater.log",false,$sourcefunction,$sourceline,$sourcefile);
+	@chmod($GLOBALS["PROGRESS_FILE"],0755);	
+	
+	
+}
+
+
 function build_progress($text,$pourc){
 	$array["POURC"]=$pourc;
 	$array["TEXT"]=$text;
@@ -514,7 +540,7 @@ function update_release(){
 	if(!RefreshIndex()){
 		echo "Starting......: ".date("H:i:s")." index file failed\n";
 		updater_events("Index file failed");
-		@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 100);
+		build_progress_manu("Index {failed}",110);
 		die();
 		
 	}
@@ -579,7 +605,7 @@ function update_release(){
 	$md5_file=md5_file($ArticaFileTemp);
 	if($md5_file<>$MAIN_MD5){
 		events("Corrupted file $md5_file <> $MAIN_MD5");
-		@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 100);
+		build_progress_manu("Corrupted {failed}",110);
 		die();
 	}
 	
@@ -593,11 +619,13 @@ function update_release(){
 	events("$MAIN_FILENAME downloaded, took $took");
 	
 	echo "Starting......: ".date("H:i:s")." Checking Artica-meta repository\n";
+	build_progress_manu("Checking Artica-meta repository",11);
 	ArticaMeta_release($ArticaFileTemp);
 	
 	echo "Starting......: ".date("H:i:s")." Official release took $took\n";
 	$size=@filesize($ArticaFileTemp);
 	$size=FormatBytes($size/1024,true);
+	build_progress_manu("{installing}",12);
 	if(install_package($ArticaFileTemp,$Lastest)){return;}
 	events("New Artica update v.$Lastest");
 	_artica_update_event(1,"Nightly build: Artica v.$Lastest ($size)",null,__FILE__,__LINE__);
@@ -705,7 +733,8 @@ function nightly(){
 			if(!$GLOBALS["BYCRON"]){
 				updater_events("Operation must be only executed by scheduler");
 				_artica_update_event(2,"Operation must be only executed by scheduler ( use --force to by pass)",null,__FILE__,__LINE__);
-				@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 100);
+				build_progress_manu("must be only executed by scheduler", 110);
+				
 				return;
 			}
 		}
@@ -723,7 +752,8 @@ function nightly(){
 			if($unix->file_time_min($timefile)<$CheckEveryMinutes){
 				updater_events("too short time ({$timefile}Mn, require {$CheckEveryMinutes}mn)");
 				echo "Starting......: ".date("H:i:s")." update feature (too short time, require {$CheckEveryMinutes}mn)\n";
-				@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 110);
+				build_progress_manu("too short time", 110);
+				
 				return;
 			}
 		}
@@ -732,7 +762,7 @@ function nightly(){
 			if($unix->IsProductionTime()){
 				updater_events("Update feature need to be run only during the non-production time");
 				echo "Starting......: ".date("H:i:s")." update feature need to be run only during the non-production time \n";
-				@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 110);
+				build_progress_manu("run only during the non-production time", 110);
 			}
 		}
 	}
@@ -743,7 +773,10 @@ function nightly(){
 
 // ----------------------- LANCEMENT ------------------------------------------------------------------------------
 
-	$EnableArticaMetaClient=intval($sock->GET_INFO("EnableArticaMetaClient"));
+	$EnableArticaMetaClient=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaClient"));
+	$EnableArticaMetaServer=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaServer"));
+	if($EnableArticaMetaServer==1){$EnableArticaMetaClient=0;}
+	
 	if($EnableArticaMetaClient==1){
 		updater_events("Nightly builds using Meta console");
 		echo "Starting......: ".date("H:i:s")." Nightly builds using Meta console\n";
@@ -755,6 +788,9 @@ function nightly(){
 	
 	echo "Starting......: ".date("H:i:s")." Nightly builds checking an official release first\n";
 	
+	build_progress_manu("{starting}",10);
+	
+	
 	if(update_release()){
 		updater_events("update_release() return true, finish");
 		return;
@@ -763,12 +799,13 @@ function nightly(){
 	if($ArticaAutoUpateNightly==0){
 		echo "Starting......: ".date("H:i:s")." Nightly builds feature is disabled\n";
 		updater_events("Update to Nightly builds feature is disabled");
-		@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 100);
+		build_progress_manu("Nightly is disabled",110);
+		
 		return;
 		
 	}
 
-	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 0);
+	
 	
 	
 	$array=unserialize(@file_get_contents("/etc/artica-postfix/settings/Daemons/ArticaUpdateRepos"));
@@ -788,12 +825,12 @@ function nightly(){
 	echo "Starting......: ".date("H:i:s")." nightly builds Cur:$MyCurrentVersion, Next:$MyNextVersion\n";
 	if($MyNextVersion==$MyCurrentVersion){
 		echo "Starting......: ".date("H:i:s")." nightly builds $MyCurrentVersion/$MyNextVersion \"Up to date - Same version\"\n";
-		@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 100);
+		build_progress_manu("Up to date - Same version",110);
 		return;
 	}
 	if($MyCurrentVersion>$MyNextVersion){
 		echo "Starting......: ".date("H:i:s")." nightly builds $MyCurrentVersion/$MyNextVersion \"Up to date - Most updated\"\n";
-		@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 100);
+		build_progress_manu("Up to date - Same version",110);
 		return;
 	}
 	
@@ -810,13 +847,18 @@ function nightly(){
 	$curl->WriteProgress=true;
 	$curl->ProgressFunction="nightly_progress";
 	$t=time();
+	build_progress_manu("{downloading}",30);
+	
+	
 	if(!$curl->GetFile($ArticaFileTemp)){
+		build_progress_manu("{downloading} {failed}",110);
 		_artica_update_event(0,"nightly builds Unable to download latest nightly build $Lastest with error $curl->error",null,__FILE__,__LINE__);
 		events("Unable to download latest nightly build with error $curl->error");
 		system_admin_events("Unable to download latest nightly build with error $curl->error", __FUNCTION__, __FILE__, __LINE__, "artica-update");
 		@unlink($ArticaFileTemp);
 		return;
 	}
+	build_progress_manu("{downloading} {success}",31);
 	$took=$unix->distanceOfTimeInWords($t,time(),true);
 	_artica_update_event(2,"$MAIN_FILENAME download, took $took",null,__FILE__,__LINE__);
 	
@@ -836,6 +878,7 @@ function nightly(){
 	events("artica-$Lastest.tgz download, took $took");
 	$size=@filesize($ArticaFileTemp);
 	$size=FormatBytes($size/1024,true);
+	build_progress_manu("Checking Meta repository",31);
 	ArticaMeta_nightly($ArticaFileTemp);
 	echo "Starting......: ".date("H:i:s")." nightly builds took $took\n";
 	
@@ -858,11 +901,12 @@ function install_package($filename,$expected=null){
 	$php=$unix->LOCATE_PHP5_BIN();
 	$nohup=$unix->find_program("nohup");
 	$rm=$unix->find_program("rm");
+	$squidbin=$unix->LOCATE_SQUID_BIN();
 	$RebootAfterArticaUpgrade=$sock->GET_INFO("RebootAfterArticaUpgrade");
 	if(!is_numeric($RebootAfterArticaUpgrade)){$RebootAfterArticaUpgrade=0;}
 	events("Starting......: ".date("H:i:s")." install_package() Extracting package $filename, please wait... ");
 	echo "Starting......: ".date("H:i:s")." install_package() Extracting package $filename, please wait... \n";
-
+	
 	
 	
 	$tarbin=$unix->find_program("tar");
@@ -870,7 +914,8 @@ function install_package($filename,$expected=null){
 	echo "Starting......: ".date("H:i:s")." tar: $tarbin\n";
 	echo "Starting......: ".date("H:i:s")." killall: $killall\n";
 	
-	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 10);
+	build_progress_manu("Testing Package",50);
+	
 	events("Starting......: ".date("H:i:s")." install_package() Testing Package");
 	echo "Starting......: ".date("H:i:s")." Testing Package ".basename($filename)."\n";
 	
@@ -887,12 +932,14 @@ function install_package($filename,$expected=null){
 		events("Fatal, Compressed package seems corrupted");
 		events($GLOBALS["TARGZ_TEST_CONTAINER_ERROR"]);
 		@unlink($filename);
-		@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 100);
+		build_progress_manu("Corrupted!",110);
+		
 		return false;
 	}
 	echo "Starting......: ".date("H:i:s")." Purge directories\n";
 	events("Starting......: ".date("H:i:s")." Purge directories...");
-	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 40);
+	build_progress_manu("Purge directories",55);
+	
 
 	if(is_dir("/usr/share/artica-postfix/ressources/conf/upload")){
 		system("$rm -f /usr/share/artica-postfix/ressources/conf/upload/*");
@@ -903,7 +950,19 @@ function install_package($filename,$expected=null){
 	}
 	
 	events("Starting......: ".date("H:i:s")." Extracting...");
-	exec("$tarbin xf $filename -C /usr/share/ 2>&1",$results);
+	exec("$tarbin xpf $filename -C /usr/share/ 2>&1",$results);
+	
+	
+	if(is_file($squidbin)){
+		$squidfiles=$unix->SquidPHPFiles();
+		while (list ($fileSquid,$None123) = each ($squidfiles)){
+			@chgrp("/usr/share/artica-postfix/$fileSquid", "squid");
+			@chown("/usr/share/artica-postfix/$fileSquid", "squid");
+			@chmod("/usr/share/artica-postfix/$fileSquid",0755);
+		}
+		
+	}
+	
 	if(is_file("$killall")){shell_exec("$killall artica-install >/dev/null 2>&1");}
 	@unlink($filename);
 	shell_exec("$nohup $php ". dirname(__FILE__)."/exec.checkfolder-permissions.php --force >/dev/null 2>&1 &");
@@ -917,19 +976,19 @@ function install_package($filename,$expected=null){
 	}
 	_artica_update_event(2,"install_package(): Success updating to a new version v$MyCurrentVersion",$results,__FILE__,__LINE__);
 	
-	$squidbin=$unix->LOCATE_SQUID_BIN();
-	if(is_file($squidbin)){
-		squid_admin_mysql(1, "Your Proxy appliance was updated to Artica v$MyCurrentVersion", null,__FILE__,__LINE__);
-	}
+	
+	
 	
 	
 	if($RebootAfterArticaUpgrade==1){
-		@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 100);
+		build_progress_manu("{rebooting}",90);
 		_artica_update_event(1,"install_package() Reboot the server in 10s...",null,__FILE__,__LINE__);
 		events("Reboot the server in 10s...");
 		system_admin_events("Warning: Reboot the server in 10s...", __FUNCTION__, __FILE__, __LINE__, "artica-update");
 		$shutdown=$unix->find_program("shutdown");
 		shell_exec("shutdown -r -t 10");
+		sleep(5);
+		build_progress_manu("{done}",100);
 		return true;
 	}	
 	
@@ -937,6 +996,7 @@ function install_package($filename,$expected=null){
 	system_admin_events("Warning: Restart Artica dedicated services after an upgrade...", __FUNCTION__, __FILE__, __LINE__, "artica-update");
 	system("$php ". __FILE__." --restart-services");
 	_artica_update_event(2,"install_package(): finish",null,__FILE__,__LINE__);
+	build_progress_manu("{done}",100);
 	return true;
 	
 	
@@ -966,28 +1026,47 @@ function RestartDedicatedServices($aspid=false){
 	$unix->THREAD_COMMAND_SET("$php /usr/share/artica-postfix/exec.web-community-filter.php --register");
 	events("Starting artica");
 	echo "Starting......: ".date("H:i:s")." nightly builds starting artica...\n";
-	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 45);
+	build_progress_manu("{starting}",60);
+	
 	system("/etc/init.d/artica-postfix start");
 	echo "Starting......: ".date("H:i:s")." nightly builds building init scripts\n";
-	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 50);
+	build_progress_manu("{starting}",61);
+	
 	system("$php /usr/share/artica-postfix/exec.initslapd.php --force >/dev/null 2>&1");
 	echo "Starting......: ".date("H:i:s")." nightly builds updating network\n";
-	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 55);
+	build_progress_manu("{starting}",62);
 	system("$php /usr/share/artica-postfix/exec.virtuals-ip.php >/dev/null 2>&1");
+	build_progress_manu("{starting}",63);
 	system("$php /usr/share/artica-postfix/exec.monit.php --build >/dev/null 2>&1");
 	echo "Starting......: ".date("H:i:s")." nightly builds purge and clean....\n";
-	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 60);
-	shell_exec("$nohup /etc/init.d/slapd start >/dev/null 2>&1 &");
+	build_progress_manu("{starting}",64);
+	
+	
+	build_progress_manu("{starting}",65);
 	shell_exec("$nohup /etc/init.d/artica-webconsole start >/dev/null 2>&1 &");
+	
+	shell_exec("$nohup /etc/init.d/slapd start >/dev/null 2>&1 &");
+	build_progress_manu("{starting}",65);
+	shell_exec("$nohup /etc/init.d/artica-webconsole start >/dev/null 2>&1 &");
+	build_progress_manu("{starting}",66);
 	if(is_file("/etc/init.d/nginx")){shell_exec("$nohup /etc/init.d/nginx reload >/dev/null 2>&1 &");}
+	build_progress_manu("{starting}",67);
 	shell_exec("$nohup /etc/init.d/auth-tail restart >/dev/null 2>&1 &");
+	build_progress_manu("{starting}",68);
 	shell_exec("$nohup /etc/init.d/artica-framework restart >/dev/null 2>&1 &");
+	build_progress_manu("{starting}",69);
 	shell_exec("$nohup /usr/share/artica-postfix/bin/process1 -perm >/dev/null 2>&1 &");
+	build_progress_manu("{starting}",70);
 	shell_exec("$nohup /usr/share/artica-postfix/bin/artica-make --empty-cache >/dev/null 2>&1 &");
+	build_progress_manu("{starting}",71);
 	shell_exec("$nohup /etc/init.d/monit restart >/dev/null 2>&1 &");
+	build_progress_manu("{starting}",72);
 	shell_exec("$nohup /etc/init.d/artica-status restart --force >/dev/null 2>&1 &");
+	build_progress_manu("{starting}",73);
 	shell_exec("$nohup $php /usr/share/artica-postfix/exec.squid.php --build-schedules >/dev/null 2>&1 &");
+	build_progress_manu("{starting}",74);
 	shell_exec("$nohup $php /usr/share/artica-postfix/exec.schedules.php --defaults >/dev/null 2>&1 &");
+	build_progress_manu("{starting}",75);
 	$articaver=GetCurrentVersionString();
 	if(is_file($squidbin)){
 		squid_admin_mysql(1, "Updated Artica v$articaver [action=reload]",null,__FILE__,__LINE__);
@@ -996,7 +1075,7 @@ function RestartDedicatedServices($aspid=false){
 	
 	}
 	events("done");
-	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", 100);
+	build_progress_manu("{success} v$articaver",100);
 	echo "Starting......: ".date("H:i:s")." Done you can close the screen....\n";	
 	_artica_update_event(2,"RestartDedicatedServices(): finish",null,__FILE__,__LINE__);
 }
@@ -1014,8 +1093,6 @@ function nightly_progress( $download_size, $downloaded_size, $upload_size, $uplo
        
     if ( $progress > $GLOBALS["previousProgress"]){
     	echo "Downloading: ". $progress."%, please wait...\n";
-    	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/download_progress", $progress);
-    	@chmod("/usr/share/artica-postfix/ressources/logs/web/download_progress", 0777);
     	$GLOBALS["previousProgress"]=$progress;
     }
 }

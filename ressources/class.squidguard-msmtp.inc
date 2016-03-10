@@ -53,7 +53,7 @@ class squidguard_msmtp{
 		if(function_exists("ufdb_smtp_logs")){ufdb_smtp_logs("TLS?: $this->tls_enabled",__FUNCTION__,__LINE__);}
 		
 		if($this->smtp_auth_user<>null){
-			$conf[]="auth on";
+			if($this->tls_enabled==0){$conf[]="auth plain";}else{$conf[]="auth on";}
 			$conf[]="user $this->smtp_auth_user";
 			$conf[]="password $this->smtp_auth_passwd";
 			$conf[]="logfile $this->tmplogfile";
@@ -81,6 +81,7 @@ class squidguard_msmtp{
 		$msmtp[]="--file=$this->conffile";
 		$msmtp[]="--protocol=smtp";
 		$msmtp[]="--read-envelope-from";
+		$msmtp[]="--logfile=$this->tmplogfile";
 		$msmtp[]="-- $this->recipient";
 		$msmtp[]="< $this->tmpfile 2>&1";
 		

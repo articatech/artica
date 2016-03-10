@@ -33,13 +33,44 @@ $downloadapple=Paragraphe("apple-logo-64.png",
 
 	$html="
 	<div class=explain>{OPENVPN_ADMIN_HELP_TEXT}</div>
-	<table style='width:99%' class=form>
+	<div style='width:98%' class=form>
+	<table style='width:99%'>
 	<tbody>
-	<tr>
-		<td width=1%>$downloadvinvin</td>
-	</tr>
-	<tr>
-		<td width=1%>$downloadapple</td>
+	<tr style='height:40px'>
+		<td width=1% nowrap><strong style='font-size:18px'>v2.1.4</td>
+		<td width=95%  style='font-size:18px'>". texttooltip("{DOWNLOAD_OPENVPN_CLIENT} XP 32bits","{DOWNLOAD_OPENVPN_CLIENT_TEXT}",
+				"s_PopUp('http://www.articatech.net/download/openvpn-2.1.4-install.exe')").
+		"</td>
+		<td width=1% nowrap><strong style='font-size:18px'>1.6MB</td>	
+	</tr>			
+	<tr style='height:40px'>
+		<td width=1% nowrap><strong style='font-size:18px'>v2.3.9</td>
+		<td width=95%  style='font-size:18px'>". texttooltip("{DOWNLOAD_OPENVPN_CLIENT} XP 32bits","{DOWNLOAD_OPENVPN_CLIENT_TEXT}",
+				"s_PopUp('http://www.articatech.net/download/openvpn-install-2.3.9-I001-i686.exe')").
+		"</td>
+		<td width=1% nowrap><strong style='font-size:18px'>1.7MB</td>	
+	</tr>						
+	<tr style='height:40px'>
+		<td width=1% nowrap><strong style='font-size:18px'>v2.3.9</td>
+		<td width=95%  style='font-size:18px'>". texttooltip("{DOWNLOAD_OPENVPN_CLIENT} XP 64bits","{DOWNLOAD_OPENVPN_CLIENT_TEXT}",
+				"s_PopUp('http://www.articatech.net/download/openvpn-install-2.3.9-I001-x86_64.exe')").
+		"</td>
+		<td width=1% nowrap><strong style='font-size:18px'>1.8MB</td>	
+	</tr>						
+						
+	<tr style='height:40px'>
+		<td width=1% nowrap><strong style='font-size:18px'>v2.3.9</td>
+		<td width=95%  style='font-size:18px'>". texttooltip("{DOWNLOAD_OPENVPN_CLIENT} 7/10 64Bits","{DOWNLOAD_OPENVPN_CLIENT_TEXT}",
+				"s_PopUp('http://www.articatech.net/download/openvpn-install-2.3.9-I601-x86_64.exe')").
+		"</td>
+		<td width=1% nowrap><strong style='font-size:18px'>1.8MB</td>	
+	</tr >
+	<tr style='height:40px'>
+		<td width=1% nowrap><strong style='font-size:18px'>v2.3.9</td>
+		<td width=95%  style='font-size:18px'>". texttooltip("{DOWNLOAD_OPENVPN_CLIENT} 7 32Bits","{DOWNLOAD_OPENVPN_CLIENT_TEXT}",
+				"s_PopUp('http://www.articatech.net/download/openvpn-install-2.3.9-I601-i686.exe')").
+		"</td>
+		<td width=1% nowrap><strong style='font-size:18px'>1.7MB</td>	
 	</tr>	
 	</tboy>
 	</table>
@@ -112,7 +143,7 @@ function popup(){
 	
 	$os=Field_array_Hash($os,"ComputerOS",null,"style:font-size:32px;padding:3px");
 	
-	$html="<div class=explain id='buildclientconfigdiv'>{BUILD_OPENVPN_CLIENT_CONFIG_TEXT}</div>
+	$html="<div class=explain id='buildclientconfigdiv' style='font-size:18px'>{BUILD_OPENVPN_CLIENT_CONFIG_TEXT}</div>
 	
 	<center style='width:98%' class=form>
 		<table style='width:100%'>
@@ -132,19 +163,21 @@ function popup(){
 	<div id='generate-vpn-events'></div>
 	<script>
 			
-	var x_GenerateVPNConfig= function (obj) {
-			var tempvalue=obj.responseText;
-			if(tempvalue.length>3){document.getElementById('generate-vpn-events').innerHTML=tempvalue;}
-			}
+var x_GenerateVPNConfig= function (obj) {
+	var tempvalue=obj.responseText;
+	var uid=document.getElementById('connection_name').value;
+	if(tempvalue.length>3){alert(tempvalue);return;}
+	Loadjs('index.openvpn.client.progress.php?uid='+uid);
+}
+			
 
-	function GenerateVPNConfig(){
-		var XHR = new XHRConnection();
-		XHR.appendData('connection_name',document.getElementById('connection_name').value);
-		XHR.appendData('ComputerOS',document.getElementById('ComputerOS').value);		
-		AnimateDiv('generate-vpn-events');
-		XHR.sendAndLoad('$page', 'POST',x_GenerateVPNConfig);				
-	}
-	</script>
+function GenerateVPNConfig(){
+	var XHR = new XHRConnection();
+	XHR.appendData('connection_name',document.getElementById('connection_name').value);
+	XHR.appendData('ComputerOS',document.getElementById('ComputerOS').value);		
+	XHR.sendAndLoad('$page', 'POST',x_GenerateVPNConfig);				
+}
+</script>
 	";
 	echo $tpl->_ENGINE_parse_body($html);
 	
@@ -162,57 +195,16 @@ function buildconfig(){
 	$connection_name=str_replace('\\', "-", $connection_name);
 	$tools=new htmltools_inc();
 	$connection_name=$tools->StripSpecialsChars($connection_name);
-	$vpn->ComputerOS=$_POST["ComputerOS"];
-	$html_logs[]="<div><code style='font-size:10px;color:black;'>Operating system : $config->ComputerOS</div>";
-	$html_logs[]="<div><code style='font-size:10px;color:black;'>Connection name. : $connection_name</div>";
+	
+	$connection_name=mysql_escape_string2($connection_name);
+	$q=new mysql();
+	$q->QUERY_SQL("INSERT IGNORE INTO `openvpn_clients` (uid,ComputerOS) VALUES ('$connection_name','{$_POST["ComputerOS"]}')","artica_backup");
+	if(!$q->ok){echo $q->mysql_error;return;}
 	
 	
-	$config=$vpn->BuildClientconf($connection_name);
-	$tbconfig=explode("\n",$config);
-	$html_logs[]=htmlentities("VPN config -> ". strlen($config)." bytes length (".count($tbconfig)." lines)");
-	$uid=$_SESSION["uid"];
-	writelogs("VPN config -> ". strlen($config)." bytes length (".count($tbconfig)." lines)",__FUNCTION__,__FILE__,__LINE__);
-	$sock=new sockets();
-	if(!$sock->SaveConfigFile($config,"$connection_name.ovpn")){
-		$html_logs[]=htmlentities("Framework error while saving  -> $connection_name.ovpn;". strlen($config)." bytes length (".count($tbconfig)." lines)");
-	}
+
 	
-	writelogs("sockets() OK",__FUNCTION__,__FILE__,__LINE__);
 	
-	//$datas=$sock->getfile('OpenVPNGenerate:'.$uid);	
-	$datas=$sock->getFrameWork("openvpn.php?build-vpn-user=$connection_name&basepath=".dirname(__FILE__));
-	$tbl=explode("\n",$datas);
-	$tbl=array_reverse($tbl);
-	while (list ($num, $line) = each ($tbl) ){
-		if(trim($line)==null){continue;}
-		$html_logs[]="<div><code style='font-size:10px;color:black;'>" . htmlentities($line)."</code></div>";
-		
-	}
-	
-	if(is_file('ressources/logs/'.$connection_name.'.zip')){
-		$download="
-		<center>
-		<div style='width:320px;border:2px solid #CCCCCC;padding:5px;margin:10px'>
-			<div style='font-size:14px'>{click_here}</div>
-			<a href='ressources/logs/".$connection_name.".zip'>
-				<img src='img/download-64.png' title=\"{DOWNLOAD_CONFIG_FILES}\" style='padding:8Px;border:1px solid #055447;margin:3px'></a>
-				<br>
-				<a href='ressources/logs/".$connection_name.".zip' style='font-size:16px;text-decoration:underline'>$connection_name.zip</a>
-		</div>		
-				
-		</center>
-		";
-		
-	}	
-	
-	$html="
-	
-	$download
-	<div style='font-size:16px'>{events}</div>
-	<div style='width:100%;height:200px;overflow:auto'>". implode("\n",$html_logs)."</div>";
-	
-	$tpl=new templates();
-	echo $tpl->_ENGINE_parse_body($html);	
 	
 	
 }

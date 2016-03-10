@@ -485,7 +485,7 @@ function group10(){
 	if($GLOBALS["ZARAFA_INSTALLED"]){$array[]="exec.zarafa.adbookldap.php --all";	}
 
 	
-	if($EnablePhileSight==1){$array[]="exec.philesight.php --check";}
+	
 	$array[]="exec.test-connection.php";
 	$array[]="exec.kaspersky-update-logs.php";
 	$array[]="exec.emailrelay.php --notifier-queue";

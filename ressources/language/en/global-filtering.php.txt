@@ -2,7 +2,7 @@
  if these words watchs emails will be filtered and consider as REJECTED</br>
 <bt_filter_headers>Subjects rules</bt_filter_headers>
 <bt_filter_headers_from>Mail from rules</bt_filter_headers_from>
-<bt_mime_attachments>attachments rules</bt_mime_attachments>
+<bt_mime_attachments>Attachments rules</bt_mime_attachments>
 <extension_list_title>filtered file attachments extension list</extension_list_title>
 <from_rules_explain>This feature allows you to block mails with specified words in sender's address</from_rules_explain>
 <js_del_extension>Delete this extension filter</js_del_extension>
@@ -14,4 +14,4 @@
 <postfix_error>Give the postfix error when pattern is matched</postfix_error>
 <subject_add>Add words rule for mail subjects</subject_add>
 <title_header>Subjects rules</title_header>
-<title_mime>attached files filtering</title_mime>
+<title_mime>Attached files filtering</title_mime>

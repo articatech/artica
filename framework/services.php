@@ -43,6 +43,8 @@ if(isset($_GET["recompile-postfix"])){recompile_postfix();exit;}
 if(isset($_GET["makedir"])){makedir();exit;}
 if(isset($_GET["restart-arp-daemon"])){restart_arpd();exit;}
 if(isset($_GET["restart-phpfpm"])){restart_phpfpm();exit;}
+if(isset($_GET["restart-SPAWNFCGI"])){restart_SPAWNFCGI();exit;}
+
 if(isset($_GET["restart-vnstat"])){restart_vnstat();exit;}
 if(isset($_GET["restart-winbindd"])){restart_winbindd();exit;}
 
@@ -340,19 +342,41 @@ function UpdateUtility_isrun(){
 		if(preg_match("#pgrep#", $line)){continue;}
 		if(preg_match("#^([0-9]+)#", $line,$re)){$master_pid=$re[1];break;}
 	}
-	
-	if($master_pid==0){return;}
-	
 	$bin=$unix->find_program("UpdateUtility-Console");
-	exec("$bin -h 2>&1",$results);
-	while (list ($num, $line) = each ($results)){
-		if(preg_match("#Update utility v\.([0-9\.]+)#", $line,$re)){$version=$re[1];break;}
+	
+	if(!is_file("/etc/UpdateUtility/version.sh")){
+		$f[]="#!/bin/sh";
+		$f[]="bindir=`dirname \"\$me$0\"`";
+		$f[]="libdir=`cd \"$"."{bindir}/lib\" ; pwd`";
+		$f[]="LD_LIBRARY_PATH=\"$"."{libdir}:$"."{LD_LIBRARY_PATH}\"";
+		$f[]="export LD_LIBRARY_PATH";
+		$f[]="cd $"."{bindir}";
+		$f[]="./UpdateUtility-Console -h";
+		$f[]="";
+		@file_put_contents("/etc/UpdateUtility/version.sh", @implode("\n", $f));
+		@chmod("/etc/UpdateUtility/version.sh",0755);
 	}
-
+	
+	exec("/etc/UpdateUtility/version.sh 2>&1",$results);
+	while (list ($num, $line) = each ($results)){
+		if(preg_match("#Update Utility.*?([0-9\.]+)#", $line,$re)){$version=$re[1];break;}
+	}
+	
 	$l[]="[APP_UPDATEUTILITYRUN]";
 	$l[]="service_name=APP_UPDATEUTILITYRUN";
 	$l[]="master_version=$version";
 	$l[]="service_cmd=none";
+	
+	
+	
+	if($master_pid==0){
+		$l[]="service_disabled=0\n";
+		return @implode("\n", $l);
+		return;
+	}
+	
+
+
 	$l[]="service_disabled=1";
 	$l[]="watchdog_features=0";
 	$l[]="family=system";
@@ -553,6 +577,21 @@ function restart_phpfpm(){
 	
 	
 	$cmd=trim("$nohup /etc/init.d/php5-fpm restart >/dev/null 2>&1 &");
+	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);	
+}
+
+function restart_SPAWNFCGI(){
+	$unix=new unix();
+	ServicesToSyslog("Request to restart SPAWNFCGI");
+	$nohup=$unix->find_program("nohup");
+	
+	$cmd=trim("$nohup /etc/init.d/artica-status reload >/dev/null 2>&1 &");
+	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
+	
+	
+	$cmd=trim("$nohup /etc/init.d/php5-fcgi restart >/dev/null 2>&1 &");
 	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
 	shell_exec($cmd);	
 }
@@ -1009,7 +1048,8 @@ function mysqld_perso_save(){
 function PHP_INI_SET(){
 	$unix=new unix();
 	$nohup=$unix->find_program("nohup");
-	$cmd=trim("$nohup /usr/share/artica-postfix/bin/artica-install --php-ini >/dev/null 2>&1 &");
+	$php=$unix->LOCATE_PHP5_BIN();
+	$cmd=trim("$php /usr/share/artica-postfix/exec.php.ini.php >/dev/null 2>&1 &");
 	shell_exec($cmd);
 	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);		
 }
@@ -1351,6 +1391,7 @@ function vmtools_installed(){
 	
 	
 	$f[]="/usr/bin/vmtoolsd";
+	$f[]="/usr/sbin/vmtoolsd";
 	$f[]="/usr/sbin/vmware-guestd";
 	$f[]="/usr/lib/vmware-tools/bin32/vmware-user-loader";
 	while (list ($key, $value) = each ($f) ){

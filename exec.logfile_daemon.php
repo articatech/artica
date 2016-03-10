@@ -1,5 +1,6 @@
 #!/usr/bin/php -q
 <?php
+ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);
 if(isset($argv[1])){if($argv[1]=="--bycron"){die();}}
 register_shutdown_function('shutdown');
 include_once(dirname(__FILE__)."/ressources/class.squid.familysites.inc");
@@ -37,8 +38,17 @@ $GLOBALS["KEYUSERS"]=array();
 $GLOBALS["CACHE_SQL"]=array();
 $timezones=@file_get_contents("/etc/artica-postfix/settings/Daemons/timezones");
 $GLOBALS["LogFileDeamonLogDir"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/LogFileDeamonLogDir");
-$GLOBALS["ResolvIPStatistics"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/ResolvIPStatistics"));
 if($GLOBALS["LogFileDeamonLogDir"]==null){$GLOBALS["LogFileDeamonLogDir"]="/home/artica/squid/realtime-events";}
+
+if(is_file("/usr/local/ArticaStats/bin/postgres")){
+	$GLOBALS["LogFileDeamonLogDir"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/LogFileDeamonLogPostGresDir");
+	if($GLOBALS["LogFileDeamonLogDir"]==null){$GLOBALS["LogFileDeamonLogDir"]="/home/artica/squid-postgres/realtime-events";}
+}
+
+$GLOBALS["ResolvIPStatistics"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/ResolvIPStatistics"));
+
+
+$GLOBALS["EnableInfluxDB"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableInfluxDB"));
 if(!isset($GLOBALS["ARTICALOGDIR"])){$GLOBALS["ARTICALOGDIR"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/ArticaLogDir"); if($GLOBALS["ARTICALOGDIR"]==null){ $GLOBALS["ARTICALOGDIR"]="{$GLOBALS["ARTICALOGDIR"]}"; } }
 if(!isset($GLOBALS["NoCompressStatisticsByHour"])){$GLOBALS["NoCompressStatisticsByHour"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/NoCompressStatisticsByHour"));}
 
@@ -47,7 +57,7 @@ if(!isset($GLOBALS["NoCompressStatisticsByHour"])){$GLOBALS["NoCompressStatistic
 
 if(posix_getuid()<>0){die("Cannot be used in web server mode\n\n");}
 $pid=getmypid();
-$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".pid";
+$pidfile="/etc/artica-postfix/pids/exec.logfile_daemon.php.pid";
 @mkdir("/etc/artica-postfix/pids",0755,true);
 @mkdir($GLOBALS["LogFileDeamonLogDir"],0755,true);
 $pid=@file_get_contents($pidfile);
@@ -82,7 +92,7 @@ events("Starting PID: Compress statistics In realtime...: {$GLOBALS["NoCompressS
 $DCOUNT=0;
 $GLOBALS["REQS"]=array();
 @file_put_contents("/var/run/squid/exec.logfilefile_daemon.{$GLOBALS["MYPID"]}.pid", time());
-
+@file_put_contents($pidfile, getmypid());
 
 squid_admin_mysql(2, "Starting Squid Tail Daemon PID {$GLOBALS["MYPID"]}", null,__FILE__,__LINE__);
 
@@ -178,7 +188,6 @@ function Parseline($buffer){
 }
 
 events("Stopping PID:".getmypid()." After $DCOUNT event(s) berekley_memory_dump()");
-berekley_memory_dump(true);
 if(!is_file("/var/run/squid/exec.logfilefile_daemon.{$GLOBALS["MYPID"]}.pid")){@unlink("/var/run/squid/exec.logfilefile_daemon.{$GLOBALS["MYPID"]}.pid");}
 events("Stopping PID:".getmypid()." Stopped()");
 die();
@@ -207,7 +216,17 @@ function CheckDirs(){
 }
 
 function CleanReQsMin(){
-	if($GLOBALS["NoCompressStatisticsByHour"]==0){return;}
+	if($GLOBALS["EnableInfluxDB"]==0){
+		$GLOBALS["COUNT_RQS"]=0;
+		$GLOBALS["COUNT_RQS_TIME"]=time();
+		return;
+	}
+	
+	if($GLOBALS["NoCompressStatisticsByHour"]==0){
+		$GLOBALS["COUNT_RQS"]=0;
+		$GLOBALS["COUNT_RQS_TIME"]=time();
+		return;
+	}
 	$q=new influx();
 	$array["fields"]["RQS"]=intval($GLOBALS["COUNT_RQS"]);
 	$array["fields"]["ZDATE"]=time();
@@ -233,6 +252,8 @@ function parseconfig(){
 	$GLOBALS["LogFileDaemonMaxEvents"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/LogFileDaemonMaxEvents"));
 	$GLOBALS["UserAgentsStatistics"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/UserAgentsStatistics"));
 	
+	if(!isset($GLOBALS["LogFileDaemonMaxMin"])){$GLOBALS["LogFileDaemonMaxMin"]=1;}
+	
 	if($GLOBALS["LogFileDaemonMaxEvents"]==0){$GLOBALS["LogFileDaemonMaxEvents"]=500;}
 	if($GLOBALS["LogFileDaemonMaxMin"]==0){$GLOBALS["LogFileDaemonMaxMin"]=1;}
 	
@@ -256,64 +277,9 @@ function parseconfig(){
 
 
 
-function berekley_add($key,$value){
-	if(!is_numeric($GLOBALS["MYPID"])){$GLOBALS["MYPID"]=getmypid();}
-	$KeyDate=date("YmdHi");
-	$GLOBALS["BEREKLEY_MEMORY"][$KeyDate][$key]=$value;
-	
-	$CountDB=count($GLOBALS["BEREKLEY_MEMORY"]);
-	$count=count($GLOBALS["BEREKLEY_MEMORY"][$KeyDate]);
-	$GLOBALS["BEREKLEY_MEMORY_STATS"]=$count;
-	
-	
-	
-	if($CountDB>1){
-		berekley_memory_dump();
-	}
-	
-	if($count>$GLOBALS["LogFileDaemonMaxEvents"]){
-		berekley_memory_dump();
-		
-	}
-	
-	return;
-	
-}
-
-function berekley_memory_dump_tofile($TimeFile,$array){
-	$t1=rtt_microtime_float();
-	$db_path="{$GLOBALS["LogFileDeamonLogDir"]}/$TimeFile.$t1.".$GLOBALS["MYPID"]."_realARRAY.array";
-	events("DUMP $db_path (".count($array).") events");
-	@file_put_contents($db_path, serialize($array));
-	if(is_file($db_path)){return true;}
-	return false;
-	
-}
 
 
 
-function berekley_memory_dump($force=false){
-	if(!isset($GLOBALS["BEREKLEY_MEMORY"])){$GLOBALS["BEREKLEY_MEMORY"]=array();return;}
-	if(count($GLOBALS["BEREKLEY_MEMORY"])==0){return;}
-	
-	reset($GLOBALS["BEREKLEY_MEMORY"]);
-	$currentTime=date("YmdHi");
-	
-	$sum=0;
-	
-	
-	
-	while (list ($TimeFile, $rows) = each ($GLOBALS["BEREKLEY_MEMORY"]) ){
-		$countOfRows=count($rows);
-		if(!$force){if($TimeFile==$currentTime){if($countOfRows<$GLOBALS["LogFileDaemonMaxEvents"]){continue;}}}
-		if(!berekley_memory_dump_tofile($TimeFile,$rows)){continue;}
-		$sum=$sum+count($rows);
-		unset($GLOBALS["BEREKLEY_MEMORY"][$TimeFile]);
-	}
-	
-	
-
-}
 
 
 
@@ -558,10 +524,7 @@ function ParseSizeBuffer($buffer){
 	$cached=$logfile_daemon->CACHEDORNOT($SquidCode);
 	if($GLOBALS["DEBUG_MEM"]){events("RTT: $sitename - $SquidCode = $cached");}
 	
-	//events("$SIZE - $sitename: $SquidCode cached:$cached");
-	
-	$SearchWords=$logfile_daemon->SearchWords($uri);
-	$GLOBALS["ACCEPTED_REQUESTS"]=$GLOBALS["ACCEPTED_REQUESTS"]+1;
+		$GLOBALS["ACCEPTED_REQUESTS"]=$GLOBALS["ACCEPTED_REQUESTS"]+1;
 	if(!isset($GLOBALS["CATEGORIES"][$sitename])){$GLOBALS["CATEGORIES"][$sitename]=$GLOBALS["MYSQL_CATZ"]->GET_CATEGORIES($sitename);}
 	
 	$MAIN["TIMESTAMP"]=time();
@@ -576,16 +539,17 @@ function ParseSizeBuffer($buffer){
 	if($GLOBALS["UserAgentsStatistics"]==1){UserAgentsStatistics($UserAgent,$mac,$uid,$SIZE);}else{
 		if($GLOBALS["DEBUG_USERAGENT"]){events("UserAgentsStatistics is disabled...");}
 	}
-	CachedSizeMem($cached,$SIZE);
+	
+	CachedSizeMem($MAIN["CACHED"],$MAIN["SIZE"]);
 	CachedUserMem($sitename,$SIZE,$mac,$uid,$ipaddr,$category,$familysite,$OUGROUP);
 }
 
 
 
 function writeCompresslogs($filename,$line){
-	
+	if($GLOBALS["EnableInfluxDB"]==0){return;}
+	if(isset($GLOBALS["BYTES_WRITE"])){$GLOBALS["BYTES_WRITE"]=0;}
 	$GLOBALS["BYTES_WRITE"]=intval($GLOBALS["BYTES_WRITE"])+strlen($line);
-	
 	$f = @fopen($filename, 'a');
 	@fwrite($f, "$line\n");
 	@fclose($f);	
@@ -639,7 +603,7 @@ function UserAgentsStatisticsMemDump(){
 		$zArray["tags"]["proxyname"]=$PROXYNAME;
 		$zArray["fields"]["ZDATE"]=time();
 		if($GLOBALS["DEBUG_MEM"]){events("INSERT - {$zArray["tags"]["USERAGENT"]} {$zArray["fields"]["SIZE"]}Bytes {$zArray["fields"]["RQS"]}rqs [".__LINE__."]");}
-		$q->insert("useragents", $zArray);
+		if($GLOBALS["EnableInfluxDB"]==1){$q->insert("useragents", $zArray);}
 		unset($GLOBALS["CACHEDUserAgentsStatistics"][$KEYMD5]);
 
 	}
@@ -684,17 +648,20 @@ function UserAgentsStatistics($UserAgent,$mac,$uid,$SIZE){
 }
 
 
+
 function CachedUserMem($sitename,$SIZE,$mac,$uid,$ipaddr,$category,$familysite,$OUGROUP){
 	if(!isset($GLOBALS["CACHEDUSersMemTime"]["TIME"])){$GLOBALS["CACHEDUSersMemTime"]["TIME"]=time();}
 	$KEYMD5=md5("$sitename,$mac,$uid,$ipaddr,$familysite,{$GLOBALS["REMOTE_PROXY_NAME"]}");
+	$ORGA=null;
 	
 	if($GLOBALS["DEBUG_MEM"]){events("[$KEYMD5]: $sitename,$SIZE,$mac,$uid,$ipaddr,$category,$familysite");}
 	
 	
 	if($OUGROUP<>null){
+		
 		$OUGROUPTR=explode(",",$OUGROUP);
 		$ADGROUP=$OUGROUPTR[0];
-		$ORGA=$OUGROUPTR[1];
+		if(isset($OUGROUPTR[1])){$ORGA=$OUGROUPTR[1];}
 	}
 	
 	
@@ -704,6 +671,14 @@ function CachedUserMem($sitename,$SIZE,$mac,$uid,$ipaddr,$category,$familysite,$
 	}
 	
 	$KEYMD5_USER=md5("$mac$uid$ipaddr");
+	
+
+	
+	if(!isset($GLOBALS["UserAutDB"][$KEYMD5_USER])){
+		$GLOBALS["UserAutDB"][$KEYMD5_USER]="$mac;$uid;$ipaddr;";
+		
+	}
+	
 	
 	if(!isset($GLOBALS["USERRTT"][$KEYMD5_USER]["TIME"])){
 		$GLOBALS["USERRTT"][$KEYMD5_USER]["TIME"]=time();
@@ -759,9 +734,18 @@ function CachedUserMem($sitename,$SIZE,$mac,$uid,$ipaddr,$category,$familysite,$
 function CachedUserMemDump(){
 	
 	
-
+	$f = @fopen("{$GLOBALS["LogFileDeamonLogDir"]}/USERAUTDB.LOG", 'a');
 	$xtime=tool_time_sec($GLOBALS["LOGACCESS_TIME"]);
 	if($xtime<10){return;}
+	while (list ($KEYMD5, $line) = each ($GLOBALS["UserAutDB"])){
+		@fwrite($f, "$line\n");
+		
+	}
+	$GLOBALS["UserAutDB"]=array();
+	@fclose($f);
+	
+	
+	
 	$c=0;
 	$MAIN=$GLOBALS["CACHEDUSersMem"];
 	$q=new influx();
@@ -786,44 +770,27 @@ function CachedUserMemDump(){
 		$GROUP=$GLOBALS["CACHEDUSersMem"][$KEYMD5]["GROUP"];
 		$ORGA=$GLOBALS["CACHEDUSersMem"][$KEYMD5]["ORGA"];
 		
+		if($SIZE>0){
+			FILL_DISK_SIZES($USERID,$IPADDR,$MAC,$SIZE,$CATEGORY,$FAM);
+		}
+		
 		if($MAC==null){$MAC="00:00:00:00:00:00";}
 		if($USERID==null){$USERID="none";}
-		
-		
 		
 		$xRQS=$xRQS+$RQS;
 		$line=time().":::$CATEGORY:::$USERID:::$IPADDR:::$MAC:::$SIZE:::$SITE:::$FAM:::$RQS:::$PROXYNAME:::$GROUP:::$ORGA";
 		$c++;
-		if($GLOBALS["NoCompressStatisticsByHour"]==0){
-			writeCompresslogs("{$GLOBALS["LogFileDeamonLogDir"]}/ACCESS_LOG",$line);
-			unset($GLOBALS["CACHEDUSersMem"][$KEYMD5]);
-			continue;
-		}
 		
-		$zArray["tags"]["GROUP"]=$GROUP;
-		$zArray["tags"]["ORGA"]=$ORGA;
-		$zArray["tags"]["CATEGORY"]=$CATEGORY;
-		$zArray["tags"]["USERID"]=$USERID;
-		$zArray["tags"]["IPADDR"]=$IPADDR;
-		$zArray["tags"]["MAC"]=$MAC;
-		$zArray["fields"]["SIZE"]=$SIZE;
-		$zArray["tags"]["SITE"]=$SITE;
-		$zArray["tags"]["FAMILYSITE"]=$FAM;
-		$zArray["fields"]["ZDATE"]=time();
-		$zArray["fields"]["RQS"]=$RQS;
-		$zArray["tags"]["proxyname"]=$PROXYNAME;
-		if($GLOBALS["DEBUG_MEM"]){events("INSERT - [$KEYMD5] {$zArray["tags"]["IPADDR"]} - {$zArray["tags"]["FAMILYSITE"]} - {$zArray["fields"]["SIZE"]}bytes {$zArray["fields"]["RQS"]}rqs [".__LINE__."]");}
-		
-		
-		
-		$q->insert("access_log", $zArray);
+		writeCompresslogs("{$GLOBALS["LogFileDeamonLogDir"]}/ACCESS_LOG",$line);
 		unset($GLOBALS["CACHEDUSersMem"][$KEYMD5]);
+		
 		
 		
 	}
 	
 	if(count($GLOBALS["USERRTT"])>0){
 		while (list ($KEYMD5, $ARRAY) = each ($GLOBALS["USERRTT"])){
+			if(!isset($GLOBALS["USERRTT"][$KEYMD5]["ORGA"])){$GLOBALS["USERRTT"][$KEYMD5]["ORGA"]=null;}
 			$USERID=$GLOBALS["USERRTT"][$KEYMD5]["USERID"];
 			$IPADDR=$GLOBALS["USERRTT"][$KEYMD5]["IPADDR"];
 			$MAC=$GLOBALS["USERRTT"][$KEYMD5]["MAC"];
@@ -918,6 +885,7 @@ function IPADDR_TO_UID_MEM_CLEAN(){
 
 function events($text){
 	if(trim($text)==null){return;}
+	if(!isset($GLOBALS["MYPID"])){$GLOBALS["MYPID"]=getmypid();}
 	$pid=$GLOBALS["MYPID"];
 	$date=@date("H:i:s");
 	$logFile="/var/log/squid/logfile_daemon.debug";
@@ -1183,8 +1151,8 @@ function shutdown() {
 	if($message==null){return;}
 	$file = $error["file"];
 	$line = $error["line"];
-	if(function_exists("openlog")){openlog("artica-status", LOG_PID , LOG_SYSLOG);}
-	if(function_exists("syslog")){ syslog(true, "$file: Fatal, stopped with error $type $message line $line");}
+	if(function_exists("openlog")){openlog("squid-tail", LOG_PID , LOG_SYSLOG);}
+	if(function_exists("syslog")){ syslog(true, "Fatal: Stopped with last error $type $message line $line");}
 	if(function_exists("closelog")){closelog();}
 
 }
@@ -1297,5 +1265,225 @@ function AccountDecode($path){
 	$path=str_replace("%u044E","ю",$path);
 	$path=str_replace("%u044F","я",$path);
 	return $path;
+}
+
+function FILL_DISK_SIZES($USERID=null,$IPADDR,$MAC,$SIZE,$CATEGORY,$FAM){
+	if($SIZE==0){return;}
+	$base="/home/squid/rttsize";
+	$YEAR=date("Y");
+	$MONTH=date("m");
+	$DAY=date("d");
+	$HOUR=date("H");
+	$WEEK=date("W");
+	$baseHour="/home/squid/rttsize/$YEAR/$MONTH/$WEEK/$DAY/$HOUR";
+	$baseDay="/home/squid/rttsize/$YEAR/$MONTH/$WEEK/$DAY";
+	$baseWeek="/home/squid/rttsize/$YEAR/$MONTH/$WEEK";
+	$baseMonth="/home/squid/rttsize/$YEAR/$MONTH";
+	
+	if(!is_dir("/home/squid/rttsize/$YEAR/$MONTH/$DAY")){
+		@mkdir("/home/squid/rttsize/$YEAR/$MONTH/$DAY",0755,true);
+		@chown("/home/squid/rttsize/$YEAR/$MONTH/$DAY","squid");
+		@chgrp("/home/squid/rttsize/$YEAR/$MONTH/$DAY","squid");
+	}
+	
+	if(!is_dir($baseHour)){
+		@mkdir($baseHour,0755,true);
+		@chown("$baseHour","squid");
+		@chgrp("$baseHour","squid");
+	}
+	FILL_DISK_UID("$baseHour/UID",$USERID,$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_MAC("$baseHour/MAC",$MAC,$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_IPADDR("$baseHour/IPADDR",$IPADDR,$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_WEBS("$baseHour/WEBS",$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_CATS("$baseHour/CATS",$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_TOT("$baseHour",$FAM,$CATEGORY,$SIZE);
+	
+	FILL_DISK_UID("$baseDay/UID",$USERID,$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_MAC("$baseDay/MAC",$MAC,$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_IPADDR("$baseDay/IPADDR",$IPADDR,$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_WEBS("$baseDay/WEBS",$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_CATS("$baseDay/CATS",$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_TOT("$baseDay",$FAM,$CATEGORY,$SIZE);
+
+	FILL_DISK_UID("$baseWeek/UID",$USERID,$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_MAC("$baseWeek/MAC",$MAC,$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_IPADDR("$baseWeek/IPADDR",$IPADDR,$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_WEBS("$baseWeek/WEBS",$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_CATS("$baseWeek/CATS",$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_TOT("$baseWeek",$FAM,$CATEGORY,$SIZE);
+	
+	FILL_DISK_UID("$baseMonth/UID",$USERID,$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_MAC("$baseMonth/MAC",$MAC,$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_IPADDR("$baseMonth/IPADDR",$IPADDR,$FAM,$CATEGORY,$SIZE);
+	FILL_DISK_WEBS("$baseMonth/WEBS",$FAM,$CATEGORY,$SIZE);	
+	FILL_DISK_CATS("$baseMonth/CATS",$FAM,$CATEGORY,$SIZE);	
+	FILL_DISK_TOT("$baseMonth",$FAM,$CATEGORY,$SIZE);
+}
+
+function FILL_DISK_TOT($base,$FAM,$CATEGORY,$SIZE){
+	if(!is_file("$base/TOT")){
+		@file_put_contents("$base/TOT",$SIZE);
+	}else{
+		$USERID_FAM=intval(@file_get_contents("$base/TOT"));
+		$USERID_FAM=$USERID_FAM+$SIZE;
+		@file_put_contents("$base/TOT",$USERID_FAM);
+	}
+	
+}
+
+function FILL_DISK_WEBS($baseHour,$FAM,$CATEGORY,$SIZE){
+	
+	if(!is_dir($baseHour)){
+		@mkdir("$baseHour",0755,true);
+		@chown("$baseHour","squid");
+		@chgrp("$baseHour","squid");
+	}
+	
+	if(!is_file("$baseHour/$FAM")){
+		@file_put_contents("$baseHour/$FAM",$SIZE);
+	}else{
+		$USERID_FAM=intval(@file_get_contents("$baseHour/$FAM"));
+		$USERID_FAM=$USERID_FAM+$SIZE;
+		@file_put_contents("$baseHour/$FAM",$USERID_FAM);
+	}
+	
+}
+function FILL_DISK_CATS($baseHour,$FAM,$CATEGORY,$SIZE){	
+	$CATEGORY=str_replace("/", "_", $CATEGORY); $CATEGORY=str_replace(".", "_", $CATEGORY);
+	if($CATEGORY==null){return;}
+	
+	if(!is_dir($baseHour)){
+		@mkdir("$baseHour",0755,true);
+		@chown("$baseHour","squid");
+		@chgrp("$baseHour","squid");
+	}
+	
+	if(!is_file("$baseHour/$CATEGORY")){
+		@file_put_contents("$baseHour/$CATEGORY",$SIZE);
+	}else{
+		$USERID_FAM=intval(@file_get_contents("$baseHour/$CATEGORY"));
+		$USERID_FAM=$USERID_FAM+$SIZE;
+		@file_put_contents("$baseHour/$CATEGORY",$USERID_FAM);
+	}
+}
+
+function FILL_DISK_UID($baseHour,$USERID=null,$FAM,$CATEGORY,$SIZE){
+	if($USERID==null){return;}
+	$CATEGORY=str_replace("/", "_", $CATEGORY); $CATEGORY=str_replace(".", "_", $CATEGORY);
+	
+	if(!is_dir("$baseHour/$USERID")){
+		@mkdir("$baseHour/$USERID",0755,true);
+		@chown("$baseHour/$USERID","squid");
+		@chgrp("$baseHour/$USERID","squid");
+	}
+	
+	
+	if(!is_file("$baseHour/$USERID/$FAM")){
+		@file_put_contents("$baseHour/$USERID/$FAM",$SIZE);
+	}else{
+		$USERID_FAM=intval(@file_get_contents("$baseHour/$USERID/$FAM"));
+		$USERID_FAM=$USERID_FAM+$SIZE;
+		@file_put_contents("$baseHour/$USERID/$FAM",$USERID_FAM);
+	}
+	
+	if(!is_file("$baseHour/$USERID/TOT")){
+		@file_put_contents("$baseHour/$USERID/TOT",$SIZE);
+	}else{
+		$USERID_FAM=intval(@file_get_contents("$baseHour/$USERID/TOT"));
+		$USERID_FAM=$USERID_FAM+$SIZE;
+		@file_put_contents("$baseHour/$USERID/TOT",$USERID_FAM);
+	}
+	
+	if($CATEGORY==null){return;}
+	
+	
+	if(!is_file("$baseHour/$USERID/$CATEGORY")){
+			@file_put_contents("$baseHour/$USERID/$CATEGORY",$SIZE);
+	}else{
+		$USERID_FAM=intval(@file_get_contents("$baseHour/$USERID/$CATEGORY"));
+		$USERID_FAM=$USERID_FAM+$SIZE;
+		@file_put_contents("$baseHour/$USERID/$CATEGORY",$USERID_FAM);
+	}	
+			
+}
+
+function FILL_DISK_MAC($baseHour,$MAC=null,$FAM,$CATEGORY,$SIZE){
+	if($MAC==null){return;}
+	if($MAC=="00:00:00:00:00:00"){return;}
+	$CATEGORY=str_replace("/", "_", $CATEGORY); $CATEGORY=str_replace(".", "_", $CATEGORY);
+	
+	if(!is_dir("$baseHour/$MAC")){
+		@mkdir("$baseHour/$MAC",0755,true);
+		@chown("$baseHour/$MAC","squid");
+		@chgrp("$baseHour/$MAC","squid");
+	}
+	
+	
+	if(!is_file("$baseHour/$MAC/$FAM")){
+		@file_put_contents("$baseHour/$MAC/$FAM",$SIZE);
+	}else{
+		$MAC_FAM=intval(@file_get_contents("$baseHour/$MAC/$FAM"));
+		$MAC_FAM=$MAC_FAM+$SIZE;
+		@file_put_contents("$baseHour/$MAC/$FAM",$MAC_FAM);
+	}
+
+	if(!is_file("$baseHour/$MAC/TOT")){
+		@file_put_contents("$baseHour/$MAC/TOT",$SIZE);
+	}else{
+		$MAC_FAM=intval(@file_get_contents("$baseHour/$MAC/TOT"));
+		$MAC_FAM=$MAC_FAM+$SIZE;
+		@file_put_contents("$baseHour/$MAC/TOT",$MAC_FAM);
+	}
+
+	if($CATEGORY==null){return;}
+
+
+
+	if(!is_file("$baseHour/$MAC/$CATEGORY")){
+		@file_put_contents("$baseHour/$MAC/$CATEGORY",$SIZE);
+	}else{
+		$MAC_FAM=intval(@file_get_contents("$baseHour/$MAC/$CATEGORY"));
+		$MAC_FAM=$MAC_FAM+$SIZE;
+		@file_put_contents("$baseHour/$MAC/$CATEGORY",$MAC_FAM);
+	}
+		
+}
+function FILL_DISK_IPADDR($baseHour,$IPADDR=null,$FAM,$CATEGORY,$SIZE){
+	if($IPADDR==null){return;}
+	$CATEGORY=str_replace("/", "_", $CATEGORY); $CATEGORY=str_replace(".", "_", $CATEGORY);
+	
+	if(!is_dir("$baseHour/$IPADDR")){
+		@mkdir("$baseHour/$IPADDR",0755,true);
+		@chown("$baseHour/$IPADDR","squid");
+		@chgrp("$baseHour/$IPADDR","squid");
+	}
+	
+	if(!is_file("$baseHour/$IPADDR/$FAM")){
+		@file_put_contents("$baseHour/$IPADDR/$FAM",$SIZE);
+	}else{
+		$IPADDR_FAM=intval(@file_get_contents("$baseHour/$IPADDR/$FAM"));
+		$IPADDR_FAM=$IPADDR_FAM+$SIZE;
+		@file_put_contents("$baseHour/$IPADDR/$FAM",$IPADDR_FAM);
+	}
+
+	if(!is_file("$baseHour/$IPADDR/TOT")){
+		@file_put_contents("$baseHour/$IPADDR/TOT",$SIZE);
+	}else{
+		$IPADDR_FAM=intval(@file_get_contents("$baseHour/$IPADDR/TOT"));
+		$IPADDR_FAM=$IPADDR_FAM+$SIZE;
+		@file_put_contents("$baseHour/$IPADDR/TOT",$IPADDR_FAM);
+	}
+
+	if($CATEGORY==null){return;}
+
+
+	if(!is_file("$baseHour/$IPADDR/$CATEGORY")){
+		@file_put_contents("$baseHour/$IPADDR/$CATEGORY",$SIZE);
+	}else{
+		$IPADDR_FAM=intval(@file_get_contents("$baseHour/$IPADDR/$CATEGORY"));
+		$IPADDR_FAM=$IPADDR_FAM+$SIZE;
+		@file_put_contents("$baseHour/$IPADDR/$CATEGORY",$IPADDR_FAM);
+	}
+		
 }
 ?>

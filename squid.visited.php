@@ -18,6 +18,7 @@
 	include_once(dirname(__FILE__).'/ressources/class.rtmm.tools.inc');
 	include_once(dirname(__FILE__).'/ressources/class.squid.inc');
 	include_once(dirname(__FILE__).'/ressources/class.dansguardian.inc');
+	include_once(dirname(__FILE__)."/ressources/class.tcpip.inc");
 	header("Pragma: no-cache");	
 	header("Expires: 0");
 	//header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
@@ -204,9 +205,9 @@ function free_catgorized_tabs(){
 	$users=new usersMenus();
 	$category=$_GET["category"];
 	$array["free-cat"]='{add_websites}';
-	$array["test-cat"]='{test_categories}';
+	
 	$array["categorytables"]='{categories}';
-	$array["family"]='{websites_families}';
+	
 	
 	$t=$_GET["t"];
 	if(!is_numeric($t)){
@@ -217,9 +218,8 @@ function free_catgorized_tabs(){
 
 	if($category<>null){
 		$fontsize=22;
-		unset($array["test-cat"]);
 		unset($array["categorytables"]);
-		unset($array["family"]);
+
 		
 	}
 	
@@ -558,6 +558,8 @@ function QuickCategorize(){
 	$year=$_POST["year"];
 	$category=$_POST["category"];
 	if(!is_numeric($year)){$year=date("Y");}
+	$ipClass=new IP();
+	if($ipClass->isValid($www)){$www=ip2long($www).".addr";}
 
 	$category_table="category_".$q->category_transform_name($category);
 	if(!$q->TABLE_EXISTS($category_table)){

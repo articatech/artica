@@ -34,7 +34,7 @@ function GroupDelete(gpid){
 
 	
 function GroupPrivileges(gid){
-	YahooWin(755,"domains.edit.group.php"+'?GroupPriv=' + gid + '&start=yes','Privileges:'+gid)
+	YahooWin(1000,"domains.edit.group.php"+'?GroupPriv=' + gid + '&start=yes','Privileges:'+gid)
 	
 	}
 

@@ -197,6 +197,10 @@ div.pGroup input, select, textarea {
 .flexigrid div.fbutton .Network {
   background: url("/img/network-1-20.gif") no-repeat scroll left center transparent;
 }
+.flexigrid div.fbutton .Disable {
+  background: url("/img/16-grey.png") no-repeat scroll left center transparent;
+}
+
 
 .flexigrid div.fbutton .MyMSNOff {
   background: url("/img/msn-16-grey.png") no-repeat scroll left center transparent;
@@ -280,6 +284,9 @@ div.pGroup input, select, textarea {
   background: url("/img/clock-18.png") no-repeat scroll left center transparent;
 }
 .flexigrid div.fbutton .xls {
+  background: url("/img/xls_small.gif") no-repeat scroll left center transparent;
+}
+.flexigrid div.fbutton .csv {
   background: url("/img/xls_small.gif") no-repeat scroll left center transparent;
 }
 .flexigrid div.fbutton .BanServ {

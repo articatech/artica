@@ -214,7 +214,7 @@ function ipdeny(){
 	$unix=new unix();
 	$php=$unix->LOCATE_PHP5_BIN();
 	$nohup=$unix->find_program("nohup");
-	$cmd=trim("$nohup $php /usr/share/artica-postfix/exec.postfix.iptables.php --ipdeny >/dev/null 2>&1 &");
+	$cmd=trim("$nohup $php /usr/share/artica-postfix/exec.ipblock.php >/dev/null 2>&1 &");
 	writelogs_framework($cmd,__FUNCTION__,__FILE__,__LINE__);
 	shell_exec($cmd);		
 }

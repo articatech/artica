@@ -74,10 +74,11 @@ function table(){
 	$delete=$tpl->javascript_parse_text("{delete} {hosts} ?");
 	$add_new_entry=$tpl->javascript_parse_text("{add_new_entry}");
 	$apply=$tpl->javascript_parse_text("{apply}");
+	$title=$tpl->javascript_parse_text("{etc_hosts}");
 	$buttons="
 	buttons : [
-	{name: '$add_new_entry', bclass: 'add', onpress : NewRule$t},
-	{name: '$apply', bclass: 'Reconf', onpress : Rebuild$t},
+	{name: '<strong style=font-size:18px>$add_new_entry</strong>', bclass: 'add', onpress : NewRule$t},
+	{name: '<strong style=font-size:18px>$apply</strong>', bclass: 'Reconf', onpress : Rebuild$t},
 	],";
 	
 	
@@ -92,10 +93,10 @@ function table(){
 	url: '$page?hosts-search=yes&t=$t',
 	dataType: 'json',
 	colModel : [
-	{display: '$ip_address', name : 'ipaddr', width :105, sortable : true, align: 'left'},
-	{display: '$servername', name : 'hostname', width : 344, sortable : false, align: 'left'},
-	{display: '$alias', name : 'alias', width :215, sortable : true, align: 'left'},
-	{display: '&nbsp;', name : 'delete', width : 45, sortable : false, align: 'center'},
+	{display: '<span style=font-size:20px>$ip_address</span>', name : 'ipaddr', width :250, sortable : true, align: 'left'},
+	{display: '<span style=font-size:20px>$servername</span>', name : 'hostname', width : 550, sortable : false, align: 'left'},
+	{display: '<span style=font-size:20px>$alias</span>', name : 'alias', width :250, sortable : true, align: 'left'},
+	{display: '&nbsp;', name : 'delete', width : 90, sortable : false, align: 'center'},
 	],
 	$buttons
 	searchitems : [
@@ -106,12 +107,12 @@ function table(){
 	sortname: 'hostname',
 	sortorder: 'asc',
 	usepager: true,
-	title: '',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 450,
+	height: 550,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200]
 	
@@ -204,16 +205,16 @@ function hosts_search(){
 		$ID=$ligne["ID"];
 		$md5=md5($ligne["zmd5"]);
 		
-		$delete=imgtootltip("delete-32.png","{delete} Rule:{$ligne["rulename"]}","RuleDelete$t('{$ligne["zmd5"]}')");
+		$delete=imgtootltip("delete-48.png","{delete} Rule:{$ligne["rulename"]}","RuleDelete$t('{$ligne["zmd5"]}')");
 
 
 		$data['rows'][] = array(
 				'id' => $ligne['ID'],
 				'cell' => array(
-						"<span style='font-size:16px;font-weight:bold;color:$color'>{$ligne["ipaddr"]}</span>",
-						"<span style='font-size:16px;font-weight:bold;color:$color'>{$ligne["hostname"]}</span>",
-						"<span style='font-size:16px;font-weight:bold;color:$color'>{$ligne["alias"]}</span>"
-						,$delete )
+						"<span style='font-size:22px;font-weight:bold;color:$color'>{$ligne["ipaddr"]}</span>",
+						"<span style='font-size:22px;font-weight:bold;color:$color'>{$ligne["hostname"]}</span>",
+						"<span style='font-size:22px;font-weight:bold;color:$color'>{$ligne["alias"]}</span>"
+						,"<center>$delete</center>" )
 		);
 }
 

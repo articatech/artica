@@ -390,7 +390,7 @@ function events_script_popup(){
 	}
 	$datas=base64_decode($ligne["script"]);
 	echo "<textarea style='margin-top:5px;font-family:Courier New;
-	font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+	font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 	overflow:auto;font-size:11px' id='textToParseCats-$t'>$datas</textarea>$PACTESTER";
 }
 
@@ -738,6 +738,7 @@ function explainArule($ID,$color="black"){
 	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT * FROM wpad_rules WHERE ID='$ID'"));
 	$dntlhstname=$ligne["dntlhstname"];
 	$isResolvable=$ligne["isResolvable"];
+	$FinishbyDirect=$ligne["FinishbyDirect"];
 	
 	$sql="SELECT wpad_sources_link.gpid,wpad_sources_link.negation,wpad_sources_link.zmd5 as mkey,
 	wpad_sources_link.zorder,
@@ -775,6 +776,8 @@ function explainArule($ID,$color="black"){
 		while ($ligne = mysql_fetch_assoc($results)) {
 			$g[]="{$ligne["proxyserver"]}:{$ligne["proxyport"]}";
 		}
+		
+		if($FinishbyDirect==1){$g[]="{direct_connection}";}
 		
 	}else{
 		$g[]="{direct_connection} #$ID";
@@ -851,6 +854,12 @@ function rules_options(){
 	$tpl=new templates();
 	$page=CurrentPageName();
 	$q=new mysql_squid_builder();
+	
+	if(!$q->FIELD_EXISTS("wpad_rules", "FinishbyDirect")){
+		$q->QUERY_SQL("ALTER TABLE `wpad_rules` ADD `FinishbyDirect`  smallint( 1 ) DEFAULT '0',ADD INDEX (`FinishbyDirect`)");
+	}
+	
+	
 	$ID=$_GET["ID"];
 	$t=$_GET["t"];
 	$tt=$_GET["tt"];
@@ -872,7 +881,10 @@ function rules_options(){
 	<td class=legend style='font-size:18px'>". texttooltip("{dnot_proxy_lisResolvable}","{dnot_proxy_lisResolvable_explain}").":</td>
 	<td>". Field_checkbox_design("isResolvable-$ttt", 1,$ligne["isResolvable"])."</td>
 	</tr>			
-	
+	<tr>
+	<td class=legend style='font-size:18px'>". texttooltip("{return_direct_mode}","{wpad_return_direct_mode}").":</td>
+	<td>". Field_checkbox_design("FinishbyDirect-$ttt", 1,$ligne["FinishbyDirect"])."</td>
+	</tr>	
 	<tr>
 		<td colspan=2 align='right'><hr>". button($button,"SaveR$ttt()",22)."</td>
 	</tr>
@@ -897,10 +909,13 @@ function SaveR$ttt(){
 	var XHR = new XHRConnection();
 	var dntlhstname=0;
 	var isResolvable=0;
+	var FinishbyDirect=0;
 	if( document.getElementById('dntlhstname-$ttt').checked){dntlhstname=1;}
 	if( document.getElementById('isResolvable-$ttt').checked){isResolvable=1;}
+	if( document.getElementById('FinishbyDirect-$ttt').checked){FinishbyDirect=1;}
 	XHR.appendData('dntlhstname', dntlhstname);
 	XHR.appendData('isResolvable', isResolvable);
+	XHR.appendData('FinishbyDirect', FinishbyDirect);
 	XHR.appendData('ID', '$ID');
 	XHR.sendAndLoad('$page', 'POST',xSave$ttt);
 		
@@ -924,7 +939,8 @@ function rules_options_save(){
 	
 	$sql="UPDATE wpad_rules SET
 			dntlhstname='{$_POST["dntlhstname"]}',
-			isResolvable='{$_POST["isResolvable"]}'
+			isResolvable='{$_POST["isResolvable"]}',
+			FinishbyDirect='{$_POST["FinishbyDirect"]}'
 		WHERE ID='{$_POST["ID"]}'";
 	$q->QUERY_SQL($sql);
 	if(!$q->ok){echo $q->mysql_error;}
@@ -2261,7 +2277,7 @@ function rules_search(){
 		$md5=md5($ligne["ID"]);
 		$ligne["rulename"]=utf8_encode($ligne["rulename"]);
 		$delete=imgtootltip("delete-32.png","{delete} Rule:{$ligne["rulename"]}","RuleDelete$t('{$ligne["ID"]}')");
-		$enable=Field_checkbox_design($md5,1,$ligne["enabled"],"RuleEnable$t('{$ligne["ID"]}','$md5')");	
+		$enable=Field_checkbox($md5,1,$ligne["enabled"],"RuleEnable$t('{$ligne["ID"]}','$md5')");	
 		$js="Loadjs('$MyPage?rule-js=yes&ID={$ligne["ID"]}&t=$t');";
 		
 		$up=imgsimple("arrow-up-32.png",null,"MoveObjectLinks$t('{$ligne["ID"]}','up')");

@@ -16,7 +16,6 @@ if(function_exists("posix_getuid")){
 	include_once('ressources/class.templates.inc');
 	include_once('ressources/class.html.pages.inc');
 	include_once('ressources/class.mysql.inc');
-	include_once('ressources/class.artica.graphs.inc');
 	include_once('ressources/class.highcharts.inc');
 	include_once(dirname(__FILE__)."/ressources/class.stats-appliance.inc");
 
@@ -25,7 +24,7 @@ if(function_exists("posix_getuid")){
 	
 function tabs(){
 	
-	$fontsize=20;
+	$fontsize=18;
 	$tpl=new templates();
 	$page=CurrentPageName();
 	$users=new usersMenus();
@@ -35,17 +34,25 @@ function tabs(){
 	$EnableUfdbGuard=intval($sock->EnableUfdbGuard());
 	$SQUIDEnable=$sock->GET_INFO("SQUIDEnable");
 	if(!is_numeric($SQUIDEnable)){$SQUIDEnable=1;}
+	$EnableNginx=intval($sock->GET_INFO("EnableNginx"));
+	$PrivoxyEnabled=intval($sock->GET_INFO("PrivoxyEnabled"));
 	
 	$EnableArticaMetaServer=intval($sock->GET_INFO("EnableArticaMetaServer"));
+	if($users->STATS_APPLIANCE){$SquidPerformance=0;}
+	if($SQUIDEnable==0){$EnableUfdbGuard=0;}
 	
 	if($EnableArticaMetaServer==1){
 		$array["meta-clients"]="{meta_clients}";
+	}
+	if($SQUIDEnable==1){
+		$array["realtime"]="{realtime_requests}";
+	}
+	if($EnableNginx==1){
+		$array["realtime-nginx"]="{realtime_requests}";
+		$array["error-nginx"]="{errors}";
+		$array["watchdog-nginx"]="{squid_watchdog_mini}";
 		
 	}
-	
-	$array["realtime"]="{realtime_requests}";
-	if($users->STATS_APPLIANCE){$SquidPerformance=0;}
-	if($SQUIDEnable==0){$EnableUfdbGuard=0;}
 	
 	
 	$EnableInfluxDB=intval($sock->GET_INFO("EnableInfluxDB"));
@@ -58,6 +65,11 @@ function tabs(){
 		}
 	}
 	
+	
+	if($PrivoxyEnabled==1){
+		$array["privoxy"]="{APP_PRIVOXY}";
+		
+	}
 	
 	if($users->APP_UFDBGUARD_INSTALLED){
 		if($EnableUfdbGuard==1){
@@ -77,14 +89,65 @@ function tabs(){
 		if($SQUIDEnable==1){$array["events-squidcache"]='{proxy_service_events}';}
 	}
 	
+	if($users->AsSystemAdministrator OR $users->AsSquidAdministrator OR $users->AsDansGuardianAdministrator){
+		$FireHolEnable=intval($sock->GET_INFO("FireHolEnable"));
+		$EnableSS5=intval($sock->GET_INFO("EnableSS5"));
+		
+		if($EnableSS5==1){
+			$array["ss5"]="{APP_SS5}";
+			
+		}
+		
+		if($FireHolEnable==1){
+			$array["FW"]="{firewall}";
+			
+		}
+		$array["system"]="{system}";
+		
+		
+	}
+	
 	
 	if($users->STATS_APPLIANCE){
 		unset($array["events-squidcache"]);
 		unset($array["categories_acls"]);
 		unset($array["ufdb-logs"]);
 	}
+	
+	$CountOfTabs=count($array);
+	
+	if($CountOfTabs>9){
+		$fontsize="16";
+	}
+	
+	if($CountOfTabs>10){
+		$fontsize="14";
+	}
 
 	while (list ($num, $ligne) = each ($array) ){
+		if($num=="system"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"system.watchdog-events.php\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
+			continue;
+				
+		}		
+		
+		if($num=="realtime-nginx"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"nginx.events.php\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
+			continue;			
+			
+		}
+		
+		if($num=="error-nginx"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"nginx.events.error.php\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
+			continue;
+				
+		}
+		
+		if($num=="watchdog-nginx"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"nginx.watchdog-events.php\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
+			continue;
+			
+		}
 	
 		if($num=="thishour"){
 			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"squid.accesslogs.tabs.php\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
@@ -104,7 +167,23 @@ function tabs(){
 					continue;
 			
 		}
-	
+		if($num=="FW"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"firehol.events.php\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
+			continue;
+		
+		}
+
+		if($num=="ss5"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"ss5.events.php\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
+			continue;
+		
+		}
+		
+		if($num=="privoxy"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"privoxy.events.php\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
+			continue;
+		
+		}		
 		
 		if($num=="thisday"){
 			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"squid.accesslogs.day.compressed.php\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");

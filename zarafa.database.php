@@ -31,7 +31,8 @@ function tabs(){
 	//$array["popup-instances"]="{multiple_webmail}";
 	$array["status"]="{status}";
 	
-	$array["popup-mysql"]="{mysql_tuning}";
+	$array["popup-mysql"]="{APP_MYSQL}";
+	$array["tune-mysql"]="{mysql_tuning}";
 	$array["popup-importAD"]="{active_directory_importation}";
 	
 	$fontsize="font-size:18px";
@@ -52,6 +53,11 @@ function tabs(){
 		
 		if($num=="popup-mysql"){
 			$html[]="<li><a href=\"zarafa.mysqlparams.php\" style='font-size:18px'><span>$ligne</span></a></li>\n";
+			continue;
+		}
+		
+		if($num=="tune-mysql"){
+			$html[]="<li><a href=\"zarafa.mysql.php\" style='font-size:18px'><span>$ligne</span></a></li>\n";
 			continue;
 		}
 		

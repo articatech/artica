@@ -355,8 +355,8 @@ function events(){
 		if($classtr=="oddRow"){$classtr=null;}else{$classtr="oddRow";}
 		if(trim($line)==null){continue;}
 		$line=htmlspecialchars($line);
-		$line=str_replace("exec.squidguard.php","",$line);
-		$line=str_replace("exec.squidguard.php","",$line);
+		$line=str_replace("ufdbguardd.php","",$line);
+		$line=str_replace("ufdbguardd.php","",$line);
 		$line=str_replace(":: :",":",$line);
 		$line=str_replace("#STRONG#","<strong>",$line);
 		$line=str_replace("#!STRONG#","</strong>",$line);

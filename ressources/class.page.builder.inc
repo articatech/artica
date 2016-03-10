@@ -250,7 +250,7 @@ class pagebuilder{
 			//$jsTablesrc[]="/js/jquery.collapse.js";
 			$jsTablesrc[]="/js/jquery.cookie.js";
 			$jsTablesrc[]="/js/fileuploader.js";
-			$jsTablesrc[]="/js/highcharts.js";
+			
 			$jsTablesrc[]="/js/modules/exporting.js";
 			$jsTablesrc[]="/js/mobiscroll-2.1.custom.min.js";
 			$jsTablesrc[]="/js/tiny_mce/tinymce.min.js";
@@ -292,8 +292,13 @@ class pagebuilder{
 			}
 			$chrome[]="$backspace<script type=\"text/javascript\" language=\"javascript\">{$backspace}$.rloader([ ".@implode(",\n\t", $srcs)." ]);</script>";
 			$chrome[]="$backspace<script type=\"text/javascript\" language=\"javascript\" src=\"/js/jquery.blockUI.js\"></script>";
+			$chrome[]="$backspace<script type=\"text/javascript\" language=\"javascript\" src=\"/js/highcharts.js\"></script>";
 			$chrome[]="$backspace<script type=\"text/javascript\" language=\"javascript\" src=\"/XHRConnection.js\"></script>";
 			$chrome[]="$backspace<script type=\"text/javascript\" language=\"javascript\" src=\"/mouse.js\"></script>";
+			
+			
+			
+			
 			$f[]="{$backspace}if(head.browser.ie){head.js('/mouse_ie.js');}";
 			$f[]="{$backspace}</script>\n";
 			

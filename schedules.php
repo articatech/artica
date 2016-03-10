@@ -31,6 +31,7 @@ if(isset($_GET["build-config-start"])){build_config_perform();exit;}
 if(isset($_GET["schedules-params"])){schedules_params_js();exit;}
 if(isset($_GET["schedules-params-popup"])){schedules_params_popup();exit;}
 if(isset($_POST["max_load_avg5"])){schedules_params_save();exit;}
+if(isset($_GET["table"])){table();exit;}
 
 if(isset($_POST["DisableSquidDefaultSchedule"])){DisableSquidDefaultSchedule();exit;}
 page();
@@ -80,20 +81,20 @@ function schedules_params_popup(){
 	<div id='div-$t'></div>
 	<table style='width:99%' class=form>
 	<tr>
-		<td class=legend style='font-size:16px'>{max_load_to_run} 5Mn:</td>
-		<td>". Field_text("max_load_avg5",$settings["max_load_avg5"],"font-size:16px;width:90px")."</td>
+		<td class=legend style='font-size:20px'>{max_load_to_run} 5Mn:</td>
+		<td>". Field_text("max_load_avg5",$settings["max_load_avg5"],"font-size:20px;width:90px")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:16px'>{max_waiting_minutes_onload}:</td>
-		<td style='font-size:16px'>". Field_text("max_load_wait",$settings["max_load_wait"],"font-size:16px;width:90px")."&nbsp;{minutes}</td>
+		<td class=legend style='font-size:20px'>{max_waiting_minutes_onload}:</td>
+		<td style='font-size:20px'>". Field_text("max_load_wait",$settings["max_load_wait"],"font-size:20px;width:90px")."&nbsp;{minutes}</td>
 	</tr>	
 	<tr>
-		<td class=legend style='font-size:16px'>{max_nice}:</td>
-		<td style='font-size:16px'>". Field_text("max_nice",$settings["max_nice"],"font-size:16px;width:90px")."&nbsp;</td>
+		<td class=legend style='font-size:20px'>{max_nice}:</td>
+		<td style='font-size:20px'>". Field_text("max_nice",$settings["max_nice"],"font-size:20px;width:90px")."&nbsp;</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:16px'>{max_events_in_database}:</td>
-		<td style='font-size:16px'>". Field_text("max_events",$settings["max_events"],"font-size:16px;width:90px")."&nbsp;</td>
+		<td class=legend style='font-size:20px'>{max_events_in_database}:</td>
+		<td style='font-size:20px'>". Field_text("max_events",$settings["max_events"],"font-size:20px;width:90px")."&nbsp;</td>
 	</tr>			
 	<tr>
 		<td colspan=2 align='right'><hr>". button("{apply}", "SaveCronSets()",16)."
@@ -117,7 +118,6 @@ function schedules_params_popup(){
 	  	XHR.appendData('max_load_wait',document.getElementById('max_load_wait').value);
 	  	XHR.appendData('max_nice',document.getElementById('max_nice').value);
 	  	XHR.appendData('max_events',document.getElementById('max_events').value);
-	  	AnimateDiv('div-$t');
 	  	XHR.sendAndLoad('$page', 'POST',x_SaveCronSets);
 	}	
 	</script>		
@@ -188,25 +188,26 @@ function AddNewSchedule_popup(){
 	<div id='div-$t'>
 	<table style='width:99%' class='form'>
 	<tr>
-		<td class=legend style='font-size:14px' nowrap>{task_type}:</td>
-		<td>". Field_array_Hash($taskz, "TaskType-$t",$ligne["TaskType"],"ExplainTaskType()",null,0,"font-size:14px")."</td>
+		<td class=legend style='font-size:20px' nowrap>{task_type}:</td>
+		<td>". Field_array_Hash($taskz, "TaskType-$t",$ligne["TaskType"],"ExplainTaskType()",null,0,
+				"font-size:20px")."</td>
 	</tr>
 	<tr>
 		<td colspan=2><div id='$t-explain'></div></td>
 	</tr>
 	<tr>
 	<tr>
-		<td class=legend style='font-size:14px'>{description}:</td>
-		<td>". Field_text("TimeDescription", $ligne["TimeDescription"],"font-size:14px")."</td>
+		<td class=legend style='font-size:20px'>{description}:</td>
+		<td>". Field_text("TimeDescription", $ligne["TimeDescription"],"font-size:20px")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:14px'>{schedule}:</td>
-		<td><input type='hidden' id='TimeText-$t' value='{$ligne["TimeText"]}' style='font-size:16px'>
-		". button("{browse}...","Loadjs('cron.php?field=TimeText-$t')",12)."</td>
+		<td class=legend style='font-size:20px'>{schedule}:</td>
+		<td><input type='hidden' id='TimeText-$t' value='{$ligne["TimeText"]}' style='font-size:20px'>
+		". button("{set_schedule}...","Loadjs('cron.php?field=TimeText-$t')",16)."</td>
 	</tr>	
 	<tr>
-		<td colspan=2 align='right'><hr>". button($buttontext,"SaveTaskSystem$t()",16)."
-		<div style='font-size:11px;margin-top:15px'>{schedule}:". $tasks->PatternToHuman($ligne["TimeText"],true)	."</i></div>			
+		<td colspan=2 align='right'><hr>". button($buttontext,"SaveTaskSystem$t()",26)."
+		<div style='font-size:14px;margin-top:15px'>{schedule}:". $tasks->PatternToHuman($ligne["TimeText"],true)	."</i></div>			
 				
 		</td>
 	</tr>
@@ -401,7 +402,7 @@ function AddNewSchedule_explain(){
 	$tasks=new system_tasks();
 	if(!isset($tasks->tasks_explain_array[$_GET["explainthis"]])){return;}
 	$tpl=new templates();
-	echo $tpl->_ENGINE_parse_body("<div class=explain style='font-size:14px'>{$tasks->tasks_explain_array[$_GET["explainthis"]]}</div>");
+	echo $tpl->_ENGINE_parse_body("<div class=explain style='font-size:18px'>{$tasks->tasks_explain_array[$_GET["explainthis"]]}</div>");
 }
 
 function AddNewSchedule_enable(){
@@ -417,6 +418,19 @@ function AddNewSchedule_enable(){
 
 
 function page(){
+	$page=CurrentPageName();
+	$t=time();
+	echo "<div id='$t' style='width:100%'></div>
+	<script>
+		LoadAjax('$t','$page?table=yes&minisize={$_GET["minisize"]}&ForceTaskType={$_GET["ForceTaskType"]}');
+	</script>
+	";
+	
+	
+}
+
+
+function table(){
 	$page=CurrentPageName();
 	$tpl=new templates();	
 	$sock=new sockets();
@@ -435,7 +449,7 @@ function page(){
 	$all_events=$tpl->_ENGINE_parse_body("{events}");
 	$parameters=$tpl->_ENGINE_parse_body("{parameters}");
 	$internal_scheduler=$tpl->_ENGINE_parse_body("{internal_scheduler}");
-	$build_config=$tpl->_ENGINE_parse_body("{WIZARD_COMPILE}");
+	$build_config=$tpl->_ENGINE_parse_body("{apply_all_schedules}");
 	$ForceTaskType=$_GET["ForceTaskType"];
 	if(!is_numeric($ForceTaskType)){$ForceTaskType=0;}
 	$CountEvents=0;
@@ -447,10 +461,10 @@ function page(){
 
 	
 	$t=time();
-	$bgroup1="{name: '$all_events', bclass: 'Search', onpress : AllEvents$t},
-	{name: '$internal_scheduler', bclass: 'Script', onpress : internal_scheduler$t},";
-	$bgroup2="{name: '$parameters', bclass: 'Settings', onpress : Parmaeters$t},";
-	
+	$bgroup1="{name: '<strong style=font-size:18px>$all_events</strong>', bclass: 'Search', onpress : AllEvents$t},
+	{name: '<strong style=font-size:18px>$internal_scheduler</strong>', bclass: 'Script', onpress : internal_scheduler$t},";
+	$bgroup2="{name: '<strong style=font-size:18px>$parameters</strong>', bclass: 'Settings', onpress : Parmaeters$t},";
+	$bgroup0=null;
 	
 	$events=$tpl->_ENGINE_parse_body("{events}");
 	
@@ -459,6 +473,12 @@ function page(){
 		$bgroup2=null;
 		$schedules=new system_tasks();
 		$title=$tpl->javascript_parse_text($schedules->tasks_array[$ForceTaskType]);
+		
+		if($ForceTaskType==23){
+			$bgroup0="{name: '<strong style=font-size:18px>WebCopy $parameters</strong>', bclass: 'Restore', onpress : GotoWebCopy},";
+		}
+		
+		
 	}else{
 		$LIST_TABLES_EVENTS_SYSTEM=$q->LIST_TABLES_EVENTS_SYSTEM();
 		$CountTasks=$q->COUNT_ROWS("system_schedules", "artica_backup");
@@ -477,18 +497,20 @@ $('#$t').flexigrid({
 	url: '$page?search=yes&minisize={$_GET["minisize"]}&ForceTaskType={$_GET["ForceTaskType"]}',
 	dataType: 'json',
 	colModel : [
-		{display: '&nbsp;', name : 'ID', width : 32, sortable : true, align: 'center'},
-		{display: '$task', name : 'TaskType', width : 217, sortable : false, align: 'left'},
-		{display: '$description', name : 'TimeDescription', width : 410, sortable : false, align: 'left'},
-		{display: '$run', name : 'run', width : 32, sortable : false, align: 'left'},
-		{display: '$events', name : 'run1', width : 32, sortable : false, align: 'center'},
+		{display: '<span style=font-size:22px>&nbsp;</span>', name : 'ID', width : 32, sortable : true, align: 'center'},
+		{display: '<span style=font-size:22px>$task</span>', name : 'TaskType', width : 561, sortable : false, align: 'left'},
+		{display: '<span style=font-size:22px>$description</span>', name : 'TimeDescription', width : 561, sortable : false, align: 'left'},
+		{display: '<span style=font-size:22px>$run</span>', name : 'run', width : 64, sortable : false, align: 'center'},
+		{display: '<span style=font-size:22px>$events</span>', name : 'run1', width : 32, sortable : false, align: 'center'},
 		{display: '&nbsp;', name : 'enable', width : 32, sortable : true, align: 'center'},
-		{display: '&nbsp;', name : 'delete', width : 32, sortable : false, align: 'center'}
+		{display: '&nbsp;', name : 'delete', width : 64, sortable : false, align: 'center'}
 	],
+	
 buttons : [
-	{name: '$new_schedule', bclass: 'add', onpress : AddNewSchedule},
+	$bgroup0
+	{name: '<strong style=font-size:18px>$new_schedule</strong>', bclass: 'add', onpress : AddNewSchedule},
 	$bgroup1
-	{name: '$build_config', bclass: 'Restore', onpress : build_config$t},
+	{name: '<strong style=font-size:18px>$build_config</strong>', bclass: 'apply', onpress : build_config$t},
 	$bgroup2
 	],	
 	searchitems : [
@@ -498,12 +520,12 @@ buttons : [
 	sortname: 'ID',
 	sortorder: 'asc',
 	usepager: true,
-	title: '<span style=font-size:22px>$title</span>',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 15,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 450,
+	height: 550,
 	singleSelect: true
 	
 	});   
@@ -671,12 +693,12 @@ function search(){
 		$TimeDescription=$ligne["TimeDescription"];
 		
 		$enable=Field_checkbox($md5, 1,$ligne["enabled"],"SystemTaskEnable('$md5',{$ligne['ID']})");
-		$delete=imgtootltip("delete-24.png","{delete} {$ligne['ID']}","SquidTaskDelete('{$ligne['ID']}')");
-		$run=$tpl->_ENGINE_parse_body(imgtootltip("24-run.png","{run} {$ligne['ID']}","SystemTaskRun('{$ligne['ID']}','$jstaskexplain')"));;
+		$delete=imgsimple("delete-48.png","{delete} {$ligne['ID']}","SquidTaskDelete('{$ligne['ID']}')");
+		$run=imgsimple("48-run.png",null,"SystemTaskRun('{$ligne['ID']}','$jstaskexplain')");
 		
 		
 		
-		if($ligne["enabled"]==0){$color="#A0A0A0";}
+		if($ligne["enabled"]==0){$color="#A0A0A0";$run="&nbsp;";}
 		$tablename="Taskev{$ligne['ID']}";
 		
 		if(!$q->TABLE_EXISTS($tablename, "artica_events")){
@@ -700,7 +722,7 @@ function search(){
 		
 		
 		$span="<a href=\"javascript:blur();\" OnClick=\"javascript:Loadjs('$MyPage?AddNewSchedule-js=yes&ID={$ligne['ID']}');\"
-		 style='font-size:16px;font-weight:bold;color:$color;text-decoration:underline'>";
+		 style='font-size:20px;font-weight:bold;color:$color;text-decoration:underline'>";
 		
 		
 		$ligne["TimeDescription"]=utf8_encode($ligne["TimeDescription"]);
@@ -708,11 +730,15 @@ function search(){
 		//rowSquidTask
 	$data['rows'][] = array(
 		'id' => "SquidTask".$ligne['ID'],
-		'cell' => array("$span{$ligne['ID']}</a>",
-		"$span{$ligne["TaskType"]}</a>","$span$TimeDescription</a>
-		<div style='font-size:11px'><i>$explainTXT</i></div>",$run,$events,
-		
-		"<div style='margin-top:5px'>$enable</div>",$delete )
+		'cell' => array(
+		"<center>$span{$ligne['ID']}</a></center>",
+		"$span{$ligne["TaskType"]}</a>",
+		"$span$TimeDescription</a>
+		<br><span style='font-size:16px;color:$color'>$explainTXT</span>",
+		"<center>$run</center>",
+		"<center>$events</center>",
+		"<center>$enable</center>",
+		"<center>$delete</center>" )
 		);
 	}
 	

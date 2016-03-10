@@ -67,13 +67,6 @@ function start(){
 	
 	$t=time();
 	$GLOBALS["ALL_SCORES"]++;
-	@file_put_contents("/proc/sys/vm/drop_caches","1");
-	shell_exec($sync);
-	@file_put_contents("/proc/sys/vm/drop_caches","2");
-	shell_exec($sync);
-	@file_put_contents("/proc/sys/vm/drop_caches","3");
-	shell_exec($sync);
-	@file_put_contents("/proc/sys/vm/drop_caches","0");
 	shell_exec("$swapoff -a && $swapon -a");
 	$usedTXT=FormatBytes($used);
 	$report=$unix->ps_mem_report();

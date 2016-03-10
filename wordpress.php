@@ -17,7 +17,7 @@ if(!$usersmenus->AsWebMaster){
 	echo "<p class=text-error>{ERROR_NO_PRIVS}</p>";
 	die();
 }
-
+if(isset($_POST["WordPressTopMenu"])){WordPressTopMenu();exit;}
 if(isset($_GET["status"])){status();exit;}
 if(isset($_GET["tabs"])){tabs();exit;}
 if(isset($_GET["table"])){table();exit;}
@@ -35,6 +35,10 @@ if(isset($_GET["backup"])){wordpress_backup();exit;}
 if(isset($_POST["FTP_ENABLE"])){wordpress_backup_save();exit;}
 tabs();
 
+function WordPressTopMenu(){
+	$sock=new sockets();
+	$sock->GET_INFO("WordPressTopMenu",$_POST["WordPressTopMenu"]);
+}
 
 function tab_js(){
 	header("content-type: application/x-javascript");
@@ -177,6 +181,10 @@ function add_popup(){
 	var xSave$t= function (obj) {
 		var results=obj.responseText;
 		if(results.length>3){alert(results);return;}
+		
+		var hostname=document.getElementById('servername-$t').value+'.'+document.getElementById('domainname-$t').value;
+		
+		Loadjs('freeweb.rebuild.progress.php?servername='+hostname)
 		YahooWinHide();
 		if(document.getElementById('freewebs-table-id')){
 			var id=document.getElementById('freewebs-table-id').value;
@@ -320,7 +328,7 @@ function tabs(){
 	$t=time();
 	//
 	
-	echo build_artica_tabs($tab, "main_artica_wordpress",1100)."<script>LeftDesign('wp-256.png');</script>";
+	echo build_artica_tabs($tab, "main_artica_wordpress",1490)."<script>LeftDesign('wp-256.png');</script>";
 	
 }
 
@@ -328,16 +336,16 @@ function status(){
 	$sock=new sockets();
 	$page=CurrentPageName();
 	$tpl=new templates();
-	$INSTALLED=trim($sock->getFrameWork("wordpress.php?is_installed=yes"));
+	$INSTALLED=intval($sock->GET_INFO("WordPressInstalled"));
 	
-	if($INSTALLED<>"TRUE"){
+	if($INSTALLED==0){
 		$button_install=$tpl->_ENGINE_parse_body("<center style='margin:80px'>".button("{install_Wordpress}","Loadjs('wordpress.install.php')",32));
 		"</center>";
 		$version="- - -";
 		
 	}	
 	
-	if($INSTALLED=="TRUE"){
+	if($INSTALLED==1){
 		$version=trim($sock->getFrameWork("wordpress.php?version=yes"));
 		$par="<div style='width:98%' class=form>
 		<table style='width:100%'>
@@ -354,7 +362,7 @@ function status(){
 		";
 	}
 		
-	$html="<div style='font-size:30px;margin-bottom:25px'>Wordpress {version} $version</div>
+	$html="<div style='font-size:45px;margin-bottom:25px'>Wordpress {version} $version</div>
 	<div style='font-size:26px;margin-top:15px'>
 	
 	$button_install$par
@@ -615,11 +623,37 @@ function wordpress_status(){
 function wordpress_info(){
 	$page=CurrentPageName();
 	$tpl=new templates();
-	
-	$html="<div style='font-size:18px;margin-bottom:30px' class=explain>{APP_WORDPRESS_TEXT}<p>&nbsp;</p>{APP_WORDPRESS_ARTICA_TEXT}</div>
+	$sock=new sockets();
+	$t=time();
+	$WordPressTopMenu=$sock->GET_INFO("WordPressTopMenu");
+	$html="
+		<div style=width:100%;text-align:right;'>
+		<table style='width:390px;float:right;margin-top:30px'>
+		<tr>
+			<td valign='middle' style='font-size:18px' class=legend>{add_to_menu}:</td>
+			<td>". Field_checkbox_design("WordPressTopMenu", 1,"$WordPressTopMenu")."</td>
+			<td>". button("{apply}", "SaveMenuTOP$t()",18)."</td>
+		</tr>
+		</div>
+		</table>
+		</div>		
+		<div style='font-size:18px;margin-bottom:30px' class=explain>{APP_WORDPRESS_TEXT}<p>&nbsp;</p>{APP_WORDPRESS_ARTICA_TEXT}</div>
 		<center style='margin:30px'>". button("{new_wordpress_site}","Loadjs('$page?add-js=yes&t=')",35)."</center>
 		<center style='margin:30px'>". button("{import_wordpress_backup}","Loadjs('wordpress.import.php')",35)."</center>		
-			
+<script>
+	var xSaveMenuTOP$t= function (obj) {
+		var tempvalue=obj.responseText;
+		if(tempvalue.length>3){alert(tempvalue);return;};
+		AjaxTopMenu('template-top-menus','admin.top.menus.php');
+	}
+	
+	
+	function SaveMenuTOP$t(backup){
+		var XHR = new XHRConnection();
+		if(document.getElementById('WordPressTopMenu').checked){XHR.appendData('WordPressTopMenu',1);}else{XHR.appendData('WordPressTopMenu',0);}
+		XHR.sendAndLoad('$page', 'POST',xSaveMenuTOP$t);
+	}
+</script>			
 		";
 	echo $tpl->_ENGINE_parse_body($html);
 	

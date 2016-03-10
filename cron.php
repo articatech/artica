@@ -34,7 +34,7 @@ $html="
 function {$prefix}Loadpage(){
 	var field=escape(document.getElementById('{$_GET["field"]}').value);
 
-	YahooWinBrowse('788.6','$page?popup-index=yes&field-datas='+field,'$title');
+	YahooWinBrowse('1217','$page?popup-index=yes&field-datas='+field,'$title');
 	
 	}
 	
@@ -114,7 +114,7 @@ echo $html;
 function popup(){
 	$page=CurrentPageName();
 	$datas=trim($_GET["field-datas"]);
-	$font_style="style='font-size:14px'";
+	$font_style="style='font-size:18px'";
 	
 for($i=0;$i<60;$i++){$def[]=$i;}	
 for($i=0;$i<24;$i++){$def1[]=$i;}	
@@ -161,8 +161,8 @@ for($i=0;$i<60;$i++){
 	}
 	$mins=$mins."
 		<tr>
-		<td width=1%>".Field_checkbox("min_{$i}",1,$value_default_min[$i])."</td>
-		<td nowrap $font_style>$min_text mn</td>
+		<td width=1%>".Field_checkbox_design("min_{$i}",1,$value_default_min[$i])."</td>
+		<td nowrap $font_style><strong>$min_text mn</strong></td>
 		</tr>";
 	
 	$scripts[]="if(document.getElementById('min_{$i}').checked){XHR.appendData('min_{$i}',1);}else{XHR.appendData('min_{$i}',0);}";
@@ -197,8 +197,8 @@ for($i=0;$i<24;$i++){
 	}
 	$hours=$hours."
 		<tr>
-		<td width=1% style=''>".Field_checkbox("hour_{$i}",1,$value_default_hour[$i])."</td>
-		<td nowrap $font_style>$hour_text h</td>
+		<td width=1% style=''>".Field_checkbox_design("hour_{$i}",1,$value_default_hour[$i])."</td>
+		<td nowrap $font_style><strong>$hour_text h</strong></td>
 		</tr>
 		";
 	$scripts[]="if(document.getElementById('hour_{$i}').checked){XHR.appendData('hour_{$i}',1);}else{XHR.appendData('hour_{$i}',0);}";
@@ -221,8 +221,8 @@ $group_hours=$group_hours."
 
 	while (list ($num, $line) = each ($array_days)){
 		$days_html=$days_html."
-			<tr>
-			<td width=1%>".Field_checkbox("day_{$num}",1,intval($value_default_day[$num]))."</td>
+			<tr style='height:100px'>
+			<td width=1%>".Field_checkbox_design("day_{$num}",1,intval($value_default_day[$num]))."</td>
 			<td $font_style>{{$line}}</td>
 			</tr>";
 			$UnselectAlljs[]="document.getElementById('day_{$num}').checked=false;";
@@ -244,14 +244,14 @@ $html="
 			
 			
 			<div style='width:98%' class=form>
-			<div style='font-size:18px'>{days}</div>
+			<div style='font-size:38px'>{days}</div>
 			$days_html
 			</div>
 		</td>
 		<td valign='top' style='vertical-align:top;padding-left:15px'>
 		<!-- hours -->
 		<div style='width:98%' class=form>
-			<div style='font-size:18px'>{hours}</div>
+			<div style='font-size:28px'>{hours}</div>
 				$group_hours
 			</table>
 			</div>
@@ -260,7 +260,7 @@ $html="
 				<a href=\"#\" OnClick=\"javascript:SelectAllHours();\" style='font-size:12px'>{all}</a>
 			</div>				
 			<div style='width:98%' class=form>
-			<div style='font-size:18px'>{minutes}</div>
+			<div style='font-size:28px'>{minutes}</div>
 			$group_min
 			</table>
 			</div>
@@ -272,7 +272,7 @@ $html="
 	</tr>
 	<tr>
 	<td colspan=2 align='right'><hr>
-	". button("{apply}", "SaveCronInfos()",16)."
+	". button("{apply}", "SaveCronInfos()",28)."
 	
 	</td>
 	</tr>

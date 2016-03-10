@@ -50,7 +50,7 @@ function page(){
 	
 	$buttons="
 	buttons : [
-	{name: '$link_group', bclass: 'Add', onpress : AddMemberGroup$t},
+	{name: '<strong style=font-size:18px>$link_group</strong>', bclass: 'Add', onpress : AddMemberGroup$t},
 	],	";
 	//$('#flexRT$t').flexReload();
 	
@@ -65,10 +65,10 @@ function page(){
 	url: '$page?group-list=yes&t=$t&userid={$_GET["userid"]}&dn={$_GET["dn"]}',
 	dataType: 'json',
 	colModel : [
-	{display: '&nbsp;', name : 'hostname', width :53, sortable : false, align: 'center'},
-	{display: '$group2', name : 'workgroup', width :670, sortable : true, align: 'left'},
-	{display: '$privileges', name : 'workgroup', width :53, sortable : true, align: 'center'},
-	{display: '&nbsp;', name : 'delete', width :53, sortable : false, align: 'center'},
+	{display: '<span style=font-size:18px>', name : 'hostname', width :53, sortable : false, align: 'center'},
+	{display: '<span style=font-size:18px>$group2</span>', name : 'workgroup', width :670, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$privileges</span>', name : 'workgroup', width :110, sortable : true, align: 'center'},
+	{display: '<span style=font-size:18px>&nbsp;</span>', name : 'delete', width :53, sortable : false, align: 'center'},
 	],
 	$buttons
 	
@@ -78,11 +78,11 @@ function page(){
 	sortname: 'hostname',
 	sortorder: 'asc',
 	usepager: true,
-	title: '$title',
+	title: '<span style=font-size:22px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
-	width: 908,
+	width: '99%',
 	height: 400,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200,500]

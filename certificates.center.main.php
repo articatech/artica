@@ -72,6 +72,7 @@ function certificate_edit_settings(){
 			$regs[2]=trim($regs[2]);
 			$regs[1]=trim($regs[1]);
 			$array_country_codes["{$regs[1]}_{$regs[2]}"]=$regs[1];
+			$array_country_codes2[$regs[2]]="{$regs[1]}_{$regs[2]}";
 		}
 	}
 	$ENC[1024]=1024;
@@ -121,6 +122,12 @@ function certificate_edit_settings(){
 	}
 	if($ligne["UsePrivKeyCrt"]==0){	$bt_name="{generate_x509}";}
 	
+	
+	if(strlen($ligne["CountryName"])==2){
+		$ligne["CountryName"]=$array_country_codes2[$ligne["CountryName"]];
+		
+	}
+	
 	$html[]="<div style='font-size:42px;margin-bottom:15px'>$commonName$commonNameADD</div>";
 	$html[]="<div style='width:98%' class=form>";
 	$html[]="<table style='width:100%'>";
@@ -138,7 +145,7 @@ function certificate_edit_settings(){
 		$html[]=Field_button_table_autonome($bt_name,"Submit$t",30);
 	}else{
 		$html[]="<tr>
-		<td class=legend style='font-size:22px'>{countryName}:</td>
+		<td class=legend style='font-size:22px'>{countryName} ({$ligne["CountryName"]}):</td>
 		<td style='font-size:22px;font-weight:bold'>{$ligne["CountryName"]}</td>
 		</tr>
 		<tr>
@@ -164,7 +171,12 @@ function certificate_edit_settings(){
 		<tr>
 		<td class=legend style='font-size:22px'>{level_encryption}:</td>
 		<td style='font-size:22px;font-weight:bold'>{$ligne["levelenc"]}</td>
-		</tr>		";		
+		</tr>
+		<tr>
+			<td colspan=2 align='right'>". button("{generate_pfx}", 
+					"Loadjs('certificate.center.pfx.progress.php?CommonName=$commonNameEnc')",30)."</td>
+		</tr>
+		";		
 		
 	}
 	$html[]="</table>";

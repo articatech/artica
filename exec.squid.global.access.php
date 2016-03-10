@@ -146,12 +146,9 @@ function xstart(){
 	
 	if($GLOBALS["NOCHECK"]){return true;}
 	
-	if(!Test_config()){
-		build_progress("{failed}",90);
-		@file_put_contents("/etc/squid3/GlobalAccessManager_auth.conf", "\n");
-		@file_put_contents("/etc/squid3/GlobalAccessManager_url_rewrite.conf", "\n");
-		@file_put_contents("/etc/squid3/GlobalAccessManager_deny_cache.conf", "\n");
-		@file_put_contents("/etc/squid3/icap.conf","\n");
+	$squid_checks=new squid_checks();
+	
+	if(!$squid_checks->squid_parse()){
 		build_progress("{failed}",110);
 		return;
 	}

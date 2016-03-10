@@ -33,12 +33,14 @@ $page=CurrentPageName();
 $key=$tpl->_ENGINE_parse_body("{key}");
 $value=$tpl->_ENGINE_parse_body("{value}");
 $new_alias=$tpl->_ENGINE_parse_body("{new_php_value}");
+$apply=$tpl->javascript_parse_text("{apply}");
 $t=time();
 
 	
 	$buttons="
 	buttons : [
-	{name: '<b>$new_alias</b>', bclass: 'Add', onpress : AddNewItem$t},
+	{name: '<strong style=font-size:18px>$new_alias</strong>', bclass: 'Add', onpress : AddNewItem$t},
+	{name: '<strong style=font-size:18px>$apply</strong>', bclass: 'Apply', onpress : Apply$t},
 	
 		],";	
 
@@ -54,7 +56,7 @@ $('#flexRT$t').flexigrid({
 	url: '$page?freeweb-php-list=yes&servername={$_GET["servername"]}&t=$t',
 	dataType: 'json',
 	colModel : [
-		{display: '$key', name : 'key', width : 386, sortable : false, align: 'left'},	
+		{display: '$key', name : 'key', width : 544, sortable : false, align: 'left'},	
 		{display: '$value', name : 'value', width :427, sortable : false, align: 'left'},
 		{display: '&nbsp;', name : 'del', width : 31, sortable : true, align: 'center'},
 		
@@ -67,11 +69,11 @@ $('#flexRT$t').flexigrid({
 	sortname: 'key',
 	sortorder: 'asc',
 	usepager: true,
-	title: '',
+	title: 'PHP',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
-	width: 900,
+	width: '99%',
 	height: 400,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200]
@@ -79,7 +81,9 @@ $('#flexRT$t').flexigrid({
 	});   
 }
 
-
+function Apply$t(){
+	Loadjs('freeweb.rebuild.progress.php?servername={$_GET["servername"]}');
+}
 
 function AddNewItem$t(){
 	YahooWin6('600','$page?new-item=yes&servername={$_GET["servername"]}&t=$t','$new_alias');
@@ -117,19 +121,19 @@ $array=unserialize($php_values);
 $html="
 
 	<div id='alias-animate-$t'></div>
-	<div class=explain style='font-size:14px'>{freeweb_phpvalues_explain}</div>
+	<div class=explain style='font-size:18px'>{freeweb_phpvalues_explain}</div>
 	
 	<table style='width:99%' class=form>
 	<tr>
-		<td class=legend style='font-size:16px'>{key}:</td>
+		<td class=legend style='font-size:22px'>{key}:</td>
 		<td>". Field_array_Hash($array,"key-$t",null,"style:font-size:16px;padding:3px;width:420px")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:16px'>{value}:</td>
+		<td class=legend style='font-size:22px'>{value}:</td>
 		<td>". Field_text("value-$t",null,"font-size:16px;width:420px")."</td>
 	</tr>
 	<tr>
-		<td colspan=2 align='right'><hr>". button("{add} {key}","FreeWebAddAlias$t()","18px")."</td>
+		<td colspan=2 align='right'><hr>". button("{add} {key}","FreeWebAddAlias$t()","26px")."</td>
 	</tr>
 	</table>
 	
@@ -264,8 +268,8 @@ function items_list(){
 	$data['rows'][] = array(
 		'id' => "{$ligne["zmd5"]}",
 		'cell' => array(
-			"<span style='font-size:16px;'>{$ligne["key"]}</a></span>",
-			"<span style='font-size:16px;'>{$ligne["value"]}</a></span>",$delete
+			"<span style='font-size:22px;;font-family:Courier New;font-weight:bold'>{$ligne["key"]}</a></span>",
+			"<span style='font-size:22px;;font-family:Courier New;font-weight:bold'>{$ligne["value"]}</a></span>",$delete
 			)
 		);
 	}

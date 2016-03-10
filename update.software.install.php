@@ -191,7 +191,7 @@ $html="
 
 <p>&nbsp;</p>
 <textarea style='margin-top:5px;font-family:Courier New;
-font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 overflow:auto;font-size:11px' id='text-$t'></textarea>
 	
 <script>

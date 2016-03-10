@@ -7,18 +7,8 @@
 
 	if(isset($_GET["popup"])){popup();exit;}
 	if(isset($_POST["MX_REQUESTS"])){save();exit;}
-	js();
+	popup();
 	
-	
-	
-function js(){
-	$page=CurrentPageName();
-	$tpl=new templates();
-	$title=$tpl->_ENGINE_parse_body("{APP_MIMEDEFANG}:{performances}:{service_options}");
-	echo "YahooWin2('650','$page?popup=yes','$title')";
-}
-
-
 function popup(){
 	$page=CurrentPageName();
 	$tpl=new templates();
@@ -32,59 +22,57 @@ function popup(){
 	if(!is_numeric($Param["MX_MAX_RSS"])){$Param["MX_MAX_RSS"]=30000;}
 	if(!is_numeric($Param["MX_MAX_AS"])){$Param["MX_MAX_AS"]=90000;}
 	if(!is_numeric($Param["MX_TMPFS"])){$Param["MX_TMPFS"]=0;}
-	
+	$MimeDefangVersion=$sock->GET_INFO("MimeDefangVersion");
 	
 	
 	$html="
-	<div id='$t-adddis'></div>
+	<div style='font-size:40px;margin:bottom:40px;text-align:right'>{APP_MIMEDEFANG} v$MimeDefangVersion <span style='font-size:18px'>(". texttooltip("{reload_service}","{reload_service_text}","MimeDefangCompileRules()").")</span></div>
 	<table style='width:100%' class=form>
 	
 	<tr>
-		<td class=legend style='font-size:16px'>{debug}:</td>
-		<td>". Field_checkbox("DEBUG-$t", 1,$Param["DEBUG"])."</td>
-		<td>&nbsp;</td>
+		<td class=legend style='font-size:22px'>{debug}:</td>
+		<td>". Field_checkbox_design("DEBUG-$t", 1,$Param["DEBUG"])."</td>
+		
 	</tr>
 	<tr>
-		<td class=legend style='font-size:16px'>{workingdir_in_memory}:</td>
-		<td style='font-size:16px'>". Field_text("MX_TMPFS-$t", $Param["MX_TMPFS"],"font-size:16px;width:90px")."&nbsp;M</td>
-		<td>". help_icon("{workingdir_in_memory_text}")."</td>
+		<td class=legend style='font-size:22px'>". texttooltip("{workingdir_in_memory}","{workingdir_in_memory_text}").":</td>
+		<td style='font-size:22px'>". Field_text("MX_TMPFS-$t", $Param["MX_TMPFS"],"font-size:22px;width:90px")."&nbsp;M</td>
 	</tr>	
 	<tr>
-		<td class=legend style='font-size:16px'>{max_requests}:</td>
-		<td>". Field_text("MX_REQUESTS-$t", $Param["MX_REQUESTS"],"font-size:16px;width:90px")."</td>
-		<td>". help_icon("{MX_REQUESTS_TEXT}")."</td>
+		<td class=legend style='font-size:22px'>". texttooltip("{max_requests}","{MX_REQUESTS_TEXT}").":</td>
+		<td>". Field_text("MX_REQUESTS-$t", $Param["MX_REQUESTS"],"font-size:22px;width:90px")."</td>
 	</tr>	
 	<tr>
-		<td class=legend style='font-size:16px'>{MX_MINIMUM}:</td>
-		<td>". Field_text("MX_MINIMUM-$t", $Param["MX_MINIMUM"],"font-size:16px;width:90px")."</td>
-		<td>". help_icon("{MX_MINIMUM_TEXT}")."</td>
+		<td class=legend style='font-size:22px'>". texttooltip("{MX_MINIMUM}","{MX_MINIMUM_TEXT}").":</td>
+		<td>". Field_text("MX_MINIMUM-$t", $Param["MX_MINIMUM"],"font-size:22px;width:90px")."</td>
 	</tr>		
 	<tr>
-		<td class=legend style='font-size:16px'>{MX_MAXIMUM}:</td>
-		<td>". Field_text("MX_MAXIMUM-$t", $Param["MX_MAXIMUM"],"font-size:16px;width:90px")."</td>
-		<td>". help_icon("{MX_MAXIMUM_TEXT}")."</td>
+		<td class=legend style='font-size:22px'>". texttooltip("{MX_MAXIMUM}","{MX_MAXIMUM}").":</td>
+		<td>". Field_text("MX_MAXIMUM-$t", $Param["MX_MAXIMUM"],"font-size:22px;width:90px")."</td>
 	</tr>		
 	<tr>
-		<td class=legend style='font-size:16px'>{MX_MAX_RSS}:</td>
-		<td style='font-size:16px'>". Field_text("MX_MAX_RSS-$t", $Param["MX_MAX_RSS"],"font-size:16px;width:110px")."&nbsp;KB</td>
-		<td>". help_icon("{MX_MAX_RSS_TEXT}")."</td>
+		<td class=legend style='font-size:22px'>". texttooltip("{MX_MAX_RSS}","{MX_MAX_RSS_TEXT}").":</td>
+		<td style='font-size:22px'>". Field_text("MX_MAX_RSS-$t", $Param["MX_MAX_RSS_TEXT"],"font-size:22px;width:110px")."&nbsp;KB</td>
 	</tr>	
 	<tr>
-		<td class=legend style='font-size:16px'>{MX_MAX_AS}:</td>
-		<td style='font-size:16px'>". Field_text("MX_MAX_AS-$t", $Param["MX_MAX_AS"],"font-size:16px;width:110px")."&nbsp;KB</td>
-		<td>". help_icon("{MX_MAX_AS_TEXT}")."</td>
+		<td class=legend style='font-size:22px'>". texttooltip("{MX_MAX_AS}","{MX_MAX_AS_TEXT}").":</td>
+		<td style='font-size:22px'>". Field_text("MX_MAX_AS-$t", $Param["MX_MAX_AS"],"font-size:22px;width:110px")."&nbsp;KB</td>
 	</tr>	
 	<tr>
-		<td colspan=3 align='right'><hr>". button("{apply}","SaveMimeService$t()","18px")."</td>
+		<td colspan=3 align='right'><hr>". button("{apply}","SaveMimeService$t()","40")."</td>
 	</tr>	
 	</table>
 
 	<script>
+		function MimeDefangCompileRules(){
+		Loadjs('mimedefang.compile.php');
+	}
+	
+	
 		var x_SaveMimeService$t= function (obj) {
 			var tempvalue=obj.responseText;
 			if(tempvalue.length>3){alert(tempvalue)};
-			document.getElementById('$t-adddis').innerHTML='';
-			YahooWin2Hide();
+			Loadjs('mimedefang.compile.php');
 		}		
 	
 		function SaveMimeService$t(){
@@ -98,10 +86,7 @@ function popup(){
 	      XHR.appendData('MX_REQUESTS',document.getElementById('MX_REQUESTS-$t').value);
 	      XHR.appendData('MX_TMPFS',document.getElementById('MX_TMPFS-$t').value);
 	      XHR.appendData('DEBUG',DEBUG);
-	      
-	      
-		  AnimateDiv('$t-adddis');
-		  XHR.sendAndLoad('$page', 'POST',x_SaveMimeService$t);
+	      XHR.sendAndLoad('$page', 'POST',x_SaveMimeService$t);
 		}
 	</script>	
 	";
@@ -112,8 +97,8 @@ function popup(){
 function save(){
 	$tpl=new templates();
 	$sock=new sockets();
+	$sock->SET_INFO("DebugMimeFilter", $_POST["DEBUG"]);
 	$sock->SaveConfigFile(base64_encode(serialize($_POST)), "MimeDefangServiceOptions");
-	echo $tpl->javascript_parse_text("{you_need_to_restart_service_take_effet}",1);
+	
 }
 	
-

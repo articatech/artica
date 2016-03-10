@@ -137,5 +137,5 @@ Activer cette option &eacute;teindra Lighttpd et utilisera Apache comme serveur 
 <web_interface_settings>Param&egrave;tre de l'interface Web</web_interface_settings>
 <web_interface_settings_text>Changer les param&ecirc;tres et les performances du moteur HTTP de l'interface web principale.</web_interface_settings_text>
 <without_antispam_module>Desactiver L'Anti-Spam</without_antispam_module>
-<without_antivirus>Desactiver L'Antivirus</without_antivirus>
+<without_antivirus>D&eacute;sactiver L'Antivirus</without_antivirus>
 <without_artica_modules>D&eacute;sactiver le(s) module(s) Artica</without_artica_modules>

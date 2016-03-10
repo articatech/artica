@@ -1,7 +1,7 @@
 <?php
 
 $GLOBALS["PROGRESS_FILE"]="/usr/share/artica-postfix/ressources/logs/squid.bandwww.progress";
-$GLOBALS["LOG_FILE"]="/usr/share/artica-postfix/ressources/logs/web/squid.bandwww.progress";
+$GLOBALS["LOG_FILE"]="/usr/share/artica-postfix/ressources/logs/web/squid.bandwww.progress.txt";
 
 if(isset($_GET["verbose"])){
 	ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);
@@ -151,7 +151,7 @@ $html="
 <div id='progress-$t' style='height:50px'></div>
 <p>&nbsp;</p>
 <textarea style='margin-top:5px;font-family:Courier New;
-font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 overflow:auto;font-size:11px' id='text-$t'></textarea>
 	
 <script>

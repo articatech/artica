@@ -6,6 +6,7 @@ include_once('ressources/class.users.menus.inc');
 include_once('ressources/class.templates.inc');
 include_once('ressources/class.ldap.inc');
 include_once('ressources/class.mysql.inc');
+include_once('ressources/class.postgres.inc');
 
 $user=new usersMenus();
 if($user->AsPostfixAdministrator==false){
@@ -116,12 +117,12 @@ $(document).ready(function(){
 function search(){
 	$tpl=new templates();
 	$MyPage=CurrentPageName();
-	$q=new mysql();
+	$q=new postgres_sql();
 	$t=$_GET["t"];
 	$search='%';
 	$table="smtpstats_day";
 	$page=1;
-	if($q->COUNT_ROWS("smtpstats_day","artica_events")==0){json_error_show("smtpstats_day: no item,1");}
+	
 	
 	$table="(SELECT SUM(GREY) as GREY, SUM(BLACK) AS BLACK, SUM(CNX) as CNX,domain FROM smtpstats_day GROUP BY domain) as t";
 
@@ -134,16 +135,16 @@ function search(){
 
 	if (isset($_POST['page'])) {$page = $_POST['page'];}
 
-	$searchstring=string_to_flexquery();
+	$searchstring=string_to_flexPostGresquery();
 	if($searchstring<>null){
-		$sql="SELECT COUNT(*) as TCOUNT FROM $table WHERE 1 $searchstring $FORCE";
-		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_events"));
-		$total = $ligne["TCOUNT"];
+		$sql="SELECT COUNT(*) as tcount FROM $table WHERE $searchstring";
+		$ligne=pg_fetch_assoc($q->QUERY_SQL($sql,"artica_events"));
+		$total = $ligne["tcount"];
 
 	}else{
-		$sql="SELECT COUNT(*) as TCOUNT FROM $table WHERE 1 $FORCE";
-		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_events"));
-		$total = $ligne["TCOUNT"];
+		$sql="SELECT COUNT(*) as tcount FROM $table";
+		$ligne=pg_fetch_assoc($q->QUERY_SQL($sql,"artica_events"));
+		$total = $ligne["tcount"];
 	}
 
 	if (isset($_POST['rp'])) {$rp = $_POST['rp'];}
@@ -151,8 +152,8 @@ function search(){
 
 
 	$pageStart = ($page-1)*$rp;
-	$limitSql = "LIMIT $pageStart, $rp";
-	$sql="SELECT *  FROM $table WHERE 1 $searchstring $FORCE $ORDER $limitSql";
+	$limitSql = "LIMIT $rp OFFSET $pageStart";
+	$sql="SELECT *  FROM $table WHERE $searchstring $ORDER $limitSql";
 	writelogs($sql,__FUNCTION__,__FILE__,__LINE__);
 
 	$data = array();
@@ -164,19 +165,19 @@ function search(){
 
 	$divstart="<span style='font-size:12px;font-weight:normal'>";
 	$divstop="</div>";
-	if((mysql_num_rows($results)==0)){json_error_show("no data");}
+	if((pg_num_rows($results)==0)){json_error_show("no data");}
 
 
-	while ($ligne = mysql_fetch_assoc($results)) {
+	while ($ligne = pg_fetch_assoc($results)) {
 		$id=md5(serialize($ligne));
 		$color="black";
 		$color_black="black";
 		$fontweight="normal";
-		if($ligne["BLACK"]>0){$color_black="#d32d2d";}
-		if($ligne["GREY"]>0){$fontweight="bold";}
-		$BLACK=FormatNumber($ligne["BLACK"]);
-		$GREY=FormatNumber($ligne["GREY"]);
-		$CNX=FormatNumber($ligne["CNX"]);
+		if($ligne["black"]>0){$color_black="#d32d2d";}
+		if($ligne["grey"]>0){$fontweight="bold";}
+		$BLACK=FormatNumber($ligne["black"]);
+		$GREY=FormatNumber($ligne["grey"]);
+		$CNX=FormatNumber($ligne["cnx"]);
 		$domain=$ligne["domain"];
 		$data['rows'][] = array(
 			'id' => $ligne['ID'],

@@ -229,7 +229,6 @@ class wordpress{
 			$f[]="wp-activate.php";
 			$f[]="wp-admin/import.php";
 			$f[]="wp-admin/ms-sites.php";
-			$f[]="wp-admin/async-upload.php";
 			$f[]="wp-admin/network.php";
 			$f[]="wp-admin/edit-tags.php";
 			$f[]="wp-admin/options-privacy.php";

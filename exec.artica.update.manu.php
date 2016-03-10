@@ -109,7 +109,7 @@ function install($filename){
 	$squid=$unix->LOCATE_SQUID_BIN();
 	build_progress("{extracting} $filename...",50);
 	
-	system("$tar xf $tarballs_file -C /usr/share/");
+	system("$tar xpf $tarballs_file -C /usr/share/");
 	echo "Removing $tarballs_file...\n";
 	@unlink($tarballs_file);
 	shell_exec("$rm -rf /usr/share/artica-postfix/ressources/conf/upload/*");

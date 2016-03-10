@@ -52,7 +52,7 @@ It can be as draconian or as unobstructive as you want.
 [br]The default settings are geared towards what a primary school might want but DansGuardian puts you in control of what you want to block.
 [br]DansGuardian is a true web content filter.</danseguardian_simple_intro>
 <dansguardian_status>DansGuardian service status</dansguardian_status>
-<dansguardian_tables_error>DansGuardian Mysql tables error !</dansguardian_tables_error>
+<dansguardian_tables_error>DansGuardian MySQL tables error !</dansguardian_tables_error>
 <dansguardian_tables_error_text>It seems that Artica did not find DansGuardian tables in mysql for storing settings[br]
 You need to fix it in order to use web filtering</dansguardian_tables_error_text>
 <dans_add_rule_text>Give your DansGuardian new rule name</dans_add_rule_text>

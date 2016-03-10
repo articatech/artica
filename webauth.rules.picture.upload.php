@@ -176,6 +176,11 @@ function uncompress(){
 	
 	$sock=new wifidog_settings($_GET["ruleid"]);
 	$sock->SET_INFO("BackgroundPicturePath", "/img/$fileName");
+	
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
+	
+	
 	echo "<div id='$t'></div>
 	<script>
 		RefreshTab('HOTSPOT_TAB');

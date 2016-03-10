@@ -74,7 +74,7 @@ while ( $input = @fgets(STDIN) ) {
 	 	$UriRequested=trim(ufdbgclient($Source,$handleUfdbGuard,$pipes));
 	  	if($UriRequested==null){$UriRequested=$input[0];}
 		 if($GLOBALS["DEBUG"]){WLOG("{$UriRequested} after ufdbguard...");}
-	  	if((strpos($UriRequested,"exec.squidguard.php")>0)){
+	  	if((strpos($UriRequested,"ufdbguardd.php")>0)){
 	  		if($GLOBALS["DEBUG"]){WLOG("BLOCK -> $UriRequested +CRLF");}
 	  		SetCache($KEY,"$UriRequested\n");
 	  		print $GLOBALS["CACHE"][$KEY]["URI"]; //URL of my web server

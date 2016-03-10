@@ -394,22 +394,18 @@ function filldefaults(){
 	$dnss[]="relaytest.kundenserver.de";
 	$dnss[]="spam.abuse.ch";
 	$dnss[]="spamguard.leadmon.net";
-	$dnss[]="abuse.rfc-ignorant.org";
 	$dnss[]="all.rbl.jp";
 	$dnss[]="bl.technovision.dk";
 	$dnss[]="blackholes.mail-abuse.org";
-	$dnss[]="bogusmx.rfc-ignorant.org";
 	$dnss[]="cblplus.anti-spam.org.cn";
 	$dnss[]="combined.njabl.org";
 	$dnss[]="dialups.mail-abuse.org";
 	$dnss[]="dnsbl.burnt-tech.com";
 	$dnss[]="dnsrbl.swinog.ch";
-	$dnss[]="dsn.rfc-ignorant.org";
 	$dnss[]="l1.spews.dnsbl.sorbs.net";
 	$dnss[]="l2.apews.org";
 	$dnss[]="l2.spews.dnsbl.sorbs.net";
 	$dnss[]="mail-abuse.blacklist.jippg.org";
-	$dnss[]="postmaster.rfc-ignorant.org";
 	$dnss[]="rbl-plus.mail-abuse.org";
 	$dnss[]="rbl.efnet.org";
 	
@@ -418,7 +414,6 @@ function filldefaults(){
 	$dnss[]="spamsources.fabel.dk";
 	$dnss[]="t1.dnsbl.net.au";
 	$dnss[]="virbl.dnsbl.bit.nl";
-	$dnss[]="whois.rfc-ignorant.org";
 	$dnss[]="access.redhawk.org";
 	$dnss[]="blacklist.sci.kun.nl";
 	$dnss[]="cart00ney.surriel.com";

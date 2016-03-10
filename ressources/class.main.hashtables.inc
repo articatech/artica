@@ -12,7 +12,7 @@ class main_hash_table{
 	
 	public function main_hash_table(){
 		if(!isset($GLOBALS["postconf"])){$unix=new unix();$GLOBALS["postconf"]=$unix->find_program("postconf");}
-		if(!isset($GLOBALS["postmap"])){$unix=new unix();$GLOBALS["postconf"]=$unix->find_program("postmap");}
+		if(!isset($GLOBALS["postmap"])){$unix=new unix();$GLOBALS["postmap"]=$unix->find_program("postmap");}
 		
 	}
 	

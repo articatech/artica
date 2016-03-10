@@ -85,6 +85,13 @@ function start(){
 	
 	$squidbin=$unix->LOCATE_SQUID_BIN();
 	build_progress_ecap("{ecap_plugins} {reloading}",97);
+	
+	$squid_checks=new squid_checks();
+	if(!$squid_checks->squid_parse()){
+		build_progress_ecap("{ecap_plugins} {failed}",110);
+		return;
+	}
+	
 	system("$squidbin -k reconfigure");
 	
 	build_progress_ecap("{ecap_plugins} {done} OK",100);

@@ -262,6 +262,7 @@ function setup_folder3(){
 	$size_enc=urlencode($size_enc);
 	$OCT=urlencode($_GET["oct"]);
 	$CPU_FIELD=null;
+	$SquidSimpleConfig=intval($sock->GET_INFO("SquidSimpleConfig"));
 	$cpunumber=$users->CPU_NUMBER-1;
 	if($cpunumber<1){$cpunumber=1;}
 	if($cpunumber>1){
@@ -549,15 +550,14 @@ function setup_disk4(){
 	$users=new usersMenus();
 	$t=$_GET["t"];
 	$sock=new sockets();
+	$SquidSimpleConfig=intval($sock->GET_INFO("SquidSimpleConfig"));
 	$dev=$_GET["dev"];
 	$CPU_FIELD=null;
 	$cpunumber=$users->CPU_NUMBER-1;
 	if($cpunumber<1){$cpunumber=1;}
 	if($cpunumber>1){
-		for($i=1;$i<$cpunumber+1;$i++){
-			$CPUZ[$i]="{process} $i";
-		}
-		
+		for($i=1;$i<$cpunumber+1;$i++){$CPUZ[$i]="{process} $i";}
+		if($SquidSimpleConfig==0){
 		$CPU_FIELD="<table style='width:100%;margin:20px'>
 			<tr>
 				<td class=legend style='font-size:20px'>{affect_cache_to}:</td>
@@ -565,6 +565,7 @@ function setup_disk4(){
 			</tr>
 			</table>
 			";
+		}
 		
 	}
 	

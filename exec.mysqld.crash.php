@@ -63,7 +63,7 @@ function check_crashed_squid(){
 	$sql="SELECT table_name as c FROM information_schema.tables WHERE table_schema = 'squidlogs' AND table_name LIKE '%_blocked'";
 	$results=$q->QUERY_SQL($sql,"artica_events");
 	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
-		if(!preg_match("#^[0-9]+_", $ligne["c"])){continue;}
+		if(!preg_match("#^[0-9]+_#", $ligne["c"])){continue;}
 		$q->QUERY_SQL("DROP TABLE {$ligne["c"]}");
 	
 	}

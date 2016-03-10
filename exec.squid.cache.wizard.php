@@ -77,6 +77,9 @@ function CreateDir(){
 	$folder=$Config["folder"];
 	$CPU=$Config["CPU"];
 	
+	if(substr($folder, 0,1)<>'/'){$folder="/$folder";}
+	$folder=str_replace("//", "/", $folder);
+	
 	if(!is_numeric($CPU)){$CPU=1;}
 	$oct_small=round($DEFINED_SIZE*0.3);
 	$oct_big=round($DEFINED_SIZE*0.7);

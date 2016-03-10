@@ -158,6 +158,7 @@ if($argv[1]=="--factorize"){factorize($argv[2]);exit;}
 if($argv[1]=="--serialize"){serialize_tests();exit;}
 if($argv[1]=="--latests"){latests();exit;}
 if($argv[1]=="--error-txt"){error_txt();exit;}
+if($argv[1]=="--proftpd-package"){proftpd();exit;}
 if($argv[1]=="--c-icap"){package_c_icap();exit;}
 if($argv[1]=="--ufdb"){package_ufdbguard();exit;}
 if($argv[1]=="--ecapclam"){ecap_clamav();exit;}
@@ -292,12 +293,10 @@ shell_exec("/bin/chown -R squid:squid /usr/share/squid3");
 create_package_squid($t);	
 	
 function DebianVersion(){
-	
 	$ver=trim(@file_get_contents("/etc/debian_version"));
 	preg_match("#^([0-9]+)\.#",$ver,$re);
 	if(preg_match("#squeeze\/sid#",$ver)){return 6;}
 	return $re[1];	
-	
 }
 
 function dnsmasq_compile(){
@@ -1439,11 +1438,15 @@ function CONFIGURE_SQUID(){
 	
 	$Architecture=Architecture();
 	
+	/* NETTLE !!
+	 * http://www.linuxfromscratch.org/blfs/view/svn/postlfs/nettle.html
+	 */
+	
 	
 	$CFLAGS[]="#!/bin/sh";
 	$CFLAGS[]="PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
-	$CFLAGS[]="CFLAGS=\"-g -O2 -fPIE -fstack-protector -DNUMTHREADS=128 --param=ssp-buffer-size=4 -Wformat -Werror=format-security -Wall\"";
-	$CFLAGS[]="CXXFLAGS=\"-g -O2 -fPIE -DNUMTHREADS=128 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security\"";
+	$CFLAGS[]="CFLAGS=\"-g -O2 -fPIE -fstack-protector -DNUMTHREADS=256 --param=ssp-buffer-size=4 -Wformat -Werror=format-security -Wall\"";
+	$CFLAGS[]="CXXFLAGS=\"-g -O2 -fPIE -DNUMTHREADS=256 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security\"";
 	$CFLAGS[]="CPPFLAGS=\"-D_FORTIFY_SOURCE=2\" LDFLAGS=\"-fPIE -pie -Wl,-z,relro -Wl,-z,now\"";
 	$CFLAGS[]="echo \$CFLAGS";
 	$CFLAGS[]="echo \$CXXFLAGS";
@@ -1527,6 +1530,11 @@ function CONFIGURE_SQUID(){
 	
 	
 	$configure="./configure ". @implode(" ", $cmds);
+	echo "apt-get install libssl-dev conntrack libnetfilter-conntrack-dev libcap-dev\n";
 	echo "***************************************************************\n\n\n$configure\n\n***************************************************************\n";
 	return $configure;
 }
+
+
+
+

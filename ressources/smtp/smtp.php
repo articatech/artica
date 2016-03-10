@@ -156,7 +156,7 @@
 			}
 		}		
 		
-		function events($text,$function,$file,$line){
+		public static function events($text,$function,$file,$line){
 			$file=basename($file);
 			if($GLOBALS["VERBOSE"]){echo "$file::$function $text in line $line\n";}
 			if(!$GLOBALS["AS_ROOT"]){return;}

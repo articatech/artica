@@ -8,6 +8,7 @@ include_once(dirname(__FILE__)."/framework/class.settings.inc");
 
 
 if($argv[1]=="--optimize"){optimize();die();}
+if($argv[1]=="--rc-local"){rc_local();die();}
 
 
 function optimize(){
@@ -21,6 +22,7 @@ function optimize(){
 	if($EnableSystemOptimize==1){
 		build_progress("{enable_system_optimization}: ON",10);
 		EnableScheduler();
+		rc_local();
 		$ARRAY=unserialize(base64_decode($sock->GET_INFO("kernel_values")));
 		$ARRAY["swappiness"]=0;
 		@file_put_contents("/etc/artica-postfix/settings/Daemons/kernel_values", serialize($ARRAY));
@@ -43,6 +45,49 @@ function optimize(){
 	}
 	
 }
+
+function rc_local(){
+	echo "Starting......: ".date("H:i:s")." Optimize, Scanning HARD drives\n";
+	$unix=new unix();
+	$dirs=$unix->dirdir("/sys/class/scsi_generic");
+	$echobin=$unix->find_program("echo");
+	
+	$f[]="#!/bin/sh -e";
+	
+	while (list ($num, $directory) = each ($dirs) ){
+		$file="$directory/device/timeout";
+		$basename=basename($directory);
+		if(!is_file($file)){
+			echo "Starting......: ".date("H:i:s")." Optimize, SKIP $file\n";
+			continue;}
+		echo "Starting......: ".date("H:i:s")." Optimize,$basename\n";
+		$f[]="$echobin 180 >$file || true";
+		shell_exec("$echobin 180 >$file");
+		
+		
+	}
+	
+	$dirs=$unix->dirdir("/sys/block");
+	while (list ($num, $directory) = each ($dirs) ){
+		$file="$directory/device/timeout";
+		$basename=basename($directory);
+		if(!is_file($file)){
+			echo "Starting......: ".date("H:i:s")." Optimize, SKIP $file\n";
+			continue;}
+		echo "Starting......: ".date("H:i:s")." Optimize,$basename\n";
+		$f[]="$echobin 180 >$file || true";
+		shell_exec("$echobin 180 >$file");
+	}
+	
+	$f[]="";
+	$f[]="exit 0";
+	$f[]="";
+	@file_put_contents("/etc/rc.local", @implode("\n", $f));
+	@chmod("/etc/rc.local",0755);
+	
+}
+
+
 
 EnableScheduler();
 

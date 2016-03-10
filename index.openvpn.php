@@ -544,8 +544,10 @@ function startpage(){
 	$array["index"]='{index}';
 	//
 	$array["server-settings"]="{service_parameters}";
+	$array["clients-scripts"]="{clients_scripts}";
 	$array["additional_routes"]="{additional_routes}";
 	$array["remote-sites"]="{REMOTE_SITES_VPN}";
+	
 	$array["events-session"]="{sessions}";
 	$array["OPENVPN_SCHEDULE_RUN"]="{OPENVPN_SCHEDULE_RUN}";
 	$array["events"]="{events}";
@@ -562,6 +564,12 @@ function startpage(){
 		
 		if($num=="OPENVPN_SCHEDULE_RUN"){
 			$tab[]="<li><a href=\"index.openvpn.schedule.php?popup=yes\"><span style='$font'>$ligne</span></a></li>\n";
+			continue;
+		
+		}
+		
+		if($num=="clients-scripts"){
+			$tab[]="<li><a href=\"index.openvpn.clients.php\"><span style='$font'>$ligne</span></a></li>\n";
 			continue;
 		
 		}
@@ -584,7 +592,7 @@ function startpage(){
 	
 	
 
-	$html=build_artica_tabs($tab, "main_openvpn_config");
+	$html=build_artica_tabs($tab, "main_openvpn_config",1490);
 		
 	$tpl=new templates();
 	$html=$tpl->_ENGINE_parse_body($html);
@@ -596,19 +604,14 @@ function startpage(){
 function index_page(){	
 	$page=CurrentPageName();
 	$sock=new sockets();
+	$enable_button=null;
 	$wizard=Paragraphe('64-wizard.png','{OPENVPN_WIZARD}','{OPENVPN_WIZARD_TEXT}',
 	"javascript:YahooWin3('500','$page?wizard=yes','{OPENVPN_WIZARD}')",null,210,null,0,false);	
-	
-
-	$routes=Paragraphe('64-win-nic.png','{additional_routes}','{additional_routes_text}',
-	"javascript:YahooWin3('500','$page?routes=yes','{additional_routes}')",null,210,null,0,false);
 	
 	
 	$clients_settings=Paragraphe('global-settings.png','{OPENVPN_CLIENT_SETTINGS}',
 	'{OPENVPN_CLIENT_SETTINGS_TEXT}',"javascript:OpenVPNClientsSettings()",null,210,null,0,false);
 	
-	$clientscript=Paragraphe('script-64.png','{BUILD_OPENVPN_CLIENT_CONFIG}',
-	'{BUILD_OPENVPN_CLIENT_CONFIG_TEXT}',"javascript:Loadjs('index.openvpn.build.client.php')",null,210,null,0,false);	
 	
 	
 	
@@ -624,28 +627,14 @@ function index_page(){
 	'{OPENVPN_SERVER_CONNECT_TEXT}',"javascript:Loadjs('openvpn.servers-connect.php')",null,210,null,0,false);
 	
 	
-	$rebuild_certificates=Paragraphe("vpn-rebuild.png","{rebuild_openvpn_certificate}",
-	"{rebuild_openvpn_certificate_text}","javascript:Loadjs('$page?rebuild-certificate=yes')",null,210,null,0,false);
-	
-	$certificate=Paragraphe("certificate-download-64.png","{ssl_certificate}",
-	"{ssl_certificate_text}","javascript:Loadjs('postfix.tls.php?js-certificate=yes');",null,210,null,0,false);
-	
-	
-	$certificate_info=Paragraphe("64-ssl-key-loupe.png","{certificate_infos}",
-	"{certificate_infos_text}","javascript:Loadjs('index.openvpn.certificate.php');",null,210,null,0,false);
-
-	
+		
 	
 	$artica=Buildicon64("DEF_ICO_OPENVPN_ARTICA_CLIENTS");
 	
-	$f[]=$remote_add;
+	
 	$f[]=$server_connect;
-	$f[]=$clientscript;
-	$f[]=$routes;
 	$f[]=$ncc;
-	$f[]=$rebuild_certificates;
-	$f[]=$certificate;
-	$f[]=$certificate_info;
+
 	//$f[]=$artica;
 	$q=new mysql();
 	$sql="SELECT ID,enabled,servername,serverport,connexion_name,connexion_type,routes FROM vpnclient WHERE connexion_type=2 and enabled=1 ORDER BY ID DESC";
@@ -660,12 +649,13 @@ function index_page(){
 	}
 	
 
-		$table=CompileTr3($f);
+		
 	
 
-	
-	
-	
+	$vpn=new openvpn();
+	if(intval($vpn->main_array["GLOBAL"]["ENABLE_SERVER"])==0){
+		$enable_button="<center style='margin:30px'>". button("{enable_service}","Loadjs('index.openvpn.enable.progress.php')",42)."</center>";
+	}
 	
 	$status=status(1);
 	
@@ -675,11 +665,10 @@ function index_page(){
 	<tr>
 	<td valign='top' width=280px><div id='openvpn-status'></div></td>
 	<td valign='top'>
-	<div class=explain style='font-size:18px'>{openvpn_whatis}</div>
+	<div class=explain style='font-size:22px'>{openvpn_whatis}</div>
 	<br>
-	<center><img src='img/OpenVPN.png'></center>
-	
-	<center>$table</center></td>
+	$enable_button
+	</td>
 	</tr>
 	</table>
 	<script>
@@ -863,28 +852,28 @@ $vpn->main_array["GLOBAL"]["IP_START"];
 $vpn->main_array["GLOBAL"]["IPTABLES_ETH"];
 
 if($vpn->main_array["GLOBAL"]["PUBLIC_IP"]==null){
-$status=FATAL_ERROR_SHOW_128("<strong>{MISSING_PARAMETER}</strong><hr>{MISSING_PARAMETER_TEXT}<br><strong>{public_ip_addr}</strong><p><center>".button("{settings}","Loadjs('index.openvpn.server.php')",22)."</p></center>");
+$status="<p class=text-error style='font-size:18px'><strong>{MISSING_PARAMETER}</strong><br>{MISSING_PARAMETER_TEXT}<br><strong>{public_ip_addr}</strong></p>";
 }
 if($vpn->main_array["GLOBAL"]["LISTEN_PORT"]==null){
-$status=FATAL_ERROR_SHOW_128("<strong>{MISSING_PARAMETER}</strong><hr>{MISSING_PARAMETER_TEXT}<br><strong>{listen_port}</strong><p><center>".button("{settings}","Loadjs('index.openvpn.server.php')",22)."</p></center>");
+$status="<p class=text-error style='font-size:18px'><strong>{MISSING_PARAMETER}</strong><br>{MISSING_PARAMETER_TEXT}<br><strong>{listen_port}</strong></p>";
 }
 if($vpn->main_array["GLOBAL"]["CLIENT_NAT_PORT"]==null){
-$status=FATAL_ERROR_SHOW_128("<strong>{MISSING_PARAMETER}</strong><hr>{MISSING_PARAMETER_TEXT}<br><strong>{listen_port}:{public_ip_addr}</strong><p><center>".button("{settings}","Loadjs('index.openvpn.server.php')",22)."</p></center>");
+$status="<p class=text-error style='font-size:18px'><strong>{MISSING_PARAMETER}</strong><br>{MISSING_PARAMETER_TEXT}<br><strong>{listen_port}:{public_ip_addr}</strong></p>";
 }
 if($vpn->main_array["GLOBAL"]["IP_START"]==null){
-$status=FATAL_ERROR_SHOW_128("<strong>{MISSING_PARAMETER}</strong><hr>{MISSING_PARAMETER_TEXT}<br><strong>{from_ip_address}</strong><p><center>".button("{settings}","Loadjs('index.openvpn.server.php')",22)."</p></center>");
+$status="<p class=text-error style='font-size:18px'><strong>{MISSING_PARAMETER}</strong><br>{MISSING_PARAMETER_TEXT}<br><strong>{from_ip_address}</strong></p>";
 }
 if($vpn->main_array["GLOBAL"]["NETMASK"]==null){
-$status=FATAL_ERROR_SHOW_128("<strong>{MISSING_PARAMETER}</strong><hr>{MISSING_PARAMETER_TEXT}<br><strong>{netmask}</strong><p><center>".button("{settings}","Loadjs('index.openvpn.server.php')",22)."</p></center>");
+$status="<p class=text-error style='font-size:18px'><strong>{MISSING_PARAMETER}</strong><br>{MISSING_PARAMETER_TEXT}<br><strong>{netmask}</strong></p>";
 }
 if($vpn->main_array["GLOBAL"]["LISTEN_PROTO"]==null){
-$status=FATAL_ERROR_SHOW_128("<strong>{MISSING_PARAMETER}</strong><hr>{MISSING_PARAMETER_TEXT}<br><strong>{protocol}</strong><p><center>".button("{settings}","Loadjs('index.openvpn.server.php')",22)."</p></center>");
+$status="<p class=text-error style='font-size:18px'><strong>{MISSING_PARAMETER}</strong><br>{MISSING_PARAMETER_TEXT}<br><strong>{protocol}</strong></p>";
 }
 if($vpn->main_array["GLOBAL"]["IP_START"]==null){
-$status=FATAL_ERROR_SHOW_128("<strong>{MISSING_PARAMETER}</strong><hr>{MISSING_PARAMETER_TEXT}<br><strong>{from_ip_address}</strong><p><center>".button("{settings}","Loadjs('index.openvpn.server.php')",22)."</p></center>");
+$status="<p class=text-error style='font-size:18px'><strong>{MISSING_PARAMETER}</strong><br>{MISSING_PARAMETER_TEXT}<br><strong>{from_ip_address}</strong></p>";
 }
 if($vpn->main_array["GLOBAL"]["NETMASK"]==null){
-$status=FATAL_ERROR_SHOW_128("<strong>{MISSING_PARAMETER}</strong><hr>{MISSING_PARAMETER_TEXT}<br><strong>{netmask}</strong><p><center>".button("{settings}","Loadjs('index.openvpn.server.php')",22)."</p></center>");
+$status="<p class=text-error style='font-size:18px'><strong>{MISSING_PARAMETER}</strong><br>{MISSING_PARAMETER_TEXT}<br><strong>{netmask}</strong></p>";
 }
 $LDAP_AUTH="{no}";
 $EnableOpenVPNEndUserPage="{no}";
@@ -894,17 +883,20 @@ if($sock->GET_INFO("EnableOpenVPNEndUserPage")==1){$EnableOpenVPNEndUserPage="{y
 $wake_up_ip=$vpn->main_array["GLOBAL"]["WAKEUP_IP"];
 $tcp_ip=new ip();
 if(!$tcp_ip->isValid($wake_up_ip)){$wake_up_ip="{disabled}";}
+if(!$tcp_ip->isValid($vpn->main_array["GLOBAL"]["PUBLIC_IP"])){$vpn->main_array["GLOBAL"]["PUBLIC_IP"]="0.0.0.0";}
 
 
 $ahref_edit="<a href=\"javascript:blur();\" OnClick=\"Loadjs('index.openvpn.server.php');\" style='font-size:16px;text-decoration:underline'>";
 
 $button_edit=button("{change_settings}", "Loadjs('index.openvpn.server.php')",34);
 
+
+if($vpn->main_array["GLOBAL"]["LOCAL_BIND"]==null){$vpn->main_array["GLOBAL"]["LOCAL_BIND"]="{none}";}
+
 $openvpn_local="
 			<tr>
 				<td class=legend style='font-size:20px'>{openvpn_local}</a>:</td>
 				<td style='font-weight:bold;font-size:20px'>{$vpn->main_array["GLOBAL"]["LOCAL_BIND"]}</a></td>
-				<td>&nbsp;</td>
 			</tr>";	
 
 
@@ -912,19 +904,16 @@ $openvpn_local="
 $mandatories="<table style='width:99%'>
 			<tr>
 				<td class=legend style='font-size:20px'>{listen_port}:</a></td>
-				<td style='font-weight:bold;font-size:20px'>{$vpn->main_array["GLOBAL"]["LISTEN_PORT"]}&nbsp;{$vpn->main_array["GLOBAL"]["LISTEN_PROTO"]}</a></td>
-				<td>&nbsp;</td>
+				<td style='font-weight:bold;font-size:20px;width:850px'>{$vpn->main_array["GLOBAL"]["LISTEN_PORT"]}&nbsp;{$vpn->main_array["GLOBAL"]["LISTEN_PROTO"]}</a></td>
 			</tr>
 			$openvpn_local
 			<tr>
 				<td class=legend style='font-size:20px'>{public_ip_addr}</a>:</td>
 				<td style='font-weight:bold;font-size:20px;'>{$vpn->main_array["GLOBAL"]["PUBLIC_IP"]}:$CLIENT_NAT_PORT</a></td>
-				<td>&nbsp;</td>
 			<tr>	
 			<tr>
 				<td class=legend style='font-size:20px'>{password}:</a></td>
 				<td style='font-weight:bold;font-size:20px'>*****</a></td>
-				<td>&nbsp;</td>
 			<tr>
 			</table>";
 $proxy="{no}";
@@ -937,8 +926,7 @@ if($vpn->main_array["GLOBAL"]["IPTABLES_ETH"]==null){$vpn->main_array["GLOBAL"][
 $mode_tun="<table style='width:99%'>
 	<tr>
 		<td class=legend style='font-size:20px'>{enable_authentication}</a>:</td>
-		<td style='font-weight:bold;font-size:20px'>{$LDAP_AUTH}</td>
-		<td>&nbsp;</td>
+		<td style='font-weight:bold;font-size:20px;;width:850px'>{$LDAP_AUTH}</td>
 	<tr>
 	<tr>
 		<td class=legend style='font-size:20px'>{EnableOpenVPNEndUserPage}</a>:</td>
@@ -948,28 +936,23 @@ $mode_tun="<table style='width:99%'>
 	<tr>
 		<td class=legend style='font-size:20px'>{reverse_proxy}</a>:</td>
 		<td style='font-weight:bold;font-size:20px'>$proxy</td>
-		<td>&nbsp;</td>
 	<tr>	
 	
 	<tr>
 		<td class=legend style='font-size:20px'>{from_ip_address}</a>:</td>
 		<td style='font-weight:bold;font-size:20px'>{$vpn->main_array["GLOBAL"]["IP_START"]}</td>
-		<td>&nbsp;</td>
 	<tr>
 	<tr>
 		<td class=legend style='font-size:20px'>{netmask}</a>:</td>
 		<td style='font-weight:bold;font-size:20px'>{$vpn->main_array["GLOBAL"]["NETMASK"]}</a></td>
-		<td>&nbsp;</td>
 	</tr>
 	<tr>
 		<td class=legend style='font-size:20px'>{openvpn_access_interface}</a>:</td>
 		<td style='font-weight:bold;font-size:20px'>{$vpn->main_array["GLOBAL"]["IPTABLES_ETH"]}</a></td>
-		<td>&nbsp;</td>
 	</tr>
 	<tr>
 		<td class=legend style='font-size:20px'>{wake_up_ip}</a>:</td>
 		<td style='font-weight:bold;font-size:20px'>$wake_up_ip</a></td>
-		<td>&nbsp;</td>
 	</tr>	
 	
 </table>";	
@@ -1043,12 +1026,12 @@ if($vpn->main_array["GLOBAL"]["ENABLE_BRIDGE_MODE"]==1){
 if($vpn->main_array["GLOBAL"]["ENABLE_SERVER"]<>1){
 	$status=FATAL_ERROR_SHOW_128("<strong style='font-size:22px'>{OPENVPN_NOT_ENABLED}</strong><hr>
 			{OPENVPN_NOT_ENABLED_TEXT}
-			<center>". button("{enable_service}","Loadjs('index.openvpn.enable.progress.php')",42)."</center>");
+			")."<center style='margin:30px'>". button("{enable_service}","Loadjs('index.openvpn.enable.progress.php')",42)."</center>";
 }
 
 if($status==null){
-	$button_apply=button("{OPENVPN_APPLY_CONFIG}", "Loadjs('index.openvpn.apply.progress.php')",34)."&nbsp;|&nbsp;";
-	$button_script=button("{BUILD_OPENVPN_CLIENT_CONFIG}", "Loadjs('index.openvpn.build.client.php')",22);
+	$button_apply=button("{OPENVPN_APPLY_CONFIG}", "Loadjs('index.openvpn.enable.progress.php')",34)."&nbsp;|&nbsp;";
+	
 }
 
 $html="
@@ -1278,8 +1261,50 @@ function status($noecho=0){
 	$ini=new Bs_IniHandler();
 	$sock=new sockets();
 	$ini->loadString(base64_decode($sock->getFrameWork("cmd.php?openvpn-status=yes")));
+	$TCP_NICS_STATUS_ARRAY=unserialize(base64_decode($sock->getFrameWork("cmd.php?TCP_NICS_STATUS_ARRAY=yes")));
 	$status=DAEMON_STATUS_ROUND("OPENVPN_SERVER",$ini);
 	$refresh="<div style='width:100%;text-align:right'>".imgtootltip("refresh-24.png","{refresh}","RefreshOpenVPNStatus()")."</div>";
+	$radius="-webkit-border-radius: 5px;-moz-border-radius: 5px;border-radius: 5px;/* behavior:url(/css/border-radius.htc); */";
+	$color="black";
+	$icon="network-128-ok.png";
+	
+	while (list ($interface, $MAIN) = each ($TCP_NICS_STATUS_ARRAY) ){
+		if(!isset($MAIN['PEER'])){continue;}
+		$IPADDR=$MAIN["IPADDR"];
+		$NETMASK=$MAIN["NETMASK"];
+		$PEER=$MAIN["PEER"];
+		
+		$tr[]="
+		<div style='margin-top:15px;margin-bottom:15px'>
+		<table style='width:100%;border:2px solid #CCCCCC;margin-bottom:10x;$radius'>
+		<tr>
+				<td valign='top' style='padding-top:10px;padding-bottom:10px'><img src='img/$icon'></td>
+				<td valign='top' style='padding-top:10px;padding-bottom:10px'>
+				<table style='width:100%'>
+				<tr>
+				<td style='font-size:16px;color:$color' class=legend nowrap>{interface}:</td>
+				<td style='font-weight:bold;font-size:16px;color:$color'>$interface</td>
+				</tr>				
+				<tr>
+				<td style='font-size:16px;color:$color' class=legend>{tcp_address}:</td>
+				<td style='font-weight:bold;font-size:16px;color:$color'>$IPADDR</td>
+				</tr>
+				<tr>
+					<td class=legend nowrap style='color:$color;font-size:16px'>{netmask}:</td>
+					<td style='font-weight:bold;font-size:16px;color:$color'>$NETMASK</a></td>
+				</tr>	
+				<tr>
+					<td class=legend nowrap style='color:$color;font-size:16px'>Peer:</td>
+					<td style='font-weight:bold;font-size:16px;color:$color'>$PEER</a></td>
+				</tr>				
+				</table>
+			</td>
+		</tr>
+		</table></div>
+		";		
+	}
+	
+	$ncs=@implode("", $tr);
 	
 	$ini=new Bs_IniHandler();
 	$ini->loadString(base64_decode($sock->getFrameWork("cmd.php?openvpn-clients-status=yes")));
@@ -1299,7 +1324,7 @@ function status($noecho=0){
 	
 	if($noecho==1){return $status.$refresh;}else{
 		$tpl=new templates();
-		echo $tpl->_ENGINE_parse_body($status.$refresh);
+		echo $tpl->_ENGINE_parse_body($status.$refresh.$ncs);
 	}
 		
 }

@@ -61,19 +61,29 @@ function popup(){
 	$daemon=$tpl->_ENGINE_parse_body("{daemon}");
 	$settings=$tpl->javascript_parse_text("{watchdog_squid_settings}");
 	$empty_events_text_ask=$tpl->javascript_parse_text("{empty_events_text_ask}");
+	$webservers=$tpl->javascript_parse_text("{webservers}");
+	$parameters=$tpl->javascript_parse_text("{parameters}");
 	$TB_HEIGHT=450;
 	$TB_WIDTH=927;
-	$TB2_WIDTH=551;
+	$TB2_WIDTH=983;
 	$all=$tpl->_ENGINE_parse_body("{all}");
 	$t=time();
+	$back=null;
+	$title="$webservers $events";
+	
+	if($_GET["filename"]=="exec.httptrack.php"){
+		$title="WebCopy: $events";
+		$back="{name: '<strong style=font-size:18px>WebCopy $parameters</strong>', bclass: 'Restore', onpress : GotoWebCopy},";
+	}
 
 	$buttons="
 	buttons : [
-	{name: '$empty', bclass: 'Delz', onpress : EmptyEvents},
-	{name: 'Warn', bclass: 'Warn', onpress :  Warn$t},
-	{name: 'Info', bclass: 'Help', onpress :  info$t},
-	{name: 'Crit.', bclass: 'Err', onpress :  Err$t},
-	{name: '$all', bclass: 'Statok', onpress :  All$t},
+	$back
+	{name: '<strong style=font-size:18px>$empty</strong>', bclass: 'Delz', onpress : EmptyEvents},
+	{name: '<strong style=font-size:18px>Warn</strong>', bclass: 'Warn', onpress :  Warn$t},
+	{name: '<strong style=font-size:18px>Info</strong>', bclass: 'Help', onpress :  info$t},
+	{name: '<strong style=font-size:18px>Crit.</strong>', bclass: 'Err', onpress :  Err$t},
+	{name: '<strong style=font-size:18px>$all</strong>', bclass: 'Statok', onpress :  All$t},
 	
 	
 
@@ -84,13 +94,13 @@ function popup(){
 
 function BuildTable$t(){
 	$('#events-table-$t').flexigrid({
-		url: '$page?events-table=yes&text-filter={$_GET["text-filter"]}',
+		url: '$page?events-table=yes&text-filter={$_GET["text-filter"]}&filename={$_GET["filename"]}',
 		dataType: 'json',
 		colModel : [
-		{display: '', name : 'severity', width :31, sortable : true, align: 'center'},
-		{display: '$date', name : 'zDate', width :127, sortable : true, align: 'left'},
-		{display: '$events', name : 'subject', width : $TB2_WIDTH, sortable : false, align: 'left'},
-		{display: '$daemon', name : 'filename', width :145, sortable : true, align: 'left'},
+		{display: '', name : 'severity', width :64, sortable : true, align: 'center'},
+		{display: '<span style=font-size:22px>$date</span>', name : 'zDate', width :172, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>$events</span>', name : 'subject', width : $TB2_WIDTH, sortable : false, align: 'left'},
+		{display: '<span style=font-size:22px>$daemon</span>', name : 'filename', width :182, sortable : true, align: 'left'},
 		],
 		$buttons
 	
@@ -100,12 +110,12 @@ function BuildTable$t(){
 		sortname: 'zDate',
 		sortorder: 'desc',
 		usepager: true,
-		title: '',
+		title: '<span style=font-size:30px>$title</span>',
 		useRp: true,
 		rp: 50,
 		showTableToggleBtn: false,
 		width: '99%',
-		height: $TB_HEIGHT,
+		height: 550,
 		singleSelect: true,
 		rpOptions: [10, 20, 30, 50,100,200,500]
 
@@ -174,6 +184,15 @@ function events_table(){
 			$FORCE=$FORCE." AND severity={$_GET["critical"]}";
 		}
 	}
+	
+	if($_GET["filename"]<>null){
+		if($FORCE<>1){
+			$FORCE="$FORCE AND filename='{$_GET["filename"]}'";
+		}else{
+			$FORCE="filename='{$_GET["filename"]}'";
+		}
+		
+	}
 
 	$total=0;
 	if($q->COUNT_ROWS($table,"artica_events")==0){json_error_show("no data",1);}
@@ -231,15 +250,16 @@ function events_table(){
 		$ligne["zDate"]=str_replace($currentdate, "", $ligne["zDate"]);
 		$severity_icon=$severity[$ligne["severity"]];
 		$link="<a href=\"javascript:blur();\" OnClick=\"javascript:Loadjs('$CurrentPage?ShowID-js={$ligne["ID"]}')\" style='text-decoration:underline'>";
-		$text=$link.$tpl->_ENGINE_parse_body($ligne["subject"]."</a><div style='font-size:10px'>{host}:$hostname {function}:{$ligne["function"]}, {line}:{$ligne["line"]}</div>");
+		$text=$link.$tpl->_ENGINE_parse_body($ligne["subject"]."</a><br><span style='font-size:10px'>{host}:$hostname {function}:{$ligne["function"]}, {line}:{$ligne["line"]}</span>");
 		
 		
 		$data['rows'][] = array(
 				'id' => $ligne['ID'],
 				'cell' => array(
-						"<img src='img/$severity_icon'>",
-						
-						$ligne["zDate"],$text,$ligne["filename"] )
+						"<center><img src='img/$severity_icon'></center>",
+						"<span style=font-size:18px>{$ligne["zDate"]}</span>",
+						"<span style=font-size:18px>{$text}</span>",
+						"<span style=font-size:18px>{$ligne["filename"]}</span>" )
 		);
 	}
 

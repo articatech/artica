@@ -1,5 +1,5 @@
 <?php
-$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 if($EnableIntelCeleron==1){die("EnableIntelCeleron==1\n");}
 include_once(dirname(__FILE__).'/ressources/class.os.system.inc');
 include_once(dirname(__FILE__).'/ressources/class.influx.inc');
@@ -39,19 +39,16 @@ function start_hour(){
 	$hostname=$unix->hostname_g();
 	
 	$today=date("Y-m-d")." 00:00:00";
-	$sql="SELECT * FROM ethrxtx WHERE proxyname='$hostname' AND time >'$today'";
-		
-	$influx=new influx();
-	echo "$sql\n";
-	$main=$influx->QUERY_SQL($sql);
+	$postgres=new postgres_sql();
+	$results=$postgres->QUERY_SQL("select date_trunc('H',zdate) + (round(extract('minute' from zdate)/15)*15) * '1 minute'::interval as time, sum(rx) as rx, sum(tx) as tx,eth from access_log WHERE proxyname='$hostname' AND zdate >'$today' group by time,eth");
 	$c=0;
 	$f=array();
-	foreach ($main as $row) {
-		$time=date("Y-m-d H:i:s",InfluxToTime($row->time));
-		$ETH=$row->ETH;
+	while($ligne=@pg_fetch_assoc($results)){
+		$time=$ligne["time"];
+		$ETH=$ligne["eth"];
 		if($ETH=="lo"){continue;}
-		$RX=$row->RX;
-		$TX=$row->TX;
+		$RX=$ligne["rx"];
+		$TX=$ligne["tx"];
 		$f[]="('$time','$ETH','$RX','$TX')";
 		
 		

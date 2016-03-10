@@ -27,15 +27,42 @@ include_once(dirname(__FILE__).'/class.familysites.inc');
 build_whitelist();
 
 function build_whitelist(){
+	$sock=new sockets();
+	$EnableTransparent27=intval($sock->GET_INFO("EnableTransparent27"));
+	$PrivoxyEnabled=intval($sock->GET_INFO("PrivoxyEnabled"));
 	
 	build_progress_wb("{compiling}",30);
 	urlrewriteaccessdeny();
 	build_progress_wb("{compiling}",35);
 	urlrewriteaccessdeny_squid();
 	build_progress_wb("{compiling}",40);
-	build_blacklists();
-	
+	@unlink("/var/log/squid/ufdbgclient.black.db");
+	@file_put_contents("/etc/squid3/ip-blacklists.db", "#");
+	@file_put_contents("/etc/squid3/www-blacklists.db","#");
+	build_blacklists(true);
+	build_progress_wb("{compiling}",50);
 	$unix=new unix();
+	
+	if($PrivoxyEnabled==1){
+		build_progress_wb("{compiling} {APP_PRIVOXY}",55);
+		shell_exec("/etc/init.d/privoxy restart");
+		build_progress_wb("{compiling} {APP_PRIVOXY} {done}",60);
+	}
+	
+	
+	build_progress_wb("{reloading}",65);
+	system("/etc/init.d/squid reload --script=".basename(__FILE__));
+	$sock=new sockets();
+	$EnableTransparent27=intval($sock->GET_INFO("EnableTransparent27"));
+	$PrivoxyEnabled=intval($sock->GET_INFO("PrivoxyEnabled"));
+	if($EnableTransparent27==1){
+		build_progress_wb("{reloading} NAT",70);
+		system("/etc/init.d/squid-nat reload --script=".basename(__FILE__));
+	}
+	
+	
+	
+	
 	$php5=$unix->LOCATE_PHP5_BIN();
 	$squidbin=$unix->LOCATE_SQUID_BIN();
 	squid_admin_mysql(2, "Reloading proxy service for whitelist domains", null,__FILE__,__LINE__);
@@ -61,7 +88,7 @@ function build_blacklists($aspid=false){
 		}
 	}
 	
-	
+	build_progress_wb("{compiling}",41);
 	@unlink($dbfile);
 	
 	try {
@@ -86,6 +113,7 @@ function build_blacklists($aspid=false){
 	if($GLOBALS["VERBOSE"]){echo "BLACK ".mysql_num_rows($results)." items SQL\n";}
 	if(!$q->ok){ echo "Starting......: ".date("H:i:s")." [ACLS]: $q->mysql_error\n"; return; }
 	@unlink("/etc/squid3/www-blacklists.db");
+	build_progress_wb("{compiling}",42);
 	while ($ligne = mysql_fetch_assoc($results)) {
 		if($ligne["items"]==null){continue;}
 		$item=$ligne["items"];
@@ -109,7 +137,7 @@ function build_blacklists($aspid=false){
 
 	}
 	@dba_close($db_con);
-	
+	build_progress_wb("{compiling}",43);
 	@file_put_contents("/var/log/squid/ufdbgclient.reload", "#");
 	@chown("/var/log/squid/ufdbgclient.reload", "squid");
 	@chgrp("/var/log/squid/ufdbgclient.reload","squid");
@@ -136,7 +164,7 @@ function build_blacklists($aspid=false){
 		@chgrp("/etc/squid3/ip-blacklists.db","squid");
 		
 	}
-	
+	build_progress_wb("{compiling}",44);
 	$php=$unix->LOCATE_PHP5_BIN();
 	$nohup=$unix->find_program("nohup");
 	$DenyBlacksites=false;
@@ -152,7 +180,7 @@ function build_blacklists($aspid=false){
 		system("$php /usr/share/artica-postfix/exec.squid.php --build --force --noufdbg");
 		return;
 	}
-	
+	build_progress_wb("{compiling}",44);
 	shell_exec("$nohup /etc/init.d/squid reload --script=".basename(__FILE__));
 
 }

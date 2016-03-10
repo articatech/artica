@@ -26,12 +26,21 @@ table();
 
 function network_js_delete(){
 	header("content-type: application/x-javascript");
-	$ID=$_GET["ID"];
 	$t=$_GET["t"];
 	$tpl=new templates();
 	$q=new mysql_squid_builder();
 	$page=CurrentPageName();
-	$delete=$tpl->javascript_parse_text("{remove} {item}");
+	
+	
+	
+	
+	
+	$q=new mysql_squid_builder();
+	$sql="SELECT `pattern` FROM `webauth_rules_nets` WHERE ID='{$_GET["delete-item-js"]}'";
+	$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
+	if(!$q->ok){echo "alert('$q->mysql_error');";return;}
+	$pattern=$ligne["pattern"];
+	$delete=$tpl->javascript_parse_text("{delete} {item}");
 	$time=time();
 	$html="
 	var xDelete$time = function (obj) {
@@ -42,7 +51,7 @@ function network_js_delete(){
 }
 
 function Delete$time(){
-	if( !confirm('$delete {$_GET["delete-item-js"]} ?') ){return;}
+	if( !confirm('$delete {$_GET["delete-item-js"]} - $pattern - ?') ){return;}
 	var XHR = new XHRConnection();
 	XHR.appendData('delete-network','{$_GET["delete-item-js"]}');
 	XHR.sendAndLoad('$page', 'POST',xDelete$time,true);
@@ -84,15 +93,27 @@ Add$time();";
 
 function network_add(){
 	
+	
+	$tpc=new IP();
+	if(!$tpc->isValidBlock($_POST["network-add"])){
+		
+		echo "{$_POST["network-add"]} invalid";
+		return;
+	}
+	
 	$q=new mysql_squid_builder();
 	$q->QUERY_SQL("INSERT IGNORE INTO webauth_rules_nets (pattern,ruleid) VALUES ('{$_POST["network-add"]}','{$_POST["ruleid"]}')");
-	if(!$q->ok){echo $q->mysql_error;}
+	if(!$q->ok){echo $q->mysql_error;return;}
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
 }
 
 function network_delete(){
 	$q=new mysql_squid_builder();
 	$q->QUERY_SQL("DELETE FROM webauth_rules_nets WHERE ID='{$_POST["delete-network"]}'");
-	if(!$q->ok){echo $q->mysql_error;}
+	if(!$q->ok){echo $q->mysql_error;return;}
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
 	
 }
 
@@ -234,7 +255,7 @@ function networks_list(){
 	while ($ligne = mysql_fetch_assoc($results)) {
 		$color="black";
 		$network_item=$ligne["pattern"];
-		$ID=$_GET["ID"];
+		$ID=$ligne["ID"];
 		$encoded=urlencode($network_item);
 		$delete=imgsimple("delete-48.png",null,"Loadjs('$MyPage?delete-item-js=$ID&t=$t')");
 

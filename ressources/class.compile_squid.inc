@@ -70,6 +70,11 @@ function create_package_squid($t){
 	mkdir("/root/squid-builder/usr/lib/c_icap",0755,true);
 	mkdir("/root/squid-builder/opt/ufdbcat",0755,true);
 	mkdir("/root/squid-builder/usr/local/sbin",0755,true);
+	mkdir("/root/squid-builder/var/lib/ss5/ss5",0755,true);
+	@mkdir("/root/squid-builder/usr/lib/openvpn",0755,true);
+	@mkdir("/root/squid-builder/usr/sbin",0755,true);
+	@mkdir("/root/squid-builder/usr/local/sbin",0755,true);
+	@mkdir("/root/squid-builder/usr/local/etc",0755,true);
 
 	shell_exec("$cp -rfd /usr/share/squid3/* /root/squid-builder/usr/share/squid3/");
 	shell_exec("$cp -rfd /etc/squid3/* /root/squid-builder/etc/squid3/");
@@ -78,13 +83,15 @@ function create_package_squid($t){
 	shell_exec("$cp -rfd /usr/sbin/squid /root/squid-builder/usr/sbin/squid");
 	shell_exec("$cp -rfd /usr/bin/purge /root/squid-builder/usr/bin/purge");
 	shell_exec("$cp -rfd /usr/bin/squidclient /root/squid-builder/usr/bin/squidclient");
-	shell_exec("$cp -rfd /usr/bin/mysar /root/squid-builder/usr/bin/mysar");
 	shell_exec("$cp -rfd /usr/sbin/vnstatd /root/squid-builder/usr/sbin/vnstatd");
 	shell_exec("$cp -rfd /usr/bin/pactester /root/squid-builder/usr/bin/pactester");
 	shell_exec("$cp -rfd /usr/lib/libpacparser.so.1 /root/squid-builder/usr/lib/libpacparser.so.1");
 	shell_exec("$cp -rfd /usr/share/sarg/images/* /root/squid-builder/usr/share/sarg/images/");
 	shell_exec("$cp -rfd /opt/kaspersky/﻿KasperskyUpdateUtility/* /root/squid-builder/opt/kaspersky/﻿KasperskyUpdateUtility/");
-
+	
+	
+	shell_exec("$cp -fd /usr/local/sbin/haproxy /root/squid-builder/usr/local/sbin/haproxy");
+	shell_exec("$cp -fd /usr/local/sbin/haproxy-systemd-wrapper /root/squid-builder/usr/local/sbin/haproxy-systemd-wrapper");
 	shell_exec("$cp -fd /usr/bin/nping /root/squid-builder/usr/bin/");
 	shell_exec("$cp -fd /usr/bin/ncat /root/squid-builder/usr/bin/");
 	shell_exec("$cp -fd /usr/bin/nmapfe /root/squid-builder/usr/bin/");
@@ -100,16 +107,23 @@ function create_package_squid($t){
 	shell_exec("$cp -fd /usr/share/nmap/nmap-services /root/squid-builder/usr/bin/");
 	shell_exec("$cp -fd /usr/share/nmap/nmap.xsl /root/squid-builder/usr/bin/");
 	shell_exec("$cp -fd /usr/share/nmap/nse_main.lua /root/squid-builder/usr/bin/");
+	shell_exec("$cp -fd /usr/bin/redsocks /root/squid-builder/usr/bin/");
+	shell_exec("$cp -fd /usr/bin/openvpn /root/squid-builder/usr/bin/openvpn");
+	shell_exec("$cp -fd /usr/local/sbin/privoxy /root/squid-builder/usr/local/sbin/privoxy");
 	
 	//shell_exec("$cp -fd /usr/local/sbin/haproxy /root/squid-builder/usr/local/sbin/haproxy");
 	//shell_exec("$cp -fd /usr/local/sbin/haproxy-systemd-wrapper /root/squid-builder/usr/local/sbin/haproxy-systemd-wrapper");
 	shell_exec("$cp -rfd /usr/share/nmap/* /root/squid-builder/usr/share/nmap/");
-
+	shell_exec("$cp -rfd /usr/lib/openvpn/* /root/squid-builder/usr/lib/openvpn/");
+	shell_exec("$cp -rfd /usr/local/etc/privoxy /root/squid-builder/usr/local/etc/");
+	
 	shell_exec("$cp -rfd /usr/include/libecap/common/* /root/squid-builder/usr/include/libecap/common/");
 	shell_exec("$cp -rfd /usr/include/libecap/adapter/* /root/squid-builder/usr/include/libecap/adapter/");
 	shell_exec("$cp -rfd /usr/include/libecap/host/* /root/squid-builder/usr/include/libecap/host/");
 	shell_exec("$cp -rfd /usr/include/jasper/* /root/squid-builder/usr/include/jasper/");
 
+	
+	
 	//shell_exec("$cp -fd /usr/lib/libecap.so.2.0.0 /root/squid-builder/usr/lib/libecap.so.2.0.0");
 	//shell_exec("$cp -fd /usr/lib/libecap.so.2 /root/squid-builder/usr/lib/libecap.so.2");
 
@@ -126,6 +140,12 @@ function create_package_squid($t){
 	shell_exec("$cp -fd /usr/lib/ecap_adapter_gzip.la /root/squid-builder/usr/lib/ecap_adapter_gzip.la");
 	shell_exec("$cp -fd /usr/lib/ecap_adapter_gzip.a /root/squid-builder/usr/lib/ecap_adapter_gzip.a");
 
+	shell_exec("$cp -fd /usr/lib/libnettle.a /root/squid-builder/usr/lib/");
+	shell_exec("$cp -fd /usr/lib/libnettle.so /root/squid-builder/usr/lib/"); 
+	shell_exec("$cp -fd /usr/lib/libnettle.so.6 /root/squid-builder/usr/lib/");  
+	shell_exec("$cp -fd /usr/lib/libnettle.so.6.1 /root/squid-builder/usr/lib/");
+	
+	
 	shell_exec("$cp -fd /usr/lib/libgif.so.6.0.1 /root/squid-builder/usr/lib/");
 	shell_exec("$cp -fd /usr/lib/libgif.so.6 /root/squid-builder/usr/lib/");
 	shell_exec("$cp -fd /usr/lib/libgif.so /root/squid-builder/usr/lib/");
@@ -177,6 +197,7 @@ function create_package_squid($t){
 	shell_exec("$cp -rfd /etc/squid27/* /root/squid-builder/etc/squid27/");
 	shell_exec("$cp -rfd /etc/streamcache/* /root/squid-builder/etc/streamcache/*");
 	shell_exec("$cp -rfd /opt/ufdbcat/* /root/squid-builder/opt/ufdbcat/");
+	shell_exec("$cp -rfd /var/lib/ss5/ss5/* /root/squid-builder/var/lib/ss5/ss5/");
 	
 	shell_exec("$cp -fd /usr/local/lib/libhttpd.a /root/squid-builder/usr/lib/");
 	shell_exec("$cp -fd /usr/local/lib/libhttpd.so.0.0.0 /root/squid-builder/usr/lib/");
@@ -184,6 +205,9 @@ function create_package_squid($t){
 	shell_exec("$cp -fd /usr/local/bin/wifidog /root/squid-builder/usr/bin/");
 	shell_exec("$cp -fd /usr/local/bin/wdctl /root/squid-builder/usr/bin/");
 
+	$f[]="/usr/lib/libssl.so.0.9.8";
+	$f[]="/usr/lib/libcrypto.so.0.9.8";
+	$f[]="/usr/lib/libboost_program_options.so.1.42.0";
 	$f[]="/usr/bin/bwm-ng";
 	$f[]="/usr/share/info/msmtp.info";
 	$f[]="/etc/ld.so.conf.d/KasperskyUpdateUtility.conf";
@@ -251,7 +275,7 @@ function create_package_squid($t){
 	$f[]="/usr/share/man/man5/socks.conf.5";
 	$f[]="/usr/bin/socksify";
 	$f[]="/usr/include/socks.h";
-	$f[]="/var/lib/ss5";
+	
 	$f[]="/usr/sbin/ss5";
 	$f[]="/usr/sbin/ss5srv";
 	$f[]="/usr/local/bin/krake";
@@ -348,6 +372,8 @@ if(!is_dir("/root/squid-builder$dir")){@mkdir("/root/squid-builder$dir",0755,tru
 shell_exec("/bin/cp -fd $filename /root/squid-builder$dir/");
 }
 
+proftpd("/root/squid-builder",true);
+
 echo "Debian Version: $debian\n";
 echo "Compile SARG....\n";
 compile_sarg();
@@ -390,6 +416,82 @@ $took=$unix->distanceOfTimeInWords($t,time(),true);
 system_admin_events("Installing the new squid-cache $version success took:$took", __FUNCTION__, __FILE__, __LINE__, "software");
 }
 
+function proftpd($base=null,$nocompress=false){
+	// apt-get install libpq-dev
+	// ./configure --prefix=/usr --with-includes=/usr/include/postgresql --mandir=/usr/share/man --sysconfdir=/etc/proftpd --localstatedir=/var/run --libexecdir=/usr/lib/proftpd --enable-sendfile --enable-facl --enable-dso --enable-autoshadow --enable-ctrls --with-modules=mod_readme --enable-ipv6  --build x86_64-linux-gnu --with-shared=mod_quotatab:mod_sql:mod_sql_mysql:mod_sql_postgres:mod_quotatab_sql:mod_ldap:mod_quotatab_ldap:mod_ratio:mod_tls:mod_rewrite:mod_radius:mod_wrap:mod_quotatab_file:mod_facl:mod_ctrls_admin:mod_ifsession
+	$f[]="/usr/sbin/proftpd";
+
+	$f[]="/usr/bin/ftpasswd";
+	$f[]="/usr/bin/ftpmail";
+	$f[]="/usr/bin/ftpquota";
+	$f[]="/usr/bin/ftpcount";
+	$f[]="/usr/bin/ftpdctl";
+	$f[]="/usr/sbin/ftpscrub";
+	$f[]="/usr/sbin/ftpshut";
+	$f[]="/usr/bin/ftptop";
+	$f[]="/usr/bin/ftpwho";
+	$f[]="/usr/bin/prxs";
+
+
+	if($base==null){
+		$base="/root/proftpd-build";
+	}
+	
+	
+
+	while (list ($num, $filename) = each ($f)){
+
+		if(is_dir($filename)){
+			@mkdir("$base/$filename",0755,true);
+			echo "/bin/cp -rfd $filename/* $base$filename/\n";
+			shell_exec("/bin/cp -rfd $filename/* $base$filename/");
+			continue;
+		}
+
+
+		if(is_file($filename)){
+			$dirname=dirname($filename);
+			if(!is_dir("$base/$dirname")){@mkdir("$base/$dirname",0755,true);}
+			echo "/bin/cp -rfd $filename $base$dirname/\n";
+			shell_exec("/bin/cp -rfd $filename $base/$dirname/");
+		}
+
+	}
+	@mkdir("$base/usr/lib/proftpd",0755,true);
+	shell_exec("/bin/cp -rfd /usr/lib/proftpd/* $base/usr/lib/proftpd/");
+
+	if(!$nocompress){
+		$Debian=DebianVersion();
+		$Architecture=Architecture();
+		$version=proftpd_version();
+		chdir($base);
+		if(is_file("$base/proftpd-debian{$Debian}-$Architecture-$version.tar.gz")){
+			@unlink("$base/proftpd-debian{$Debian}-$Architecture-$version.tar.gz");
+		}
+	
+		$filename="proftpd-debian{$Debian}-$Architecture-$version.tar.gz";
+		shell_exec("tar -czf $filename *");
+		shell_exec("/bin/cp $filename /root/");
+		echo "/root/$filename done\n";
+	}
+
+
+}
+
+function proftpd_version(){
+$unix=new unix();
+$proftpd=$unix->find_program("proftpd");
+	exec("$proftpd -v 2>&1",$results);
+
+	while (list ($num, $val) = each ($results)){
+	if(preg_match("#ProFTPD Version\s+([0-9\.]+)#", $val,$re)){
+	$GLOBALS["proftpd_version"]=trim($re[1]);
+	return $GLOBALS["proftpd_version"];
+		}
+	}
+
+}
+
 
 function c_icap_array(){
 
@@ -427,7 +529,8 @@ function c_icap_array(){
 	//$f[]="/usr/lib/libicapapi.so.3.0.4";
 	//$f[]="/usr/lib/libicapapi.so.3";
 	
-	$f[]="/usr/lib/libicapapi.so.4.0.1";
+	//$f[]="/usr/lib/libicapapi.so.4.0.1";
+	$f[]="/usr/lib/libicapapi.so.4.0.2";
 	$f[]="/usr/lib/libicapapi.so.4";
 	
 	$f[]="/usr/share/c_icap/templates/srv_content_filtering/en/BLOCK";

@@ -220,6 +220,7 @@ FUNCTION TLSE_CONVERTION(){
 	$f["agressif"]="violence";
 	$f["agressive"]="violence";
 	$f["audio-video"]="audio-video";
+	$f["youtube"]="youtube";
 	$f["celebrity"]="celebrity";
 	$f["cleaning"]="cleaning";
 	$f["dating"]="dating";

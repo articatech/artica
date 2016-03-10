@@ -95,6 +95,7 @@ function Save$t(){
 function interfaces(){
 	$page=CurrentPageName();
 	$tpl=new templates();
+	$sock=new sockets();
 	$t=time();
 	$title=$tpl->_ENGINE_parse_body("{Q.O.S} {interfaces}");
 	$t=time();
@@ -107,6 +108,12 @@ function interfaces(){
 	$new_route=$tpl->_ENGINE_parse_body("{new_route}");
 	$enabled=$tpl->_ENGINE_parse_body("{enabled}");
 	$apply=$tpl->_ENGINE_parse_body("{apply}");
+	
+	
+	
+	
+	
+	
 
 	// 	$sql="INSERT INTO nic_routes (`type`,`gateway`,`pattern`,`zmd5`,`nic`)
 	// VALUES('$type','$gw','$pattern/$cdir','$md5','$route_nic');";

@@ -36,7 +36,7 @@
 				header("location:admin.index.php");exit;
 			}
 			error_log("[{$_SESSION["uid"]}]::Redirect to users.index.php in ".__FUNCTION__." file " .basename(__FILE__)." line ".__LINE__);
-			header("location:users.index.php");exit;
+			header("location:admin.index.php");exit;
 		}
 	}
 
@@ -734,6 +734,7 @@ function logon(){
 	include_once('ressources/class.user.inc');	
 	include_once('ressources/class.langages.inc');
 	$sock=new sockets();
+	$FixedLanguage=$sock->GET_INFO("FixedLanguage");
 	$tpl=new templates();
 	$_POST["artica_password"]=url_decode_special($_POST["artica_password"]);
 	writelogs("Testing logon....{$_POST["artica_username"]}",__FUNCTION__,__FILE__,__LINE__);
@@ -801,6 +802,7 @@ function logon(){
 			echo $tpl->javascript_parse_text("{wrong_password_or_username}");
 			return null;
 		}else{
+			
 			$users=new usersMenus();
 			artica_mysql_events("Success to logon on the Artica Web console from {$_SERVER["REMOTE_HOST"]} as SuperAdmin",@implode("\n",$notice),"security","security");
 			//session_start();
@@ -906,6 +908,15 @@ function logon(){
 	
 	
 	writelogs('This is not Global admin, so test user...',__FUNCTION__,__FILE__,__LINE__);
+	$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
+	if(!is_file("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP")){$EnableOpenLDAP=1;}
+	
+	if($EnableOpenLDAP==0){
+		echo $tpl->javascript_parse_text("{wrong_password_or_username}");
+		return null;
+	}
+		
+		
 	$u=new user($_POST["artica_username"]);
 	$userPassword=$u->password;
 	if(trim($u->uidNumber)==null){
@@ -914,6 +925,7 @@ function logon(){
 		echo $tpl->javascript_parse_text("{wrong_password_or_username}");
 		return null;
 	}
+	
 	
 	$tpl=new templates();
 	
@@ -935,7 +947,7 @@ function logon(){
 				$_SESSION["MINIADM"]=false;
 				setcookie("MINIADM", "No", time()+1000);
 				if($VIA_API){BuildSession($_SESSION["uid"]);echo "TRUE";return;}
-				echo $tpl->javascript_parse_text("{wrong_password_or_username}");
+				echo "location:admin.index.php";
 				return null;
 			}
 			
@@ -946,12 +958,14 @@ function logon(){
 			$array["USERNAME"]=$_POST["artica_username"];
 			$array["PASSWORD"]=md5($_POST["artica_username"]);
 			$credentials=base64_encode(serialize($array));
-			echo $tpl->javascript_parse_text("{wrong_password_or_username}");
+			artica_mysql_events("Success to logon on the management console as user from {$_SERVER["REMOTE_HOST"]} (bad password)",@implode("\n",$notice),"security","security");
+			echo "location:admin.index.php";
 			return null;
-		exit;}else{	
+		exit;
+	
+	}else{	
 		if($VIA_API){echo "FALSE";return;}
 		writelogs("[{$_POST["artica_username"]}]: The password typed  is not the same in ldap database...",__FUNCTION__,__FILE__);
-		artica_mysql_events("Failed to logon on the management console as user from {$_SERVER["REMOTE_HOST"]} (bad password)",@implode("\n",$notice),"security","security");
 		echo $tpl->javascript_parse_text("{wrong_password_or_username}");
 		return null;
 	}
@@ -1285,6 +1299,7 @@ function buildPage(){
 	$hostname=$sock->GET_INFO("myhostname");
 	if($hostname==null){$hostname=$sock->getFrameWork("system.php?hostname-g=yes");$sock->SET_INFO($hostname,"myhostname");}
 	if($hostname==null){$hostname=$users->hostname;}
+	$WordPressInstalled=intval($sock->GET_INFO("WordPressInstalled"));
 	if($GLOBALS["VERBOSE"]){echo "new templates() line:".__LINE__."<br>\n";}
 	
 	
@@ -1399,7 +1414,7 @@ function buildPage(){
 	}
 	
 	if(trim($template)==null){if($users->SAMBA_APPLIANCE){$template="Samba";}}
-	if(trim($template)==null){if($users->WORDPRESS_INSTALLED){$template="Wordpress";}}
+	if(trim($template)==null){if($WordPressInstalled==1){$template="Wordpress";}}
 	if(trim($template)==null){if($users->SQUID_INSTALLED){$template="Squid";}}
 	if(trim($template)==null){if($users->SAMBA_INSTALLED){$template="Samba";}}
 	if(trim($template)==null){if($users->APACHE_INSTALLED){$template="Apache";}}
@@ -1540,6 +1555,20 @@ function buildPage(){
 			if($SQUIDEnable==1){
 				if($GLOBALS["VERBOSE"]){echo "<div style='background-color:white;color:black'>".__LINE__.": SQUID INSTALLED</div>\n";}
 				$userslogs="<span style='color:$LinkColor'>&nbsp;|&nbsp;</span><a href='squid.access-sql.php' style='color:$LinkColor'>Proxy requests</a>&nbsp;";
+				
+				$EnableArticaHotSpot=intval($sock->GET_INFO("EnableArticaHotSpot"));
+				$EnableMaintenanceHotSpot=intval($sock->GET_INFO("EnableMaintenanceHotSpot"));
+				
+				
+				if($EnableArticaHotSpot==1){
+					if($EnableMaintenanceHotSpot==1){
+						$userslogs="<span style='color:$LinkColor'>&nbsp;|&nbsp;</span><a href=\"javascript:blur();\" OnClick=\"javascript:Loadjs('squid.webauth.maintenance.php',true);\" style='color:$LinkColor'>HotSpot</a>&nbsp;$userslogs";
+						
+					}
+					
+				}
+				
+				
 				$EnableSquidUrgencyPublic=$sock->GET_INFO("EnableSquidUrgencyPublic");
 				if(!is_numeric($EnableSquidUrgencyPublic)){$EnableSquidUrgencyPublic=0;}
 				if($EnableSquidUrgencyPublic==1){

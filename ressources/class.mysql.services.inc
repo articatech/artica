@@ -128,6 +128,12 @@ class mysql_services{
 		$tmp_table_sized=0;
 		$mysql_install_db=$unix->find_program("mysql_install_db");
 		$GetStartedValues=$this->GetStartedValues();
+		$AutomaticValues=true;
+		
+		if($this->TokenParams=="ZarafaTuningParameters"){
+			$EnableZarafaTuning=intval($sock->GET_INFO("EnableZarafaTuning"));
+			if($EnableZarafaTuning==1){$AutomaticValues=false;}
+		}
 		
 		if($this->MYSQL_BIN_DAEMON_PATH<>null){
 			$mysqld=$this->MYSQL_BIN_DAEMON_PATH;}
@@ -202,7 +208,7 @@ class mysql_services{
 				$thread_stack_canbechanged=true;
 		}
 		
-		
+	if($AutomaticValues){	
 		if($memory>512){
 			if($max_allowed_packet==0){$max_allowed_packet=512;}
 			$bulk_insert_buffer_sized=8;$key_buffer_size_d=8;$max_allowed_packetd=50;$thread_cache_sized=2;
@@ -318,6 +324,8 @@ class mysql_services{
 			if($read_buffer_size==0){$read_buffer_size=32;}
 		}
 		
+	}
+		
 		if(!is_numeric($bulk_insert_buffer_size)){$bulk_insert_buffer_size=$bulk_insert_buffer_sized;}
 		if(!is_numeric($key_buffer_size)){$key_buffer_size=$key_buffer_size_d;}
 		if(!is_numeric($myisam_sort_buffer_size)){$myisam_sort_buffer_size=$key_buffer_size_d;}
@@ -353,10 +361,15 @@ class mysql_services{
 			if($innodb_buffer_pool_size>$swap){$innodb_buffer_pool_size=$swap;}
 		}
 		$MAX_MEM_TOTAL_INSTALLEE=round($MEM_TOTAL_INSTALLEE*0.8)-1500;
+		
+		
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: $SERV_NAME MySQL Token parameters...: $this->TokenParams\n";}
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: $SERV_NAME MySQL Main binary........: $mysqld\n";}
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: $SERV_NAME Working directory........: $WORKDIR\n";}
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: $SERV_NAME Architecture.............: $KERNEL_ARCH bits\n";}
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: $SERV_NAME Memory...................: {$memory}M\n";}
+		
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: $SERV_NAME Read Buffer Size.........: {$TuningParameters["read_buffer_size"]}M\n";}
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: $SERV_NAME Max allowed packet.......: {$max_allowed_packet}M\n";}
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: $SERV_NAME Max connections..........: {$max_connections} cnxs\n";}
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: $SERV_NAME Key Buffer size..........: {$key_buffer_size}M\n";}
@@ -386,7 +399,7 @@ class mysql_services{
 
 		$sort_buffer_size_calc=($sort_buffer_size*1024)*1024;
 		$key_buffer_size_calc=($key_buffer_size*1024)*1024;
-		$read_buffer_size_calc=($read_buffer_size_calc*1024)*1024;
+		$read_buffer_size_calc=($read_buffer_size*1024)*1024;
 		$memory_calculated=$key_buffer_size_calc + ($read_buffer_size + $sort_buffer_size_calc)*$max_connections;
 		$memory_calculated=round(($memory_calculated/1024)/1024);
 		
@@ -576,12 +589,12 @@ class mysql_services{
 		
 		if($max_tmp_table_size>0){
 			if($GetStartedValues["--max_tmp_table_size"]){
-				$max_tmp_table_size=($max_tmp_table_size*1024)*1024;
+				$max_tmp_table_size=round(($max_tmp_table_size*1024)*1024);
 				$f[]="--max_tmp_table_size={$max_tmp_table_size}";
 			}
 		}
 		if($sort_buffer_size>0){
-			$sort_buffer_size=($sort_buffer_size*1024)*1024;
+			$sort_buffer_size=round(($sort_buffer_size*1024)*1024);
 			$f[]="--sort_buffer_size={$sort_buffer_size}";
 		}
 		if($read_buffer_size>0){
@@ -589,7 +602,7 @@ class mysql_services{
 			$f[]="--read_buffer_size={$read_buffer_size}";
 		}
 		if($join_buffer_size>0){
-			$join_buffer_size=($join_buffer_size*1024)*1024;
+			$join_buffer_size=round(($join_buffer_size*1024)*1024);
 			$f[]="--join_buffer_size={$join_buffer_size}";
 		}
 		

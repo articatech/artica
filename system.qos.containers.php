@@ -14,7 +14,7 @@ if(!$usersmenus->AsSystemAdministrator){
 	die();
 }
 
-
+if(isset($_POST["deletecontainer"])){qos_containers_delete();exit;}
 if(isset($_GET["containers-items"])){qos_containers_items();exit;}
 if(isset($_GET["container-js"])){qos_containers_js();exit;}
 if(isset($_GET["container-popup"])){qos_containers_popup();exit;}
@@ -24,7 +24,8 @@ if(isset($_POST["move-item"])){move_items();exit;}
 if(isset($_GET["container-tab"])){qos_containers_tab();exit;}
 if(isset($_GET["container-status"])){qos_containers_status();exit;}
 if(isset($_GET["container-status-frame"])){qos_containers_status_frame();exit;}
-
+if(isset($_GET["delete-js"])){qos_containers_delete_js();exit;}
+if(isset($_POST["TopMenu"])){qos_TopMenu();exit;}
 qos_containers();
 
 function move_items_js(){
@@ -55,6 +56,57 @@ echo $html;
 
 }
 
+function qos_containers_delete_js(){
+	$page=CurrentPageName();
+	$tpl=new templates();
+	$ID=$_GET["ID"];
+	$delete=$tpl->javascript_parse_text("{delete}");
+	header("content-type: application/x-javascript");
+	$q=new mysql();
+	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT name,eth FROM `qos_containers` WHERE ID='$ID'","artica_backup"));
+	
+	$t=time();
+	
+	$html="
+var xSave$t= function (obj) {
+	var results=obj.responseText;
+	if(results.length>3){ alert(results); return; }
+	$('#TABLEAU_MAIN_QOS_CONTAINERS').flexReload();
+}
+function Save$t(){
+	if(!confirm('$delete $ID {$ligne["name"]}')){return;}
+	var XHR = new XHRConnection();
+	XHR.appendData('deletecontainer','$ID');
+	XHR.sendAndLoad('$page', 'POST',xSave$t);
+}
+	
+Save$t();
+	
+	";
+	
+	echo $html;	
+	
+	
+}
+
+function qos_TopMenu(){
+	
+	$sock=new sockets();
+	$QosTopMenu=intval($sock->GET_INFO("QosTopMenu"));
+	if($QosTopMenu==1){$QosTopMenu=0;}else{$QosTopMenu=1;}
+	$sock->SET_INFO("QosTopMenu", $QosTopMenu);
+}
+
+function qos_containers_delete(){
+	$ID=$_POST["deletecontainer"];
+	$q=new mysql_squid_builder();
+	$q->QUERY_SQL("DELETE FROM qos_sqacllinks WHERE aclid='$ID'");
+	if(!$q->ok){echo $q->mysql_error;return;}
+	$q=new mysql();
+	$q->QUERY_SQL("DELETE FROM qos_containers WHERE ID='$ID'","artica_backup");
+	if(!$q->ok){echo $q->mysql_error;return;}
+}
+
 function qos_containers_tab(){
 	$tpl=new templates();
 	$users=new usersMenus();
@@ -62,19 +114,31 @@ function qos_containers_tab(){
 	$fontsize=18;
 	$ID=$_GET["ID"];
 	$q=new mysql();
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT eth FROM `qos_containers` WHERE ID='$ID'","artica_backup"));
+	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT name,eth FROM `qos_containers` WHERE ID='$ID'","artica_backup"));
+	
+	$suffix["in"]="{inbound}";
+	$suffix["out"]="{outbound}";
 	
 	$eth=$ligne["eth"];
+	if(preg_match("#(.*?)-(.+)$#", $eth,$re)){$eth_text=$re[1]." ".$suffix[$re[2]];}
 	$p=new system_nic();
 	$eth=$p->NicToOther($eth);
 	
-	$array["container-popup"]="{Q.O.S} mark $ID";
-	$array["container-status"]="{status} $eth";
+	$array["container-popup"]="{Q.O.S} {$ligne["name"]}";
+	$array["container-rules"]="{rules}";
+	$array["container-DSCP"]="TOS";
 	
 	
 	$t=time();
 	while (list ($num, $ligne) = each ($array) ){
-	
+		if($num=="container-rules"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"system.qos.container.rules.php?aclid=$ID\" style='font-size:$fontsize;font-weight:normal'><span>$ligne</span></a></li>\n");
+			continue;
+		}
+		if($num=="container-DSCP"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"system.qos.container.DSCP.php?aclid=$ID\" style='font-size:$fontsize;font-weight:normal'><span>$ligne</span></a></li>\n");
+			continue;
+		}		
 		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=$t&ID=$ID&eth=$eth\" style='font-size:$fontsize;font-weight:normal'><span>$ligne</span></a></li>\n");
 	}
 	
@@ -122,6 +186,7 @@ function qos_containers_status_frame(){
 function move_items(){
 	$q=new mysql();
 	$ID=$_POST["move-item"];
+	$OrgID=$ID;
 	$t=$_POST["t"];
 	$dir=$_POST["dir"];
 	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT prio,eth FROM qos_containers WHERE ID='$ID'","artica_backup"));
@@ -131,28 +196,30 @@ function move_items(){
 
 
 	$CurrentOrder=$ligne["prio"];
-
-			if($dir==0){
-			$NextOrder=$CurrentOrder-1;
-			}else{
-				$NextOrder=$CurrentOrder+1;
-			}
+	//echo "Current $eth Order:$CurrentOrder\n";
+	if($dir==0){
+		$NextOrder=$CurrentOrder-1;
+	}else{
+		$NextOrder=$CurrentOrder+1;
+	}
 
 			$sql="UPDATE qos_containers SET prio=$CurrentOrder WHERE prio='$NextOrder' AND eth='$eth'";
 			$q->QUERY_SQL($sql,"artica_backup");
 			if(!$q->ok){echo  "Line:".__LINE__.":$sql\n".$q->mysql_error;}
 
 
-			$sql="UPDATE qos_containers SET prio=$NextOrder WHERE ID='$ID'";
+			$sql="UPDATE qos_containers SET prio=$NextOrder WHERE ID='$ID' AND eth='$eth'";
+			//echo $sql."\n";
 			$q->QUERY_SQL($sql,"artica_backup");
 			if(!$q->ok){echo  "Line:".__LINE__.":$sql\n".$q->mysql_error;}
 
-			$results=$q->QUERY_SQL("SELECT ID FROM qos_containers ORDER by prio AND eth='$eth'","artica_backup");
+			$results=$q->QUERY_SQL("SELECT ID FROM qos_containers WHERE eth='$eth' ORDER by prio","artica_backup");
 			if(!$q->ok){echo "Line:".__LINE__.":".$q->mysql_error;}
 			$c=1;
 			while ($ligne = mysql_fetch_assoc($results)) {
 				$ID=$ligne["ID"];
 				$sql="UPDATE qos_containers SET prio=$c WHERE ID='$ID'";
+				//echo $sql."\n";
 				$q->QUERY_SQL($sql,"artica_backup");
 				if(!$q->ok){echo "Line:".__LINE__.":$sql\n".$q->mysql_error;}
 				$c++;
@@ -171,12 +238,12 @@ function qos_containers_js(){
 
 	if($ID==0){
 		$title=$tpl->_ENGINE_parse_body("{new_container}");
-		echo "YahooWin3('700','$page?container-popup=yes&ID=$ID','$title');";
+		echo "YahooWin3('900','$page?container-popup=yes&ID=$ID','$title');";
 	}else{
 		$q=new mysql();
 		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `name` FROM `qos_containers` WHERE ID='$ID'","artica_backup"));
 		$title=utf8_decode($ligne["name"]);
-		echo "YahooWin3('700','$page?container-tab=yes&ID=$ID','$title');";
+		echo "YahooWin3('900','$page?container-tab=yes&ID=$ID','$title');";
 	}
 	
 
@@ -195,6 +262,9 @@ function qos_containers_items(){
 	$page=1;
 	$FORCE_FILTER=null;
 	$total=0;
+	
+	$suffix["in"]=$tpl->javascript_parse_text("{inbound}");
+	$suffix["out"]=$tpl->javascript_parse_text("{outbound}");
 
 	if(isset($_POST["sortname"])){if($_POST["sortname"]<>null){$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";}}
 	if(isset($_POST['page'])) {$page = $_POST['page'];}
@@ -241,31 +311,28 @@ function qos_containers_items(){
 		return;
 	}
 
-
-	if($searchstring==null){
-
-		$data['total']=$data['total']+$array[0];
-		$data['rows']=$array[1]["rows"];
-	}
-
-	$fontsize=16;
+	$fontsize=22;
 
 	while ($ligne = mysql_fetch_assoc($results)) {
 		$color="black";
-
+		$cellule="";
+		$eth_text=null;
 
 		$delete=imgsimple("delete-32.png",null,"Loadjs('$MyPage?delete-js=yes&ID={$ligne["ID"]}&t=$t');");
 
 		$lsprime="javascript:Loadjs('$MyPage?container-js=yes&ID={$ligne["ID"]}')";
-
+		if(preg_match("#(.*?)-(.+)$#", $ligne["eth"],$re)){
+			$ligne["eth"]=$re[1];
+			$eth_text=$re[1]." ".$suffix[$re[2]];
+		}
 
 
 		$enabled=$ligne["enabled"];
-		$icon="ok24.png";
-		if($enabled==0){$icon="ok24-grey.png";$color="#8a8a8a";}
+		$icon="ok32.png";
+		if($enabled==0){$icon="ok32-grey.png";$color="#8a8a8a";}
 		
 		$nic=new system_nic($ligne["eth"]);
-		if($nic->QOS==0){
+		if($nic->FireQOS==0){
 			$icon="ok24-grey.png";
 			$color="#8a8a8a";
 		}
@@ -281,18 +348,24 @@ function qos_containers_items(){
 		$up=imgsimple("arrow-up-32.png",null,"Loadjs('$MyPage?move-item-js=yes&ID={$ligne["ID"]}&dir=0&t={$_GET["t"]}')");
 		$down=imgsimple("arrow-down-32.png",null,"Loadjs('$MyPage?move-item-js=yes&ID={$ligne["ID"]}&dir=1&t={$_GET["t"]}')");
 		
+		if($ligne["ceil"]>0){
+			$cellule="{$ligne["ceil"]}{$ligne["ceil_unit"]}";
+			
+		}
 		
 
 		$data['rows'][] = array(
 				'id' => $ligne['ID'],
 				'cell' => array(
 						"<span $style>$js{$ligne["prio"]}</a></span>",
-						"<span $style>{$js}{$ligne["eth"]}</a></span>",
+						"<span $style>{$js}{$eth_text}</a></span>",
 						"<span $style>{$js}{$ligne["name"]}</a></span>",
 						"<span $style>{$js}{$ligne["rate"]}{$ligne["rate_unit"]}</a></span>",
-						"<span $style>{$js}{$ligne["ceil"]}{$ligne["ceil_unit"]}</a></span>",
-						"<span $style>{$js}<img src='img/$icon'></a></span>",
-						$up,$down,$delete
+						"<span $style>{$js}$cellule</a></span>",
+						"<center $style>{$js}<img src='img/$icon'></a></center>",
+						"<center $style>$up</center>",
+						"<center $style>$down</center>",
+						"<center $style>$delete</center>",
 
 
 				)
@@ -346,10 +419,10 @@ function qos_containers_popup(){
 	$q=new mysql();
 	
 	$btname="{apply}";
-	$results=$q->QUERY_SQL("SELECT Interface,QOSMAX FROM nics WHERE QOS=1 ORDER BY Interface","artica_backup");
+	$results=$q->QUERY_SQL("SELECT InputSpeed,OutputSpeed,SpeedUnit,Interface FROM nics WHERE FireQOS=1 ORDER BY Interface","artica_backup");
 	while ($ligne = mysql_fetch_assoc($results)) {
-		$HASH[$ligne["Interface"]]=$ligne["Interface"]." {$ligne["QOSMAX"]}Mib";
-		
+		$HASH[$ligne["Interface"]."-in"]=$ligne["Interface"]." {inbound}/{download2} {$ligne["InputSpeed"]}{$ligne["SpeedUnit"]}";
+		$HASH[$ligne["Interface"]."-out"]=$ligne["Interface"]." {outbound}/{upload2} {$ligne["OutputSpeed"]}{$ligne["SpeedUnit"]}";
 	}
 	
 	if($ID==0){
@@ -362,8 +435,25 @@ function qos_containers_popup(){
 	
 	}
 	
-	$UNITS["mbit"]="Megabits {per} {second}";
-	$UNITS["kbit"]="Kilobits {per} {second}";
+	$UNITS1["%"]="(%) {percent}";
+	$UNITS1["kbit"]="(Kbit) kilobits per second";
+	$UNITS1["bps"]="(bps) Bytes per second";
+	$UNITS1["kbps"]="(kbps) Kilobytes per second";
+	$UNITS1["mbps"]="(mbps) Megabytes per second";
+	$UNITS1["gbps"]="(gbps) gigabytes per second";
+	$UNITS1["bit"]="(bits) per second";
+	$UNITS1["mbit"]="(Mbit) megabits per second";
+	$UNITS1["gbit"]="(Gbit) gigabits per second";
+	
+	
+	$UNITS["kbit"]="(Kbit) kilobits per second";
+	$UNITS["bps"]="(bps) Bytes per second";
+	$UNITS["kbps"]="(kbps) Kilobytes per second";
+	$UNITS["mbps"]="(mbps) Megabytes per second";
+	$UNITS["gbps"]="(gbps) gigabytes per second";
+	$UNITS["bit"]="(bits) per second";
+	$UNITS["mbit"]="(Mbit) megabits per second";
+	$UNITS["gbit"]="(Gbit) gigabits per second";
 	
 	   
 	
@@ -375,30 +465,31 @@ function qos_containers_popup(){
 	$t=time();
 	
 	$html="<div style='width:98%' class=form>
-	<div style='font-size:26px;margin-bottom:30px'>$title</div>
+	<div style='font-size:30px;margin-bottom:30px'>$title</div>
 	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:18px;vertical-align=middle'>{enabled}:</td>
-		<td>". Field_checkbox("enabled-$t",1,$ligne["enabled"])."</td>
+		<td class=legend style='font-size:22px;vertical-align=middle'>{enabled}:</td>
+		<td>". Field_checkbox_design("enabled-$t",1,$ligne["enabled"])."</td>
 		<td>&nbsp;</td>
 	</tr>	
 	<tr>
-		<td class=legend style='font-size:18px;vertical-align=middle'>{container}:</td>
-		<td colspan=2>". Field_text("name-$t",$ligne["name"],"font-size:18px;width:100%")."</td>
+		<td class=legend style='font-size:22px;vertical-align=middle' nowrap>{container}:</td>
+		<td colspan=2>". Field_text("name-$t",$ligne["name"],"font-size:22px;width:100%")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px;vertical-align=middle'>{interface}:</td>
-		<td colspan=2>". Field_array_Hash($HASH,"eth-$t",$ligne["eth"],"style:font-size:18px;width:100%")."</td>
+		<td class=legend style='font-size:22px;vertical-align=middle' nowrap>{interface}:</td>
+		<td colspan=2>". Field_array_Hash($HASH,"eth-$t",$ligne["eth"],"style:font-size:22px;width:100%")."</td>
 	</tr>
+	<tr style='height:70px'><td colspan=3>&nbsp;<br></td></tr>
 	<tr>
-		<td class=legend style='font-size:18px;vertical-align=middle'>{guaranteed_rate}:</td>
-		<td style='font-size:18px;vertical-align=middle'>". Field_text("rate-$t",$ligne["rate"],"font-size:18px;width:100%")."</td>
-		<td style='font-size:18px;vertical-align=middle'>". Field_array_Hash($UNITS,"rate_unit-$t",$ligne["rate_unit"],"style:font-size:18px")."</td>
+		<td class=legend style='font-size:22px;vertical-align=middle' nowrap>". texttooltip("{guaranteed_rate}","{Guaranteed_Rate_explain}").":</td>
+		<td style='font-size:22px;vertical-align=middle'>". Field_text("rate-$t",$ligne["rate"],"font-size:22px;width:100%")."</td>
+		<td style='font-size:22px;vertical-align=middle'>". Field_array_Hash($UNITS1,"rate_unit-$t",$ligne["rate_unit"],"style:font-size:22px")."</td>
 	</tr>	
 	<tr>
-		<td class=legend style='font-size:18px;vertical-align=middle'>{bandwith}:</td>
-		<td style='font-size:18px;vertical-align=middle'>". Field_text("ceil-$t",$ligne["ceil"],"font-size:18px;width:100%")."</td>
-		<td style='font-size:18px;vertical-align=middle' width=1% nowrap>". Field_array_Hash($UNITS,"ceil_unit-$t",$ligne["rate_unit"],"style:font-size:18px")."</td>
+		<td class=legend style='font-size:22px;vertical-align=middle' nowrap>".texttooltip("{max_bandwidth}","{qos_ceil_explain}").":</td>
+		<td style='font-size:22px;vertical-align=middle'>". Field_text("ceil-$t",$ligne["ceil"],"font-size:22px;width:100%")."</td>
+		<td style='font-size:22px;vertical-align=middle' width=1% nowrap>". Field_array_Hash($UNITS,"ceil_unit-$t",$ligne["rate_unit"],"style:font-size:22px")."</td>
 	</tr>											
 </table>
 	<div style='margin-top:50px;text-align:right'><hr>". button("$btname","Save$t()",40)."</div></div>
@@ -436,6 +527,11 @@ function qos_containers_save(){
 	$ID=$_POST["ID"];
 	unset($_POST["ID"]);
 	$_POST["name"]=replace_accents($_POST["name"]);
+	$_POST["name"]=str_replace(" ", "", $_POST["name"]);
+	$_POST["name"]=str_replace("-", "", $_POST["name"]);
+	$_POST["name"]=str_replace("_", "", $_POST["name"]);
+	$_POST["name"]=str_replace("/", "", $_POST["name"]);
+	$_POST["name"]=str_replace("\\", "", $_POST["name"]);
 	
 	
 $table="qos_containers";
@@ -459,7 +555,7 @@ $table="qos_containers";
 	$q->QUERY_SQL($sql,"artica_backup");
 	if(!$q->ok){echo $q->mysql_error;return;}
 	
-	$results=$q->QUERY_SQL("SELECT ID FROM qos_containers ORDER by prio AND eth='$eth'","artica_backup");
+	$results=$q->QUERY_SQL("SELECT ID FROM qos_containers WHERE eth='$eth' ORDER by prio ","artica_backup");
 	if(!$q->ok){echo "Line:".__LINE__.":".$q->mysql_error;}
 	$c=1;
 	while ($ligne = mysql_fetch_assoc($results)) {
@@ -475,6 +571,7 @@ $table="qos_containers";
 function qos_containers(){
 	$page=CurrentPageName();
 	$tpl=new templates();
+	$sock=new sockets();
 	$t=time();
 	$title=$tpl->javascript_parse_text("{Q.O.S}: {interfaces}");
 	$t=time();
@@ -489,15 +586,30 @@ function qos_containers(){
 	$enabled=$tpl->javascript_parse_text("{enabled}");
 	$apply=$tpl->javascript_parse_text("{apply}");
 	$order=$tpl->javascript_parse_text("{order}");
-	$bandwith=$tpl->javascript_parse_text("{bandwith}");
+	$bandwith=$tpl->javascript_parse_text("{max_bandwidth}");
 	$new_container=$tpl->javascript_parse_text("{new_container}");
+	$apply=$tpl->javascript_parse_text("{apply}");
 	// 	$sql="INSERT INTO nic_routes (`type`,`gateway`,`pattern`,`zmd5`,`nic`)
 	// VALUES('$type','$gw','$pattern/$cdir','$md5','$route_nic');";
 //{name: '$apply', bclass: 'apply', onpress : Apply$t},
+
+	$add_to_menu=$tpl->_ENGINE_parse_body("{add_to_menu}");
+	$remove_from_menu=$tpl->_ENGINE_parse_body("{remove_from_menu}");
+	$QosTopMenu=intval($sock->GET_INFO("QosTopMenu"));
+	if($QosTopMenu==1){
+		$menu="{name: '<strong style=font-size:18px>$remove_from_menu</strong>', bclass: 'Delz', onpress : TopMenu$t},";
+		
+	}else{
+		$menu="{name: '<strong style=font-size:18px>$add_to_menu</strong>', bclass: 'link', onpress : TopMenu$t},";
+		
+	}
+	
+	
 	$buttons="
 	buttons : [
-	{name: '$new_container', bclass: 'add', onpress : Add$t},
-	
+	{name: '<strong style=font-size:18px>$new_container</strong>', bclass: 'add', onpress : Add$t},
+	{name: '<strong style=font-size:18px>$apply</strong>', bclass: 'apply', onpress : apply$t},
+	$menu
 
 
 	],";
@@ -512,15 +624,15 @@ function qos_containers(){
 	url: '$page?containers-items=yes&t=$t',
 	dataType: 'json',
 	colModel : [
-	{display: '$order', name : 'prio', width : 75, sortable : true, align: 'center'},
-	{display: '$nic', name : 'eth', width : 75, sortable : true, align: 'left'},
-	{display: '$rulename', name : 'name', width : 211, sortable : true, align: 'left'},
-	{display: '$guaranteed_rate', name : 'rate', width : 146, sortable : true, align: 'left'},
-	{display: '$bandwith', name : 'ceil', width : 134, sortable : true, align: 'left'},
-	{display: '$enabled', name : 'enabled', width : 50, sortable : true, align: 'center'},
-	{display: '&nbsp;', name : 'up', width :55, sortable : true, align: 'center'},
-	{display: '&nbsp;', name : 'down', width :55, sortable : true, align: 'center'},
-	{display: '&nbsp;', name : 'delete', width :55, sortable : true, align: 'center'},
+	{display: '<span style=font-size:18px>$order</span>', name : 'prio', width : 75, sortable : true, align: 'center'},
+	{display: '<span style=font-size:18px>$nic</span>', name : 'eth', width : 244, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$rulename</span>', name : 'name', width : 211, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$guaranteed_rate</span>', name : 'rate', width : 185, sortable : true, align: 'right'},
+	{display: '<span style=font-size:18px>$bandwith</span>', name : 'ceil', width : 134, sortable : true, align: 'right'},
+	{display: '<span style=font-size:18px>$enabled</span>', name : 'enabled', width : 90, sortable : true, align: 'center'},
+	{display: '&nbsp;', name : 'up', width :80, sortable : true, align: 'center'},
+	{display: '&nbsp;', name : 'down', width :80, sortable : true, align: 'center'},
+	{display: '&nbsp;', name : 'delete', width :80, sortable : true, align: 'center'},
 	],
 	$buttons
 	searchitems : [
@@ -529,7 +641,7 @@ function qos_containers(){
 	sortname: 'prio',
 	sortorder: 'asc',
 	usepager: true,
-	title: '<span style=font-size:22px>$title</span>',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
@@ -546,6 +658,23 @@ function Add$t(){
 	Loadjs('$page?container-js=yes&ID=0');
 
 }
+var xTopMenu$t=function (obj) {
+	var results=obj.responseText;
+	if(results.length>0){alert(results);}
+	AjaxTopMenu('template-top-menus','admin.top.menus.php');		
+	LoadAjaxRound('qos-div','system.qos.containers.php');	
+}
+
+function TopMenu$t(){
+	var XHR = new XHRConnection();
+	XHR.appendData('TopMenu',1);
+	XHR.sendAndLoad('$page', 'POST',xTopMenu$t);
+}
+
+function apply$t(){
+	Loadjs('fireqos.progress.php');
+}
+
 </script>
 ";
 echo $html;

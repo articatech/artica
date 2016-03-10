@@ -1,6 +1,6 @@
 <?php
 $GLOBALS["ICON_FAMILY"]="SYSTEM";
-ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);
+//ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);
 if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);}
 include_once('ressources/class.templates.inc');
 include_once('ressources/class.ldap.inc');
@@ -50,8 +50,8 @@ function items_delete_js(){
 var xSave$tt= function (obj) {
 	var res=obj.responseText;
 	if (res.length>3){alert(res);}
-	$('#flexRT{$_GET["t"]}').flexReload();
-	ExecuteByClassName('SearchFunction');
+	$('#HOTSPOT_TRUSTED_WEBSITES_TABLE').flexReload();
+	
 }
 
 	
@@ -75,8 +75,7 @@ function items_delete(){
 	if(!$q->TABLE_EXISTS($table)){$q->CheckTables();}
 	$q->QUERY_SQL("DELETE FROM hotspot_whitelist WHERE ID={$_POST["delete"]}");
 	if(!$q->ok){echo $q->mysql_error;return;}
-	$sock=new sockets();
-	$sock->getFrameWork("hotspot.php?restart-firewall=yes");
+
 }
 
 function item_popup(){
@@ -87,6 +86,8 @@ function item_popup(){
 	$ID=$_GET["ID"];
 	if($ID>0){
 		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT * FROM hotspot_whitelist WHERE ID='$ID'"));
+		$ipaddr=$ligne["ipaddr"];
+		$hostname=$ligne["hostname"];
 		$button="{apply}";
 	}
 	
@@ -94,18 +95,17 @@ function item_popup(){
 	$html="<div class=form style='width:95%'>
 	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:18px'>{hostname}:</td>
-		<td>". Field_text("hostname-$t",$ligne["pattern"],"font-size:18px;font-weight:bold;width:300px")."</td>
-	</tr>
+		<td class=legend style='font-size:22px'>{hostname} {or} {ipaddr}:</td>
+		<td>". Field_text("hostname-$t",$hostname,"font-size:22px;font-weight:bold;width:300px",null,null,null,false,"SaveCHK$t(event)")."</td>
+	</tr>		
 	<tr>
-		<td class=legend style='font-size:18px'>{listen_port}:</td>
-		<td>". Field_text("port-$t",$ligne["port"],"font-size:18px;width:90px")."</td>
-	</tr>				
+		<td class=legend style='font-size:22px'>{hostname}:</td>
+		<td style='font-size:22px'>$hostname</td>
+	</tr>	
 	<tr>
-		<td class=legend style='font-size:18px'>{UseSSL}:</td>
-		<td>". Field_checkbox("ssl-$t",1,$ligne["ssl"])."</td>
+		<td class=legend style='font-size:22px'>{ipaddr}:</td>
+		<td style='font-size:22px'>$ipaddr</td>
 	</tr>				
-	
 <tr>
 	<td colspan=2 align='right'><hr>". button($button,"Save$t();",22)."</td>
 </tr>
@@ -116,9 +116,7 @@ var xSave$t= function (obj) {
 	var res=obj.responseText;
 	if (res.length>3){alert(res);return;}
 	var ID='$ID';
-	$('#flexRT{$_GET["t"]}').flexReload();
-	$('#flexRT{$_GET["tt"]}').flexReload();
-	ExecuteByClassName('SearchFunction');
+	$('#HOTSPOT_TRUSTED_WEBSITES_TABLE').flexReload();
 	if(ID==0){YahooWin3Hide();}
 }
 
@@ -132,8 +130,6 @@ function Save$t(){
 	var XHR = new XHRConnection();
 	XHR.appendData('ID',  '$ID');
 	XHR.appendData('hostname',  document.getElementById('hostname-$t').value);
-	XHR.appendData('port',  document.getElementById('port-$t').value);
-	if(document.getElementById('ssl-$t').checked){ XHR.appendData('ssl',  1); }else{ XHR.appendData('ssl',  0); }
 	XHR.sendAndLoad('$page', 'POST',xSave$t);
 }
 </script>	";
@@ -180,9 +176,7 @@ function Save(){
 
 	$q->QUERY_SQL($sql);
 	if(!$q->ok){echo "Mysql error: `$q->mysql_error`";;return;}
-	$tpl=new templates();
-	$sock=new sockets();
-	$sock->getFrameWork("hotspot.php?restart-firewall=yes");
+
 
 }
 
@@ -199,49 +193,52 @@ function table(){
 	$delete=$tpl->javascript_parse_text("{delete} {zone} ?");
 	$rewrite_rules_fdb_explain=$tpl->javascript_parse_text("{rewrite_rules_fdb_explain}");
 	$new_website=$tpl->javascript_parse_text("{new_website}");
-	$comment=$tpl->javascript_parse_text("{comment}");
+	$ipaddr=$tpl->javascript_parse_text("{ipaddr}");
 	$rules=$tpl->javascript_parse_text("{rules}");
 	$rule=$tpl->javascript_parse_text("{rule}");
 	$apply=$tpl->javascript_parse_text("{apply}");
 	$action=$tpl->javascript_parse_text("{action}");
 	$website=$tpl->javascript_parse_text("{website}");
 	$restricted=$tpl->javascript_parse_text("{restricted}");
-	$title=$tpl->_ENGINE_parse_body("{whitelist}: {websites}");
-	$hotspot_whitelist_www_explain=$tpl->_ENGINE_parse_body("{hotspot_whitelist_www_explain}");
+	$title=$tpl->_ENGINE_parse_body("{trusted_websites}");
+	$About=$tpl->javascript_parse_text("{about2}");
+	$hotspot_whitelist_www_explain=$tpl->javascript_parse_text("{hotspot_whitelist_www_explain}");
 	$tt=time();
 	$buttons="
 	buttons : [
-	{name: '$new_website', bclass: 'add', onpress : NewRule$tt},
-	{name: '$apply', bclass: 'Reconf', onpress : Apply$tt},
+	{name: '<strong style=font-size:18px>$new_website</strong>', bclass: 'add', onpress : NewRule$tt},
+	{name: '<strong style=font-size:18px>$About</strong>', bclass: 'Reconf', onpress : About$tt},
+	{name: '<strong style=font-size:18px>$apply</strong>', bclass: 'Reconf', onpress : Apply$tt},
+	
 
 	],";
 
 	$html="
-	<div class=explain style='font-size:14px'>$hotspot_whitelist_www_explain</div>
-	<table class='flexRT$tt' style='display: none' id='flexRT$tt' style='width:100%'></table>
+	<table class='HOTSPOT_TRUSTED_WEBSITES_TABLE' style='display: none' id='HOTSPOT_TRUSTED_WEBSITES_TABLE' style='width:100%'></table>
 	<script>
 	function Start$tt(){
-	$('#flexRT$tt').flexigrid({
+	$('#HOTSPOT_TRUSTED_WEBSITES_TABLE').flexigrid({
 	url: '$page?items=yes&t=$tt&tt=$tt&t-rule={$_GET["t"]}&ruleid={$_GET["ruleid"]}',
 	dataType: 'json',
 	colModel : [
 	
-	{display: '$website', name : 'pattern', width :631, sortable : true, align: 'left'},
-	{display: '&nbsp;', name : 'delete', width : 100, sortable : false, align: 'center'},
+	{display: '<span style=font-size:22px>$website</span>', name : 'hostname', width :989, sortable : true, align: 'left'},
+	{display: '<span style=font-size:22px>&nbsp;</span>', name : 'delete', width : 100, sortable : false, align: 'center'},
 	],
 	$buttons
 	searchitems : [
 	{display: '$website', name : 'hostname'},
+	{display: '$ipaddr', name : 'ipaddr'},
 	],
 	sortname: 'hostname',
 	sortorder: 'asc',
 	usepager: true,
-	title: '$title',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 450,
+	height: 550,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200]
 
@@ -251,12 +248,16 @@ function table(){
 var xNewRule$tt= function (obj) {
 	var res=obj.responseText;
 	if (res.length>3){alert(res);return;}
-	$('#flexRT$t').flexReload();
-	$('#flexRT$tt').flexReload();
+	$('#HOTSPOT_TRUSTED_WEBSITES_TABLE').flexReload();
+	
+}
+
+function About$tt(){
+	alert('$hotspot_whitelist_www_explain');
 }
 
 function Apply$tt(){
-	Loadjs('system.services.cmd.php?APPNAME=HOTSPOT_FW&action=restart&cmd=%2Fetc%2Finit.d%2Fartica-hotfw&appcode=HOTSPOT_FW');
+	Loadjs('squid.hostspot.reconfigure.php');
 }
 
 
@@ -274,8 +275,8 @@ function Delete$tt(zmd5){
 var xINOUT$tt= function (obj) {
 	var res=obj.responseText;
 	if (res.length>3){alert(res);return;}
-	$('#flexRT$t').flexReload();
-	$('#flexRT$tt').flexReload();
+	$('#HOTSPOT_TRUSTED_WEBSITES_TABLE').flexReload();
+	
 }
 
 
@@ -294,12 +295,11 @@ function reverse$tt(ID){
 var x_LinkAclRuleGpid$tt= function (obj) {
 var res=obj.responseText;
 if(res.length>3){alert(res);return;}
-$('#table-$t').flexReload();
-$('#flexRT$tt').flexReload();
+$('#HOTSPOT_TRUSTED_WEBSITES_TABLE').flexReload();
 ExecuteByClassName('SearchFunction');
 }
 function FlexReloadRulesRewrite(){
-$('#flexRT$t').flexReload();
+$('#HOTSPOT_TRUSTED_WEBSITES_TABLE').flexReload();
 }
 
 function MoveRuleDestination$tt(mkey,direction){
@@ -373,12 +373,12 @@ function items(){
 	if(!$q->ok){json_error_show($q->mysql_error."<br>$sql",1);}
 	if(mysql_num_rows($results)==0){json_error_show("no data"); return;}
 
-	$fontsize="18";
+	$fontsize="26";
 	$check32="<img src='img/check-32.png'>";
 	while ($ligne = mysql_fetch_assoc($results)) {
 		$color="black";
 		
-		$delete=imgsimple("delete-32.png",null,"Loadjs('$MyPage?delete-js={$ligne["ID"]}&t={$_GET["t"]}',true)");
+		$delete=imgsimple("delete-48.png",null,"Loadjs('$MyPage?delete-js={$ligne["ID"]}&t={$_GET["t"]}',true)");
 		$hostname=$ligne["hostname"];
 		$ipaddr=$ligne["ipaddr"];
 		$port=$ligne["port"];
@@ -388,8 +388,8 @@ function items(){
 		$data['rows'][] = array(
 				'id' => $ligne['ID'],
 				'cell' => array(
-						"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$link$hostname&nbsp;-&nbsp;$ipaddr:$port</a></span>",
-						"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$delete</span>",)
+						"<span style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$link$hostname&nbsp;-&nbsp;$ipaddr</a></span>",
+						"<center style='font-size:{$fontsize}px;font-weight:normal;color:$color'>$delete</center>",)
 		);
 	}
 

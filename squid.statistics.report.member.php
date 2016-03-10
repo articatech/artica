@@ -29,19 +29,25 @@ include(dirname(__FILE__)."/ressources/class.influx.inc");
 	
 	if(isset($_GET["webfiltering-3"])){build_webfiltering_chart2();exit;}
 	if(isset($_GET["build-webfiltering-table2"])){build_webfiltering_table2();exit;}
-
+	if(isset($_GET["identity-search"])){identity_search();exit;}
 
 	
 	
 	
 	if(isset($_GET["graph1"])){graph1();exit;}
 	if(isset($_GET["graph2"])){graph2();exit;}
+	if(isset($_GET["graph3"])){graph3();exit;}
 	if(isset($_GET["table1"])){table1();exit;}
+	if(isset($_GET["table2"])){table2();exit;}
 	if(isset($_GET["build-nav"])){build_nav();exit;}
 	if(isset($_GET["stats-dahsboard-title"])){stats_dahsboard_title();exit;}
-	if(isset($_GET["build-chronology"])){if($GLOBALS["VERBOSE"]){echo "build_chronology\n<br>";}build_chronology();exit;}
+	if(isset($_GET["build-chronology"])){build_chronology_table();exit;}
 	if(isset($_GET["build-identity"])){build_identity();exit;}
+	
 	if(isset($_GET["build-websites"])){build_websites();exit;}
+	if(isset($_GET["websites-search"])){build_websites_search();exit;}
+	
+	
 	if(isset($_GET["chronos-table"])){build_chronology_table();exit;}
 	if(isset($_GET["chronos-search"])){build_chronology_search();exit;}
 	
@@ -105,7 +111,7 @@ function stats_dahsboard_title(){
 	
 	$tr[]="<a href=\"javascript:GoToChronology$t();\" $style>{chronology}</a>";
 	$tr[]="<a href=\"javascript:GoToWebsites$t();\" $style>{websites}</a>";
-	
+	$tr[]="<a href=\"javascript:GoToIdentity$t();\" $style>{users}</a>";
 	
 	echo $tpl->_ENGINE_parse_body(@implode("&nbsp;|&nbsp;", $tr));
 	
@@ -128,7 +134,7 @@ function build_graph_js(){
 	$user_data=$params["SEARCH"];
 	
 	$title="User report: From $from to $to $interval user:$user/$user_data";
-	echo "YahooWin2(1200,'$page?build-nav=yes&zmd5=$md5','$title')";
+	echo "YahooWin2(1240,'$page?build-nav=yes&zmd5=$md5','$title')";
 	
 }
 
@@ -239,24 +245,28 @@ function build_graph(){
 	
 	<table style='width:100%'>
 	<tr>
-	<td width=90%>
-	<div style='width:800px;height:550px' id='graph2-$t'></div>
-	</td>
-	<td style='width:5%;vertical-align:top'>
-	<div id='table1-$t'></div>
-	</td>
+		<td width=90%>
+			<div style='width:800px;height:550px' id='graph2-$t'></div>
+		</td>
+		<td style='width:5%;vertical-align:top'>
+			<div id='table1-$t'></div>
+		</td>
 	</tr>
 	<tr>
 	<td colspan=2><p>&nbsp;</p></td>
 	</tr>
+
+	
 	<tr>
-	<td width=90%>
-		<div style='width:800px;height:550px' id='graph3-$t'></div>
-	</td>
-	<td style='width:5%;vertical-align:top'>
-	<div  id='table3-$t'></div>
-	</td>
-	</tR>
+		<td width=90%>
+			<div style='width:800px;height:550px' id='graph4-$t'></div>
+		</td>
+		<td style='width:5%;vertical-align:top'>
+			<div  id='table4-$t'></div>
+		</td>
+	</tr>	
+	
+	
 	</table>
 	<script>
 		Loadjs('$page?graph1=yes&container=graph-$t&zmd5=$zmd5&t=$t');
@@ -270,152 +280,184 @@ function build_graph(){
 }
 
 function build_identity(){
-	$q=new mysql_squid_builder();
-	
-	$zmd5=$_GET["zmd5"];
-	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	if(strlen($values)==0){echo FATAL_ERROR_SHOW_128("{no_data}");die();}
-	$MAIN=unserialize(base64_decode($values));
-	$ROWS=$MAIN["IDENT"];
-	
-	$html[]="<div style='width:98%;height:1150px;overflow:auto' class=form>";
-	$html[]="<table style='width:100%'>";
-	
-	$color=null;
-	
+	$page=CurrentPageName();
 	$tpl=new templates();
-	while (list ($index, $array) = each ($ROWS) ){
-		$IPADDR=$array["IPADDR"];
-		$USERID=$array["USERID"];
-		$MAC=$array["MAC"];
-		$html[]="<tr style='background-color:$color'>";
-		$html[]="<td style='font-size:22px;width:125px;padding:10px;font-weight:bold'>&nbsp;$MAC</td>";
-		$html[]="<td style='font-size:22px;width:125px;text-align:left;padding:10px' nowrap>&nbsp;$USERID</td>";
-		$html[]="<td style='font-size:22px;width:50px;text-align:right;padding:10px' nowrap>&nbsp;$IPADDR</td>";
-		$html[]="</tr>";
+	$zmd5=$_GET["zmd5"];
+	$tt=time();
+	$ipaddr=$tpl->javascript_parse_text("{ipaddr}");
+	$zDate=$tpl->javascript_parse_text("{zDate}");
+	$size=$tpl->javascript_parse_text("{size}");
+	$hits=$tpl->javascript_parse_text("{hits}");
+	$chronology=$tpl->javascript_parse_text("{identity}");
 	
+	$html="
+	<table class='TABLEZ-$zmd5' style='display: none' id='TABLEZ-$zmd5' style='width:100%'></table>
+	<script>
+	function Start$tt(){
+	$('#TABLEZ-$zmd5').flexigrid({
+	url: '$page?identity-search=yes&zmd5=$zmd5',
+	dataType: 'json',
+	colModel : [
+	{display: '<span style=font-size:18px>MAC</span>', name : 'mac', width : 514, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>USERID</span>', name : 'userid', width : 151, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$ipaddr</span>', name : 'ipaddr', width : 151, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$size</span>', name : 'size', width : 151, sortable : true, align: 'left'},
+	
+	],
+	$buttons
+	searchitems : [
+	{display: 'mac', name : 'mac'},
+	{display: 'userid', name : 'userid'},
+	{display: '$ipaddr', name : 'ipaddr'},
+	],
+	sortname: 'size',
+	sortorder: 'desc',
+	usepager: true,
+	title: '<span style=font-size:20px>$chronology</span>',
+	useRp: true,
+	rp: 50,
+	showTableToggleBtn: false,
+	width: '99%',
+	height: 600,
+	singleSelect: true,
+	rpOptions: [10, 20, 30, 50,100,200]
+	
+	});
+	}
+	Start$tt();
+	</script>";
+	echo $html;
+	
+}
+
+function identity_search(){
+	$page=1;
+	$zmd5=$_GET["zmd5"];
+	$q=new postgres_sql();
+	$table="{$zmd5}report";
+	$MyPage=CurrentPageName();
+	
+	
+	$table="(SELECT SUM(size) as size,ipaddr,mac,userid FROM \"$table\" GROUP by ipaddr,mac,userid) as t";
+	
+	if(isset($_POST["sortname"])){if($_POST["sortname"]<>null){$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";}}
+	if(isset($_POST['page'])) {$page = $_POST['page'];}
+	
+	$searchstring=string_to_flexPostGresquery();
+	if($searchstring<>null){
+		$sql="SELECT COUNT(*) as tcount FROM $table WHERE $searchstring";
+		$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+		if(!$q->ok){json_error_show($q->mysql_error,0);}
+		$total = $ligne["tcount"];
+	
+	}else{
+		$sql="SELECT COUNT(*) as tcount FROM \"$table\"";
+		$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+		if(!$q->ok){json_error_show($q->mysql_error,0);}
+		$total = $ligne["tcount"];
+	}
+	
+	if (isset($_POST['rp'])) {$rp = $_POST['rp'];}
+	if(!is_numeric($rp)){$rp=50;}
+	
+	
+	$pageStart = ($page-1)*$rp;
+	$limitSql = "LIMIT $rp OFFSET $pageStart";
+	
+	$sql="SELECT *  FROM $table WHERE $searchstring $ORDER $limitSql";
+	
+	if(isset($_GET["verbose"])){echo "<hr><code>$sql</code></hr>";}
+	$results = $q->QUERY_SQL($sql);
+	
+	if(!$q->ok){json_error_show($q->mysql_error,1);}
+	
+	if(pg_num_rows($results)==0){
+		json_error_show("$table no data",1);
 	}
 	
 	
-	$html[]="</table>";
-	$html[]="</div>";
-	echo @implode("\n", $html);
+	
+	$fontsize="26px";
+	$data = array();
+	$data['page'] = 1;
+	$data['total'] = $total;
+	$data['rows'] = array();
+	
+	
+	
+	
+	while($ligne=@pg_fetch_assoc($results)){
+		
+		$MAC=$ligne["mac"];
+		$userid=$ligne["userid"];
+		$ipaddr=$ligne["ipaddr"];
+		$size=FormatBytes($ligne["size"]/1024);
+			
+		$data['rows'][] = array(
+				'id' => md5(serialize($ligne)),
+				'cell' => array(
+						"<span style='font-size:16px'>$MAC</a></span>",
+						"<span style='font-size:16px'>$userid</span>",
+						"<span style='font-size:16px'>$ipaddr</span>",
+						"<span style='font-size:16px'>$size</span>",
+	
+				)
+		);
+	}
+	
+	
+	echo json_encode($data);	
 	
 }
 
 function build_websites(){
-	$q=new mysql_squid_builder();
-	
-	$zmd5=$_GET["zmd5"];
-	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	if(strlen($values)==0){echo FATAL_ERROR_SHOW_128("{no_data}");die();}
-	$MAIN=unserialize(base64_decode($values));
-	$ROWS=$MAIN["FAMS"];
-	
-	$html[]="<div style='width:98%;height:1150px;overflow:auto' class=form>";
-	$html[]="<table style='width:100%'>";
-	
-	$color=null;
-	
-	$tpl=new templates();
-	while (list ($website, $size) = each ($ROWS) ){
-		
-		$size=FormatBytes($size/1024);
-		$html[]="<tr style='background-color:$color'>";
-		$html[]="<td style='font-size:22px;width:125px;padding:10px;font-weight:bold'>&nbsp;$website</td>";
-		$html[]="<td style='font-size:22px;width:125px;text-align:left;padding:10px' nowrap>&nbsp;$size</td>";
-		
-		$html[]="</tr>";
-	
-	}
-	
-	
-	$html[]="</table>";
-	$html[]="</div>";
-	echo @implode("\n", $html);	
-	
-}
-
-function build_chronology(){
-	$zmd5=$_GET["zmd5"];
-	if($GLOBALS["VERBOSE"]){echo "$zmd5 -> build_chronology\n<br>";}
-	$q=new mysql_squid_builder();
 	$page=CurrentPageName();
-	
-	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	
-	$BUILD=true;
-	if($q->TABLE_EXISTS("chronos$zmd5")){
-		if($q->COUNT_ROWS("chronos$zmd5")>0){
-			$BUILD=false;
-		}
-	}
-
-	
-	if($GLOBALS["VERBOSE"]){echo "$zmd5 -> BUILD = $BUILD\n<br>";}
-	
-	$q=new mysql_squid_builder();
-	if($BUILD){
-		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-		$values=$ligne["values"];
-		if(strlen($values)==0){echo FATAL_ERROR_SHOW_128("{no_data}");die();}
+	$tpl=new templates();
+	$zmd5=$_GET["zmd5"];
+	$tt=time();
+	$SITE=$tpl->javascript_parse_text("{website}");
+	$zDate=$tpl->javascript_parse_text("{zDate}");
+	$size=$tpl->javascript_parse_text("{size}");
+	$hits=$tpl->javascript_parse_text("{hits}");
+	$chronology=$tpl->javascript_parse_text("{websites}");
 		
-			$q->QUERY_SQL("CREATE TABLE IF NOT EXISTS `chronos$zmd5` (
-			`zDate` DATETIME,
-			`BYTES` BIGINT UNSIGNED,
-			`RQS` BIGINT UNSIGNED,
-			`SITE` VARCHAR(128),
-			KEY `zDate` (`zDate`),
-			KEY `SITE` (`SITE`)
-			) ENGINE=MYISAM;"
-		);
-			
-		if(!$q->ok){echo $q->mysql_error_html();}
-		
-		
-		$MAIN=unserialize(base64_decode($values));
-		$ROWS=$MAIN["CRONOS"];
-		while (list ($index, $array) = each ($ROWS) ){
-		
-			$TIME=$array["TIME"];
-			
-			$BYTES=$array["BYTES"];
-			$SITE=mysql_escape_string2($array["SITE"]);
-			$RQS=$array["RQS"];
-			$f[]="('$TIME','$BYTES','$SITE','$RQS')";
-			
-			if(count($f)>500){
-				$sql="INSERT IGNORE INTO `chronos$zmd5` (zDate,BYTES,SITE,RQS) VALUES ".
-				@implode(",", $f);
-				$q->QUERY_SQL($sql);
-				$f=array();
-			}
-			
-		}
-		
-		if(count($f)>0){
-			$sql="INSERT IGNORE INTO `chronos$zmd5` (zDate,BYTES,SITE,RQS) VALUES ".
-					@implode(",", $f);
-			$q->QUERY_SQL($sql);
-			$f=array();
-		}		
-		
-		
-	}
-	
-	echo 
-	"<div id='cronos-$zmd5'></div>
+	$html="
+	<table class='TABLEW-$zmd5' style='display: none' id='TABLEW-$zmd5' style='width:100%'></table>
 	<script>
-			LoadAjax('cronos-$zmd5','$page?chronos-table=yes&zmd5=$zmd5');
-	</script>
+	function Start$tt(){
+	$('#TABLEW-$zmd5').flexigrid({
+	url: '$page?websites-search=yes&zmd5=$zmd5',
+	dataType: 'json',
+	colModel : [
+	{display: '<span style=font-size:18px>$SITE</span>', name : 'familysite', width : 514, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$hits</span>', name : 'rqs', width : 151, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$size</span>', name : 'size', width : 151, sortable : true, align: 'left'},
 	
-	";
+	],
+	$buttons
+	searchitems : [
+	{display: '$SITE', name : 'familysite'},
+	],
+	sortname: 'size',
+	sortorder: 'desc',
+	usepager: true,
+	title: '<span style=font-size:20px>$chronology</span>',
+	useRp: true,
+	rp: 50,
+	showTableToggleBtn: false,
+	width: '99%',
+	height: 600,
+	singleSelect: true,
+	rpOptions: [10, 20, 30, 50,100,200]
 	
+	});
+	}
+Start$tt();
+</script>";
+	echo $html;
 }
+
+
 function FormatNumber($number, $decimals = 0, $thousand_separator = '&nbsp;', $decimal_point = '.'){$tmp1 = round((float) $number, $decimals); while (($tmp2 = preg_replace('/(\d+)(\d\d\d)/', '\1 \2', $tmp1)) != $tmp1)$tmp1 = $tmp2; return strtr($tmp1, array(' ' => $thousand_separator, '.' => $decimal_point));}	
 
 
@@ -478,25 +520,33 @@ function build_webfiltering(){
 
 function graph1(){
 
-	$q=new mysql_squid_builder();
+	$q=new postgres_sql();
 	$zmd5=$_GET["zmd5"];
 	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	if(strlen($values)==0){echo "alert('NO data...{$ligne["values"]}');";$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");return;}
-	$MAIN=unserialize(base64_decode($values));
-
-	if(!isset($MAIN["GRAPH1"])){
-		echo "alert('Corrupted data...{$ligne["values"]}');UnlockPage();";
-		$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");
-		return;
-	}
-
 	$page=CurrentPageName();
 	$time=time();
+	$table="{$zmd5}report";
 
-	$xdata=$MAIN["GRAPH1"]["xdata"];
-	$ydata=$MAIN["GRAPH1"]["ydata"];
+	$q=new postgres_sql();
+	$sql="SELECT SUM(size) as size,zdate FROM \"$table\" GROUP BY zdate ORDER BY zdate";
+	
+	if($GLOBALS["VERBOSE"]){echo $sql."<br>\n";}
+	$results=$q->QUERY_SQL($sql);
+	
+	if(!$q->ok){
+		if($GLOBALS["VERBOSE"]){echo $q->mysql_error."<br>\n";}
+	}
+	
+	
+	while($ligne=@pg_fetch_assoc($results)){
+		$size=$ligne["size"];
+		$size=$size/1024;
+		$xdata[]=$ligne["zdate"];
+		$ydata[]=$size;
+	}
+	
+	
+	
 
 	
 
@@ -526,14 +576,28 @@ function graph2(){
 
 	$q=new mysql_squid_builder();
 	$zmd5=$_GET["zmd5"];
-	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
+	
+	
+	$table="{$zmd5}report";
+	
+	$q=new postgres_sql();
+	$sql="SELECT SUM(size) as size,familysite FROM \"$table\" GROUP BY familysite ORDER BY size DESC LIMIT 10";
+	$results=$q->QUERY_SQL($sql);
+	
+	if($GLOBALS["VERBOSE"]){echo $sql."<br>\n";}
+	
+	while($ligne=@pg_fetch_assoc($results)){
+		$size=$ligne["size"];
+		$size=$size/1024;
+		$size=round($size/1024);
+		$familysite=$ligne["familysite"];
+		$PieData[$familysite]=$size;
+	}
+	
+	
+	
 
-	if(strlen($values)==0){echo "alert('NO data...{$ligne["values"]}');UnlockPage();";$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");return;}
-	$MAIN=unserialize(base64_decode($values));
-
-	$PieData=$MAIN["GRAPH2"]["PIEDATA"];
+	
 	$highcharts=new highcharts();
 	$highcharts->container=$_GET["container"];
 	$highcharts->PieDatas=$PieData;
@@ -545,7 +609,46 @@ function graph2(){
 
 
 }
+function graph3(){
+	$page=CurrentPageName();
+	$tpl=new templates();
 
+	$q=new mysql_squid_builder();
+	$zmd5=$_GET["zmd5"];
+
+
+	$table="{$zmd5}report";
+
+	$q=new postgres_sql();
+	$sql="SELECT SUM(rqs) as size,familysite FROM \"$table\" GROUP BY familysite ORDER BY size DESC LIMIT 10";
+	$results=$q->QUERY_SQL($sql);
+
+	
+	if(!$q->ok){echo "alert('".$q->mysql_error."');";return;}
+	
+	if($GLOBALS["VERBOSE"]){echo $sql."<br>\n";}
+
+	while($ligne=@pg_fetch_assoc($results)){
+		$size=$ligne["size"];
+		$familysite=$ligne["familysite"];
+		$PieData[$familysite]=$size;
+	}
+
+
+
+
+
+	$highcharts=new highcharts();
+	$highcharts->container=$_GET["container"];
+	$highcharts->PieDatas=$PieData;
+	$highcharts->ChartType="pie";
+	$highcharts->PiePlotTitle="{websites}";
+	$highcharts->Title=$tpl->_ENGINE_parse_body("{websites}/{hits}");
+	echo $highcharts->BuildChart();
+	echo "LoadAjax('table4-{$_GET["t"]}','$page?table2=yes&zmd5=$zmd5&t={$_GET["t"]}');\n";
+
+
+}
 function build_webfiltering_chart1(){
 	$page=CurrentPageName();
 	$tpl=new templates();
@@ -668,22 +771,47 @@ function build_webfiltering_table2(){
 }
 function table1(){
 	$page=CurrentPageName();
-	$q=new mysql_squid_builder();
+	$q=new postgres_sql();
 	$zmd5=$_GET["zmd5"];
 	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	$MAIN=unserialize(base64_decode($values));
-
+	
+	$table="{$zmd5}report";
+	
+	$results=$q->QUERY_SQL("SELECT SUM(size) as size,familysite FROM \"$table\" GROUP BY familysite ORDER BY size DESC LIMIT 15");
 	$html[]="<table style='width:100%'>";
-	while (list ($site, $size) = each ($MAIN["GRAPH2"]["TABLE"]) ){
-		if($size>1024){$size=FormatBytes($size/1024);}else{$size=round($size,2)." Bytes";}
+	while($ligne=@pg_fetch_assoc($results)){
+		$site=$ligne["familysite"];
+		$size=FormatBytes($ligne["size"]/1024);
 		$html[]="<tr><td style='font-size:18px;padding:8px'>$site</td>
 		<td style='font-size:18px' nowrap>$size</td></tr>";
 	}
 
 	$html[]="</table>";
 	$html[]="<script>";
+	$html[]="\nLockPage();\nLoadjs('$page?graph3=yes&zmd5=$zmd5&t={$_GET["t"]}&container=graph4-{$_GET["t"]}')\n";
+	$html[]="</script>";
+	echo @implode("", $html);
+}
+function table2(){
+	$page=CurrentPageName();
+	$q=new postgres_sql();
+	$zmd5=$_GET["zmd5"];
+	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
+
+	$table="{$zmd5}report";
+
+	$results=$q->QUERY_SQL("SELECT SUM(rqs) as size,familysite FROM \"$table\" GROUP BY familysite ORDER BY size DESC LIMIT 15");
+	$html[]="<table style='width:100%'>";
+	while($ligne=@pg_fetch_assoc($results)){
+		$site=$ligne["familysite"];
+		$size=FormatNumber($ligne["size"]);
+		$html[]="<tr><td style='font-size:18px;padding:8px'>$site</td>
+		<td style='font-size:18px' nowrap>$size</td></tr>";
+	}
+
+	$html[]="</table>";
+	$html[]="<script>";
+	//$html[]="\nLockPage();\nLoadjs('$page?graph3=yes&zmd5=$zmd5&t={$_GET["t"]}&container=graph4-{$_GET["t"]}')\n";
 	$html[]="</script>";
 	echo @implode("", $html);
 }
@@ -707,15 +835,15 @@ function build_chronology_table(){
 	dataType: 'json',
 	colModel : [
 	
-	{display: '<span style=font-size:18px>$zDate</span>', name : 'zDate', width :175, sortable : true, align: 'left'},
-	{display: '<span style=font-size:18px>$SITE</span>', name : 'SITE', width : 514, sortable : true, align: 'left'},
-	{display: '<span style=font-size:18px>$hits</span>', name : 'RQS', width : 151, sortable : true, align: 'left'},
-	{display: '<span style=font-size:18px>$size</span>', name : 'BYTES', width : 151, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$zDate</span>', name : 'zdate', width :175, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$SITE</span>', name : 'familysite', width : 514, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$hits</span>', name : 'rqs', width : 151, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$size</span>', name : 'size', width : 151, sortable : true, align: 'left'},
 	
 	],
 	$buttons
 	searchitems : [
-	{display: '$SITE', name : 'SITE'},
+	{display: '$SITE', name : 'familysite'},
 	],
 	sortname: 'zDate',
 	sortorder: 'asc',
@@ -725,7 +853,7 @@ function build_chronology_table(){
 	rp: 50,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 477,
+	height: 600,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200]
 	
@@ -735,45 +863,132 @@ Start$tt();
 </script>";
 	echo $html;
 }
+
+function build_websites_search(){
+	$page=1;
+	$zmd5=$_GET["zmd5"];
+	$q=new postgres_sql();
+	$table="{$zmd5}report";
+	$MyPage=CurrentPageName();
+	
+	
+	$table="(SELECT SUM(size) as size, SUM(rqs) as rqs, familysite FROM \"$table\" GROUP by familysite ORDER by size desc) as t";
+	
+	if(isset($_POST["sortname"])){if($_POST["sortname"]<>null){$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";}}
+	if(isset($_POST['page'])) {$page = $_POST['page'];}
+	
+	$searchstring=string_to_flexPostGresquery();
+	if($searchstring<>null){
+		$sql="SELECT COUNT(*) as tcount FROM $table WHERE $searchstring";
+		$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+		if(!$q->ok){json_error_show($q->mysql_error,0);}
+		$total = $ligne["tcount"];
+	
+	}else{
+		$sql="SELECT COUNT(*) as tcount FROM \"$table\"";
+		$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+		if(!$q->ok){json_error_show($q->mysql_error,0);}
+		$total = $ligne["tcount"];
+	}
+	
+	if (isset($_POST['rp'])) {$rp = $_POST['rp'];}
+	if(!is_numeric($rp)){$rp=50;}
+	
+	
+	$pageStart = ($page-1)*$rp;
+	$limitSql = "LIMIT $rp OFFSET $pageStart";
+	
+	$sql="SELECT *  FROM $table WHERE $searchstring $ORDER $limitSql";
+	
+	if(isset($_GET["verbose"])){echo "<hr><code>$sql</code></hr>";}
+	$results = $q->QUERY_SQL($sql);
+	
+	if(!$q->ok){json_error_show($q->mysql_error,1);}
+	
+	if(pg_num_rows($results)==0){
+		json_error_show("$table no data",1);
+	}
+	
+	
+	
+	$fontsize="26px";
+	$data = array();
+	$data['page'] = 1;
+	$data['total'] = $total;
+	$data['rows'] = array();
+	
+	
+	
+	
+	while($ligne=@pg_fetch_assoc($results)){
+		$zDate=$ligne["zdate"];
+		$BYTES=$ligne["size"];
+		$RQS=$ligne["rqs"];
+		$SITE=$ligne["familysite"];
+		$RQS=FormatNumber($RQS);
+		$BYTES=FormatBytes($BYTES/1024);
+		$zDate=str_replace("00:00:00", "", $zDate);
+			
+		$data['rows'][] = array(
+				'id' => md5(serialize($ligne)),
+				'cell' => array(
+						"<span style='font-size:16px'>$SITE</a></span>",
+						"<span style='font-size:16px'>$RQS</span>",
+						"<span style='font-size:16px'>$BYTES</span>",
+	
+				)
+		);
+	}
+	
+	
+	echo json_encode($data);
+	
+	}
+
 function build_chronology_search(){
 	$page=1;
 	$zmd5=$_GET["zmd5"];
-	$q=new mysql_squid_builder();
-	$table="chronos$zmd5";
+	$q=new postgres_sql();
+	$table="{$zmd5}report";
 	$MyPage=CurrentPageName();
 
 	
 
 	if(isset($_POST["sortname"])){if($_POST["sortname"]<>null){$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";}}
-	if(isset($_POST['page'])) {$page = $_POST['page'];}
+	
 
-	$searchstring=string_to_flexquery();
+	$searchstring=string_to_flexPostGresquery();
+	
+	
 	if($searchstring<>null){
-		$sql="SELECT COUNT(*) as TCOUNT FROM `$table` WHERE 1 $searchstring";
-		$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
-		$total = $ligne["TCOUNT"];
+		$sql="SELECT COUNT(*) as tcount FROM \"$table\" WHERE $searchstring";
+		$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+		if(!$q->ok){json_error_show($q->mysql_error,0);}
+		$total = $ligne["tcount"];
 
 	}else{
-		$sql="SELECT COUNT(*) as TCOUNT FROM `$table`";
-		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
-		$total = $ligne["TCOUNT"];
+		$sql="SELECT COUNT(*) as tcount FROM \"$table\"";
+		$ligne=pg_fetch_array($q->QUERY_SQL($sql));
+		if(!$q->ok){json_error_show($q->mysql_error,0);}
+		$total = $ligne["tcount"];
 	}
 
 	if (isset($_POST['rp'])) {$rp = $_POST['rp'];}
 	if(!is_numeric($rp)){$rp=50;}
 
-
+	if(isset($_POST['page'])) {$page = $_POST['page'];}
 	$pageStart = ($page-1)*$rp;
-	$limitSql = "LIMIT $pageStart, $rp";
+	$limitSql = "LIMIT $rp OFFSET $pageStart";
 
-	$sql="SELECT *  FROM `$table` WHERE 1 $searchstring $ORDER $limitSql";
+	$sql="SELECT *  FROM \"$table\" WHERE $searchstring $ORDER $limitSql";
+	//writelogs($sql,__FUNCTION__,__FILE__,__LINE__);
 
 	if(isset($_GET["verbose"])){echo "<hr><code>$sql</code></hr>";}
 	$results = $q->QUERY_SQL($sql);
 
 	if(!$q->ok){json_error_show($q->mysql_error,1);}
 
-	if(mysql_num_rows($results)==0){
+	if(pg_num_rows($results)==0){
 		json_error_show("$table no data",1);
 	}
 
@@ -781,20 +996,21 @@ function build_chronology_search(){
 
 	$fontsize="26px";
 	$data = array();
-	$data['page'] = 1;
+	$data['page'] = $page;
 	$data['total'] = $total;
 	$data['rows'] = array();
 
 
 
 
-	while ($ligne = mysql_fetch_assoc($results)) {
-		$zDate=$ligne["zDate"];
-		$BYTES=$ligne["BYTES"];
-		$RQS=$ligne["RQS"];
-		$SITE=$ligne["SITE"];
+	while($ligne=@pg_fetch_assoc($results)){
+		$zDate=$ligne["zdate"];
+		$BYTES=$ligne["size"];
+		$RQS=$ligne["rqs"];
+		$SITE=$ligne["familysite"];
 		$RQS=FormatNumber($RQS);
 		$BYTES=FormatBytes($BYTES/1024);
+		$zDate=str_replace("00:00:00", "", $zDate);
 					
 		$data['rows'][] = array(
 				'id' => md5(serialize($ligne)),

@@ -40,7 +40,7 @@ function page(){
 	$sock=new sockets();
 	$ArticaTechNetSquidRepo=unserialize(base64_decode($sock->GET_INFO("ArticaTechNetSquidRepo")));
 	$tpl=new templates();
-	$realsquidversion=$sock->getFrameWork("squid.php?full-version=yes");
+	$realsquidversion=@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidRealVersion");
 	
 	
 	$many=texttooltip("{manual_update}","position:left:{manual_update_proxy_explain}",

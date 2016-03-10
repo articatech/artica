@@ -151,8 +151,8 @@ class compile_ufdbguard{
 		if($SquidGuardApachePort==0){$SquidGuardApachePort=9020;}
 		
 		if($SquidGuardServerName<>null){
-			$this->SquidGuardIPWeb="http://$SquidGuardServerName:$SquidGuardApachePort/exec.squidguard.php";
-			$this->SquidGuardIPWebSSL="https://$SquidGuardServerName:$SquidGuardApacheSSLPort/exec.squidguard.php";
+			$this->SquidGuardIPWeb="http://$SquidGuardServerName:$SquidGuardApachePort/ufdbguardd.php";
+			$this->SquidGuardIPWebSSL="https://$SquidGuardServerName:$SquidGuardApacheSSLPort/ufdbguardd.php";
 			return;
 		}
 		
@@ -182,10 +182,10 @@ class compile_ufdbguard{
 		
 		
 		if($this->SquidGuardIPWeb==null){
-			$this->SquidGuardIPWeb="http://$MAIN_INTERFACE:$SquidGuardApachePort/exec.squidguard.php";
+			$this->SquidGuardIPWeb="http://$MAIN_INTERFACE:$SquidGuardApachePort/ufdbguardd.php";
 		}
 		if($this->SquidGuardIPWebSSL==null){
-			$this->SquidGuardIPWebSSL="https://$MAIN_INTERFACE:$SquidGuardApacheSSLPort/exec.squidguard.php";
+			$this->SquidGuardIPWebSSL="https://$MAIN_INTERFACE:$SquidGuardApacheSSLPort/ufdbguardd.php";
 		}
 		
 		
@@ -212,9 +212,9 @@ class compile_ufdbguard{
 		if($hostname==null){
 			if($MAIN_INTERFACE<>null){
 				echo "Starting......: ".date("H:i:s")." ufdbGuard IPADDR `$hostname` Not found !\n";
-				$this->SquidGuardIPWeb="http://$MAIN_INTERFACE:9020/exec.squidguard.php";
-				$this->SquidGuardIPWebSSL="https://$MAIN_INTERFACE:9025/exec.squidguard.php";
-				echo "Starting......: ".date("H:i:s")." ufdbGuard Redirect to `http://$MAIN_INTERFACE:9020/exec.squidguard.php`\n";
+				$this->SquidGuardIPWeb="http://$MAIN_INTERFACE:9020/ufdbguardd.php";
+				$this->SquidGuardIPWebSSL="https://$MAIN_INTERFACE:9025/ufdbguardd.php";
+				echo "Starting......: ".date("H:i:s")." ufdbGuard Redirect to `http://$MAIN_INTERFACE:9020/ufdbguardd.php`\n";
 				return;
 			}
 		}
@@ -243,7 +243,7 @@ class compile_ufdbguard{
 	}
 	
 	
-	private function BuildCertificates(){
+	public function BuildCertificates(){
 		if(isset($GLOBALS["BuildCertificatesF"])){return;}
 		$GLOBALS["BuildCertificatesF"]=true;
 		$q=new mysql_squid_builder();
@@ -272,7 +272,15 @@ class compile_ufdbguard{
 		@chmod("/var/lib/squidguard/security",0755);
 		@chown("/var/lib/squidguard/security","squid");
 		@chown("/var/lib/squidguard/security/none","squid");
+		
+		@mkdir("/home/ufdbcat/security",0755,true);
+		@mkdir("/home/ufdbcat/security/none",0755,true);
+		@chmod("/home/ufdbcat/security",0755);
+		
+		
+		
 		@file_put_contents("/var/lib/squidguard/security/cacerts", @implode("\n", $f));
+		@file_put_contents("/home/ufdbcat/security/cacerts", @implode("\n", $f));
 		
 	}
 	
@@ -384,8 +392,8 @@ class compile_ufdbguard{
 		if(preg_match("#^([0-9]+)\.([0-9]+)#", $squidversion,$re)){$squidversion=$re[1].".".$re[2];}		
 		
 		if($this->SquidGuardWebUseExternalUri==0){
-			if(!preg_match("#squidguard\.php#",$this->SquidGuardIPWeb)){$this->SquidGuardIPWeb=$this->SquidGuardIPWeb."/exec.squidguard.php?";}
-			if(!preg_match("#squidguard\.php#",$this->SquidGuardIPWebSSL)){$this->SquidGuardIPWebSSL=$this->SquidGuardIPWebSSL."/exec.squidguard.php?";}
+			if(!preg_match("#ufdbguardd\.php#",$this->SquidGuardIPWeb)){$this->SquidGuardIPWeb=$this->SquidGuardIPWeb."/ufdbguardd.php?";}
+			if(!preg_match("#ufdbguardd\.php#",$this->SquidGuardIPWebSSL)){$this->SquidGuardIPWebSSL=$this->SquidGuardIPWebSSL."/ufdbguardd.php?";}
 		}
 		
 		if($this->SquidGuardWebUseExternalUri==1){
@@ -1231,12 +1239,12 @@ function ParseLDAPSubUsersGroups($LDAPID,$dn){
 		if($this->SquidGuardWebUseExternalUri==0){
 			if(!preg_match("#^http.*?\/\/#",$this->SquidGuardIPWeb)){
 				$this->SquidGuardIPWeb="http://$this->SquidGuardIPWeb";
-				if(!preg_match("#squidguard\.php#",$this->SquidGuardIPWeb)){$this->SquidGuardIPWeb=$this->SquidGuardIPWeb."/exec.squidguard.php";}
+				if(!preg_match("#ufdbguardd\.php#",$this->SquidGuardIPWeb)){$this->SquidGuardIPWeb=$this->SquidGuardIPWeb."/ufdbguardd.php";}
 			}
 
 			if(!preg_match("#^http.*?\/\/#",$this->SquidGuardIPWebSSL)){
 				$this->SquidGuardIPWebSSL="https://$this->SquidGuardIPWebSSL";
-				if(!preg_match("#squidguard\.php#",$this->SquidGuardIPWebSSL)){$this->SquidGuardIPWebSSL=$this->SquidGuardIPWebSSL."/exec.squidguard.php";}
+				if(!preg_match("#ufdbguardd\.php#",$this->SquidGuardIPWebSSL)){$this->SquidGuardIPWebSSL=$this->SquidGuardIPWebSSL."/ufdbguardd.php";}
 			}			
 			
 		}	
@@ -1683,7 +1691,7 @@ function ParseLDAPSubUsersGroups($LDAPID,$dn){
 		if($this->SquidGuardWebUseExternalUri==0){
 			if(!preg_match("#^http.*?\/\/#",$this->SquidGuardIPWeb)){
 				$this->SquidGuardIPWeb="https://$this->SquidGuardIPWeb";
-				if(!preg_match("#squidguard\.php#",$this->SquidGuardIPWeb)){$this->SquidGuardIPWeb=$this->SquidGuardIPWebEnc."/exec.squidguard.php?$redirect_pattern";}
+				if(!preg_match("#ufdbguardd\.php#",$this->SquidGuardIPWeb)){$this->SquidGuardIPWeb=$this->SquidGuardIPWebEnc."/ufdbguardd.php?$redirect_pattern";}
 			}		
 		}
 		
@@ -2046,7 +2054,7 @@ function ParseLDAPSubUsersGroups($LDAPID,$dn){
 			}
 			
 				$array[]="\t\tpass ".trim(@implode(" ", $ZALLOW)."$bannedExtDomains$bannedfiles$bannedRegexP ".@implode(" ", $ZBANN))." all";
-				$array[]="\t\tredirect {$GLOBALS["ISP_ERROR_PAGE"]["account-$userid"]}/exec.squidguard.php?$redirect_pattern";
+				$array[]="\t\tredirect {$GLOBALS["ISP_ERROR_PAGE"]["account-$userid"]}/ufdbguardd.php?$redirect_pattern";
 			$array[]="\t}\n";				
 			
 		return @implode("\n", $array);

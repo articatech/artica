@@ -36,7 +36,7 @@ writelogs_framework("Unable to understand ".@implode("&",$a),__FUNCTION__,__FILE
 
 function is_installed(){
 	
-	if(is_file("/opt/influxdb/influxd")){
+	if(is_file("/usr/local/ArticaStats/bin/postgres")){
 		echo "<articadatascgi>TRUE</articadatascgi>";
 		
 	}
@@ -123,7 +123,7 @@ function restore_server_progress(){
 
 function restart_silent(){
 	
-	system("/etc/init.d/influx-db restart");
+	system("/etc/init.d/artica-postgres restart");
 }
 
 function restart_progress(){
@@ -263,8 +263,6 @@ function backup(){
 	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.influxdb.php --backup >{$GLOBALS["LOGSFILES"]} 2>&1 &";
 	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
 	shell_exec($cmd);
-	
-	
 }
 
 function service_status(){

@@ -1,4 +1,5 @@
 <?php
+if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);}
 	include_once('ressources/class.templates.inc');
 	include_once('ressources/class.ldap.inc');
 	include_once('ressources/class.users.menus.inc');
@@ -105,11 +106,13 @@ function page(){
 	$new_address=$tpl->javascript_parse_text("{new_address}");
 	$disable=$tpl->javascript_parse_text("{disable}");
 	$firewall=$tpl->javascript_parse_text("{firewall}");
+	$apply=$tpl->javascript_parse_text("{apply}");
 	$buttons="
 		buttons : [
-		{name: '$new_range', bclass: 'add', onpress : AddNetworkRange$t},
-		{name: '$new_address', bclass: 'add', onpress : AddNetworkAddress$t},
-		{name: '$firewall', bclass: 'add', onpress : Firewall$t},
+		{name: '<strong style=font-size:18px>$new_range</strong>', bclass: 'add', onpress : AddNetworkRange$t},
+		{name: '<strong style=font-size:18px>$new_address</strong>', bclass: 'add', onpress : AddNetworkAddress$t},
+		{name: '<strong style=font-size:18px>$firewall</strong>', bclass: 'add', onpress : Firewall$t},
+		{name: '<strong style=font-size:18px>$apply</strong>', bclass: 'apply', onpress : Apply$t},
 		],";
 		
 	
@@ -127,9 +130,9 @@ $('#flexRT$t').flexigrid({
 	dataType: 'json',
 	colModel : [
 		{display: '&nbsp;', name : 'none0', width : 32, sortable : false, align: 'left'},	
-		{display: '$networks', name : 'pattern', width :421, sortable : true, align: 'left'},
-		{display: '$description', name : 'description', width :346, sortable : true, align: 'left'},
-		{display: '$disable', name : 'ban', width : 49, sortable : true, align: 'center'},
+		{display: '<span style=font-size:20px>$networks</span>', name : 'pattern', width :421, sortable : true, align: 'left'},
+		{display: '<span style=font-size:20px>$description</span>', name : 'description', width :346, sortable : true, align: 'left'},
+		{display: '<span style=font-size:20px>$disable</span>', name : 'ban', width : 49, sortable : true, align: 'center'},
 		{display: '&nbsp;', name : 'delete', width : 70, sortable : false, align: 'center'},
 		],
 	$buttons
@@ -140,12 +143,12 @@ $('#flexRT$t').flexigrid({
 	sortname: 'pattern',
 	sortorder: 'asc',
 	usepager: true,
-	title: '<span style=font-size:22px>$title</span>',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 1024,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 234,
+	height: 450,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200,1024]
 	
@@ -159,6 +162,10 @@ function AddNetworkRange$t(){
 function AddNetworkAddress$t(){
 	YahooWin5('850','$page?new-address=yes&hostname={$_GET["hostname"]}&t=$t','$new_address');
 
+}
+
+function Apply$t(){
+	Loadjs('postfix.network.progress.php');
 }
 
 var xPostfixBannet= function (obj) {
@@ -387,14 +394,12 @@ function network_list(){
 	
 	$array=$main->array_mynetworks;
 	if(!is_array($array)){
-		$data['page'] = $page;$data['total'] = $total;$data['rows'] = array();
-		echo json_encode($data);
+		json_error_show("No network ".__LINE__);
 		return ;		
 	}
 	
 	if(count($array)==0){
-		$data['page'] = $page;$data['total'] = $total;$data['rows'] = array();
-		echo json_encode($data);
+		json_error_show("No network ".__LINE__);
 		return ;			
 	}
 	
@@ -425,11 +430,12 @@ function network_list(){
 	
 	$PostfixBadNettr=unserialize(base64_decode($sock->GET_INFO("PostfixBadNettr")));	
 	
-	while (list ($num, $val) = each ($main->array_mynetworks) ){
+	if(count($array)==0){json_error_show("No network ".__LINE__);}
+	
+	$c=0;
+	while (list ($num, $val) = each ($array) ){
 		$color="black";
-		if($search<>null){
-			if(!preg_match("#$search#", $val)){continue;}
-		}
+		if($search<>null){if(!preg_match("#$search#", $val)){continue;}}
 		
 		$sql="SELECT netinfos FROM networks_infos WHERE ipaddr='$val'";
 		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
@@ -450,7 +456,8 @@ function network_list(){
 		}
 		$md5=md5($num);
 		$delete=imgtootltip('delete-32.png','{delete} {network}',"PostFixDeleteMyNetwork('$md5',$num)");
-		$enable=Field_checkbox($md5,1,$ligne["enabled"],"PostfixBannet('$md5','$val')");	
+		$enable=Field_checkbox($md5,1,$ligne["enabled"],"PostfixBannet('$md5','$val')");
+		$c++;	
 		if($ligne["enabled"]==1){$color="#C5C2C2";}
 	$data['rows'][] = array(
 		'id' => $md5,
@@ -458,9 +465,14 @@ function network_list(){
 		<img src='img/$icon'>"
 		,"<span style='font-size:22px;color:$color'>$val</span>",
 		"<a href=\"javascript:blur();\" OnClick=\"javascript:GlobalSystemNetInfos('$val')\" 
-		style='font-size:18px;text-decoration:underline;color:$color'><i>{$ligne["netinfos"]}</i>$explainmore</a>",$enable,$delete )
+		style='font-size:18px;text-decoration:underline;color:$color'><i>{$ligne["netinfos"]}</i>$explainmore</a>",
+		"<center>$enable</center>",
+		"<center>$delete</center>" )
 		);
 	}
+	
+	if($c==0){json_error_show("no data");}
+	if(count($data['rows'])==0){json_error_show("no data");}
 	
 	$data['total'] = count($data['rows']);
 echo json_encode($data);		

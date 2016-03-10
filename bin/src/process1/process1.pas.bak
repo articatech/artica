@@ -15,7 +15,6 @@ var
    zsquid:Tsquid;
    zlogs:Tlogs;
    mypid,tmpstr,oldpid:string;
-   tcp:ttcp;
    SYS:Tsystem;
    zmonitorix:tmonitorix;
    zapachesrc            :tapachesrc;
@@ -107,6 +106,10 @@ if ParamStr(2)='--verbose' then begin
    D:=True;
 end;
 
+if ParamStr(1)='--arch' then begin
+writeln('Arch:',SYS.ArchStruct());
+halt(0);
+end;
 
 if ParamStr(1)='--web-settings' then begin
         if FileExists('/etc/artica-postfix/LOCK_PROCESS1') then halt(0);

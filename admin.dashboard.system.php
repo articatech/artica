@@ -17,6 +17,7 @@ include_once(dirname(__FILE__).'/ressources/class.system.network.inc');
 include_once(dirname(__FILE__).'/ressources/class.system.nics.inc');
 include_once(dirname(__FILE__).'/ressources/class.os.system.inc');
 include_once(dirname(__FILE__).'/ressources/class.stats-appliance.inc');
+include_once(dirname(__FILE__).'/ressources/class.os.system.tools.inc');
 
 if(isset($_GET["hostname-text"])){hostname_text();exit;}
 if(isset($_GET["nics-infos"])){nic_infos();exit;}
@@ -40,11 +41,51 @@ function xstart(){
 	$hostname=$hostname=$sock->GET_INFO("myhostname");
 	if($hostname==null){$hostname=$sock->getFrameWork("system.php?hostname-g=yes");}
 	
+	$datas=unserialize(@file_get_contents("/etc/artica-postfix/dmidecode.cache"));
+	$proc_type=$datas["PROC_TYPE"];
+	$MANUFACTURER =$datas["MANUFACTURER"];
+	$PRODUCT=$datas["PRODUCT"];
+	$CHASSIS=$datas["CHASSIS"];
+	
+	$sys=new systeminfos();
+	writelogs('Loading datas system for session',__FUNCTION__,__FILE__);
+	$distri=$sys->ditribution_name;
+	$kernel=$sys->kernel_version;
+	$LIBC=$sys->libc_version;
+	$users=new usersMenus();
+	$os=new os_system();
+	$arraycpu=$os->cpu_info();
+	$cpuspeed=round(($arraycpu["cpuspeed"]/1000*100)/100,2);
+	$host=$users->hostname;
+	$publicip=@file_get_contents("ressources/logs/web/myIP.conf");
+	
+	if(preg_match("#Broken pipevmware#i", $MANUFACTURER)){$MANUFACTURER="VMWare";}
+	if(preg_match("#Broken pipevmware#i", $PRODUCT)){$PRODUCT="VMWare";}
+	if(preg_match("#Broken pipevmware#i", $CHASSIS)){$CHASSIS="VMWare";}
+	if($MANUFACTURER<>null){$tr[]=$MANUFACTURER;}
+	if($PRODUCT<>null){$tr[]=$PRODUCT;}
+	if($CHASSIS<>null){$tr[]=$CHASSIS;}
+	if(count($tr)>0){$LINEMANU=@implode(", ", $tr);}
+	if($publicip==null){$publicip="x.x.x.x";}	
+	
+	
+
+	
+	$subtitle="<i style='font-size:14px'>$LINEMANU</i>";
+	$procs="<i style='font-size:14px'>".texttooltip("{processors}:&nbsp;{$arraycpu["cpus"]} cpu(s):{$cpuspeed}GHz $proc_type","{sysinfos_text}","s_PopUp('phpsysinfo/index.php',1000,600,1);")."</i>";
+	
+	
 	$t=time();
 	$html="
-	<div style='margin-top:30px;margin-bottom:30px;font-size:40px;passing-left:30px;'>
+	<div style='margin-top:30px;font-size:40px;passing-left:30px;'>
 	{system_and_network}:&nbsp;<a href=\"javascript:blur();\" OnClick=\"javascript:$jshostname\"
 	style='text-decoration:underline' id='chhostname-text'>$hostname</a></div>	
+	<div style='margin-bottom:30px;font-size:14px;text-align:right;padding-right:20px'>
+	<i style='font-size:14px'>$distri</i>&nbsp;&nbsp;|&nbsp;&nbsp;
+	<i style='font-size:14px'>kernel $kernel</i>&nbsp;&nbsp;|&nbsp;&nbsp;
+	$subtitle&nbsp;&nbsp;|&nbsp;&nbsp;$procs&nbsp;&nbsp;|&nbsp;&nbsp;
+	<i style='font-size:14px'>{public_ip}:&nbsp;<span id='RefreshMyIP-span'>". texttooltip($publicip,"{refresh}","RefreshMyIP()")."</span></i>
+	</div>
 	<table style='width:100%'>
 	<tr>
 		<td style='vertical-align:top;width:400px'>
@@ -148,6 +189,11 @@ function xstart(){
 		LoadAjaxRound('services-section','$page?services-section=yes');
 		LoadAjaxRound('update-section','$page?update-section=yes');
 		LoadAjaxRound('filesharing-section','$page?filesharing-section=yes');
+		
+	function RefreshMyIP(){
+		LoadAjaxTiny('RefreshMyIP-span','quicklinks.php?RefreshMyIp=yes');
+	}
+		
 	</script>
 	
 	";
@@ -176,6 +222,9 @@ function nic_infos(){
 	$tcp=new networking();
 	$IPBANS=unserialize(base64_decode($sock->GET_INFO("ArticaIpListBanned")));
 	
+
+	
+	
 	
 	$sql="SELECT Interface FROM nics";
 	$results=$q->QUERY_SQL($sql,'artica_backup');
@@ -183,6 +232,9 @@ function nic_infos(){
 		$MYSQL_NIC[$ligne["Interface"]]=$ligne["Interface"];
 		
 	}
+	
+	
+
 	
 	
 	
@@ -196,6 +248,7 @@ function nic_infos(){
 		$error=null;
 		$MUST_CHANGE=false;
 		$WCCP_INTERFACE=false;
+		$routing_rules_TR=array();
 		$icon="network-128-ok.png";
 		if(preg_match('#master#',$val)){continue;}
 		if(preg_match("#^veth.+?#",$val)){continue;}
@@ -206,36 +259,95 @@ function nic_infos(){
 		if(preg_match("#^sit[0-9]+#",$val)){continue;}
 		if(preg_match("#^vlan[0-9]+#",$val)){continue;}
 		if(preg_match("#^virt[0-9]+#",$val)){continue;}
+		if(preg_match("#^.*?-ifb$#",$val)){continue;}
 		
 		if(preg_match("#wccp[0-9]+#", $val)){$WCCP_INTERFACE=true;}
 		
 		$radius="-webkit-border-radius: 5px;-moz-border-radius: 5px;border-radius: 5px;/* behavior:url(/css/border-radius.htc); */";
 		unset($MYSQL_NIC[$val]);
 		$nicinfos=$sock->getFrameWork("cmd.php?nicstatus=$val");
+		$TCP_NIC_STATUS=$nicinfos;
 		$tbl=explode(";",$nicinfos);
 		if($IPBANS[$tbl[0]]){continue;}
 		$nicz=new system_nic($val);
 		if(trim($val)==null){continue;}
 		if($nicz->Bridged==1){continue;}
+		$qos_text="{disabled}";
+		$qos_color="#8E8E8E";
+		
 		$tcp->ifconfig(trim($val));
-		$TCP_NIC_STATUS=$sock->getFrameWork("cmd.php?nicstatus=$val");
+		
 		if(trim($tbl[5])=="yes"){$wire=" (wireless)";}
 		$gateway=trim($tbl[4]);
 		if($gateway==null){$gateway=$nicz->GATEWAY;}
-		if($nicz->defaultroute==1){
+		if($nicz->defaultroute==1){$defaultroute_text="<i style='font-weight:blod;font-size:14px'>{default_route}</i>";}
+		
+		if($nicz->FireQOS==1){$qos_text="{enabled}";$qos_color="black";}
+		if($nicz->enabled==0){$color="#8E8E8E";$qos_color="#8E8E8E";}
+		if($nicz->UseSPAN==1){$defaultroute_text=null;}
+		
+		
+		
+		$sql="SELECT * FROM routing_rules WHERE enabled=1 and nic='$val'";
+		$routing_rules=$q->QUERY_SQL($sql,"artica_backup");
+		
+		$gateway_tr="<tr>
+		<td class=legend nowrap style='color:$color;vertical-align:top;font-size:16px'>{gateway}:</td>
+		<td style='font-weight:bold;font-size:16px;color:$color'>{$gateway}</a></td>
+		</tr>";
+		
+		
+		while ($ligneRoute = mysql_fetch_assoc($routing_rules)) {
+			$RouteName=$ligneRoute["RouteName"];
 			
-		$defaultroute_text="<i style='font-weight:blod;font-size:14px'>{default_route}</i>";}
+			$ID=$ligneRoute["ID"];
+			$js="<a href=\"javascript:blur();\" OnClick=\"javascript:Loadjs('system.routing.rules.php?route-js=yes&ID=$ID&lock=yes');\"
+			style='font-weight:bold;font-size:16px;color:$color;text-decoration:underline'>";
+			$routing_rules_TR[]="<tr>
+		<td class=legend nowrap style='color:$color;vertical-align:top;font-size:16px'>{routing_rule}:</td>
+		<td style='font-weight:bold;font-size:16px;color:$color'>$js{$RouteName}</a></td>
+		</tr>";
+			
+				
+		}
+		
+		if($nicz->IPADDR<>$tbl[0]){$MUST_CHANGE=true;}
+		if($nicz->NETMASK<>$tbl[2]){$MUST_CHANGE=true;}
+		
+		if(count($routing_rules_TR)>0){
+			$gateway_tr=@implode("", $routing_rules_TR);
+			$defaultroute_text=null;
+		}else{
+			if($nicz->GATEWAY<>$gateway){$MUST_CHANGE=true;}
+		}
+		
+		
+		
 		
 		if($tbl[0]==null){
 			$error="<span style='color:#BA0000'>{waiting_network_reload}</span>";
 			$icon="network-128-warn.png";
 		}
 		
-		if($nicz->IPADDR<>$tbl[0]){$MUST_CHANGE=true;}
-		if($nicz->NETMASK<>$tbl[2]){$MUST_CHANGE=true;}
-		if($nicz->GATEWAY<>$gateway){$MUST_CHANGE=true;}
+
+		
 		if($nicz->dhcp==1){$ip=new IP();if($ip->isValid($tbl[0])){$MUST_CHANGE=false;}}
-		if($nicz->enabled==0){$MUST_CHANGE=false;}
+		if($nicz->enabled==0){
+			$MUST_CHANGE=false;
+			
+		}
+		
+		if($nicz->UseSPAN==1){
+			$nicz->IPADDR="&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;-&nbsp;&nbsp;-&nbsp;";
+			$nicz->NETMASK="&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;-&nbsp;&nbsp;-&nbsp;";
+			$tbl[0]="&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;-&nbsp;&nbsp;-&nbsp;";
+			$tbl[2]="&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;-&nbsp;&nbsp;-&nbsp;";
+			$nicz->metric="&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;-&nbsp;&nbsp;-&nbsp;";
+			$gateway_tr=null;
+			$MUST_CHANGE=false;
+			$error=null;
+		}
+		
 		if($MUST_CHANGE){
 			$icon="network-128-warn.png";
 			$error="<span style='color:#BA0000;font-size:16px'>{need_to_apply_network_settings_interface}</span>";
@@ -245,6 +357,7 @@ function nic_infos(){
 		if($nicz->enabled==0){
 			$icon="network-128-disabled.png";
 			$color="#8E8E8E";
+			$error=null;
 		}
 	
 		
@@ -258,14 +371,22 @@ function nic_infos(){
 		
 		$button=button("{modify}", "Loadjs('system.nic.edit.php?nic=$val')",16,150);
 		
+		
+		if(preg_match("#^br([0-9]+)#", $val,$re)){
+			$button=button("{modify}", "Loadjs('system.network.bridges.interfaces.php?network-bridge-js=yes&ID={$re[1]}')",16,150);
+			
+		}
+		
 		if($WCCP_INTERFACE){$error=null;$button=null;}
+		
+		
 		
 		$tr[]="
 		<table style='width:100%;border:2px solid #CCCCCC;margin-bottom:10x;$radius'>
 		
 		<tr>
 			<td style='font-size:22px;font-weight:bold' colspan=2>
-			<div style='margin-top:10px;margin-bottom:10px'>$nicz->netzone</span>: $nicz->NICNAME ($val)
+			<div style='margin-top:10px;margin-bottom:10px;color:$color'>$nicz->netzone</span>: $nicz->NICNAME ($val)
 			<div style='text-align:right;width:80%;margin-top:-2px;
 			padding-top:5px;margin-bottom:10px'>$defaultroute_text $error</div>
 			</div>
@@ -280,15 +401,36 @@ function nic_infos(){
 			<tr>
 				<td style='font-size:16px;color:$color' class=legend>{tcp_address}:</td>
 				<td style='font-weight:bold;font-size:16px;color:$color'>{$tbl[0]}</td>
-			</tr>		
+			</tr>	
+	";
+
+		$sql="SELECT ipaddr,ID FROM nics_virtuals WHERE nic='$val'";
+		$q=new mysql();
+		$resultsVirtuals=$q->QUERY_SQL($sql,'artica_backup');
+		if(!$q->ok){
+			$tr[]="
 			<tr>
-				<td class=legend nowrap style='color:$color;font-size:16px'>{netmask}</td>
+			<td class=legend nowrap style='color:$color;font-size:16px'>{tcp_address}:</td>
+			<td style='font-weight:bold;font-size:16px;color:$color'>".$q->mysql_error_html()."</td>
+				</tr>";
+		}
+			
+		while($virtuals=@mysql_fetch_array($resultsVirtuals,MYSQL_ASSOC)){
+			$js="YahooWin2(725,'system.nic.config.php?virtual-popup-add=yes&t=0&ID={$virtuals["ID"]}','{$val}:{$virtuals["ID"]} {$virtuals["ipaddr"]}');";
+			$tr[]="
+			<tr>
+			<td class=legend nowrap style='color:$color;font-size:16px'>{tcp_address}:</td>
+			<td style='font-weight:bold;font-size:16px;color:$color'>
+			<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='font-weight:bold;text-decoration:underline;color:$color'>
+			{$virtuals["ipaddr"]}</a></td>
+			</tr>";
+		
+		}
+			$tr[]="<tr>
+				<td class=legend nowrap style='color:$color;font-size:16px'>{netmask}:</td>
 				<td style='font-weight:bold;font-size:16px;color:$color'>{$tbl[2]}</a></td>
 			</tr>	
-			<tr>
-				<td class=legend nowrap style='color:$color;vertical-align:top;font-size:16px'>{gateway}:</td>
-				<td style='font-weight:bold;font-size:16px;color:$color'>{$gateway}</a></td>
-			</tr>
+	
 			<tr>
 				<td class=legend nowrap style='color:$color;vertical-align:top;font-size:16px'>{metric}:</td>
 				<td style='font-weight:bold;font-size:16px;color:$color'>$nicz->metric</a></td>
@@ -297,6 +439,11 @@ function nic_infos(){
 				<td class=legend nowrap style='color:$color;font-size:16px'>{mac_addr}:</td>
 				<td style='font-weight:bold;font-size:16px;color:$color'>{$tbl[1]}</a></td>
 			</tr>	
+			$gateway_tr
+			<tr>
+				<td class=legend nowrap style='color:$qos_color;font-size:16px'>{Q.O.S}:</td>
+				<td style='font-weight:bold;font-size:16px;color:$qos_color'>$qos_text</a></td>
+			</tr>			
 			</table>
 		</td>
 		</tr>
@@ -332,9 +479,35 @@ function nic_infos(){
 			<tr>
 			<td style='font-size:16px;color:$color' class=legend>{tcp_address}:</td>
 			<td style='font-weight:bold;font-size:16px;color:$color'>$nicz->IPADDR</td>
-			</tr>
-			<tr>
-			<td class=legend nowrap style='color:$color;font-size:16px'>{netmask}</td>
+			</tr>";
+			
+			$sql="SELECT ipaddr,ID FROM nics_virtuals WHERE nic='$val'";
+			$q=new mysql();
+			$resultsVirtuals=$q->QUERY_SQL($sql,'artica_backup');
+			if(!$q->ok){
+				$tr[]="
+				<tr>
+				<td class=legend nowrap style='color:$color;font-size:16px'>{tcp_address}:</td>
+				<td style='font-weight:bold;font-size:16px;color:$color'>".$q->mysql_error_html()."</td>
+				</tr>";
+			}
+			
+			while($virtuals=@mysql_fetch_array($resultsVirtuals,MYSQL_ASSOC)){
+				$js="YahooWin2(725,'system.nic.config.php?virtual-popup-add=yes&t=0&ID={$virtuals["ID"]}','{$val}:{$virtuals["ID"]} {$virtuals["ipaddr"]}');";
+				$tr[]="
+				<tr>
+				<td class=legend nowrap style='color:$color;font-size:16px'>{tcp_address}:</td>
+				<td style='font-weight:bold;font-size:16px;color:$color'>
+				<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='font-weight:bold;text-decoration:underline;;color:$color'>
+				{$virtuals["ipaddr"]}</a></td>
+				</tr>";
+				
+			}
+			
+			
+			
+			$tr[]="<tr>
+			<td class=legend nowrap style='color:$color;font-size:16px'>{netmask}:</td>
 			<td style='font-weight:bold;font-size:16px;color:$color'>$nicz->NETMASK</a></td>
 			</tr>
 			<tr>
@@ -517,11 +690,29 @@ function hardware_section(){
 
 function monitor_section(){
 	$sock=new sockets();
+	$FIREWALL_ACTIVE=true;
+	$EnableArticaHotSpot=intval($sock->GET_INFO("EnableArticaHotSpot"));
+	$FireHolConfigured=intval($sock->GET_INFO("FireHolConfigured"));
+	$FireHolEnable=intval($sock->GET_INFO("FireHolEnable"));
+	$EnableMsftncsi=intval($sock->GET_INFO("EnableMsftncsi"));
+	$SealionAgentInstalled=intval($sock->GET_INFO("SealionAgentInstalled"));
+	
+	if(intval($sock->getFrameWork("firehol.php?is-installed=yes"))==0){$FIREWALL_ACTIVE=false;}
+	if($EnableArticaHotSpot==1){$FIREWALL_ACTIVE=false;}
+	if($FireHolConfigured==0){$FIREWALL_ACTIVE=false;}
+	if($FireHolEnable==0){$FIREWALL_ACTIVE=false;}
+	
 	$tpl=new templates();
 	$icon="arrow-right-24.png";
+	$Msftncsi_icon="arrow-right-24.png";
+	$Msftncsi_color="black";
 	$users=new usersMenus();
 	$tr[]="<table style='width:100%'>";
 	
+	if($EnableMsftncsi==0){
+		$Msftncsi_color="#898989";
+		$Msftncsi_icon="arrow-right-24-grey.png";
+	}
 	
 	
 	$tr[]="<tr>
@@ -531,6 +722,16 @@ function monitor_section(){
 	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{system_health_checking}",
 			"position:right:{system_health_checking_explain}","GotoSystemHealthMonit()")."</td>
 	</tr>";	
+	
+	
+	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$Msftncsi_icon'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$Msftncsi_color'>".texttooltip("{network_awareness}",
+			"position:right:{network_awareness_explain}","GotoMsftncsi()")."</td>
+	</tr>";
+	
 	
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
@@ -553,19 +754,82 @@ function monitor_section(){
 	
 	$icon_snmp="arrow-right-24.png";
 	$color_snmp="black";
+	$text_snmp=null;
 	$EnableSNMPD=intval($sock->GET_INFO("EnableSNMPD"));
 	if($EnableSNMPD==0){
 		$color_snmp="#898989";
 		$icon_snmp="arrow-right-24-grey.png";
+		$text_snmp=" <span style='font-size:14px'>{disabled}</span>";
 	}
 	
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
 	<img src='img/$icon_snmp'>
 	</td>
-	<td valign='middle' style='font-size:18px;width:99%;color:$color_snmp'>".texttooltip("SNMP",
+	<td valign='middle' style='font-size:18px;width:99%;color:$color_snmp'>".texttooltip("SNMP$text_snmp",
 			"position:right:SNMP","GotoSNMPD()")."</td>
 	</tr>";
+	
+	
+	$icon_sealion="arrow-right-24.png";
+	$color_sealion="black";
+	$text_sealion=null;
+	$js_sealion="GoToSealionAgent()";
+	
+	if($SealionAgentInstalled==0){
+		$icon_sealion="arrow-right-24-grey.png";
+		$color_sealion="#898989";
+		$text_sealion=" <span style='font-size:14px'>{not_installed}</span>";
+		$js_sealion="Loadjs('sealion.install.php')";
+		
+	}
+	
+	
+	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$icon_sealion'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$color_sealion'>".texttooltip("{APP_SEALION_AGENT}$text_sealion",
+			"position:right:{APP_SEALION_AGENT_EXPLAIN}","$js_sealion")."</td>
+	</tr>";
+	
+	
+	
+	
+	
+	
+	if(!$FIREWALL_ACTIVE){
+		$text_ids=null;
+		$icon_ids="arrow-right-24.png";
+		$color_ids="black";
+		$js_ids="GotoSuricata()";
+		
+		$EnableSuricata=intval($sock->GET_INFO("EnableSuricata"));
+		
+		if($EnableSuricata==0){
+			$icon_ids="arrow-right-24-grey.png";
+			$color_ids="#898989";
+			$text_ids=" <span style='font-size:14px'>{disabled}</span>";
+		}
+		
+		if(!is_file("/usr/bin/suricata")){
+			$icon_ids="arrow-right-24-grey.png";
+			$color_ids="#898989";
+			$text_ids=" <span style='font-size:14px'>{not_installed}</span>";
+			$js_ids="blur();";
+		}
+		
+		
+		
+		$tr[]="<tr>
+		<td valign='middle' style='width:25px'>
+		<img src='img/$icon'>
+		</td>
+		<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{IDS}$text_ids",
+				"position:right:{IDS}",$js_ids)."</td>
+		</tr>";	
+	
+	}
 	
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
@@ -590,6 +854,8 @@ function filesharing_section(){
 	
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
 	$EnableIntelCeleron=intval($sock->GET_INFO("EnableIntelCeleron"));
+	$ProFTPDInstalled=intval($sock->GET_INFO("ProFTPDInstalled"));
+	$EnableProFTPD=intval($sock->GET_INFO("EnableProFTPD"));
 	
 	$icon="arrow-right-24.png";
 	
@@ -631,13 +897,31 @@ function filesharing_section(){
 	</tr>";
 	
 	
+	$icon_proftpd="arrow-right-24.png";
+	$color_proftpd="black";
+	$text_proftpd=null;
+	$js_proftpd="GotoVSFTPD()";
+	
+	if($EnableProFTPD==0){
+		$icon_proftpd="arrow-right-24-grey.png";
+		$color_proftpd="#898989";
+		$text_proftpd=" <span style='font-size:14px'>{disabled}</span>";
+	}
+	
+	if($ProFTPDInstalled==0){
+		$icon_proftpd="arrow-right-24-grey.png";
+		$color_proftpd="#898989";
+		$text_proftpd=" <span style='font-size:14px'>{not_installed}</span>";
+		$js_proftpd="GotoProftpdUpdate()";
+	}
+	
 	
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
-	<img src='img/$icon'>
+	<img src='img/$icon_proftpd'>
 	</td>
-	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("FTP",
-			"position:right:FTP","GotoVSFTPD()")."</td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$color_proftpd'>".texttooltip("FTP{$text_proftpd}",
+			"position:right:FTP",$js_proftpd)."</td>
 	</tr>";
 	
 	
@@ -657,7 +941,7 @@ function filesharing_section(){
 		$tr[]="<tr><td valign='middle' style='width:25px'><img src='img/arrow-right-24-grey.png'></td>
 		<td valign='middle' style='font-size:18px;width:99%'>".
 				texttooltip("{APP_DROPBOX}",
-				"position:right:{APP_DROPBOX}","blur()")."</td></tr>";
+				"position:right:{APP_DROPBOX} <span style='font-size:14px'>{not_installed}</span>","blur()")."</td></tr>";
 		
 	}
 	
@@ -727,7 +1011,7 @@ function update_maintain_section(){
 	<img src='img/$icon'>
 	</td>
 	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{system_tasks}",
-			"position:right:{system_tasks}","GotoSystemSchedules()")."</td>
+			"position:right:{system_tasks}","GotoSystemSchedules(0)")."</td>
 	</tr>";
 	
 	echo $tpl->_ENGINE_parse_body(@implode("\n", $tr));
@@ -739,6 +1023,19 @@ function network_section(){
 	$tpl=new templates();
 	$users=new usersMenus();
 	$icon="arrow-right-24.png";
+	$ip_forward=intval($sock->getFrameWork("cmd.php?sysctl-value=yes&key=".base64_encode("net.ipv4.ip_forward")));
+	
+	$icon_gateway="arrow-right-24.png";
+	$color_gateway="black";
+	$text_gateway="({enabled})";
+	
+	if($ip_forward==0){
+		$color_gateway="#898989";
+		$icon_gateway="arrow-right-24-grey.png";
+		$text_gateway="({disabled})";
+	}
+
+
 	
 	
 	
@@ -746,6 +1043,15 @@ function network_section(){
 	<tr>
 	<td valign='middle' colspan=2 style='font-size:22px;font-weight:bold;color:black'>{tcpip_settings}:</td>
 	</tr>";
+	
+	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$icon_gateway'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$color_gateway'>".texttooltip("{ARTICA_AS_GATEWAY} <span style='font-size:16px'>$text_gateway</span>",
+			"position:right:{ip_forward_text}","YahooWin(890,'index.gateway.php?AsGatewayForm=yes','Artica as gateway')")."</td>
+	</tr>";	
+	
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
 	<img src='img/$icon'>
@@ -766,9 +1072,47 @@ function network_section(){
 	<td valign='middle' style='width:25px'>
 	<img src='img/$icon'>
 	</td>
+	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{routing_rules}",
+			"position:right:{routing_rules_explain}","GotoRoutingRules()")."</td>
+	</tr>";	
+	
+	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$icon'>
+	</td>
 	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{network_bridges}",
 			"position:right:{network_bridges}","GotoNetworkBridges()")."</td>
 	</tr>";
+	
+	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$icon'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{interfaces_bridges}",
+			"position:right:{interface_bridges_explain}","GotoBridges()")."</td>
+	</tr>";	
+	
+	$vde_icon=$icon;
+	$vde_color="black";
+	
+	
+	if(!$users->VDESWITCH_INSTALLED){
+		$vde_color="#898989";
+		$vde_icon="arrow-right-24-grey.png";
+		
+	}
+	
+	
+	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$vde_icon'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$vde_color'>".texttooltip("{Ethernet_switch}",
+			"position:right:{vde_switch_explain}","GotoVdeSwichs()")."</td>
+	</tr>";
+	
+	
+	
 	
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
@@ -806,6 +1150,27 @@ function network_section(){
 	
 	}
 	
+	$qos_js="GotoQOS()";
+	$qos_icon=$icon;
+	$qos_color="black";
+	if(intval($sock->getFrameWork("firehol.php?is-installed=yes"))==0){
+		$qos_color="#898989";
+		$qos_icon="arrow-right-24-grey.png";
+		$qos_text=" <span style='font-size:14px'>{not_installed}</span>";
+		$qos_js="blur()";
+	}
+	
+	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$icon'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{QOS}$qos_text",
+			"position:right:{QOS}","$qos_js")."</td>
+		</tr>";
+	
+	
+	
+
 	
 	
 	$tr[]="<tr>
@@ -833,20 +1198,8 @@ function network_section(){
 			"position:right:{browse_computers}","GotoNetworkBrowseComputers()")."</td>
 	</tr>";	
 
-	
-	
-	
-	if($users->VDESWITCH_INSTALLED){
-		$tr[]="<tr>
-		<td valign='middle' style='width:25px'>
-		<img src='img/$icon'>
-		</td>
-		<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{virtual_switch}",
-				"position:right:{virtual_switch}","GotoVDE()")."</td>
-		</tr>";
-		
-	}
-	
+
+
 
 	
 	
@@ -946,12 +1299,14 @@ function services_section(){
 		<td><table style='width:100%'>
 			<tr>
 				<td valign='middle' style='width:16px'><img src='img/$iconL_powerdns'></td>				
-				<td valign='middle' style='font-size:16px;width:99%;color:$color_powerdns'>".texttooltip("{parameters}",
+				<td valign='middle' style='font-size:16px;width:99%;color:$color_powerdns'>".
+				texttooltip("{parameters}",
 				"position:right:{status} PowerDNS","$js_powerdns")."</td>
 			</tr>
 			<tr>
 				<td valign='middle' style='width:16px'><img src='img/$iconL_powerdns'></td>				
-				<td valign='middle' style='font-size:16px;width:99%;color:$color_powerdns'>".texttooltip("{events}",
+				<td valign='middle' style='font-size:16px;width:99%;color:$color_powerdns'>".
+				texttooltip("{events}",
 				"position:right:{events} PowerDNS","$js_log_powerdns")."</td>
 			</tr>						
 			</table>
@@ -1027,40 +1382,73 @@ function services_section(){
 			"position:right:{APP_OPENSSH}","GotoSSHD()")."</td>
 	</tr>";
 		
-	if($users->RDPPROXY_INSTALLED){
-		$tr[]="<tr>
-		<td valign='middle' style='width:25px'>
-		<img src='img/$icon'>
-		</td>
-		<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{APP_RDPPROXY}",
-				"position:right:{APP_RDPPROXY}","GotToRDPPROX()")."</td>
-				</tr>";
 	
+	if(!$users->SQUID_INSTALLED){$SQUIDEnable=0;}
+	
+	if($users->RDPPROXY_INSTALLED){
+		if($SQUIDEnable==0){
+			$tr[]="<tr>
+			<td valign='middle' style='width:25px'>
+			<img src='img/$icon'>
+			</td>
+			<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{APP_RDPPROXY}",
+					"position:right:{APP_RDPPROXY}","GotToRDPPROX()")."</td>
+					</tr>";
+			}
+	}
+	
+	$color_haproxy="black";
+	$js_haproxy="GotToHAPROXY()";
+	$icon_haproxy="arrow-right-24.png";
+	$text_haproxy=null;
+	$EnableHaProxy=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableHaProxy"));
+	
+	if($EnableHaProxy==0){
+		$color_haproxy="#898989";
+		$icon_haproxy="arrow-right-24-grey.png";
+		$text_haproxy="({disabled})";
+	}
+	
+	if(!$users->AsSquidAdministrator){
+		$icon_haproxy="arrow-right-24-grey.png";
+		$color_haproxy="#898989";
+		$js_haproxy="blur()";
+		$text_haproxy="({ERROR_NO_PRIVS})";
 	
 	}
 	
-	if($users->HAPROXY_INSTALLED){
+	
+	if(!$users->HAPROXY_INSTALLED){
+		$color_haproxy="#898989";
+		$js_haproxy="GotoHaProxyUpdates()";
+		$icon_haproxy="arrow-right-24-grey.png";
+		$text_haproxy="({not_installed})";
+		
+	}
 	
 	$tr[]="<tr>
 		<td valign='middle' style='width:25px'>
-		<img src='img/$icon'>
+			<img src='img/$icon_haproxy'>
 		</td>
-		<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{load_balancing}",
-				"position:right:{load_balancing}","GotToHAPROXY()")."</td>
-				</tr>";
+		<td valign='middle' style='font-size:18px;width:99%;color:$color_haproxy'>".
+		texttooltip("{load_balancing} <span style='font-size:14px'>$text_haproxy</span>",
+		"position:right:{load_balancing}",$js_haproxy)."</td>
+		</tr>";
 	
 	
-	}
+	
 	
 	//$SquidAllow80Port
 	
 	$nginx_icon="arrow-right-24.png";
 	$nginx_js="GotoReverseProxy()";
 	$nginx_color="black";
+	$nginx_text=null;
 	
 	if($EnableNginx==0){
 		$nginx_icon="arrow-right-24-grey.png";
 		$nginx_color="#898989";
+		$nginx_text="{disabled}";
 	}
 	
 	if($SquidAllow80Port==1){
@@ -1073,6 +1461,7 @@ function services_section(){
 		$nginx_icon="arrow-right-24-grey.png";
 		$nginx_color="#898989";
 		$nginx_js="blur()";		
+		$nginx_text="{not_installed}";
 		
 	}
 	
@@ -1080,6 +1469,7 @@ function services_section(){
 		$nginx_icon="arrow-right-24-grey.png";
 		$nginx_color="#898989";
 		$nginx_js="blur()";		
+		$nginx_text="{ERROR_NO_PRIVS}";
 		
 	}
 	
@@ -1138,22 +1528,47 @@ function services_section(){
 	$openldap_js="GotoOpenLDAP()";
 	$openldap_color="black";
 	$openldap_explain="{APP_LDAP_DB_EXPLAIN}";
+	$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
 	if($EnableIntelCeleron==1){
 		if($users->SQUID_INSTALLED){
 			$openldap_icon="arrow-right-24-grey.png";
 			$openldap_js="blur();";
 			$openldap_explain="{ERROR_FEATURE_CELERON}";
+			$openldap_text=" <span style='font-size:12px'>{disabled}</span>";
 			$openldap_color="#898989";
 		}
 	}
 	
+	if($EnableOpenLDAP==0){
+		$openldap_icon="arrow-right-24-grey.png";
+		$openldap_explain="{ERROR_FEATURE_CELERON}";
+		$openldap_color="#898989";
+		$openldap_text=" <span style='font-size:12px'>{disabled}</span>";
+	}
+	
+	
+	$phpmyadmin_icon="arrow-right-24.png";
+	$phpmyadmin_color="black";
+	$phpmyadmin_explain="PHPMyAdmin";
+	
+	$IsInstalled=trim($sock->getFrameWork("system.php?phpmyadmin-installed=yes"));
+	
+	if($IsInstalled<>"TRUE"){
+		$phpmyadmin_icon="arrow-right-24-grey.png";
+		$phpmyadmin_color="#898989";
+		$phpmyadmin_explain="<span style='font-size:14px'>{not_installed}</span>";
+		$phpmyadmin_js="GotoPHPMyAdmin()";
+	}else{
+		$phpmyadmin_explain="<span style='font-size:14px'>". trim($sock->getFrameWork("system.php?phpmyadpmin-version=yes"))."</span>";
+		$phpmyadmin_js="s_PopUpFull('/mysql',window.screen.availWidth,window.screen.availHeight);";
+	}
 	
 	
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
 	<img src='img/$openldap_icon'>
 	</td>
-	<td valign='middle' style='font-size:18px;width:99%;color:$openldap_color'>".texttooltip("{APP_LDAP_DB}",
+	<td valign='middle' style='font-size:18px;width:99%;color:$openldap_color'>".texttooltip("{APP_LDAP_DB}$openldap_text",
 			"position:right:$openldap_explain",$openldap_js)."</td>
 	</tr>";
 	$tr[]="<tr>
@@ -1164,9 +1579,13 @@ function services_section(){
 			"position:right:MySQL","GotToMySQL()")."</td>
 	</tr>";	
 	
-	
-
-	
+	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$phpmyadmin_icon'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("PHPMyAdmin $phpmyadmin_explain",
+			"position:right:PHPMyAdmin",$phpmyadmin_js)."</td>
+	</tr>";	
 
 	
 	
@@ -1177,8 +1596,10 @@ function services_section(){
 	
 	$icon_wp=$icon;
 	$text_wp="{webservers_section_explain}";
+	$explain_wp=null;
 	$color_wp="#000000";
 	$js_wp="GotToWordpress()";
+	$WordPressInstalled=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/WordPressInstalled"));
 	
 	$icon_wi=$icon;
 	$text_wi="{web_interface_settings_text}";
@@ -1204,6 +1625,13 @@ function services_section(){
 		$icon_freewebs="arrow-right-24-grey.png";
 		$color_freewebs="#898989";
 		$js_freewebs="blur()";
+	}
+	
+	
+	if($WordPressInstalled==0){
+		$icon_wp="arrow-right-24-grey.png";
+		$color_wp="#898989";
+		$explain_wp=" <span style='font-size:14px'>{not_installed}</span>";
 	}
 	
 	
@@ -1261,12 +1689,41 @@ function services_section(){
 				<td valign='middle' style='width:25px'>
 				<img src='img/$icon_wp'>
 				</td>
-				<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("Wordpress",
+				<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("Wordpress$explain_wp",
 						"position:right:$text_wp",$js_wp)."</td>
 			</tr>";
 	
 		}
-		}	
+	
+	
+		$webcopy_color="black";
+		$webcopy_icon="arrow-right-24.png";
+		$webcopy_explain=null;
+		$webcopy_js="GotoWebCopy()";
+		
+		if(!is_file("/usr/bin/httrack")){
+			$webcopy_icon="arrow-right-24-grey.png";
+			$webcopy_color="#898989";
+			$webcopy_explain="&nbsp;<span style='font-size:12px'> ({not_installed})</span>";
+		
+		}
+		if(!$users->SQUID_INSTALLED){
+			$tr[]="
+			<tr>
+				<td valign='middle' style='width:25px'>
+					<img src='img/$webcopy_icon'>
+				</td>
+				<td valign='middle' style='font-size:18px;width:99%;color:$webcopy_color'>".
+					texttooltip("WebCopy$webcopy_explain","{WebCopy_task_explain}",$webcopy_js)."
+				</td>
+			</tr>";
+			
+		}
+	
+	
+	
+	
+	}	
 	
 	
 	
@@ -1279,13 +1736,30 @@ function services_section(){
 	<td valign='middle' colspan=2 style='font-size:22px;font-weight:bold;color:black;padding-top:20px'>{crypt_and_vpn}:</td>
 	</tr>";	
 	
+	$OpenVPNInstalled=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/OpenVPNInstalled"));
+	
+	
+	$openvpn_color="black";
+	$openvpn_icon="arrow-right-24.png";
+	$openvpn_explain=null;
+	$openvpn_js="GotoNetworkOpenVPN()";
+		
+	if($OpenVPNInstalled==0){
+		$openvpn_color="#898989";
+		$openvpn_icon="arrow-right-24-grey.png";
+		$openvpn_explain="{not_installed}";
+		$openvpn_js="blur()";
+		
+	}
+	
+	
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
-	<img src='img/$icon'>
+	<img src='img/$openvpn_icon'>
 	</td>
-	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{APP_OPENVPN}",
-			"position:right:{APP_OPENVPN}","GotoNetworkOpenVPN()")."</td>
-				</tr>";
+		<td valign='middle' style='font-size:18px;width:99%;color:$openvpn_color'>".texttooltip("{APP_OPENVPN} <span style='font-size:16px>$openvpn_explain</span>",
+		"position:right:{APP_OPENVPN}","$openvpn_js")."</td>
+	</tr>";
 	
 	if($users->stunnel4_installed){
 		$tr[]="<tr>

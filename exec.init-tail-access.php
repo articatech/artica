@@ -11,6 +11,8 @@ if(preg_match("#--reconfigure#",implode(" ",$argv),$re)){$GLOBALS["RECONFIGURE"]
 $GLOBALS["AS_ROOT"]=true;
 $GLOBALS["STAMP_MAX_RESTART"]="/etc/artica-postfix/SQUID_STAMP_RESTART";
 
+
+
 include_once(dirname(__FILE__).'/ressources/class.templates.inc');
 include_once(dirname(__FILE__).'/ressources/class.ccurl.inc');
 include_once(dirname(__FILE__).'/ressources/class.system.network.inc');
@@ -72,6 +74,7 @@ function start($aspid=false){
 	$SquidPerformance=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidPerformance"));
 	$InfluxUseRemote=intval($sock->GET_INFO("InfluxUseRemote"));
 	$InfluxSyslogRemote=intval($sock->GET_INFO("InfluxSyslogRemote"));
+	$EnableIntelCeleron=intval($sock->GET_INFO("EnableIntelCeleron"));
 	if($InfluxUseRemote==0){$InfluxSyslogRemote=0;}
 	
 	if(!is_file("/etc/artica-postfix/settings/Daemons/EnableInfluxDB")){@file_put_contents("/etc/artica-postfix/settings/Daemons/EnableInfluxDB", 1);}
@@ -102,26 +105,16 @@ function start($aspid=false){
 	
 	
 	$kill=$unix->find_program("kill");	
-	if($SQUIDEnable==0){
-		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Proxy service is disabled...\n";}
+	
+	$enabled=$unix->SQUID_TAIL_ENABLED();
+	
+	
+	if($enabled==0){
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: service disabled...\n";}
 		return;
 	}
 	
-	if($InfluxSyslogRemote==1){
-		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Events are sended directly to stats appliance...\n";}
-		return;
-	}
 	
-	if($EnableInfluxDB==0){
-		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: InfluxDB database engine is disabled\n";}
-		return;		
-		
-	}
-	
-	if($SquidPerformance>1){
-		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: Statistics are disabled...\n";}
-		return;
-	}
 	
 	if(is_file("/etc/artica-postfix/squid.lock")){
 		$time=$unix->file_time_min("/etc/artica-postfix/squid.lock");
@@ -155,7 +148,7 @@ function start($aspid=false){
 	if(!is_file("/bin/access-tail")){@copy($tail, "/bin/access-tail");}
 	@chmod("/bin/access-tail",0755);
 	
-	$pid=$unix->PIDOF_PATTERN("/bin/access-tail -F -n 0 {$GLOBALS["log_path"]}");
+	$pid=$unix->PIDOF_PATTERN("/bin/access-tail.*?{$GLOBALS["log_path"]}");
 	if($unix->process_exists($pid)){
 		for($i=0;$i<20;$i++){
 			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: killing old process pid $pid\n";}

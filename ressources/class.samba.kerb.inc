@@ -171,6 +171,7 @@ class samba_kerb{
 		$f[]="\tntlm auth = No";
 		$f[]="\tlanman auth = No";
 		$f[]="\tpreferred master = No";
+		$f[]="\tlocal master = No";
 		$f[]="\twins support = No";
 		$f[]="\tencrypt passwords = yes";
 		$f[]="\tpassword server = $password_server";

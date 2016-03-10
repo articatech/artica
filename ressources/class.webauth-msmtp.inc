@@ -41,7 +41,7 @@ class webauth_msmtp{
 		
 		$conf[]="port $this->port";
 		if($this->smtp_auth_user<>null){
-			$conf[]="auth on";
+			if($this->tls_enabled==0){$conf[]="auth plain";}else{$conf[]="auth on";}
 			$conf[]="user $this->smtp_auth_user";
 			$conf[]="password $this->smtp_auth_passwd";
 			$conf[]="logfile $this->tmplogfile";
@@ -68,6 +68,7 @@ class webauth_msmtp{
 		$msmtp[]=$this->binary;
 		$msmtp[]="--file=$this->conffile";
 		$msmtp[]="--protocol=smtp";
+		$msmtp[]="--logfile=$this->tmplogfile";
 		$msmtp[]="--read-envelope-from";
 		$msmtp[]="-- $this->recipient";
 		$msmtp[]="< $this->tmpfile 2>&1";

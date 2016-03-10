@@ -5,6 +5,20 @@ $f=explode("\n",@file_get_contents("/etc/fstab"));
 
 $change=false;
 
+exec("/sbin/blkid 2>&1",$results);
+
+while (list ($num, $val) = each ($results) ){
+	$val=trim($val);
+	if(preg_match("#^(.+?):.*?UUID=\"(.+?)\"\s+#", $val,$re)){
+		
+		$UUIDS[$re[2]]=$re[1];
+	}
+	
+}
+
+
+
+
 while (list ($num, $val) = each ($f) ){
 	
 	if(preg_match("#(.+?)\s+(.+?)\s+ext4\s+(.+?)\s+([0-9]+)\s+([0-9]+)#", $val,$re)){
@@ -12,7 +26,15 @@ while (list ($num, $val) = each ($f) ){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: EXT4 {$re[1]} with options {$re[3]} changed to $newoptions\n";}
 		$f[$num]="{$re[1]}\t{$re[2]}\text4\t$newoptions\t{$re[4]}\t{$re[5]}";
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: EXT4 {$re[1]} change journal to journal_data_writeback\n";}
-		shell_exec("/sbin/tune2fs -o journal_data_writeback {$re[1]}");
+		$dev=$re[1];
+		
+		if(preg_match("#UUID=(.+)#", $dev,$rz)){
+			if(!isset($UUIDS[$rz[1]])){continue;}
+			$dev=$UUIDS[$rz[1]];
+		}
+		
+		shell_exec("/sbin/tune2fs -o journal_data_writeback $dev");
+		shell_exec("/sbin/tune2fs -O dir_index $dev");
 		$change=true;
 		continue;
 		

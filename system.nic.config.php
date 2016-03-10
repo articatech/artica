@@ -1485,7 +1485,8 @@ function virtual_add_form(){
 	$users=new usersMenus();
 	$tpl=new templates();	
 	$t=$_GET["t"];
-	if(!is_numeric($t)){$t=0;}	
+	if(!is_numeric($_GET["ID"])){$_GET["ID"]=0;}
+	if(!is_numeric($t)){$t=time();}	
 	$nics=unserialize(base64_decode($sock->getFrameWork("cmd.php?list-nics=yes")));
 	$EnablePostfixMultiInstance=$sock->GET_INFO("EnablePostfixMultiInstance");
 	$NoGatewayForVirtualNetWork=$sock->GET_INFO("NoGatewayForVirtualNetWork");
@@ -1529,7 +1530,7 @@ function virtual_add_form(){
 
 	if($ligne["metric"]==0){$ligne["metric"]=100+$_GET["ID"];}
 	
-	$styleOfFields="font-size:16px;padding:3px";
+	$styleOfFields="font-size:24px;padding:3px";
 	$ous=$ldap->hash_get_ou(true);
 	$ous["openvpn_service"]="{APP_OPENVPN}";
 	
@@ -1546,143 +1547,152 @@ function virtual_add_form(){
 	
 	$ous[null]="{select}";
 	
-	$nic_field=Field_array_Hash($nics_array,"nic",$ligne["nic"],null,null,0,"font-size:16px;padding:3px");
-	$ou_fields=Field_array_Hash($ous,"org",$ligne["org"],null,null,0,"font-size:16px;padding:3px");
+	$nic_field=Field_array_Hash($nics_array,"nic",$ligne["nic"],null,null,0,"font-size:24px;padding:3px");
+	$ou_fields=Field_array_Hash($ous,"org",$ligne["org"],null,null,0,"font-size:24px;padding:3px");
 	$html="
-	<div id='virtip'>
+	<div id='virtip' style='width:98%' class=form>
 	". Field_hidden("ID","{$_GET["ID"]}")."
-	<table style='width:99%' class=form>
+	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:16px'>{nic}:</td>
+		<td class=legend style='font-size:24px'>{nic}:</td>
 		<td>$nic_field</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:16px'>{organization}:</td>
+		<td class=legend style='font-size:24px'>{organization}:</td>
 		<td>$ou_fields</td>
 	</tr>	
 	<tr>
-			<td class=legend style='font-size:16px'>{tcp_address}:</td>
+			<td class=legend style='font-size:24px'>{tcp_address}:</td>
 			
-			<td>" . field_ipv4("ipaddr",$ligne["ipaddr"],$styleOfFields,false,"CalcCdirVirt(0)")."</td>
+			<td>" . field_ipv4("ipaddr-$t",$ligne["ipaddr"],$styleOfFields,false,"CalcCdirVirt$t(0)")."</td>
 		</tr>
 		<tr>
-			<td class=legend style='font-size:16px'>{netmask}:</td>
-			<td>" . field_ipv4("netmask",$ligne["netmask"],$styleOfFields,false,"CalcCdirVirt(0)")."</td>
+			<td class=legend style='font-size:24px'>{netmask}:</td>
+			<td>" . field_ipv4("netmask-$t",$ligne["netmask"],$styleOfFields,false,"CalcCdirVirt$t(0)")."</td>
 		</tr>
 		<tr>
-			<td class=legend style='font-size:16px'>CDIR:</td>
+			<td class=legend style='font-size:24px'>CDIR:</td>
 			<td style='padding:-1px;margin:-1px'>
 			<table style='width:99%;padding:-1px;margin:-1px'>
 			<tr>
 			<td width=1%>
-			" . Field_text("cdir",$ligne["cdir"],"$styleOfFields;width:190px",null,null,null,false,null,$DISABLED)."</td>
-			<td align='left'> ".imgtootltip("img_calc_icon.gif","cdir","CalcCdirVirt(1)") ."</td>
+			" . Field_text("cdir-$t",$ligne["cdir"],"$styleOfFields;width:225px",null,null,null,false,null,$DISABLED)."</td>
+			<td align='left'> ".imgtootltip("img_calc_icon.gif","cdir","CalcCdirVirt$t(1)") ."</td>
 			</tr>
 			</table></td>
-		</tr>			
+		</tr>	
 		<tr>
-			<td class=legend style='font-size:16px'>{gateway}:</td>
-			<td>" . field_ipv4("gateway_virtual",$ligne["gateway"],$styleOfFields,false)."</td>
+			<td class=legend style='font-size:24px'>{use_a_gateway}:</td>
+			<td>" . Field_checkbox_design("ForceGateway-$t",1,$ligne["ForceGateway"],"CheckGateway$t()")."</td>
+		</tr>							
+		<tr>
+			<td class=legend style='font-size:24px'>{gateway}:</td>
+			<td>" . field_ipv4("gateway_virtual-$t",$ligne["gateway"],$styleOfFields,false)."</td>
 		</tr>
 		<tr>
-			<td class=legend style='font-size:16px'>{metric}:</td>
-			<td>" . field_text("metric_virtual",$ligne["metric"],"$styleOfFields;width:90px",false)."</td>
+			<td class=legend style='font-size:24px'>{metric}:</td>
+			<td>" . field_text("metric_virtual-$t",$ligne["metric"],"$styleOfFields;width:90px",false)."</td>
 		</tr>					
 		<tr>
-			<td class=legend style='font-size:16px'>failover:</td>
-			<td>" . Field_checkbox("failover",1,$ligne["failover"],"FaileOverCheck()")."</td>
+			<td class=legend style='font-size:24px'>failover:</td>
+			<td>" . Field_checkbox_design("failover-$t",1,$ligne["failover"],"FaileOverCheck()")."</td>
 		</tr>		
-		<tr>
-			<td class=legend style='font-size:16px'>{ForceGateway}:</td>
-			<td>" . Field_checkbox("ForceGateway",1,$ligne["ForceGateway"])."</td>
-		</tr>
+
 		
 		
 	</table>
 	</div>
-	<div id='infosVirtual' style='font-size:13px'></div>
-	<div style='text-align:right'><hr>". button($title_button,"VirtualIPAddSave()",18)."</div>
+	<div id='infosVirtual' style='font-size:24px'></div>
+	<div style='text-align:right'><hr>". button($title_button,"VirtualIPAddSave$t()",30)."</div>
 	<script>
-		var Netid={$_GET["ID"]};
-		var FailOver=$FailOver;
-		var cdir=document.getElementById('cdir').value;
-		var netmask=document.getElementById('netmask').value;
-		if(netmask.length>0){
-			if(cdir.length==0){
-				CalcCdirVirt(0);
-				}
-			}
-		if(Netid>0){
-			document.getElementById('ipaddr').disabled=true;
-		}
+var Netid={$_GET["ID"]};
+var FailOver=$FailOver;
+var cdir=document.getElementById('cdir-$t').value;
+var netmask=document.getElementById('netmask-$t').value;
+if(netmask.length>0){ if(cdir.length==0){ CalcCdirVirt$t(0); } }
+if(Netid>0){ document.getElementById('ipaddr-$t').disabled=true; }
 		
 		
-		function CheckGateway(){
-			var NoGatewayForVirtualNetWork=$NoGatewayForVirtualNetWork;
-			var AsDebianSystem=$AsDebianSystem;
-			if(AsDebianSystem==0){
-				document.getElementById('ForceGateway').disabled=true;
-				document.getElementById('ForceGateway').checked=false;
-			}
-			document.getElementById('gateway_virtual').disabled=false;
-			if(NoGatewayForVirtualNetWork==1){
-				document.getElementById('gateway_virtual').disabled=true;
-				document.getElementById('gateway_virtual').value='';
-				document.getElementById('ForceGateway').disabled=true;
-				document.getElementById('ForceGateway').checked=false;				
-				document.getElementById('infosVirtual').innerHTML='$NoGatewayForVirtualNetWorkExplain';
-				
-			}
-			
-			document.getElementById('failover').disabled=true;
-			if(FailOver==1){document.getElementById('failover').disabled=false;}
-			
-			
-		}
-		
-		
-		function VirtualIPAddSave(){
-			var DisableNetworksManagement=$DisableNetworksManagement;
-			var NoGatewayForVirtualNetWork=$NoGatewayForVirtualNetWork;
-			if(DisableNetworksManagement==1){alert('$ERROR_NO_PRIVS');return;}		
-			var XHR = new XHRConnection();
-			XHR.appendData('virt-ipaddr',document.getElementById('ipaddr').value);
-			XHR.appendData('netmask',document.getElementById('netmask').value);
-			XHR.appendData('cdir',document.getElementById('cdir').value);
-			XHR.appendData('metric',document.getElementById('metric_virtual').value);
-			
-			
-			
-			if(NoGatewayForVirtualNetWork==0){XHR.appendData('gateway',document.getElementById('gateway_virtual').value);}
-			if(NoGatewayForVirtualNetWork==1){XHR.appendData('gateway','');}
-			XHR.appendData('nic',document.getElementById('nic').value);
-			XHR.appendData('org',document.getElementById('org').value);
-			XHR.appendData('ID',document.getElementById('ID').value);
-			if(document.getElementById('ForceGateway').checked){XHR.appendData('ForceGateway',1);}else{XHR.appendData('ForceGateway',0);}
-			if(document.getElementById('failover')){
-				if(document.getElementById('failover').checked){XHR.appendData('failover',1);}else{XHR.appendData('failover',0);}
-			}
-			MemFlexGrid=$t;
-			AnimateDiv('virtip');
-			XHR.sendAndLoad('$page', 'GET',X_VirtualIPAddSave);
-		}
+function CheckGateway$t(){
+	var NoGatewayForVirtualNetWork=$NoGatewayForVirtualNetWork;
+	var AsDebianSystem=$AsDebianSystem;
+	document.getElementById('gateway_virtual-$t').disabled=true;
+	document.getElementById('metric_virtual-$t').disabled=true;
 
-		function FaileOverCheck(){
-			document.getElementById('netmask').disabled=false;
-			document.getElementById('gateway_virtual').disabled=false;
+	
+	if(NoGatewayForVirtualNetWork==1){
+		document.getElementById('ForceGateway-$t').disabled=true;
+		document.getElementById('ForceGateway-$t').checked=false;	
+		document.getElementById('infosVirtual-$t').innerHTML='$NoGatewayForVirtualNetWorkExplain';	
+		return;
+	}
+	if(document.getElementById('ForceGateway-$t').checked){
+		document.getElementById('gateway_virtual-$t').disabled=false;
+		document.getElementById('metric_virtual-$t').disabled=false;
+	}
 			
+	document.getElementById('failover-$t').disabled=true;
+	if(FailOver==1){document.getElementById('failover-$t').disabled=false;}
+}
 		
-			if(document.getElementById('failover').checked){
-				document.getElementById('netmask').disabled=true;
-				document.getElementById('gateway_virtual').disabled=true;					
+var XVirtualIPAddSave$t=function (obj) {
+	var results=obj.responseText;
+	var Netid={$_GET["ID"]};
+	if(results.length>5){alert(results);return;}	
+	if(Netid==0){ YahooWin2Hide();}
+	$('#SYSTEM_NICS_VIRTUALS_LIST').flexReload();
+}			
+		
+		
+function VirtualIPAddSave$t(){
+	var DisableNetworksManagement=$DisableNetworksManagement;
+	var NoGatewayForVirtualNetWork=$NoGatewayForVirtualNetWork;	
+	var XHR = new XHRConnection();
+	XHR.appendData('virt-ipaddr',document.getElementById('ipaddr-$t').value);
+	XHR.appendData('netmask',document.getElementById('netmask-$t').value);
+	XHR.appendData('cdir',document.getElementById('cdir-$t').value);
+	XHR.appendData('metric',document.getElementById('metric_virtual-$t').value);
+
+	if(NoGatewayForVirtualNetWork==0){XHR.appendData('gateway',document.getElementById('gateway_virtual-$t').value);}
+	if(NoGatewayForVirtualNetWork==1){XHR.appendData('gateway','');}
+	XHR.appendData('nic',document.getElementById('nic').value);
+	XHR.appendData('org',document.getElementById('org').value);
+	XHR.appendData('ID',document.getElementById('ID').value);
+	if(document.getElementById('ForceGateway-$t').checked){XHR.appendData('ForceGateway',1);}else{XHR.appendData('ForceGateway',0);}
+	if(document.getElementById('failover-$t')){
+		if(document.getElementById('failover-$t').checked){XHR.appendData('failover',1);}else{XHR.appendData('failover',0);}
+	}
+	MemFlexGrid=$t;
+	XHR.sendAndLoad('$page', 'GET',XVirtualIPAddSave$t);
+}
+
+function FaileOverCheck(){
+	document.getElementById('netmask-$t').disabled=false;
+	document.getElementById('gateway_virtual-$t').disabled=false;
+	
+	if(document.getElementById('failover-$t').checked){
+		document.getElementById('netmask-$t').disabled=true;
+		document.getElementById('gateway_virtual-$t').disabled=true;					
+	}
+}
+		
+		var X_CalcCdirVirt$t= function (obj) {
+			var results=obj.responseText;
+			document.getElementById('cdir-$t').value=results;
+		}		
+		
+		function CalcCdirVirt$t(recheck){
+			var cdir=document.getElementById('cdir-$t').value;
+			if(recheck==0){
+				if(cdir.length>0){return;}
 			}
-			
+			var XHR = new XHRConnection();
+			XHR.appendData('cdir-ipaddr',document.getElementById('ipaddr-$t').value);
+			XHR.appendData('netmask',document.getElementById('netmask-$t').value);
+			XHR.sendAndLoad('$page', 'GET',X_CalcCdirVirt$t);
+		}		
 		
-			//post-up /sbin/ifconfig eth0:1 IP.DE.FAIL.OVER1 netmask 255.255.255.255 broadcast IP.DE.FAIL.OVER1
-		
-		}
-		
-		CheckGateway();
+		CheckGateway$t();
 		FaileOverCheck();
 	</script>
 	
@@ -1700,7 +1710,13 @@ function virtual_cdir(){
 	$ip=new IP();
 	
 	if($newmask<>null){
-		echo $ip->maskTocdir($ipaddr, $newmask);
+		$ipaddr=$ip->maskTocdir($ipaddr, $newmask);
+		
+		if(preg_match("#([0-9\.]+)\/([0-9]+)#", $ipaddr,$re)){
+			$zzr=explode(".",$re[1]);
+			echo $zzr[0].".".$zzr[1].".".$zzr[2].".0/{$re[2]}";
+		}
+		
 	}
 	
 }
@@ -2288,22 +2304,48 @@ $sock=new sockets();
 $resolv=new resolv_conf();
 $DisableNetworksManagement=$sock->GET_INFO("DisableNetworksManagement");
 if(!is_numeric($DisableNetworksManagement)){$DisableNetworksManagement=0;}
+$EnableDNSMASQ=intval($sock->GET_INFO("EnableDNSMASQ"));
+$apply_to_the_system=$tpl->javascript_parse_text("{apply_to_the_system}");
 
+//
 
 
 $t=time();
 	if(!$resolv->isValidDomain($resolv->MainArray["DOMAINS1"])){$resolv->MainArray["DOMAINS1"]="localhost.local";}
+	
+$PRIMARY_DNS="<tr>
+		<td class=legend style='font-size:26px' nowrap>{primary_dns}:</td>
+		<td>". field_ipv4("DNS1", $resolv->MainArray["DNS1"],"font-size:26px")."</td>
+		</tr>";	
+	
 	$page=CurrentPageName();
+	
+	if($EnableDNSMASQ==1){
+		$PRIMARY_DNS="<tr style='height:50px'>
+		<td class=legend style='font-size:26px' nowrap>{primary_dns}:</td>
+		
+		<td>
+		<a href=\"javascript:blur();\" 
+		OnClick=\"javascript:GotoNetworkDNSMASQ();\"
+		 style='font-size:26px;text-decoration:underline;font-weight:bold'>127.0.0.1</a>
+		</td>
+		</tr>
+		<tr>
+		<td class=legend style='font-size:26px' nowrap>{primary_dns}:</td>
+		<td>". field_ipv4("DNS1", $resolv->MainArray["DNS1"],"font-size:26px")."</td>
+		</tr>";
+		
+		
+	}
+	
+	
 	$html="
 	<center id='$t' style='width:98%' class=form>
 	<table style='width:100%'>
 	<tr>
 	<td valign='top'>
 		<table style='width:99%'>
-		<tr>
-		<td class=legend style='font-size:26px' nowrap>{primary_dns}:</td>
-		<td>". field_ipv4("DNS1", $resolv->MainArray["DNS1"],"font-size:26px")."</td>
-		</tr>
+		$PRIMARY_DNS
 		<tr>
 		<td class=legend style='font-size:26px' nowrap>{secondary_dns}:</td>
 		<td>". field_ipv4("DNS2", $resolv->MainArray["DNS2"],"font-size:26px")."</td>
@@ -2356,6 +2398,8 @@ $t=time();
 		var x_SaveResolvConf= function (obj) {
 			var results=obj.responseText;
 			if(results.length>0){alert(results);}
+			if(!confirm('$apply_to_the_system')){return;}
+			Loadjs('network.restart.php');
 		}		
 		function SaveResolvConf(){
 			var XHR = new XHRConnection();
@@ -2373,14 +2417,19 @@ $t=time();
 				
 		}	
 		
-		function LockServs(){
-			var lock1=$resolv->lockServ1;
-			if(lock1==1){
-				document.getElementById('DNS1').disabled=true;
-			}
-		}
-	LockServs();
-	</script>";
+		
+		
+function LockServs(){
+	var EnableDNSMASQ=$EnableDNSMASQ;
+	if(EnableDNSMASQ==1){
+		document.getElementById('DNS1').disabled=true;
+		document.getElementById('DNS2').disabled=true;
+		document.getElementById('DNS3').disabled=true;
+	}
+			
+}
+LockServs();
+</script>";
 	
 	
 	echo $tpl->_ENGINE_parse_body($html);

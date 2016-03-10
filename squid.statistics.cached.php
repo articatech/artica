@@ -189,10 +189,8 @@ function requeteur_popup(){
 	$members["IPADDR"]="{ipaddr}";
 	
 	
-	$q=new influx();
-	$date_start=date("Y-m-d",intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/DATE_START")));
-	$date_end=date("Y-m-d",intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/DATE_END")));
-	$Selectore="mindate:$date_start;maxdate:$date_end";
+	$q=new postgres_sql();
+	$Selectore=$q->fieldSelectore();
 	
 	
 	$stylelegend="style='vertical-align:top;font-size:18px;padding-top:5px' nowrap";

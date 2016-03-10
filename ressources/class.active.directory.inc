@@ -43,7 +43,8 @@ class ldapAD{
 			
 			$this->ldap_connection=ldap_connect($this->ldap_host, $this->ldap_port );
 			ldap_set_option($this->ldap_connection, LDAP_OPT_PROTOCOL_VERSION, 3); // on passe le LDAP en version 3, necessaire pour travailler avec le AD
-			ldap_set_option($this->ldap_connection, LDAP_OPT_REFERRALS, 0); 		 
+			ldap_set_option($this->ldap_connection, LDAP_OPT_REFERRALS, 0); 
+
 			$this->ldapbind=@ldap_bind($this->ldap_connection, "$this->ldap_admin,$this->suffix",$this->ldap_password);
 	
 				if(!$this->ldapbind){

@@ -1,4 +1,6 @@
 <?php
+if(isset($_GET["verbose"])){ini_set('display_errors', 1);
+ini_set('html_errors',0);ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);}
 	header("Pragma: no-cache");	
 	header("Expires: 0");
 	header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
@@ -196,8 +198,51 @@ $html="
 
 function postqueue_context_popup(){
 	$page=CurrentPageName();
-	$html="<div id='postqueue-context-".md5($_GET["postqueue-context"])."' style='width:100%;height:650px;overflow:auto'></div>
+	$t=time();
+	$page=CurrentPageName();
+	$tpl=new templates();
 	
+	$date=$tpl->javascript_parse_text("{date}");
+	$from=$tpl->javascript_parse_text("{from}");
+	$to=$tpl->_ENGINE_parse_body("{to}");
+	$explain=$tpl->javascript_parse_text("{explain}");
+	
+	$html="
+<table class='POSTQUEUE_TABLE_LIST' style='display: none' id='POSTQUEUE_TABLE_LIST' style='width:100%'></table>
+<script>
+function Start$t(){
+	$('#POSTQUEUE_TABLE_LIST').flexigrid({
+		url: '$page?hostname={$_GET["hostname"]}&postqueue-context-list=". urlencode($_GET["postqueue-context"])."',
+		dataType: 'json',
+		colModel : [
+		{display: '<span style=font-size:18px>$date</span>', name : 'zDate', width :172, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$from</span>', name : 'from', width :209, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$to</span>', name : 'recipients', width :209, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$explain</span>', name : 'event', width : 341, sortable : true, align: 'left'},
+		],
+	$buttons
+	searchitems : [
+	{display: '$date', name : 'zDate'},
+	{display: '$from', name : 'from'},
+	{display: '$to', name : 'recipients'},
+	{display: '$explain', name : 'event'},
+	],
+	sortname: 'zDate',
+	sortorder: 'desc',
+	usepager: true,
+	title: '<span style=font-size:18px>{$_GET["postqueue-context"]}</span>',
+	useRp: true,
+	rp: 50,
+	showTableToggleBtn: false,
+	width: '99%',
+	height: 550,
+	singleSelect: true,
+	rpOptions: [10, 20, 30, 50,100,200]
+	
+	});
+}
+Start$t();
+</script>	
 	<script>
 		LoadAjax('postqueue-context-".md5($_GET["postqueue-context"])."','$page?hostname={$_GET["hostname"]}&postqueue-context-list=". urlencode($_GET["postqueue-context"])."');
 	</script>
@@ -206,30 +251,50 @@ function postqueue_context_popup(){
 }
 
 function postqueue_context_list(){
-	if($_GET["postqueue-context-list"]=="unknown"){$_GET["postqueue-context-list"]="";}
-	$sql="SELECT * FROM postqueue WHERE context='{$_GET["postqueue-context-list"]}' AND instance='{$_GET["hostname"]}'";
-	
 	$tpl=new templates();
-	$page=CurrentPageName();
+	$MyPage=CurrentPageName();
 	$q=new mysql();
+	$page=0;
 	
-$html1="
-<table cellspacing='0' cellpadding='0' border='0' class='tableView' style='width:100%'>
-<thead class='thead'>
-	<tr>
-	<th>&nbsp;</th>
-	<th>{date}</th>
-	<th>{from}</th>
-	<th>{to}</th>
-	</tr>
-</thead>
-<tbody class='tbody'>";		
+	if(isset($_POST["sortname"])){if($_POST["sortname"]<>null){$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";}}
+	if(isset($_POST['page'])) {$page = $_POST['page'];}
+	
+	
+	if($_GET["postqueue-context-list"]=="unknown"){$_GET["postqueue-context-list"]="";}
+	$table="( SELECT * FROM postqueue WHERE context='{$_GET["postqueue-context-list"]}' AND instance='{$_GET["hostname"]}') as t";
+	
+	$searchstring=string_to_flexquery();
+	$sql="SELECT COUNT(*) as TCOUNT FROM $table WHERE 1 $searchstring";
+	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_events"));
+	$total = $ligne["TCOUNT"];
+	
+	if (isset($_POST['rp'])) {$rp = $_POST['rp'];}
+	
+	
+	
+	$pageStart = ($page-1)*$rp;
+	if(is_numeric($rp)){$limitSql = "LIMIT $pageStart, $rp";}
+	
+	$sql="SELECT *  FROM $table WHERE 1 $searchstring $ORDER $limitSql";
+	$results = $q->QUERY_SQL($sql,"artica_events");
+	
+	
+	
+	$data = array();
+	$data['page'] = $page;
+	$data['total'] = $total;
+	$data['rows'] = array();
+	
+	if(!$q->ok){json_error_show($q->mysql_error."<br>$sql");}
+	if(mysql_num_rows($results)==0){json_error_show("no rule");}
+	
+	
 	$datas=array();
 	$results=$q->QUERY_SQL($sql,"artica_events");
 	if(!$q->ok){echo "<H2>$q->mysql_error</H2>";}
 	
 	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){	
-			if($classtr=="oddRow"){$classtr=null;}else{$classtr="oddRow";}
+			$color="black";
 			$line["TO"]=trim($ligne["recipients"]);
 			$msgid=$ligne["msgid"];
 			$line["FROM"]=$ligne["from"];
@@ -242,57 +307,31 @@ $html1="
 				if(preg_match("#(.+?)@(.+)#",$other,$re)){
 					$datas["SEARCH_TO"][$re[2]]=$re[2];
 				}
-				$to=$to."<li>$other</li>";
+				$to=$to."$other<br>";
 				
 			}
-			$status=null;
-			if($line["STATUS"]<>null){
-				$status="
-				<tr class=$classtr>
-				<td colspan=4><strong style='font-size:9px'>{$line["STATUS"]}</td>
-				</tr>
-				";
-			}
+
 			
-			$js="Loadjs('$page?js-message=$msgid')";
-			$html1=$html1."
-			<tr class=$classtr>
-					<td width=1%>". imgtootltip("email-view-32.png","{view}",$js)."</td>
-					<td width=10% style='font-size:12px;' nowrap><span id='DELETE_DATE_$msgid'>{$line["DATE"]}</span></td>
-					<td width=33% style='font-size:12px;font-weight:bold' nowrap><span id='DELETE_FROM_$msgid'>{$line["FROM"]}</td>
-					<td width=33% style='font-size:12px;font-weight:bold' nowrap><span id='DELETE_TO_$msgid'>$to</td>
-					$status
-			</td>
-			</tr>";
+			$href="	<a href=\"javascript:blur();\"
+								OnClick=\"javascript:Loadjs('$MyPage?js-message=$msgid');\"
+								style='font-size:16px;text-decoration:underline'
+							>";
+
+			$data['rows'][] = array(
+					'id' => $ligne['ID'],
+					'cell' => array(
+							"<span style='font-size:16px;color:$color'>
+							$href{$line["DATE"]}</a></span>",
+							"$href{$line["FROM"]}",
+							"$href{$to}",
+							"<span style='font-size:16px;color:$color'>{$line["STATUS"]}</span>"
+							 )
+			);
 		}
 
 		
-	$html1=$html1."</table>";
-	
-	$html="
-	<center>
-	<table cellspacing='0' cellpadding='0' border='0' class='tableView' width=220px>
-	<thead class='thead'>
-		<tr>
-		<th width=99%>{to}</th>
-		<th width=1%>{ban}</th>
-		</tr>
-	</thead>
-	<tbody class='tbody'>";
-	
-	
-	while (list ($domain, $other) = each ($datas["SEARCH_TO"]) ){
-		if($classtr=="oddRow"){$classtr=null;}else{$classtr="oddRow";}
-		$html=$html."
-			<tr class=$classtr>
-					<td style='font-size:16px'>$domain</td>
-					<td>". imgtootltip("bandwith-limit-www-32.png","{ban_this_destination}","Loadjs('$page?ban-to-domain=$domain&hostname={$_GET["hostname"]}')")."</td>
-			</tr>";
-		
-	}
-	$html=$html."</table></center>$html1";
-	
-	echo $tpl->_ENGINE_parse_body($html);
+
+		echo json_encode($data);
 	
 }
 
@@ -497,7 +536,7 @@ var x_PostQueueFF= function (obj) {
 	
 	function PostQueueContext(context){
 		var zcontext=escape(context);
-		YahooWin4(850,'$page?postqueue-context='+zcontext+'&hostname=$hostname',context);
+		YahooWin4(1024,'$page?postqueue-context='+zcontext+'&hostname=$hostname',context);
 	
 	}
 $Piejs	
@@ -561,13 +600,14 @@ $queue=$_GET["show-queue"];
 	}
 	
 	function PostCat(message){
-		YahooWin2('700','$page?popup-message='+message,message);
+		YahooWin2('1024','$page?popup-message='+message,message);
 	}
 	
 var X_PostCatDelete= function (obj) {
 	var results=obj.responseText;
 	if(results.length>2){alert(results);}
-	$('#$this->FlexID').flexReload();
+	YahooWin2Hide();
+	$('#POSTFIX_QUEUE_DETAILS').flexReload();
 	RefreshTab('queue_monitor'); 
 	}	
 	
@@ -575,7 +615,6 @@ var X_PostCatDelete= function (obj) {
 		if(confirm('$delete_message_text ?\\n'+message)){
 			var XHR = new XHRConnection();
 			XHR.appendData('DeleteMailID',message);
-			document.getElementById('loupemessage').innerHTML='<center><img src=img/wait_verybig.gif></center>';
 			XHR.sendAndLoad('$page', 'GET',X_PostCatDelete);	
 		}
 	}
@@ -872,12 +911,17 @@ function popup_postqueue_details_form(){
 function popup_message(){
 	include_once(dirname(__FILE__).'/ressources/class.mime.parser.inc');
 	include_once(dirname(__FILE__).'/ressources/rfc822_addresses.php');
-	$messageid=$_GET["message-id"];
+	if(isset($_GET["message-id"])){$messageid=$_GET["message-id"];}
+	if(isset($_GET["popup-message"])){$messageid=$_GET["popup-message"];}
+	
+	
 	$sock=new sockets();
 	$sock->getFrameWork("postfix.php?postcat-q=$messageid");
 	
 	$datas=@file_get_contents("/usr/share/artica-postfix/ressources/logs/web/postcat-$messageid.txt");
 	@unlink("/usr/share/artica-postfix/ressources/logs/web/postcat-$messageid.txt");
+	
+	if($datas==null){FATAL_ERROR_SHOW_128("{no_data}");die();}
 	
 	if(preg_match('#\*\*\* ENVELOPE RECORDS.+?\*\*\*(.+?)\s+\*\*\*\s+MESSAGE CONTENTS#is',$datas,$re)){
 		$table_content=$re[1];
@@ -907,8 +951,8 @@ if(is_array($fields)){
 	while (list ($num, $val) = each ($fields) ){
 		$table=$table . "
 		<tr>
-			<td class=legend>{{$num}}:</td>
-			<td><strong style='width:11px'>{$val}</strong></td>
+			<td class=legend style='font-size:18px' nowrap>{{$num}}:</td>
+			<td><strong style='font-size:18px'>{$val}</strong></td>
 		</tr>
 		";
 		
@@ -920,17 +964,17 @@ $messagesT=explode("\n",$message_content);
 $message_content=null;
 while (list ($num, $val) = each ($messagesT) ){
 	if(trim($val)==null){continue;}
-	$message_content=$message_content."<div><code>$val</code></div>";
+	$message_content=$message_content."<div><code style='font-size:18px'>$val</code></div>";
 	
 	
 }
 
 $html="
-<H1>{show_mail}:$messageid</H1>
+<div style='font-size:30px'>{show_mail}:$messageid ". FormatBytes(strlen($datas)/1024)."</div>
 <div id='loupemessage'>
 <table style='width:100%'>
 <tr>
-	<td valign='top'>
+	<td valign='top' style='width:210px'>
 		<table style='width:100%'>
 		<tr>
 		
@@ -945,15 +989,11 @@ $html="
 		<tr>
 		<td>" . Paragraphe("delete-64.png",'{delete_message}','{delete_message_text}',"javascript:PostCatDelete('$messageid');")."</td>
 		</tr>	
-	
-		
-		
 		</table>
 	</td>
 	<td valign='top'>
-	<div id='messageidbody' style='display:none;width:100%;height:300px;overflow:auto'>$message_content
-	</div>
-	<div id='messageidtable' style='display:block;width:100%;height:300px;overflow:auto'>$table</div>
+	<div id='messageidbody' style='display:none;width:100%;height:600px;overflow:auto'>$message_content</div>
+	<div id='messageidtable' style='display:block;width:100%;height:600px;overflow:auto'>$table</div>
 	</td>
 </tr>
 </table>

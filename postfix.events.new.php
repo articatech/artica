@@ -251,6 +251,7 @@ function ZoomEvents(content){
 }
 
 function events_list(){
+	include_once(dirname(__FILE__)."/ressources/class.status.logs.inc");
 	$tpl=new templates();
 	$sock=new sockets();
 	$users=new usersMenus();
@@ -350,6 +351,10 @@ function events_list(){
 		if(preg_match("#\(.*\):\s+addr\s+(.+?)\s+from <(.*?)> rcpt <(.*?)>:\s+autowhitelisted#",$line,$re)){
 			$line="{whitelisted}: {$re[1]} {sender}:{$re[2]}  {to}: <strong>{$re[3]}</strong>";
 			
+		}
+		if(preg_match("#NOQUEUE: reject: RCPT from unknown\[(.+?)\]:.*?Client host rejected: cannot find your hostname.*?from=<(.*?)> to=<(.*?)>.*?helo=<(.*?)>#",$line,$re)){
+			$line="{rejected}: Hostname not found {$re[1]} (HELO:{$re[4]}) {sender}:{$re[2]}  {to}: <strong>{$re[3]}</strong>";
+			$color="#d32d2d";
 		}
 		
 		if(preg_match("#NOQUEUE: milter-reject: RCPT from (.*?)\[(.+?)\].*?from=<(.*?)>\s+to=<(.*?)>#",$line,$re)){

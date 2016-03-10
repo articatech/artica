@@ -900,17 +900,17 @@ function sasl_popup(){
 		
 		if($num=="popup-auth-except"){
 			
-			$html[]="<li><a href=\"smtpd_sasl_exceptions_networks.php?popup=yes\"><span style='font-size:20px'>$ligne</span></a></li>\n";
+			$html[]="<li><a href=\"smtpd_sasl_exceptions_networks.php?popup=yes\"><span style='font-size:24px'>$ligne</span></a></li>\n";
 			continue;
 		}
 		
-		$html[]="<li><a href=\"$page?$num=yes\"><span style='font-size:20px'>$ligne</span></a></li>\n";
+		$html[]="<li><a href=\"$page?$num=yes\"><span style='font-size:24px'>$ligne</span></a></li>\n";
 			
 		}	
 	
 	
 	
-	echo build_artica_tabs($html, "main_popup_sasl_auth")."
+	echo build_artica_tabs($html, "main_popup_sasl_auth",1490)."
 	
 	<script>LeftDesign('authentication-white-256-opac20.png');</script>";
 
@@ -997,13 +997,11 @@ echo $tpl->_ENGINE_parse_body($html);
 
 
 function sasl_popup_status(){
-	include_once(dirname(__FILE__))."/ressources/class.squid.reverse.inc";
-	$squid_reverse=new squid_reverse();
 	$page=CurrentPageName();
 	$ldap=new clladp();
 	$main=new smtpd_restrictions();
 	$sock=new sockets();
-	$PostfixEnableMasterCfSSL=intval($sock->GET_INFO("PostfixEnableMasterCfSSL"));
+	
 	$t=time();
 	$PostfixEnableSubmission=$sock->GET_INFO("PostfixEnableSubmission");
 	$PostFixMasterCertificate=$sock->GET_INFO("PostFixMasterCertificate");
@@ -1011,31 +1009,23 @@ function sasl_popup_status(){
 	$TrustMyNetwork=$sock->GET_INFO("TrustMyNetwork");
 	if(!is_numeric($TrustMyNetwork)){$TrustMyNetwork=1;}
 	$enabled=$PostFixSmtpSaslEnable;
-	$sasl=Paragraphe_switch_img('{enable_smtp_authentication}','{sasl_intro}','enable_auth',$enabled,'{enable_disable}',550);
+	$sasl=Paragraphe_switch_img('{enable_smtp_authentication}','{sasl_intro}',
+			'enable_auth',$enabled,'{enable_disable}',1400);
 	
 	
 	$smtpd_sasl_exceptions_networks=Paragraphe("64-white-computer.png",
-	"{smtpd_sasl_exceptions_networks}","{smtpd_sasl_exceptions_networks_text}","javascript:Loadjs('smtpd_sasl_exceptions_networks.php')");
+	"{smtpd_sasl_exceptions_networks}","{smtpd_sasl_exceptions_networks_text}",
+			"javascript:Loadjs('smtpd_sasl_exceptions_networks.php')");
 	
 	
-	$PostfixEnableSubmission_field=Paragraphe_switch_img('{PostfixEnableSubmission}','{PostfixEnableSubmission_text}','PostfixEnableSubmission',$PostfixEnableSubmission,'{enable_disable}',550);
+	$PostfixEnableSubmission_field=Paragraphe_switch_img('{PostfixEnableSubmission}',
+			'{PostfixEnableSubmission_text}','PostfixEnableSubmission',$PostfixEnableSubmission,
+			'{enable_disable}',1400);
 	
-	$TrustMyNetwork_field=Paragraphe_switch_img('{TrustMyNetwork}','{TrustMyNetwork_text}','TrustMyNetwork',$TrustMyNetwork,'{enable_disable}',550);
+	$TrustMyNetwork_field=Paragraphe_switch_img('{TrustMyNetwork}','{TrustMyNetwork_text}',
+			'TrustMyNetwork',$TrustMyNetwork,'{enable_disable}',1400);
 	
 	
-	$sslcertificates=$squid_reverse->ssl_certificates_list();
-	$ENABLE_SMTPS=Paragraphe_switch_img('{ENABLE_SMTPS}','{SMTPS_TEXT}','PostfixEnableMasterCfSSL',$PostfixEnableMasterCfSSL,null,550);
-	
-	$ENABLE_SMTPS_CERTIFICATE="
-	<table style='width:100%'>
-	<tr>
-		<td colspan=2>$ENABLE_SMTPS</td>
-	</tr>
-	<tr>
-	<td class=legend nowrap style='font-size:22px'>{use_certificate_from_certificate_center}:</td>
-	<td>". Field_array_Hash($sslcertificates, "certificate-$t",$PostFixMasterCertificate,null,null,0,"font-size:22px")."</td>
-	</tr>
-	</table>";
 	
 $html="
 	<div id='sasl-id'>
@@ -1045,9 +1035,8 @@ $html="
 			$sasl
 			<hr>$TrustMyNetwork_field
 			<hr>$PostfixEnableSubmission_field
-			<hr>$ENABLE_SMTPS_CERTIFICATE
 			<div style='text-align:right'>
-			<hr>". button("{apply}","enable_auth()",40). "
+			<hr>". button("{apply}","enable_auth()",48). "
 			</div>
 		</td>
 	
@@ -1068,8 +1057,6 @@ $html="
 		XHR.appendData('save_auth',document.getElementById('enable_auth').value);
 		XHR.appendData('PostfixEnableSubmission',document.getElementById('PostfixEnableSubmission').value);
 		XHR.appendData('TrustMyNetwork',document.getElementById('TrustMyNetwork').value);
-		XHR.appendData('PostFixMasterCertificate',document.getElementById('certificate-$t').value);
-		XHR.appendData('PostfixEnableMasterCfSSL',document.getElementById('PostfixEnableMasterCfSSL').value);
 		XHR.sendAndLoad('$page', 'GET',X_enable_auth);	
 	
 	}
@@ -1271,9 +1258,7 @@ function sasl_save(){
 	$socks->SET_INFO('PostfixEnableSubmission',$_GET["PostfixEnableSubmission"]);
 	$socks->SET_INFO('PostFixSmtpSaslEnable',$_GET["save_auth"]);
 	$socks->SET_INFO('TrustMyNetwork',$_GET["TrustMyNetwork"]);
-	$socks->SET_INFO("PostFixMasterCertificate", $_GET["PostFixMasterCertificate"]);
-	if(isset($_GET["PostfixEnableMasterCfSSL"])){$socks->SET_INFo('PostfixEnableMasterCfSSL',$_GET["PostfixEnableMasterCfSSL"]);}
-
+	
 	
 	
 
@@ -1332,65 +1317,7 @@ function milter_behavior_popup(){
 }
 
 function backup_popup(){
-	$page=CurrentPageName();
-	$tpl=new templates();
-	$sock=new sockets();
-	$users=new usersMenus();
-	$enable_amavis=$sock->GET_INFO("EnableAmavisDaemon");
-	$enable_assp=$sock->GET_INFO("EnableASSP");
-	$ArticaAmavisEnablePlugin=$sock->GET_INFO("ArticaAmavisEnablePlugin");
-	if(!is_numeric($ArticaAmavisEnablePlugin)){$ArticaAmavisEnablePlugin=1;}
-	
-	$fontsize="font-size:14px";
-	$array["backup-options"]='{options}';
-	$array["backup-status"]='{status}';
-
-	while (list ($num, $ligne) = each ($array) ){
-		if($num=="backup-options"){
-			$html[]=$tpl->_ENGINE_parse_body("<li><a href=\"postfix.archiver.php?hostname=$hostname\"><span>$ligne</span></a></li>\n");
-			continue;
-		}
-		
-		if($num=="backup-status"){
-			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"postfix.archiver.php?hostname=$hostname&status=yes\"><span>$ligne</span></a></li>\n");
-			continue;
-		}
-
-		$html[]= "<li><a href=\"$page?main=$num&hostname=$hostname\"><span>$ligne</span></a></li>\n";
-	}
-	
-	
-	echo "
-	<div id=main_config_archiver style='width:100%;height:$height;overflow:auto;$fontsize'>
-		<ul>". implode("\n",$html)."</ul>
-	</div>
-		<script>
-		  $(document).ready(function() {
-			$(\"#main_config_archiver\").tabs();});
-			
-			QuickLinkShow('quicklinks-APP_POSTFIX');
-			
-		</script>";		
-	
-	return;
-	
-	$milter=Paragraphe_switch_img('{enable_APP_MAILARCHIVER}',
-	'{enable_APP_MAILARCHIVER_text}','enable_archiver',$sock->GET_INFO("MailArchiverEnabled"),'{enable_disable}',450);
-
-	$html="
-	<table style='width:99%' class=form>
-	<tr>
-	<td>
-	<div style='font-size:22px'>{backupemail_behavior}<hr></div>
-	$milter
-	<div style='text-align:right;width:100%'><hr>". button("{apply}","ApplyBackupBehavior()","16px")."</div>
-	</td>
-	</tr>
-	</table>";
-	
-	$tpl=new templates();
-	echo $tpl->_ENGINE_parse_body($html,'postfix.plugins.php');	
-	}
+}
 
 function antispam_popup_save(){
 	$artica=new artica_general();

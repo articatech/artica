@@ -3,8 +3,8 @@ include_once(dirname(__FILE__)."/class.phpmailer.inc");
 
 class system_msmtp{
 	private $binary=null;
-	private $smtp_sender=null;
-	private $recipient=null;
+	public $smtp_sender=null;
+	public $recipient=null;
 	private $tmpfile=null;
 	private $tmplogfile=null;
 	private $conffile=null;
@@ -16,15 +16,20 @@ class system_msmtp{
 	private $body=null;
 	private $logsArray=array();
 	public $logs=null;
+	public $ENABLED=0;
 	
-	function system_msmtp($recipient,$body){
+	function system_msmtp($recipient=null,$body){
 		if($GLOBALS["VERBOSE"]){echo "system_msmtp functionF<br>\n";}
 		if(is_file("/usr/bin/msmtp")){$this->binary="/usr/bin/msmtp";}
 		$sock=new sockets();
 		$ini=new Bs_IniHandler();
 		$datas=trim($sock->GET_INFO("SmtpNotificationConfig"));
+		if($datas==null){return;}
 		$ini->loadString($datas);
+		if(!isset($ini->_params["SMTP"])){return;}
+		if(!isset($ini->_params["SMTP"]["enabled"])){return;}
 		
+		$this->ENABLED=intval($ini->_params["SMTP"]["enabled"]);
 		
 		
 		$this->smtp_sender=$ini->_params["SMTP"]["smtp_sender"];
@@ -54,7 +59,7 @@ class system_msmtp{
 		
 		$conf[]="port $this->port";
 		if($this->smtp_auth_user<>null){
-			$conf[]="auth on";
+			if($this->tls_enabled==0){$conf[]="auth plain";}else{$conf[]="auth on";}
 			$conf[]="user $this->smtp_auth_user";
 			$conf[]="password $this->smtp_auth_passwd";
 			$conf[]="logfile $this->tmplogfile";
@@ -108,6 +113,7 @@ class system_msmtp{
 		$msmtp[]=$this->binary;
 		$msmtp[]="--file=$this->conffile";
 		$msmtp[]="--protocol=smtp";
+		$msmtp[]="--logfile=$this->tmplogfile";
 		$msmtp[]="--read-envelope-from";
 		$msmtp[]="-- $this->recipient";
 		$msmtp[]="< $this->tmpfile 2>&1";
@@ -117,6 +123,10 @@ class system_msmtp{
 		
 		
 		if($GLOBALS["VERBOSE"]){echo "$cmd\n";}
+		
+		if($GLOBALS["VERBOSE"]){system("$cmd");}
+		
+		
 		exec($cmd,$this->logsArray);
 		$this->logsArray[]=@file_get_contents($this->tmplogfile);
 		@unlink($this->conffile);

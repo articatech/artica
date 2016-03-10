@@ -50,6 +50,7 @@ function smtpd_client_restrictions_popup(){
 	$reject_invalid_hostname=$sock->GET_INFO('reject_invalid_hostname');
 	$reject_non_fqdn_sender=$sock->GET_INFO('reject_non_fqdn_sender');
 	$disable_vrfy_command=$sock->GET_INFO('disable_vrfy_command');
+	$enforce_helo_restrictions=intval($sock->GET_INFO('enforce_helo_restrictions'));
 	
 	if($EnablePostfixInternalDomainsCheck==null){$EnablePostfixInternalDomainsCheck=0;}
 	
@@ -87,6 +88,9 @@ $html="
 	".Paragraphe_switch_img("{reject_unknown_sender_domain}", "{reject_unknown_sender_domain_text}","reject_unknown_sender_domain-$t",$reject_unknown_sender_domain,null,1400)."
 	".Paragraphe_switch_img("{reject_invalid_hostname}", "{reject_invalid_hostname_text}","reject_invalid_hostname-$t",$reject_invalid_hostname,null,1400)."
 	".Paragraphe_switch_img("{reject_non_fqdn_sender}", "{reject_non_fqdn_sender_text}","reject_non_fqdn_sender-$t",$reject_non_fqdn_sender,null,1400)."
+	
+			
+	".Paragraphe_switch_img("{enforce_helo_restrictions}", "{enforce_helo_restrictions_text}","enforce_helo_restrictions-$t",$enforce_helo_restrictions,null,1400)."
 	".Paragraphe_switch_img("{reject_forged_mails}", "{reject_forged_mails_text}","reject_forged_mails-$t",$reject_forged_mails,null,1400)."
 	".Paragraphe_switch_img("{EnablePostfixAntispamPack}", "{EnablePostfixAntispamPack_text}","EnablePostfixAntispamPack-$t",$EnablePostfixAntispamPack_value,null,1400)."
 	".Paragraphe_switch_img("{EnableGenericrDNSClients}", "{EnableGenericrDNSClients_text}","EnableGenericrDNSClients-$t",$EnableGenericrDNSClients,null,1400)."
@@ -106,10 +110,7 @@ $html="
 var xSave$t= function (obj) {
 	var tempvalue=obj.responseText;
 	if(tempvalue.length>3){alert(tempvalue);}
-	YahooWin2Hide();
-	if(document.getElementById('main_config_postfix_security')){
-		RefreshTab('main_config_postfix_security');
-	}
+	Loadjs('postfix.clients_restrictions.progress.php');
 }
 	
 function Save$t(){
@@ -126,6 +127,8 @@ function Save$t(){
 		XHR.appendData('EnablePostfixInternalDomainsCheck',document.getElementById('EnablePostfixInternalDomainsCheck-$t').value);
 		XHR.appendData('RestrictToInternalDomains',document.getElementById('RestrictToInternalDomains-$t').value);
 		XHR.appendData('disable_vrfy_command',document.getElementById('disable_vrfy_command-$t').value);
+		XHR.appendData('enforce_helo_restrictions',document.getElementById('enforce_helo_restrictions-$t').value);
+		
 		XHR.sendAndLoad('$page', 'GET',xSave$t);	
 	}
 </script>			
@@ -147,7 +150,7 @@ echo $tpl->_ENGINE_parse_body($html,"postfix.index.php");
 function smtpd_client_restrictions_save(){
 	$sock=new sockets();
 	
-	
+	$sock->SET_INFO("enforce_helo_restrictions", $_GET["enforce_helo_restrictions"]);
 	$sock->SET_INFO('reject_unknown_client_hostname',$_GET["reject_unknown_client_hostname"]);
 	$sock->SET_INFO('reject_unknown_reverse_client_hostname',$_GET["reject_unknown_reverse_client_hostname"]);
 	$sock->SET_INFO('reject_unknown_sender_domain',$_GET["reject_unknown_sender_domain"]);
@@ -159,9 +162,6 @@ function smtpd_client_restrictions_save(){
 	$sock->SET_INFO('EnablePostfixInternalDomainsCheck',$_GET["EnablePostfixInternalDomainsCheck"]);
 	$sock->SET_INFO('RestrictToInternalDomains',$_GET["RestrictToInternalDomains"]);	
 	$sock->SET_INFO('disable_vrfy_command',$_GET["disable_vrfy_command"]);
-	
-	
-	
 	$sock->getFrameWork("cmd.php?postfix-smtpd-restrictions=yes");
 			
 		

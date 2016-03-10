@@ -57,21 +57,22 @@ function main_table(){
 	$add_routing_relay_recipient_rule=$tpl->javascript_parse_text("{add_routing_relay_recipient_rule}");
 	$recipients=$tpl->_ENGINE_parse_body("{recipients}");
 	$rules=$tpl->_ENGINE_parse_body("{rules}");
+	$about2=$tpl->javascript_parse_text("{about2}");
 	$add_remote_domain=Paragraphe("64-remotedomain-add.png",'{add_relay_domain}','{add_relay_domain_text}',
-	"javascript:AddRemoteDomain_form(\"$ou\",\"new domain\")","add_relay_domain",210);
+	"javascript:AddRemoteDomain_form(\"{$_GET["ou"]}\",\"new domain\")","add_relay_domain",210);
 	$build_parameters=$tpl->_ENGINE_parse_body("{build_parameters}");
 	$import=$tpl->_ENGINE_parse_body("{import}");
 	$buttons="
 	buttons : [
-	{name: '$add_routing_relay_recipient_rule', bclass: 'add', onpress : TransPortRecipt1$t},
-	{name: '$import', bclass: 'add', onpress : TransPortReciptImport$t},
-	{name: '$build_parameters', bclass: 'Reconf', onpress :Build$t},
+	{name: '<strong style=font-size:18px>$add_routing_relay_recipient_rule</strong>', bclass: 'add', onpress : TransPortRecipt1$t},
+	{name: '<strong style=font-size:18px>$import</strong>', bclass: 'add', onpress : TransPortReciptImport$t},
+	{name: '<strong style=font-size:18px>$build_parameters</strong>', bclass: 'Reconf', onpress :Build$t},
+	{name: '<strong style=font-size:18px>$about2</strong>', bclass: 'help', onpress : Help$t},
 	],";		
-$explain=$tpl->_ENGINE_parse_body("{routing_recipient_table_explain}");
+$explain=$tpl->javascript_parse_text("{routing_recipient_table_explain}");
 	
 $html="
-<div class=explain style='font-size:14px'>$explain</div>
-<input type='hidden' id='ou' value='$ou'>
+<input type='hidden' id='ou' value='{$_GET["ou"]}'>
 <table class='flexRT$t' style='display: none' id='flexRT$t' style='width:100%'></table>
 
 	
@@ -82,10 +83,10 @@ $('#flexRT$t').flexigrid({
 	url: '$page?table-list=yes&hostname=$hostname&ou={$_GET["ou"]}&t=$t',
 	dataType: 'json',
 	colModel : [
-		{display: '$recipients', name : 'recipient', width : 342, sortable : true, align: 'left'},
-		{display: '$relay', name : 'transport', width :349, sortable : true, align: 'left'},
-		{display: '&nbsp;', name : 'enable', width :31, sortable : true, align: 'left'},
-		{display: '$delete;', name : 'delete', width : 31, sortable : false, align: 'left'},
+		{display: '<span style=font-size:22px>$recipients</span>', name : 'recipient', width : 485, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>$relay</span>', name : 'transport', width :485, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>&nbsp;</span>', name : 'enable', width :140, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>$delete</span>', name : 'delete', width : 140, sortable : false, align: 'left'},
 		],
 	$buttons
 	searchitems : [
@@ -99,13 +100,17 @@ $('#flexRT$t').flexigrid({
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
-	width: 820,
-	height: 500,
+	width: '99%',
+	height: 550,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200]
 	
 	});   
 });
+
+function Help$t(){
+	alert('$explain');
+}
 
 	function TransPortRecipt1$t(){
 
@@ -492,10 +497,10 @@ function table_list(){
 			$js="TransPortRecipt$t('{$ligne["recipient"]}')";
 			$md=md5(serialize($ligne));
 			$cells=array();
-			$cells[]="<a href=\"javascript:blur();\" Onclick=\"javascript:$js;\" style='font-size:14px;font-weight:bold'>{$ligne["recipient"]}</a>";
-			$cells[]="<a href=\"javascript:blur();\" Onclick=\"javascript:$js;\" style='font-size:14px;font-weight:bold'>$relay</a>";
-			$cells[]=Field_checkbox("$md-enabled", 1,$ligne["enabled"],"TransPortReciptEnable$t('$md','{$ligne["recipient"]}')");
-			$cells[]=imgsimple("delete-24.png",null,"TransPortReciptDel$t('{$ligne["recipient"]}','$md')");
+			$cells[]="<a href=\"javascript:blur();\" Onclick=\"javascript:$js;\" style='font-size:22px;font-weight:bold'>{$ligne["recipient"]}</a>";
+			$cells[]="<a href=\"javascript:blur();\" Onclick=\"javascript:$js;\" style='font-size:22px;font-weight:bold'>$relay</a>";
+			$cells[]="<center>".Field_checkbox("$md-enabled", 1,$ligne["enabled"],"TransPortReciptEnable$t('$md','{$ligne["recipient"]}')")."</center>";
+			$cells[]="<center>".imgsimple("delete-32.png",null,"TransPortReciptDel$t('{$ligne["recipient"]}','$md')")."</center>";
 			
 			
 			

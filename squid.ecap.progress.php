@@ -141,7 +141,7 @@ if($prc==100){
 		$('#progress-$t').progressbar({ value: $prc });
 		CacheOff();
 		RTMMailHide();
-		
+		RefreshTab('main_ecapClamav_tabs');
 		}
 	setTimeout(\"Start$time()\",1000);
 	";	
@@ -161,6 +161,7 @@ function Start$time(){
 
 function Launch(){
 	$sock=new sockets();
+	$sock->SET_INFO("eCAPClamavEmergency", 0);
 	$cmd="squid2.php?ecap-progress=yes";
 	if($GLOBALS["VERBOSE"]){echo "<H1>RUN $cmd</H1>";}
 	writelogs("launch $cmd",__FUNCTION__,__FILE__,__LINE__);
@@ -189,7 +190,7 @@ $html="
 <div id='progress-$t' style='height:50px'></div>
 <p>&nbsp;</p>
 <textarea style='margin-top:5px;font-family:Courier New;
-font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 overflow:auto;font-size:11px' id='text-$t'></textarea>
 	
 <script>

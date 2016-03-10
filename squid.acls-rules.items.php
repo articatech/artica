@@ -69,6 +69,7 @@ function items_js(){
 	$reverse=$tpl->_ENGINE_parse_body("{reverse}");
 	$t=$_GET["t"];
 	$html="
+	<input type='hidden' id='TABLE_ITEMS_LIST_ACLS' value='table-items-$t'>
 	<table class='table-items-$t' style='display: none' id='table-items-$t' style='width:99%'></table>
 <script>
 var DeleteAclKey=0;

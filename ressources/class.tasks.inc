@@ -96,7 +96,6 @@ class system_tasks{
 			$this->tasks_array[11]="{task_ipbandresolv}";
 			$this->tasks_array[12]="{task_mysqlclean}";
 			$this->tasks_array[13]="{compile_squid_repo}";
-			$this->tasks_array[14]="{scan_filesystem_size}";
 			$this->tasks_array[15]="{mysql_tables_maintenance}";
 			$this->tasks_array[16]="{mysql_defrag_all}";
 			$this->tasks_array[17]="{system_swap_reboot}";
@@ -181,7 +180,6 @@ class system_tasks{
 			$this->tasks_explain_array[11]="{task_ipbandresolv_explain}";
 			$this->tasks_explain_array[12]="{task_mysqlclean_explain}";
 			$this->tasks_explain_array[13]="{compile_squid_repo_explain}";
-			$this->tasks_explain_array[14]="{scan_filesystem_size_explain}";
 			$this->tasks_explain_array[15]="{mysql_tables_maintenance_explain}";
 			$this->tasks_explain_array[16]="{mysql_defrag_all_explain}";
 			$this->tasks_explain_array[17]="{system_swap_reboot_explain}";
@@ -219,7 +217,6 @@ class system_tasks{
 			$this->tasks_explain_array[49]="{postfix_stats_month_explain}";
 			$this->tasks_explain_array[50]="{refresh_kerberos_ticket_explain}";
 			$this->tasks_explain_array[51]="{vps_server_watchdog_explain}";
-			$this->tasks_explain_array[52]="{postfixlogger_scanner_explain}";
 			$this->tasks_explain_array[53]="{snort_scanner_explain}";
 			$this->tasks_explain_array[54]="{Sanesecurity_signatures_explain}";
 			$this->tasks_explain_array[55]="{myisamchk_task_explain}";
@@ -264,7 +261,7 @@ class system_tasks{
 			$this->tasks_processes[11]="exec.ipband.php --parseresolv";
 			$this->tasks_processes[12]="exec.mysql.clean.php";
 			$this->tasks_processes[13]="compile-squid32.php --repos";
-			$this->tasks_processes[14]="exec.philesight.php --run";  
+			
 			$this->tasks_processes[15]="exec.mysql.build.php --maintenance";
 			$this->tasks_processes[16]="mysqldefrag.php";
 			$this->tasks_processes[17]="exec.swapboot.php";
@@ -304,7 +301,7 @@ class system_tasks{
 			$this->tasks_processes[49]="exec.postfix-stats.php --month"; //5mn
 			$this->tasks_processes[50]="exec.kerbauth.php --refresh-ticket"; //5mn
 			$this->tasks_processes[51]="exec.vservers.php --watchdog";
-			$this->tasks_processes[52]="exec.postfix-logger.php --postfix";
+			
 			$this->tasks_processes[53]="exec.syslog-engine.php --snort";
 			//ClamaV
 			$this->tasks_processes[54]="exec.scamp.php";
@@ -378,6 +375,8 @@ private function DisableTasks(){
 	$this->task_disabled[38]=true;
 	$this->task_disabled[46]=true;
 	$this->task_disabled[47]=true;
+	$this->task_disabled[14]=true;
+	$this->task_disabled[52]=true;
 	
 	
 	if($EnableIntelCeleron==1){
@@ -479,7 +478,7 @@ public function CheckDefaultSchedules(){
 			$q->BuildTables();
 
 			if(!$q->TABLE_EXISTS('system_schedules',"artica_backup")){	
-				writelogs("Fatal!!! $this->mysql_error",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);
+				writelogs("Fatal!!! system_schedules table did not exists",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);
 				return;
 			}
 		}	
@@ -496,13 +495,13 @@ public function CheckDefaultSchedules(){
 		$array[9]=array("TimeText"=>"10,20,30,40,50 * * * *","TimeDescription"=>"Each 10mn");
 		$array[10]=array("TimeText"=>"0,15,30,45 * * * *","TimeDescription"=>"Each 15mn");
 		$array[11]=array("TimeText"=>"0,30 * * * *","TimeDescription"=>"Each 30mn");
-		$array[14]=array("TimeText"=>"0 4 * * 0,2,5","TimeDescription"=>"Scan disks each 2 days");
+	
 		$array[15]=array("TimeText"=>"30 16 * * 0","TimeDescription"=>"Defrag MySQL databases each Sunday at 16h30");
 		$array[18]=array("TimeText"=>"0 23 * * *","TimeDescription"=>"Clean temp logs each day at 23h00");
-		$array[20]=array("TimeText"=>"45 23 * * *","TimeDescription"=>"Try to upgrade selected packages each day at 23h45");
+		
 		$array[21]=array("TimeText"=>"30 21 * * *","TimeDescription"=>"Calculate www disk usage each day at 21h30");
 		$array[27]=array("TimeText"=>"15 23 2,4,6,8,10,12,14,16,18,20,22,24,26,28,30 * *","TimeDescription"=>"Update GeoIP each 48H at 23h15");
-		$array[20]=array("TimeText"=>"45 22 * * *","TimeDescription"=>"Restart Web console service each day at 22h45");
+		
 		$array[30]=array("TimeText"=>"30 4,8,12,16,20 * * *","TimeDescription"=>"Perform ArpScan Each 4h and 30 mins");
 		$array[33]=array("TimeText"=>"0,10,20,30,40,50 * * * *","TimeDescription"=>"Each 10mn");
 		$array[38]=array("TimeText"=>"5,10,15,20,25,30,35,40,45,50,55,59 * * * *","TimeDescription"=>"Each 5mn");
@@ -515,20 +514,20 @@ public function CheckDefaultSchedules(){
 		$array[45]=array("TimeText"=>"3,6,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,55,57,59 * * * *","TimeDescription"=>"Each 3mn");
 		$array[46]=array("TimeText"=>"10 0,2,4,6,8,10,12,14,16,18,20,22 * * *","TimeDescription"=>"Each 2H +10mn");
 		$array[47]=array("TimeText"=>"5,10,15,20,25,30,35,40,45,50,55,59 * * * *","TimeDescription"=>"parse queue Each 5mn");
-		$array[48]=array("TimeText"=>"45 0,5,10,15,20 * * *","TimeDescription"=>"Days statistics each 5 Hours +45mn");
-		$array[49]=array("TimeText"=>"25 0 * * *","TimeDescription"=>"Monthly statistics each day at 00h25");
+		
+		
 		$array[52]=array("TimeText"=>"2,7,12,17,22,27,32,37,42,47,52,57 * * * *","TimeDescription"=>"parse queue Each 5mn");
 		$array[53]=array("TimeText"=>"* * * * *","TimeDescription"=>"Scan snort results Each 1mn");
 		$array[56]=array("TimeText"=>"5,20,35 * * * *","TimeDescription"=>"Each 15mn");
 		$array[57]=array("TimeText"=>"7,22,37 * * * *","TimeDescription"=>"Each 15mn");
 		$array[58]=array("TimeText"=>"12 * * * *","TimeDescription"=>"Bandwidth Checker Each hour +12mn");
 		$array[61]=array("TimeText"=>"30 8 * * *","TimeDescription"=>"Clean tasks events each day at 08h30");
-		$array[64]=array("TimeText"=>"30 7 * * *","TimeDescription"=>"Miltergrey list stats each day at 07h30");
+		
 		$array[65]=array("TimeText"=>"30 18 * * 0","TimeDescription"=>"Purge logs storage MySQL database each Sunday at 18h30");
 		$array[66]=array("TimeText"=>"14 0,3,6,9,12,15,18,21 * * *","TimeDescription"=>"Restart Artica Web consoles each 3h");
-		$array[67]=array("TimeText"=>"17 0,4,8,12,16,18,22 * * *","TimeDescription"=>"Clean kernel caches each 4h");
+		
 		$array[72]=array("TimeText"=>"0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58 * * * *","TimeDescription"=>"DNS statistics each 2mn");
-		$array[73]=array("TimeText"=>"3,6,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,55,57,59 * * * *","TimeDescription"=>"Dahsboard statistics each 3mn");
+		
 		$array[74]=array("TimeText"=>"30 3,6,12,18,22 * * *","TimeDescription"=>"Repair MySQL tables - non productive hours");
 		
 		

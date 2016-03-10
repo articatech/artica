@@ -73,6 +73,10 @@ class postfix_extern{
 				if(trim($ligne)==null){if($GLOBALS["VERBOSE"]){echo "build_extern::$hostname/$TypeString:: $index -> Null String\n";}continue;}
 				if(is_array($ligne)){if($GLOBALS["VERBOSE"]){echo "build_extern::$hostname/$TypeString:: $index -> is an Array !!!\n";while (list ($a, $b) = each ($ligne) ){echo "build_extern::$hostname/$TypeString:: $a = $b !!!\n";}}continue;}
 				if($GLOBALS["VERBOSE"]){echo "build_extern::$hostname/$TypeString:: $index -> `$ligne`\n";}
+				$ligne=trim($ligne);
+				$ligne=str_replace("\r", "", $ligne);
+				$ligne=str_replace("\n", "", $ligne);
+				if($ligne==null){continue;}
 				$ff[]=$ligne;
 		}
 		

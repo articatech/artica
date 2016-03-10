@@ -108,6 +108,8 @@ function FreshClamOptions(){
 	$t=time();
 	$EnableClamavUnofficial=intval($sock->GET_INFO("EnableClamavUnofficial"));
 	$SecuriteInfoCode=$sock->GET_INFO("SecuriteInfoCode");
+	$MalwarePatrolCode=$sock->GET_INFO("MalwarePatrolCode");
+	
 	$html="
 <table style='width:100%'>
 	<tr>
@@ -129,13 +131,16 @@ function FreshClamOptions(){
 			
 	<tr>
 		<td valign='top' class=legend style='font-size:18px'>". texttooltip("{clamav_unofficial}","<strong>{enable_clamav_unofficial}</strong>{clamav_unofficial_text}")."</td>
-		<td>". Field_checkbox_design("EnableClamavUnofficial", 1,$EnableClamavUnofficial)."</td>
+		<td>". Field_checkbox_design("EnableClamavUnofficial", 1,$EnableClamavUnofficial,"UnofficialCheck()")."</td>
 	</tr>
 	<tr>
 		<td valign='top' class=legend style='font-size:18px'>". texttooltip("{securiteinfo_code}","{securiteinfo_code_explain}")."</td>
 		<td>". Field_text("SecuriteInfoCode", $SecuriteInfoCode,"font-size:18px;width:400px")."</td>
 	</tr>
-
+	<tr>
+		<td valign='top' class=legend style='font-size:18px'>". texttooltip("{MalwarePatrol}","{malwarepatrol_receipt_code}")."</td>
+		<td>". Field_text("MalwarePatrolCode", $MalwarePatrolCode,"font-size:18px;width:400px")."</td>
+	</tr>
 	<tr style='height:80px'>
 		<td colspan=2 align='right'>". button("{apply}", "Save$t()",26)."</td>
 	</tr>
@@ -163,12 +168,23 @@ function Save$t(){
 	}	
 	XHR.appendData('FreshClamCheckDay',document.getElementById('FreshClamCheckDay').value);
 	XHR.appendData('SecuriteInfoCode',document.getElementById('SecuriteInfoCode').value);
+	XHR.appendData('MalwarePatrolCode',document.getElementById('MalwarePatrolCode').value);
 	XHR.appendData('FreshClamMaxAttempts',document.getElementById('FreshClamMaxAttempts').value);
 	
 	XHR.sendAndLoad('$page', 'POST',xSave$t);	
 	
 	}
 	
+	function UnofficialCheck(){
+		document.getElementById('SecuriteInfoCode').disabled=true;
+		document.getElementById('MalwarePatrolCode').disabled=true;
+		
+		if(document.getElementById('EnableClamavUnofficial').checked){
+			document.getElementById('SecuriteInfoCode').disabled=false;
+			document.getElementById('MalwarePatrolCode').disabled=false;
+		}
+	}
+	UnofficialCheck();
 	LoadAjax('freshclam-status','$page?freshclam-status=yes');
 	
 </script>			

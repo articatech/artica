@@ -24,7 +24,7 @@ function js(){
 	$tpl=new templates();
 	$title=$tpl->_ENGINE_parse_body("{organizations}");
 	$page=CurrentPageName();
-	$html="
+	$html="f
 	var timeout=0;
 	
 	function LoadOrg(){
@@ -200,6 +200,15 @@ function popup(){
 		$CsvToLdap="{name: '<strong style=font-size:18px>$TEXT_TO_CSV</strong>', bclass: 'Copy', onpress : TEXT_TO_CSV},";
 	}
 	
+	if(!$users->AsArticaAdministrator){
+		if(!$users->AsPostfixAdministrator){
+			$bt_add_new=null;
+			$parametersBT=null;
+			$CsvToLdap=null;
+			$Totalusers=$tpl->_ENGINE_parse_body("{my_organizations}");
+		}
+	}
+	
 	
 	$buttons="
 	buttons : [
@@ -243,7 +252,7 @@ $('#table-$t').flexigrid({
 	rp: 50,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 320,
+	height: 550,
 	singleSelect: true
 	
 	});   
@@ -291,7 +300,7 @@ function TEXT_TO_CSV(){
 		}
 
 </script>
-". $tpl->_ENGINE_parse_body("<div class=explain>{about_organization}</div>");
+";
 
 
 $tpl=new templates();
@@ -302,8 +311,15 @@ echo $html;
 
 function ShowOrganizations(){
 	$usersmenus=new usersMenus();
-	if($usersmenus->AsArticaAdministrator==true){ORGANISATIONS_LIST();}else{
-		if($usersmenus->AllowAddGroup==true && $usersmenus->AsArticaAdministrator==false){ORGANISTATION_FROM_USER();}
+	if($usersmenus->AsArticaAdministrator==true){
+		if($GLOBALS["VERBOSE"]){echo "ORGANISATIONS_LIST()<br>\n";}
+		ORGANISATIONS_LIST();
+	
+	}else{
+		if($usersmenus->AllowAddGroup==true && $usersmenus->AsArticaAdministrator==false){
+			if($GLOBALS["VERBOSE"]){echo "ORGANISTATION_FROM_USER()<br>\n";}
+			ORGANISTATION_FROM_USER();
+		}
 	}
 	
 	
@@ -322,14 +338,83 @@ function butadm(){
 
 function ORGANISTATION_FROM_USER(){
 	$ldap=new clladp();
-	$hash=$ldap->Hash_Get_ou_from_users($_SESSION["uid"],1);
-	$ldap->ldap_close();
-	if(!is_array($hash)){return null;}
-	return Paragraphe('folder-org-64.jpg',"{manage} &laquo;{$hash[0]}&raquo;","<strong>{$hash[0]}:<br></strong>{manage_organisations_text}",'domains.manage.org.index.php?ou='.$hash[0])."	
-	<script>
-	OrgfillpageButton();
-	</script>";
+	$tpl=new templates();
 	
+	if($GLOBALS["VERBOSE"]){echo "Hash_Get_ou_from_users({$_SESSION["uid"]}...<br>\n";}
+	
+	$hash=$ldap->Hash_Get_ou_from_users($_SESSION["uid"],1);
+	
+	if($GLOBALS["VERBOSE"]){
+		print_r($hash);
+		
+	}
+	
+	if(!is_array($hash)){return null;}
+	$t=$_GET["t"];
+	$data = array();
+	$data['page'] = 1;
+	$data['total'] = 1;
+	$data['rows'] = array();
+	$ou_nozarafa_explain=$tpl->_ENGINE_parse_body("{ou_nozarafa_explain}");
+	
+	$ou=$hash[0];
+	
+	$ou_encoded=base64_encode($ou);
+	
+	$md=md5(serialize($hash).time());
+	$md5S=$md;
+	$uri="javascript:Loadjs('domains.manage.org.index.php?js=yes&ou=$ou');";
+	$usersNB=$ldap->CountDeUSerOu($ou);
+	$GroupsNB=$ldap->CountDeGroups($ou);
+	$DomainsNB=$ldap->CountDeDomainsOU($ou);
+	
+	
+	$select=imgsimple("domain-32.png","{manage_organisations_text}",$uri);
+	$adduser=imgsimple("folder-useradd-32.png","$ou<hr><b>{create_user}</b><br><i>{create_user_text}</i>","Loadjs('domains.add.user.php?ou=$ou_encoded&encoded=yes');");
+	$addgroup=imgsimple("32-folder-group-add.png","$ou<hr><b>{add_group}</b><br><i>{add_a_new_group_in_this_org}</i>","Loadjs('domains.edit.group.php?popup-add-group=yes&ou=$ou&t=$t');");
+	$SearchUser=imgsimple("loupe-32.png","$ou<hr><b>{search}</b>:<i>{members}</i>","Loadjs('domains.find.user.php?ou=$ou_encoded&encoded=yes');");
+	$SearchGroup=imgsimple("loupe-32.png","$ou<hr><b>{search}</b>:<i>{groups}</i>","Loadjs('domains.find.groups.php?ou=$ou_encoded&encoded=yes&t=$t');");
+	$searchDomain=imgsimple("loupe-32.png",
+			"$ou<hr><b>{localdomains}</b>:<i>{localdomains_text}</i>",
+			"Loadjs('domains.edit.domains.php?js=yes&ou=$ou&master-t=$t');");
+	
+
+	$array=array();
+	$array[]="<a href=\"javascript:blur();\"
+	OnClick=\"$uri\" style='font-size:26px;font-weight:bolder;text-transform:capitalize;
+	text-decoration:underline'>$ou</strong></a>$OuZarafaText";
+	
+	if($_GET["zarafaF"]==1){
+		$zarafaEnabled="zarafa-logo-32.png";
+		if($NOZARAFA==1){$zarafaEnabled="zarafa-logo-32-grey.png";}
+		$array[]="<center>".imgsimple($zarafaEnabled,"<strong style=font-size:26px>$ou:{APP_ZARAFA}</strong>
+				<br>{ZARAFA_OU_ICON_TEXT}","Loadjs('domains.edit.zarafa.php?ou=$ou_encoded&t=$t')")."</center>";
+	}else{
+	$array[]="&nbsp;";
+		
+	}
+
+	
+	
+	
+	$array[]="<strong style='font-size:26px'>$usersNB</strong>";
+	$array[]="<center style='font-size:16px'>$SearchUser</center>";
+	
+	$array[]="<strong style='font-size:26px'>$GroupsNB</strong>";
+	$array[]="<center style='font-size:16px'>$SearchGroup</center>";
+	
+	$array[]="<strong style='font-size:26px'>$DomainsNB</strong>";
+	$array[]="<center style='font-size:16px'>$searchDomain</center>";
+	
+	$array[]="<center style='font-size:16px'>$adduser</center>";
+	$array[]="<center style='font-size:16px'>$addgroup</center>";
+	$array[]="<center style='font-size:16px'>&nbsp;</center>";
+	$data['rows'][] = array('id' => $md5S,'cell' => $array);
+
+	$total =1;
+	$data['page'] = 1;
+	$data['total'] = $total;
+	echo json_encode($data);
 	
 }
 

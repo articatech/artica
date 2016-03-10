@@ -81,9 +81,15 @@ class dnsmasq{
 			
 		}
 		writelogs("Parsing ". count($tpl)." lines done and get an array of ".count($this->main_array)." items",__CLASS__.'/'.__FUNCTION__,__FILE__,__LINE__);
+		
+		if(!isset($this->main_array["dns-forward-max"])){$this->main_array["dns-forward-max"]=1000;}
+		
 		if($this->main_array["resolv-file"]==null){$this->main_array["resolv-file"]="/etc/dnsmasq.resolv.conf";}
 		if($this->main_array["resolv-file"]=="/etc/resolv.conf"){$this->main_array["resolv-file"]="/etc/dnsmasq.resolv.conf";}
-		if($this->main_array["cache-size"]==null){$this->main_array["cache-size"]="1500";}
+		if(intval($this->main_array["cache-size"])==0){$this->main_array["cache-size"]=1500;}
+		if(intval($this->main_array["dns-forward-max"])==0){$this->main_array["dns-forward-max"]=1000;}
+		
+		
 		
 		if($this->main_array["domain"]==null){
 			$resolv=new resolv_conf();

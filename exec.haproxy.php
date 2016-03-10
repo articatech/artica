@@ -30,6 +30,7 @@ function restart($aspid=false){
 	$Masterbin=$unix->find_program("haproxy");
 
 	if(!is_file($Masterbin)){
+		build_progress_restart(110,"{not_installed}");
 		if($GLOBALS["OUTPUT"]){echo "ReStarting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}, haproxy not installed\n";}
 		return;
 	}
@@ -39,18 +40,33 @@ function restart($aspid=false){
 		$pid=$unix->get_pid_from_file($pidfile);
 		if($unix->process_exists($pid,basename(__FILE__))){
 			$time=$unix->PROCCESS_TIME_MIN($pid);
+			build_progress_restart(110,"{already_running}");
 			if($GLOBALS["OUTPUT"]){echo "ReStarting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Already Artica task running PID $pid since {$time}mn\n";}
 			return;
 		}
 		@file_put_contents($pidfile, getmypid());
 	}
 	
+build_progress_restart(50,"{stopping_service}");
 stop(true);
+build_progress_restart(80,"{building}");
 build();
-start(true);	
-	
+build_progress_restart(90,"{starting_service}");
+if(!start(true)){
+	build_progress_restart(110,"{starting_service} {failed}");
+	return;
+}	
+build_progress_restart(100,"{success}");	
 }
+function build_progress_restart($pourc,$text){
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	echo "[$pourc]: $text\n";
+	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/haproxy.progress", serialize($array));
+	@chmod("/usr/share/artica-postfix/ressources/logs/web/haproxy.progress",0755);
 
+
+}
 
 function reload(){
 	if(!$GLOBALS["NOCONF"]){
@@ -118,6 +134,24 @@ function build(){
 	
 }
 
+function UDPServerRun(){
+	
+	
+	$f=explode("\n",@file_get_contents("/etc/rsyslog.conf"));
+	
+	
+	while (list ($num, $ligne) = each ($f) ){
+		$ligne=trim($ligne);
+		if(substr($ligne, 0,1)=="#"){continue;}
+		if(!preg_match("#UDPServerRun#", $ligne)){continue;}
+		return true;
+		
+	}
+	
+	
+	
+}
+
 function start($aspid=false){
 	$unix=new unix();
 	$sock=new sockets();
@@ -146,13 +180,13 @@ function start($aspid=false){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Service already started $pid since {$timepid}Mn...\n";}
 		return;
 	}
-	$EnableHaProxy=$sock->GET_INFO("EnableHaProxy");
+	$EnableHaProxy=intval($sock->GET_INFO("EnableHaProxy"));
 	
-	if(!is_numeric($EnableHaProxy)){$EnableHaProxy=1;}
-	if(!is_file("/etc/haproxy/haproxy.cfg")){$EnableHaProxy=0;}
+	if(!is_file("/etc/haproxy/haproxy.cfg")){
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} /etc/haproxy/haproxy.cfg no such file\n";}
+		return;
+	}
 	
-
-
 	if($EnableHaProxy==0){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} service disabled (see EnableHaProxy)\n";}
 		return;
@@ -164,6 +198,17 @@ function start($aspid=false){
 	$nohup=$unix->find_program("nohup");
 
 
+	if(!UDPServerRun()){
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} syslog server is not ready, prepare it\n";}
+		system("$php5 /usr/share/artica-postfix/exec.syslog-engine.php --buildconf");
+		if(UDPServerRun()){
+			system("/etc/init.d/rsyslog restart");
+		}else{
+			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Failed to prepare syslog engine\n";}
+		}
+	}else{
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} syslog server [OK]\n";}
+	}
 
 	$cmd="$nohup $Masterbin -f /etc/haproxy/haproxy.cfg -D -p /var/run/haproxy.pid  >/dev/null 2>&1 &";
 	
@@ -175,6 +220,7 @@ function start($aspid=false){
 
 
 	for($i=1;$i<5;$i++){
+		build_progress_restart(95,"{starting_service} $i/5");
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} waiting $i/5\n";}
 		sleep(1);
 		$pid=PID_NUM();
@@ -188,8 +234,10 @@ function start($aspid=false){
 	}else{
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Failed\n";}
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} $cmd\n";}
+		return false;
 	}
 
+	return true;
 
 }
 

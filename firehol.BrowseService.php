@@ -16,6 +16,7 @@
 	if(isset($_GET["service-popup"])){service_popup();exit;}
 	if(isset($_POST["linkservice"])){service_save();exit;}
 	if(isset($_POST["delete"])){delete();exit;}
+	if(isset($_POST["service"])){create_service();exit;}
 	
 js();	
 	
@@ -25,7 +26,7 @@ function js(){
 	$tpl=new templates();
 	$page=CurrentPageName();
 	$title=$tpl->javascript_parse_text("{browse}:{services}");
-	echo "YahooWin('580','$page?popup=yes&xtable={$_GET["xtable"]}&nic={$_GET["nic"]}','$title')";
+	echo "YahooWin6('580','$page?popup=yes&xtable={$_GET["xtable"]}&nic={$_GET["nic"]}&SelectField={$_GET["SelectField"]}','$title')";
 }
 
 
@@ -66,11 +67,11 @@ function popup(){
 
 	$buttons="
 	buttons : [
-	{name: '<strong style=font-size:18px>$new_service</strong>', bclass: 'Add', onpress : NewRule$t},
-	{name: '<strong style=font-size:18px>$apply</strong>', bclass: 'Apply', onpress : Apply$t},
+	{name: '<strong style=font-size:16px>$new_service</strong>', bclass: 'Add', onpress : NewRule$t},
+	
 	],	";
 	
-	$buttons=null;
+	
 	
 	$html="
 	<table class='FIREHOLE_SERVICES_TABLES' style='display: none' id='FIREHOLE_SERVICES_TABLES' style='width:99%'></table>
@@ -78,7 +79,7 @@ function popup(){
 	var IptableRow='';
 	$(document).ready(function(){
 	$('#FIREHOLE_SERVICES_TABLES').flexigrid({
-	url: '$page?interfaces=yes&t=$t&xtable={$_GET["xtable"]}&nic={$_GET["nic"]}',
+	url: '$page?interfaces=yes&t=$t&xtable={$_GET["xtable"]}&nic={$_GET["nic"]}&SelectField={$_GET["SelectField"]}',
 	dataType: 'json',
 	colModel : [
 	{display: '<span style=font-size:18px>$service</span>', name : 'service', width :136, sortable : true, align: 'left'},
@@ -130,6 +131,12 @@ function FireWallAddNewNicService(service){
 	XHR.appendData('nic', '{$_GET["nic"]}');
 	XHR.sendAndLoad('$page', 'POST',xAdd$t);
 }
+
+function FireWallSelectFieldService(service){
+	document.getElementById('{$_GET["SelectField"]}').value=service;
+	YahooWin6Hide();
+}
+
 </script>";
 
 	echo $html;
@@ -200,7 +207,7 @@ function service_save(){
 	
 	$q=new mysql();
 	$q->QUERY_SQL($ADD,"artica_backup");
-	if(!$q->ok){echo $q->mysql_error."\n$sql\n";}
+	if(!$q->ok){echo $q->mysql_error."\n$ADD\n";}
 	
 }
 
@@ -213,14 +220,16 @@ function service_popup(){
 	$title="{new_service}";
 	$bt="{add}";
 	$textarea_style="style='margin-top:5px;font-family:Courier New;
-		font-weight:bold;width:100%;height:520px;border:5px solid #8E8E8E;
-		overflow:auto;font-size:22px !important;width:99%;height:250px'";
+		font-weight:bold;width:100%;height:200px;border:5px solid #8E8E8E;
+		overflow:auto;font-size:22px !important;width:99%;height:200px'";
 	if($service<>null){
 		$title=$service;
 		$bt="{apply}";
 		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT * FROM firehol_services_def WHERE service='$service'","artica_backup"));
 	}
 	$enabled=$ligne["enabled"];
+	
+	if($ligne["client_port"]==null){$ligne["client_port"]="default";}
 
 	if(!is_numeric($enabled)){$enabled=1;}
 	if(trim($ligne["client_port"])==null){$ligne["client_port"]="default";}
@@ -353,6 +362,10 @@ function search(){
 		$js="Loadjs('$MyPage?service-js=$service')";
 		if($enabled==0){$color="#909090";}
 		$delete=imgsimple("arrow-right-24.png",null,"FireWallAddNewNicService('$service')");
+		if($_GET["SelectField"]<>null){
+			$delete=imgsimple("arrow-right-24.png",null,"FireWallSelectFieldService('$service')");
+			
+		}
 
 		$link="<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='color:$color;font-size:{$fontsize}px;text-decoration:underline'>";
 
@@ -373,5 +386,48 @@ function search(){
 
 
 	echo json_encode($data);
+
+}
+
+function create_service(){
+
+
+	while (list ($num, $dr) = each ($_POST)){$_POST[$num]=url_decode_special_tool($dr);}
+	$_POST["service"]=str_replace("_", "", $_POST["service"]);
+	$_POST["service"]=str_replace(" ", "", $_POST["service"]);
+	$_POST["service"]=str_replace("-", "", $_POST["service"]);
+	$_POST["service"]=replace_accents($_POST["service"]);
+
+	$_POST["client_port"]=trim($_POST["client_port"]);
+	$_POST["client_port"]=str_replace("\n", " ", $_POST["client_port"]);
+	$_POST["client_port"]=str_replace("  ", " ", $_POST["client_port"]);
+
+	$_POST["server_port"]=trim($_POST["server_port"]);
+	$_POST["server_port"]=str_replace("\n", " ", $_POST["server_port"]);
+	$_POST["server_port"]=str_replace("  ", " ", $_POST["server_port"]);
+
+	reset($_POST);
+	while (list ($num, $dr) = each ($_POST)){$_POST[$num]=mysql_escape_string2(($dr));}
+
+	$ADD="INSERT IGNORE INTO `firehol_services_def`
+	(service,server_port,client_port,helper,enabled) VALUES ('{$_POST["service"]}','{$_POST["server_port"]}','{$_POST["client_port"]}','','{$_POST["enabled"]}')";
+
+	$EDIT="UPDATE firehol_services_def SET `client_port`='{$_POST["client_port"]}',
+	server_port='{$_POST["server_port"]}',
+	`enabled`='{$_POST["enabled"]}'
+			WHERE `service`='{$_POST["service"]}'";
+
+
+	$q=new mysql();
+	// 1 = Allow, 0 = Deny
+	$sql="SELECT `service`FROM `firehol_services_def` WHERE `service`='{$_POST["service"]}'";
+	$ligne=@mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
+			$sql=$ADD;
+			if($ligne["service"]<>null){
+			$sql=$EDIT;
+			}
+
+			$q->QUERY_SQL($sql,"artica_backup");
+			if(!$q->ok){echo $q->mysql_error."\n$sql\n";}
 
 }

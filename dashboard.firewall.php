@@ -42,7 +42,7 @@ function page(){
 	$firehol_version=$sock->getFrameWork("firehol.php?firehol-version=yes");
 	$t=time();
 	$html="
-	<div style='margin-top:30px;margin-bottom:30px;font-size:40px;passing-left:30px;'>{your_firewall} v.$firehol_version</div>
+	<div style='margin-top:30px;margin-bottom:30px;font-size:40px;passing-left:30px;'>{your_firewall} v.$firehol_version &laquo;&laquo;". texttooltip("{refresh}","{refresh}","FireWallDashBoardSequence()")."&raquo;</div>
 	<div style='padding-left:30px;padding-right:30px'>	
 	<table style='width:100%'>
 	<tr>
@@ -130,6 +130,8 @@ function page(){
 	</table>
 	</div>
 	<script>
+	
+	function FireWallDashBoardSequence(){
 		LoadAjaxRound('nat-section','$page?nat-section=yes');
 		LoadAjaxRound('bridge-section','$page?bridge-section=yes');
 		LoadAjaxRound('tasks-section','$page?tasks-section=yes');
@@ -137,7 +139,8 @@ function page(){
 		LoadAjaxRound('nics-section','$page?nics-section=yes');
 		LoadAjaxRound('services-section','$page?services-section=yes');
 		
-		
+	}
+	FireWallDashBoardSequence();
 	</script>
 	";
 	
@@ -221,6 +224,28 @@ function bridge_section(){
 	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{routers}","position:right:{dashboard_router_explain}","GotoRouters()")."</td>
 	</tr>";
 	
+	$q=new mysql();
+	if($q->TABLE_EXISTS("pnic_bridges", "artica_backup")){
+		$sql="SELECT * FROM `pnic_bridges` WHERE `enabled`=1";
+		$results = $q->QUERY_SQL($sql,"artica_backup");
+		while ($ligne2 = mysql_fetch_assoc($results)) {
+			$nic_from=$ligne2["nic_from"];
+			$nic_to=$ligne2["nic_to"];
+			$RouterName="{$nic_from}2{$nic_to}";
+			
+			$tr[]="<tr>
+			<td valign='middle' style='width:25px'>
+			<img src='img/$icon'>
+			</td>
+			<td valign='middle' style='font-size:18px;width:99%'>".
+				texttooltip("{firewall_rules}: $nic_from {to} $nic_to",
+						"position:right:{firewall_rules}: $nic_from {to} $nic_to","GotoFireholeRules('$RouterName')")."</td>
+			</tr>";
+			
+			
+		}
+	}
+	
 	$tr[]="</table>";
 	echo $tpl->_ENGINE_parse_body(@implode("\n", $tr));
 }
@@ -255,6 +280,35 @@ function monitor_section(){
 	$tr[]="<table style='width:100%'>";
 	
 	
+	$text_ids=null;
+	$icon_ids="arrow-right-24.png";
+	$color_ids="black";
+	$js_ids="GotoSuricata()";
+	
+	$EnableSuricata=intval($sock->GET_INFO("EnableSuricata"));
+	
+	if($EnableSuricata==0){
+		$icon_ids="arrow-right-24-grey.png";
+		$color_ids="#898989";
+		$text_ids=" <span style='font-size:14px'>{disabled}</span>";
+	}
+	
+	if(!is_file("/usr/bin/suricata")){
+		$icon_ids="arrow-right-24-grey.png";
+		$color_ids="#898989";
+		$text_ids=" <span style='font-size:14px'>{not_installed}</span>";
+		$js_ids="blur();";
+	}
+	
+	
+	
+	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$icon'>
+	</td>
+	<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("{IDS}$text_ids",
+			"position:right:{IDS}",$js_ids)."</td>
+		</tr>";	
 	
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>
@@ -323,15 +377,31 @@ function nics_section(){
 		$BEHA2[2]="{act_as_wan}";
 		
 		$b1=$BEHA2[$nic->firewall_behavior]."/".$BEHA[$nic->firewall_policy];
-		
+
+		if($nic->firewall_artica==1){
+			$b1=$b1."<br>{accept_artica_w}";
+		}
 	
-		$tr[]="<tr style='height:60px'>
+		$tr[]="<tr>
 		<td valign='middle' style='width:25px'>
 		<img src='img/interfaces-24.png'>
 		</td>
-		<td valign='middle' style='font-size:18px;width:99%'>".texttooltip("$val: $nic->NICNAME<br><span style='font-size:14px'>$b1</span>",
+		<td valign='middle' style='font-size:20px;width:99%'>".texttooltip("$val: $nic->NICNAME<br><span style='font-size:14px'>$b1</span>",
 					"position:right:$nic->IPADDR - $nic->netzone","GoToNicFirewallConfiguration('$val')")."</td>
-		</tr>";
+		</tr>
+		<tr>					
+			<td valign='middle' style='width:25px'>&nbsp;</td>
+			<td valign='top'>
+						<table style='width:100%'>
+						<td valign='middle' style='width:18px'><img src='img/arrow-right-16.png'></td>
+						<td valign='middle' style='font-size:14px'>".texttooltip("{firewall_rules}",
+				"position:top:{rules}","GotoFireholeRules('$val')")."</td>
+						</tr>
+						</table>
+			</td>
+		</tR>
+								
+		";
 	}
 	
 
@@ -343,6 +413,8 @@ function nics_section(){
 function services_section(){
 	$tpl=new templates();
 	$sock=new sockets();
+	$IPSetInstalled=intval($sock->GET_INFO("IPSetInstalled"));
+	$EnableIpBlocks=intval($sock->GET_INFO("EnableIpBlocks"));
 	$icon="arrow-right-24.png";
 	
 	$tr[]="<table style='width:100%'>";
@@ -360,14 +432,53 @@ function services_section(){
 	$color_secure_gateway="black";
 	$text_secure_gateway=null;
 	
+	$block_countries_icon="arrow-right-24.png";
+	$block_countries_color="black";
+	$block_countries_js="GotoIpBlocks()";
+	
+	$block_countries_text=null;
+	
 	if($EnableSecureGateway==0){
 		$icon_secure_gateway="arrow-right-24-grey.png";
 		$color_secure_gateway="#898989";
 		$text_secure_gateway=" <span style='font-size:12px'>({disabled})</span>";
 	}
 	
+	if($EnableIpBlocks==0){
+		$block_countries_icon="arrow-right-24-grey.png";
+		$block_countries_color="#898989";
+		$block_countries_text=" <span style='font-size:12px'>({disabled})</span>";
+		
+	}
 	
-	"arrow-right-24-grey.png";
+	if($IPSetInstalled==0){
+		$block_countries_icon="arrow-right-24-grey.png";
+		$block_countries_color="#898989";
+		$block_countries_text=" <span style='font-size:12px'>({ERROR_IPSET_NOT_INSTALLED})</span>";
+		$block_countries_js="blur();";
+		
+		
+	}
+	
+	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/arrow-right-24.png'></td>
+	<td valign='middle' style='font-size:18px;width:99%;color:black'>".texttooltip("{all_rules}","{all_rules}","GotoFireholeRules()")."</td>
+	</tr>";
+	
+	
+	
+	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/arrow-right-24.png'></td>
+	<td valign='middle' style='font-size:18px;width:99%;color:black'>".texttooltip("{objects}","{objects}","GoToSquidAclsGroups()")."</td>
+	</tr>";	
+	
+	$tr[]="<tr>
+	<td valign='middle' style='width:25px'>
+	<img src='img/$block_countries_icon'></td>
+	<td valign='middle' style='font-size:18px;width:99%;color:$block_countries_color'>".texttooltip("{block_countries}$block_countries_text","{ipblocks_text}","GotoIpBlocks()")."</td>
+	</tr>";	
 	
 	$tr[]="<tr>
 	<td valign='middle' style='width:25px'>

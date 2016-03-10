@@ -5,7 +5,6 @@ if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;ini_set('display_errors', 1
 	include_once('ressources/class.users.menus.inc');
 	include_once('ressources/class.squid.inc');
 	include_once('ressources/class.status.inc');
-	include_once('ressources/class.artica.graphs.inc');
 	include_once('ressources/class.system.network.inc');
 	include_once('ressources/class.influx.inc');
 	$users=new usersMenus();
@@ -59,14 +58,12 @@ Save$t()";
 
 function delete_db(){
 	
+	$DB=$_REQUEST["delete-db"];
 	
-	$influx=new influx();
-	$influx->DELETE_DATABASE(trim($_REQUEST["delete-db"]));
 	
-	if(isset($GLOBALS['LAST_ERROR_INFLUX'])){
-		echo $GLOBALS['LAST_ERROR_INFLUX'];
-	}
-	
+	$postgres=new postgres_sql();
+	$postgres->QUERY_SQL("SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = '$DB' AND pid <> pg_backend_pid();");
+	$postgres->QUERY_SQL("DROP DATABASE $DB");
 	
 	
 }
@@ -92,6 +89,7 @@ function table(){
 	$database=$tpl->javascript_parse_text("{database}");
 	$new_database=$tpl->javascript_parse_text("{new_database}");
 	$databases=$tpl->javascript_parse_text("{databases}");
+	$tables=$tpl->javascript_parse_text("{tables}");
 	$t=time();
 	$delete="{display: 'delete', name : 'icon3', width : 35, sortable : false, align: 'left'},";
 	
@@ -115,7 +113,8 @@ function table(){
 	url: '$page?search=yes&t=$t',
 	dataType: 'json',
 	colModel : [
-	{display: '$database', name : 'hostname', width : 597, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$database</span>', name : 'datname', width : 500, sortable : true, align: 'left'},
+	{display: '<span style=font-size:18px>$tables</span>', name : 'tablesCount', width : 100, sortable : false, align: 'center'},
 	{display: '&nbsp;', name : 'link', width : 190, sortable : false, align: 'right'},
 	
 	],
@@ -125,7 +124,7 @@ function table(){
 
 	
 	],
-	sortname: 'hostname',
+	sortname: 'datname',
 	sortorder: 'asc',
 	usepager: true,
 	title: '<strong style=font-size:26px>$databases</strong>',
@@ -178,10 +177,12 @@ function xrestore$t(){
 function create_db(){
 	$tpl=new templates();
 	$influx=new influx();
-	if(!$influx->CREATE_NEW_DATABASE(trim($_POST["new-db"]))){
-		echo $tpl->javascript_parse_text("{failed}");
-		return;
+	$postgres=new postgres_sql();
+	$postgres->CREATE_DATABASE(trim($_POST["new-db"]));
+	if(!$postgres->ok){
+		echo $postgres->mysql_error;
 	}
+	
 
 }
 
@@ -191,22 +192,51 @@ function search(){
 	$MyPage=CurrentPageName();
 	$sock=new sockets();
 	$q=new mysql();
+	$postgres=new postgres_sql();
 	
-
-	$t=$_GET["t"];
-	$search='%';
-
 	$page=1;
 	$FORCE_FILTER=null;
 	$total=0;
-	$table="last_boot";
+	$table="pg_database";
+	
+	
+	
+	
+	if (isset($_POST['page'])) {$page = $_POST['page'];}
+	
+	$searchstring=string_to_flexquery(null,true);
+	
+	if($searchstring<>null){
+		$sql="SELECT COUNT(*) as TCOUNT FROM $table $searchstring";
+		$ligne=pg_fetch_assoc($postgres->QUERY_SQL($sql,"artica_backup"));
+		
+		$total = $ligne["TCOUNT"];
+	
+	}else{
+		$sql="SELECT COUNT(*) as TCOUNT FROM $table";
+		$ligne=pg_fetch_assoc($postgres->QUERY_SQL($sql,"artica_backup"));
+		$total = $ligne["TCOUNT"];
+	}
 
-
+	
+	if (isset($_POST['rp'])) {$rp = $_POST['rp'];}
+	$pageStart = ($page-1)*$rp;
+	$limitSql = "LIMIT $rp  OFFSET $pageStart";
+	
+	if(isset($_POST["sortname"])){
+		if($_POST["sortname"]<>null){
+			$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";
+		}
+	}
+	
+	
+	
+	
 	$data = array();
 	$data['page'] = $page;
 	$data['total'] = 0;
 	$data['rows'] = array();
-
+	$data['total'] =$total;
 	
 	$fontsize=20;
 	$style="style='font-size:20px'";
@@ -215,26 +245,40 @@ function search(){
 	$tpl=new templates();
 	
 	$curr=$tpl->javascript_parse_text("{current}");
-	$tables=$tpl->javascript_parse_text("{tables}");
-	$db=new influx();
-	$DBS=$db->ROOT_DUMP_ALL_DATABASES();
 	
-	while (list ($database, $size) = each ($DBS)){
+
+	$sql="SELECT *  FROM $table $searchstring $FORCE_FILTER $ORDER $limitSql";
+	$results=$postgres->QUERY_SQL($sql);
+	
+	if(!$postgres->ok){
+		json_error_show($postgres->mysql_error);
+	}
+	
+	if(pg_num_rows($results)==0){
+		json_error_show("no data - $sql");
+	}
+	
+	while($ligne=@pg_fetch_assoc($results)){
 		$c++;
 		$current=null;
+		$database=$ligne["datname"];
 		$ms5=md5($database);
-		$TABLES=$db->LIST_TABLES($database);
+		$TABLES=$postgres->LIST_TABLES($database);
 		
 		$CountOfTables=count($TABLES);
 		
 		$delete=imgsimple("delete-32.png",null,"Loadjs('$MyPage?delete-db-js=$database')");
 		$color="black";
-		if($database==$db->systemid){$current=" ($curr)";}
+		
 		$size=FormatBytes(intval($size)/1024);
+		if(preg_match("#^template#", $database)){$delete="&nbsp;";}
+		if(preg_match("#^postgres#", $database)){$delete="&nbsp;";}
 		$data['rows'][] = array(
 				'id' => $ms5,
 				'cell' => array(
-						"<span $style>{$database}$current $CountOfTables $tables</a></span>",
+						"<span $style>{$database}</a></span>",
+						"<center $style>{$CountOfTables}</a></center>",
+						
 						"<center>{$delete}</a></center>",
 						
 						
@@ -244,7 +288,7 @@ function search(){
 	}
 	
 	if($c==0){json_error_show("no data");}
-	$data['total'] =$c;
+	
 	echo json_encode($data);
 
 }

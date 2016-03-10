@@ -1,4 +1,5 @@
 <?php
+ini_set('memory_limit','1000M');
 if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);}
 header("Pragma: no-cache");
 header("Expires: 0");
@@ -11,8 +12,9 @@ include_once('ressources/class.users.menus.inc');
 include_once('ressources/class.artica.inc');
 include_once('ressources/class.ini.inc');
 include_once('ressources/class.squid.inc');
+include_once('ressources/class.postgres.inc');
 $users=new usersMenus();
-if(!$users->AsWebStatisticsAdministrator){$tpl=new templates();echo "alert('".$tpl->javascript_parse_text("{ERROR_NO_PRIVS}")."')";die();}
+if(!IsReportsRights()){$tpl=new templates();echo FATAL_ERROR_SHOW_128("{ERROR_NO_PRIVS}");die();}
 
 if(isset($_POST["DeleteAll"])){DeleteAll();exit;}
 if(isset($_GET["csv-js"])){csv_js();exit;}
@@ -23,6 +25,25 @@ if(isset($_GET["csv-builder"])){csv_builder();exit;}
 
 
 popup();
+
+
+function IsReportsRights(){
+	$users=new usersMenus();
+	if($users->AsWebStatisticsAdministrator){return true;}
+	if($users->AsPostfixAdministrator){return true;}
+	if($users->AsMessagingOrg){return true;}
+	if($users->AsOrgAdmin){return true;}
+	if($users->AsOrgPostfixAdministrator){return true;}
+	return false;
+	
+}
+
+function isAnAdmin(){
+	$users=new usersMenus();
+	if($users->AsWebStatisticsAdministrator){return true;}
+	if($users->AsPostfixAdministrator){return true;}
+	return false;
+}
 
 
 function csv_js(){
@@ -38,8 +59,21 @@ function csv_js(){
 
 function DeleteAll(){
 	$q=new mysql_squid_builder();
+	$postgres=new postgres_sql();
+	
+	if(!isAnAdmin()){
+		$AND2=" WHERE uid='{$_SESSION["uid"]}'";
+	}
+	
+	
+	$results=$q->QUERY_SQL("SELECT * FROM reports_cache{$AND2}");
+	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
+		$zmd5=$ligne["zmd5"];
+		$table="{$zmd5}report";
+		$postgres->QUERY_SQL("DROP TABLE \"$table\"");
+	}
+	
 	$q->QUERY_SQL("TRUNCATE TABLE reports_cache");
-	if(!$q->ok){echo $q->mysql_error;}
 	
 	REMOVE_TABLES_CHRONOS();
 	
@@ -98,148 +132,15 @@ function csv_builder(){
 	<center style='width:95%'>
 	";
 	
-	if($report_type=="MEMBERS"){
-		$f[]=array("Member","Size Bytes");
-		while (list ($USER, $size) = each ($MAIN) ){
-			$f[]=array($USER,$size);
-		}
-		
-		outputCSV($f,"ressources/logs/web/MEMBERS.csv");
-		echo "<div style='float:left;margin:10px' class=form><center style='font-size:18px;margin-top:20px'>MEMBERS.csv</center>
-			<center><a href='ressources/logs/web/MEMBERS.csv'><img src='img/csv-256.png'></a></center>
-			</div>
-				
-			";
-		echo "</center>";
-		return;
-		
-	}
-	
-	
-	if($report_type=="CATEGORIES"){
-		outputCSV($MAIN["csv"],"ressources/logs/web/CATEGORIES.csv");
-		echo "<div style='margin:10px' class=form><center style='font-size:18px;margin-top:20px'>CATEGORIES.csv</center>
-			<center><a href='ressources/logs/web/CATEGORIES.csv'><img src='img/csv-256.png'></a></center>
+	@file_put_contents("ressources/logs/web/$report_type.csv", $values);
+	echo "<div style='margin:10px' class=form><center style='font-size:18px;margin-top:20px'>$report_type.csv</center>
+			<center><a href='ressources/logs/web/$report_type.csv'><img src='img/csv-256.png'></a></center>
 			</div>
 	
 			";
-		echo "</center>";
-		return;
-	}
-
-	if($report_type=="WEBFILTERING"){
-		outputCSV($MAIN["csv"],"ressources/logs/web/WEBFILTERING.csv");
-		echo "<div style='margin:10px' class=form><center style='font-size:18px;margin-top:20px'>WEBFILTERING.csv</center>
-			<center><a href='ressources/logs/web/WEBFILTERING.csv'><img src='img/csv-256.png'></a></center>
-			</div>
+	echo "</center>";
+	return;
 	
-			";
-		echo "</center>";
-		return;
-	}	
-	
-	
-	
-	
-	if($report_type=="FLOW"){
-		$f=array();
-		
-		outputCSV($MAIN["CSV1"],"ressources/logs/web/FLOW.csv");
-		echo "<div style='float:left;margin:10px' class=form><center style='font-size:18px;margin-top:20px'>FLOW.csv</center>
-			<center><a href='ressources/logs/web/FLOW.csv'><img src='img/csv-256.png'></a></center></div>";
-		
-		
-		$f=array();
-		outputCSV($MAIN["CSV2"],"ressources/logs/web/MEMBERS.csv");
-		echo "<div style='float:left;margin:10px' class=form><center style='font-size:18px;margin-top:20px'>MEMBERS.csv</center>
-			<center><a href='ressources/logs/web/MEMBERS.csv'><img src='img/csv-256.png'></a></center></div>";
-		
-		echo "</center>";
-		return;
-		
-		
-	}
-	
-	
-	if($report_type=="MEMBER_UNIQ"){
-		$ROWS=$MAIN["IDENT"];
-		$f[]=array("MAC","ipaddr","userid");
-		
-		
-		while (list ($index, $array) = each ($ROWS) ){
-			$IPADDR=$array["IPADDR"];
-			$USERID=$array["USERID"];
-			$MAC=$array["MAC"];
-			$f[]=array($MAC,$IPADDR,$USERID);
-		}
-		
-		outputCSV($f,"ressources/logs/web/IDENTITY.csv");
-		echo "
-			<div style='float:left;margin:10px' class=form>
-			<center style='font-size:18px;margin-top:20px'>IDENTITY.csv</center>
-			<center><a href='ressources/logs/web/IDENTITY.csv'><img src='img/csv-256.png'></a></center>
-			</div>";
-					
-		
-	
-		$f=array();
-		$ROWS=$MAIN["FAMS"];
-		$f[]=array("Webiste","Size bytes");
-		while (list ($website, $size) = each ($ROWS) ){
-			$f[]=array($website,$size);
-		}
-		outputCSV($f,"ressources/logs/web/WEBSITES.csv");
-		echo "
-			<div style='float:left;margin:10px' class=form>	
-			<center style='font-size:18px;margin-top:20px'>WEBSITES.csv</center>
-			<center><a href='ressources/logs/web/WEBSITES.csv'><img src='img/csv-256.png'></a></center></div>";
-			
-		$f=array();
-		
-		outputCSV($MAIN["CSV"],"ressources/logs/web/CHRONOLOGY.csv");
-		echo "
-			<div style='float:left;margin:10px' class=form>
-			<center style='font-size:18px;margin-top:20px'>CHRONOLOGY.csv</center>
-			<center><a href='ressources/logs/web/CHRONOLOGY.csv'><img src='img/csv-256.png'></a></center></div>";
-		
-		$f=array();
-		$xdata=$MAIN["GRAPH1"]["xdata"];
-		$ydata=$MAIN["GRAPH1"]["ydata"];
-		$f[]=array("Time","Size MB");
-		while (list ($index, $value) = each ($xdata) ){$f[]=array($value,$ydata[$index]);}
-		outputCSV($f,"ressources/logs/web/FLOW.csv");
-		echo "<div style='float:left;margin:10px' class=form><center style='font-size:18px;margin-top:20px'>FLOW.csv</center>
-			<center><a href='ressources/logs/web/FLOW.csv'><img src='img/csv-256.png'></a></center></div>";
-		
-		$f=array();
-		$f[]=array("Site","Size MB");
-		while (list ($index, $value) = each ($MAIN["GRAPH2"]["TABLE"]) ){$f[]=array($index,$value);}
-		outputCSV($f,"ressources/logs/web/SITES_MB.csv");
-		echo "<div style='float:left;margin:10px' class=form><center style='font-size:18px;margin-top:20px'>TOP_SITES.csv</center>
-			<center><a href='ressources/logs/web/TOP_SITES.csv'><img src='img/csv-256.png'></a></center></div>";
-		
-		
-		
-		outputCSV($MAIN["WEBFILTERING"],"ressources/logs/web/WEBFILTERING.csv");
-		echo "<div style='float:left;margin:10px' class=form>
-				<center style='font-size:18px;margin-top:20px'>WEBFILTERING.csv</center>
-				<center>
-					<a href='ressources/logs/web/WEBFILTERING.csv'><img src='img/csv-256.png'></a>
-				</center>
-			</div>";
-		
-		
-		
-		echo "</center>";
-		
-		
-		
-		
-		
-		
-		
-		return;
-	}
 	
 	
 }
@@ -338,11 +239,17 @@ function table_list(){
 	$q=new mysql_squid_builder();
 	if(!$q->TABLE_EXISTS("reports_cache")){$q->CheckReportTable();}
 	
+	
+	if(!isAnAdmin()){
+		$AND=" AND uid='{$_SESSION["uid"]}'";
+		$AND2=" WHERE uid='{$_SESSION["uid"]}'";
+	}
+	
 	$search='%';
 	if($_GET["report_type"]<>null){
-		$table="(SELECT title,zmd5,values_size,report_type,zDate FROM reports_cache WHERE report_type='{$_GET["report_type"]}') as t";
+		$table="(SELECT title,zmd5,values_size,report_type,zDate FROM reports_cache WHERE report_type='{$_GET["report_type"]}'$AND) as t";
 	}else{
-		$table="(SELECT title,zmd5,values_size,report_type,zDate FROM reports_cache) as t";
+		$table="(SELECT title,zmd5,values_size,report_type,zDate FROM reports_cache$AND2) as t";
 	}
 	$page=1;
 	
@@ -421,8 +328,31 @@ function table_list(){
 			OnClick=\"GoToStatisticsByWebFiltering('$zmd5');\"
 			style='text-decoration:underline'>";
 		}		
-		
-		
+		if($ligne["report_type"]=="IDS"){
+			$ahref="<a href=\"javascript:blur();\"
+			OnClick=\"GoToStatsIDS('$zmd5');\"
+			style='text-decoration:underline'>";
+		}		
+		if($ligne["report_type"]=="SMTP_MEMBERS"){
+			$ahref="<a href=\"javascript:blur();\"
+			OnClick=\"GoToStatsSMTPMembers('$zmd5');\"
+			style='text-decoration:underline'>";
+		}		
+		if($ligne["report_type"]=="SMTP_REFUSED"){
+			$ahref="<a href=\"javascript:blur();\"
+			OnClick=\"GoToStatsSMTPRefused('$zmd5');\"
+			style='text-decoration:underline'>";
+		}		
+		if($ligne["report_type"]=="SMTP_FLOW_MD"){
+			$ahref="<a href=\"javascript:blur();\"
+			OnClick=\"GoToStatsSMTPFlow('$zmd5');\"
+			style='text-decoration:underline'>";
+		}		
+		if($ligne["report_type"]=="SMTP_ATTACHS"){
+			$ahref="<a href=\"javascript:blur();\"
+			OnClick=\"GotoSMTPAttachments('$zmd5');\"
+			style='text-decoration:underline'>";
+		}		
 		
 		
 			$data['rows'][] = array(

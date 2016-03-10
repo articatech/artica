@@ -58,21 +58,21 @@ The default value of 2 is probably too low; we suggest 10 instead;</MX_MAXIMUM_T
 <MX_MINIMUM_TEXT>Minimum number of processes to keep. The default of 0 is probably too low; we suggest 2 instead.</MX_MINIMUM_TEXT>
 <MX_REQUESTS>Maximum requests</MX_REQUESTS>
 <MX_REQUESTS_TEXT>Maximum number of requests a process handles</MX_REQUESTS_TEXT>
-<mysql_audit>Mysql audit</mysql_audit>
+<mysql_audit>MySQL audit</mysql_audit>
 <mysql_audit_text>Run MySQL High Performance Tuning Script in order to see if your have rights settings</mysql_audit_text>
 <mysql_benchmark>Benchmarks</mysql_benchmark>
-<mysql_benchmark_text>Test your Mysql server and display the global performance with others tests</mysql_benchmark_text>
+<mysql_benchmark_text>Test your MySQL server and display the global performance with others tests</mysql_benchmark_text>
 <mysql_performance_level_text>Tweaks and tips to tune your mysql server</mysql_performance_level_text>
 <mysql_repair_text>Repair your databases easly...</mysql_repair_text>
-<mysql_server_consumption>Mysql server consumption</mysql_server_consumption>
-<mysql_server_text>The Mysql database server store many informations used by Artica (include events logs, RouncCube cache,statistics...) the mysql server process should take CPU times and memory while this service
+<mysql_server_consumption>MySQL server consumption</mysql_server_consumption>
+<mysql_server_text>The MySQL database server store many informations used by Artica (include events logs, RouncCube cache,statistics...) the mysql server process should take CPU times and memory while this service
 is just a cosmetic service.[br]
 you can drive here the mysql server consumption</mysql_server_text>
 <NoBootWithoutIP>Start services only with network</NoBootWithoutIP>
 <NoBootWithoutIP_explain>When the server boot-up some services should take time because the server did not already have a network IP address. [br]
 Especially if the server is running in DHCP Client mode.[br]
 If you enable this feature, Artica will start services only if the server has an IP address.[br]This feature is designed to speed the boot time.</NoBootWithoutIP_explain>
-<no_sql_injection>No Mysql injection</no_sql_injection>
+<no_sql_injection>No MySQL injection</no_sql_injection>
 <only_errors>Only errors</only_errors>
 <only_mail>Mail events & errors</only_mail>
 <others_benchmarks>Others benchmarks</others_benchmarks>
@@ -97,7 +97,7 @@ can be fairly taxing.[br]
 Increasing this number gently, say to 10 or 20, will hold that number of messages in its buffer before they are written to their destination.</syslogng_sync_text>
 <syslog_server_consumption>Syslog-ng injection</syslog_server_consumption>
 <syslog_server_consumption_text>You using syslog-ng and Artica automatically set it to force sending events to mysql in order to display them.[br]
-Mysql injection increase mysql processes and need some performances.[br]
+MySQL injection increase mysql processes and need some performances.[br]
 This parameter allow you to totally disable this feature or to specify wich logs you want to send to mysql.</syslog_server_consumption_text>
 <tune_title>Artica Performances</tune_title>
 <useIonice>Enable I/O priorities</useIonice>

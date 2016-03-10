@@ -23,7 +23,7 @@ while (list ($num, $line) = each ($_GET)){
 writelogs_framework("Get query " .@implode(",",$f),"main()",__FILE__,__LINE__);
 
 if(isset($_GET["squid-rebuild-reconfigure"])){squid_rebuild_reconfigure();exit;}
-
+if(isset($_GET["clamav-status"])){clamav_status();exit;}
 if(isset($_GET["hypercachestoreid-ini-status"])){HYPERCACHE_STOREID_INI_STATUS();exit;} 
 if(isset($_GET["hypercacheweb-ini-status"])){HYPERCACHE_WEB_INI_STATUS();exit;}
 if(isset($_GET["ufdbcat-ini-status"])){UFDBCAT_INI_STATUS();exit;}
@@ -1251,7 +1251,7 @@ writelogs_framework("unable to understand query !!!!!!!!!!!..." .@implode(",",$f
 die();
 
 function SMTP_WHITELIST(){
-	NOHUP_EXEC( LOCATE_PHP5_BIN2()." /usr/share/artica-postfix/postfix.whitelist.php");
+	
 	NOHUP_EXEC( LOCATE_PHP5_BIN2()." /usr/share/artica-postfix/exec.opendkim.php --whitelist");
 	NOHUP_EXEC( LOCATE_PHP5_BIN2()." /usr/share/artica-postfix/exec.spamassassin.php --whitelist");
 	NOHUP_EXEC( LOCATE_PHP5_BIN2()." /usr/share/artica-postfix/exec.klms.php --whitelist");
@@ -2719,6 +2719,17 @@ function LdapdbSize(){
 }
 
 function du_dir_size(){
+	
+	if(!function_exists("system_is_overloaded")){
+		include_once("/usr/share/artica-postfix/ressources/class.os.system.inc");
+	}
+	if(function_exists("system_is_overloaded")){
+		if(system_is_overloaded()){
+			echo "<articadatascgi>0</articadatascgi>";
+			return 0;}
+	}
+	
+	
 	$path=$_GET["path"];
 	$unix= new unix();
 	$du=$unix->find_program("du");
@@ -3798,8 +3809,7 @@ function TCP_NIC_STATUS(){
 	
 		$unix=new unix();
 		$ALLARRAY=$unix->NETWORK_ALL_INTERFACES();
-		if(isset($ALLARRAY[$_GET["nicstatus"]])){
-			writelogs_framework(" {$_GET["nicstatus"]} ->{$ALLARRAY[$_GET["nicstatus"]]["IPADDR"]}",__FUNCTION__,__FILE__,__LINE__);
+		writelogs_framework(" {$_GET["nicstatus"]} ->{$ALLARRAY[$_GET["nicstatus"]]["IPADDR"]}",__FUNCTION__,__FILE__,__LINE__);
 		$outputz[]=$ALLARRAY[$_GET["nicstatus"]]["IPADDR"];
 		$outputz[]=$ALLARRAY[$_GET["nicstatus"]]["MAC"];
 		$outputz[]=$ALLARRAY[$_GET["nicstatus"]]["NETMASK"];
@@ -3810,22 +3820,19 @@ function TCP_NIC_STATUS(){
 		$sortie=@implode(";",$outputz);
 		echo "<articadatascgi>$sortie</articadatascgi>";
 		return;
-	}
-	
-	
-	
-	exec("/usr/share/artica-postfix/bin/artica-install --nicstatus {$_GET["nicstatus"]}",$results);
-	$datas=trim(@implode(" ",$results));
-	writelogs_framework("artica-install --nicstatus {$_GET["nicstatus"]} ->$datas",__FUNCTION__,__FILE__,__LINE__);
-	echo "<articadatascgi>$datas</articadatascgi>";
 }
 
 function TCP_NIC_INFOS(){
 	
-	writelogs_framework("usr/share/artica-postfix/bin/artica-install --nicinfos {$_GET["nic-infos"]}",__FUNCTION__,__FILE__,__LINE__);
-	exec("/usr/share/artica-postfix/bin/artica-install --nicinfos {$_GET["nic-infos"]}",$results);
-	$datas=trim(@implode("\n",$results));
-	writelogs_framework($datas,__FUNCTION__,__FILE__,__LINE__);
+	
+	$unix=new unix();
+	$Interface=trim($_GET["nic-infos"]);
+	$MAIN=$unix->NETWORK_ALL_INTERFACES();
+	$f[]="BOOTPROTO=";
+	$f[]="METHOD=debian";
+	$f[]="DEVICE=$Interface";
+	$f[]="MAC={$MAIN[$Interface]["MAC"]}";
+	$datas=trim(@implode("\n",$f));
 	echo "<articadatascgi>$datas</articadatascgi>";	
 }
 
@@ -5570,6 +5577,17 @@ function hostname_full(){
 	echo "<articadatascgi>$host</articadatascgi>";	
 	
 }
+
+function clamav_status(){
+	
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	shell_exec("$php /usr/share/artica-postfix/exec.status.php --clamav --nowachdog >/usr/share/artica-postfix/ressources/logs/web/clamav.status");
+	
+	
+}
+
+
 function GetUniqueID(){
 	$unix=new unix();
 	$uuid=$unix->GetUniqueID();
@@ -6484,7 +6502,11 @@ function UpdateUtilityPatternDatePath(){
 
 function UpdateUtilityPatternDate(){
 	$unix=new unix();
-	$base=UpdateUtilityPatternDatePath();
+	
+	$base=$_GET["path"];
+	if($base==null){
+		$base=UpdateUtilityPatternDatePath();
+	}
 	writelogs_framework("Found $base",__FUNCTION__,__FILE__,__LINE__);
 	if(!is_file($base)){
 		writelogs_framework("$base no such file",__FUNCTION__,__FILE__,__LINE__);
@@ -6543,7 +6565,7 @@ function OCSWEB_CERTIFICATE(){
 
 function OCSWEB_CERTIFICATE_CSR(){
 	if(!is_file("/etc/ocs/cert/server.csr")){return null;}
-	echo "<articadatascgi>". base64_encode(file_get_contents("/etc/ocs/cert/server.csr"))."</articadatascgi>";
+	echo "<articadatascgi>". base64_encode(@file_get_contents("/etc/ocs/cert/server.csr"))."</articadatascgi>";
 }
 function OCSWEB_FINAL_CERTIFICATE(){
 	$path=base64_decode($_GET["path"]);
@@ -8104,21 +8126,7 @@ function postfix_throttle(){
 	NOHUP_EXEC($cmd);			
 }
 
-if(isset($_GET["postfix-notifs"])){postfix_notifs();exit;}
 
-function postfix_notifs(){
-	$instance=$_GET["hostname"];
-	if($instance=="master"){
-		$cmd=LOCATE_PHP5_BIN2()." /usr/share/artica-postfix/exec.postfix.maincf.php --notifs-templates";
-		writelogs_framework($cmd,__FUNCTION__,__FILE__,__LINE__);
-		NOHUP_EXEC($cmd);
-		return;
-	}
-	
-	$cmd=LOCATE_PHP5_BIN2()." /usr/share/artica-postfix/exec.postfix-multi.php --instance-reconfigure \"$instance\"";
-	writelogs_framework($cmd,__FUNCTION__,__FILE__,__LINE__);
-	NOHUP_EXEC($cmd);	
-}
 
 function postfix_freeze(){
 	$instance=$_GET["hostname"];

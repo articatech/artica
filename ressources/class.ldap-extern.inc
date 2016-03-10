@@ -316,7 +316,11 @@ class ldap_extern{
 	
 		$filter=array($this->ldap_user_attribute);
 		$sr =@ldap_read($this->ldap_connection,$dn,"$searchFilter",$filter,null, null, 10);
-		if (!$sr) {writelogs("Bad search $dn / $searchFilter",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);return null;}
+		if (!$sr) {
+			if($GLOBALS["VERBOSE"]){echo "Bad search $dn / $searchFilter\n";}
+			return null;
+			
+		}
 		$hash=ldap_get_entries($this->ldap_connection,$sr);
 		if(!is_array($hash)){return $dn;}
 		if(isset($hash[0][$this->ldap_user_attribute][0])){return $hash[0][$this->ldap_user_attribute][0];}

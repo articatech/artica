@@ -111,6 +111,7 @@ function Myevents($text=null,$function=null){
 
 function ParseLoadQeues(){
 	$unix=new unix();
+	if(system_is_overloaded(basename(__FILE__))){return;}
 	$du=$unix->find_program("du");
 	$rm=$unix->find_program("rm");
 	$EXEC_NICE=EXEC_NICE();

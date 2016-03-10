@@ -53,13 +53,15 @@ function tabs(){
 	$servername_enc=urlencode($_GET["servername"]);
 	if($servername==null){$servername_text="{new_server}";}
 	
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT cache_peer_id FROM reverse_www WHERE servername='{$_GET["servername"]}'"));
+	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT cache_peer_id,owa FROM reverse_www WHERE servername='{$_GET["servername"]}'"));
 	$cache_peer_id=$ligne["cache_peer_id"];
+	$owa=$ligne["owa"];
 	if(!$q->ok){echo FATAL_ERROR_SHOW_128($q->mysql_error);return;}
 	
 	//$array["main"]="$servername_text";
 	if($servername<>null){
 		$array["main_parameters"]="{parameters}";
+		if($owa==1){$array["ECP"]="ECP";}
 		$array["aliases"]="{aliases}";
 		$array["replace"]="{replace_rules}";
 		$array["anti_exploits"]="{anti_exploits}";
@@ -85,7 +87,10 @@ function tabs(){
 	
 	$fontsize=24;
 	while (list ($num, $ligne) = each ($array) ){
-	
+		if($num=="ECP"){
+			$tab[]= $tpl->_ENGINE_parse_body("<li><a href=\"nginx.exchange.ecp.php?servername=$servername_enc\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
+			continue;
+		}
 		if($num=="ssl"){
 			$tab[]= $tpl->_ENGINE_parse_body("<li><a href=\"nginx.site.ssl.php?servername=$servername_enc\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
 			continue;

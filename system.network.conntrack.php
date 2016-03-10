@@ -76,7 +76,7 @@ function tabs(){
 	
 	
 	//$array["statistics"]="{statistics}";
-	$fontsize="font-size:18px";
+	$fontsize="font-size:26px";
 		
 	
 		while (list ($num, $ligne) = each ($array) ){

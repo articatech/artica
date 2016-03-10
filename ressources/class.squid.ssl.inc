@@ -9,7 +9,11 @@ class squid_ssl{
 	private $ok;
 	private $SSL_BUMP_WHITE_LIST=0;
 	private $SquidUrgency=0;
+	private $IS_SQUID4=false;
 	public function squid_ssl(){
+		
+		
+		
 		$sock=new sockets();
 		$this->sslcrtd_program=$this->sslcrtd_program_path();
 		$ini=new Bs_IniHandler();
@@ -36,13 +40,23 @@ class squid_ssl{
 	
 	
 	public function build(){
-		
+		$unix=new unix();
+		$SQUID_VERSION=$unix->squid_version();
 		$this->acls=new squid_acls();
 		$this->acls->Build_Acls();
 		
 		if(!is_numeric($this->sslproxy_version)){$sslproxy_version=1;}
 		if($this->sslproxy_version==0){$sslproxy_version=1;}
-		$f[]="# SSL Proxy options [".__LINE__."]";
+		$f[]="# SSL Proxy options  Proxy version:$SQUID_VERSION [".__LINE__."]";
+		
+		if(preg_match("#^([0-9]+)\.([0-9]+)\.([0-9]+)#", $SQUID_VERSION,$re)){
+			$MAJOR=intval($re[1]);
+			$MINOR=intval($re[2]);
+			$REV=intval($re[3]);
+			if($MAJOR>3){$this->IS_SQUID4=true;}
+			
+		}
+		
 		$f[]="sslcrtd_program $this->sslcrtd_program -s /var/lib/squid/session/ssl/ssl_db -M 8MB";
 		$f[]="sslcrtd_children 16 startup=5 idle=1";
 		$f[]="# SSL_BUMP_WHITE_LIST = $this->SSL_BUMP_WHITE_LIST [".__CLASS__."/".__FUNCTION__."/".__LINE__."]";
@@ -54,6 +68,9 @@ class squid_ssl{
 		$f[]="acl ssl_step2 at_step SslBump2";
 		$f[]="acl ssl_step3 at_step SslBump3";
 		$f[]="ssl_bump peek ssl_step1";
+
+
+		
 		
 		if(!is_file("/etc/squid3/ssl.conf")){
 			@file_put_contents("/etc/squid3/ssl.conf", @implode("\n",$f)."\nssl_bump splice all\n");
@@ -84,22 +101,16 @@ class squid_ssl{
 		if(count($ssl_bump_splice)>0){
 			$f[]=@implode("\n",$ssl_bump_splice);
 		}
-		
-		if($this->SSL_BUMP_WHITE_LIST==1){
-			$f[]="ssl_bump splice all";
-		}else{
-			if($CountOfSSLBump==0){
-				if($CountOfSSLSplice==0){
-					$f[]="# No splice or bump rules, assume keep crypted protocol";
-					$f[]="ssl_bump splice all";
-				}
-				
-			}
-		}
+		//$f[]="ssl_bump stare ssl_step2 all";
+		$f[]="ssl_bump splice all";
 		$f[]="";
-		$f[]="sslproxy_version $this->sslproxy_version";
-		$f[]="sslproxy_options ALL";
-		//$f[]="sslproxy_flags none";
+		
+		if(!$this->IS_SQUID4){
+			//$f[]="sslproxy_cipher EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+RC4:EECDH:EDH+aRSA:HIGH:!RC4:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS";
+			$f[]="sslproxy_version $this->sslproxy_version";
+			$f[]="sslproxy_options NO_SSLv2:NO_SSLv3:ALL:SINGLE_DH_USE";
+			$f[]="sslproxy_flags DONT_VERIFY_PEER";
+		}
 		
 		
 		$sslproxy_cert_error=$this->sslproxy_cert_error();
@@ -152,16 +163,44 @@ class squid_ssl{
 			$GroupName=$ligne["GroupName"];
 			$ID=$ligne["ID"];
 			$f[]="# SNI Group $GroupName";
-			$GLOBALS["external_acl_type"]["SNIGroup$ID"]=true;
-			$f[]="external_acl_type SNIGroup$ID negative_ttl=360 children-startup=1 children-idle=1 children-max=10 ipv4 %ssl::>sni /usr/share/artica-postfix/external_acl_ssl.php --gpid=$ID";
-			$f[]="acl SNIGroup$ID external SNIGroup$ID";
-			$f[]="";
+			$f[]=$this->SniGroupsItems($ID);
 		}
 			
 			
 			
 			return $f;
 		
+		}
+		
+		private function isaregex($pattern){
+			$pattern=" $pattern";
+			if(strpos($pattern, "*")>0){return true;}
+			if(strpos($pattern, ".*")>0){return true;}
+			if(strpos($pattern, "[")>0){return true;}
+			if(strpos($pattern, "]")>0){return true;}
+			if(strpos($pattern, "(")>0){return true;}
+			if(strpos($pattern, ")")>0){return true;}
+			if(strpos($pattern, "?")>0){return true;}
+		}
+		
+		private function SniGroupsItems($ID){
+			$q=new mysql_squid_builder();
+			$f=array();
+			$results=$q->QUERY_SQL("SELECT * FROM webfilters_sqitems WHERE gpid=$ID AND enabled=1");
+			while ($ligne = mysql_fetch_assoc($results)) {
+				if($this->isaregex($ligne["pattern"])){
+					$f[]="acl SNIGroup$ID ssl::server_name_regex -i {$ligne["pattern"]}";
+					continue;
+				}
+				$ligne["pattern"]=str_replace(".", "\." ,$ligne["pattern"]);
+				$f[]="acl SNIGroup$ID ssl::server_name_regex -i {$ligne["pattern"]}";
+				
+			}
+			
+			if(count($f)==0){
+				$f[]="acl SNIGroup$ID ssl::server_name nothing.net";
+			}
+			return @implode("\n",$f);
 		}
 		
 		
@@ -276,7 +315,7 @@ class squid_ssl{
 				$f[]="# Rule $aclid, no groups"; 
 				continue;
 			}
-			$f[]="ssl_bump stare ssl_step2 ".@implode(" ", $groups);
+		//???//???	//$f[]="ssl_bump stare ssl_step2 ".@implode(" ", $groups);
 			$f[]="ssl_bump bump ".@implode(" ", $groups);
 		}
 		if(count($squid_acls_groups->ErrorsArray)>0){

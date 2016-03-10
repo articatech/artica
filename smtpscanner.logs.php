@@ -20,6 +20,7 @@ echo $tpl->web_page;
 
 
 function Logs(){
+	include_once(dirname(__FILE__)."/ressources/class.status.logs.inc");
 	$tpl=new templates();
 	$sock=new sockets();
 	$datas=$sock->getfile("smtpscanner.log");

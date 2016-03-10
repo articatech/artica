@@ -21,7 +21,10 @@
 	if(isset($_POST["nameserver"])){dns_add();exit;}
 	if(isset($_POST["DnsDelete"])){dns_del();exit;}
 	if(isset($_POST["SquidDNSUpDown"])){SquidDNSUpDown();exit;}
-	
+	if(isset($_GET["SquidDNSUseLocalDNSService-js"])){SquidDNSUseLocalDNSService_js();exit;}
+	if(isset($_POST["SquidDNSUseLocalDNSService"])){SquidDNSUseLocalDNSService();exit;}
+	if(isset($_GET["SquidDNSUseSystem-js"])){SquidDNSUseSystem_js();exit;}
+	if(isset($_POST["SquidDNSUseSystem"])){SquidDNSUseSystem();exit;}
 table();
 
 function dns_add(){
@@ -43,6 +46,73 @@ function dns_del(){
 	$q=new mysql_squid_builder();
 	$q->QUERY_SQL("DELETE FROM dns_servers WHERE dnsserver LIKE '%{$_POST["DnsDelete"]}%'");
 	if(!$q->ok){echo $q->mysql_error;}
+	
+}
+function SquidDNSUseLocalDNSService_js(){
+	$t=time();
+	$page=CurrentPageName();
+	echo "
+var xEnable$t= function (obj) {
+	var res=obj.responseText;
+	if (res.length>3){alert(res);}
+	$('#SQUID_LOCAL_DNS_SETTINGS').flexReload();
+	
+	
+}				
+	
+function Enable$t(){
+	var XHR = new XHRConnection();
+	XHR.appendData('SquidDNSUseLocalDNSService','yes');
+	XHR.sendAndLoad('$page', 'POST',xEnable$t);			
+}
+Enable$t();";
+	
+	
+}
+
+function SquidDNSUseSystem_js(){
+	$t=time();
+	$page=CurrentPageName();
+	echo "
+	var xEnable$t= function (obj) {
+	var res=obj.responseText;
+	if (res.length>3){alert(res);}
+	$('#SQUID_LOCAL_DNS_SETTINGS').flexReload();
+	
+	
+	}
+	
+	function Enable$t(){
+	var XHR = new XHRConnection();
+	XHR.appendData('SquidDNSUseSystem','yes');
+	XHR.sendAndLoad('$page', 'POST',xEnable$t);
+	}
+	Enable$t();";	
+	
+}
+
+function SquidDNSUseLocalDNSService(){
+	$sock=new sockets();
+	$SquidDNSUseLocalDNSService=intval($sock->GET_INFO("SquidDNSUseLocalDNSService"));
+	if($SquidDNSUseLocalDNSService==1){
+		$SquidDNSUseLocalDNSService=0;
+	}else{
+		$SquidDNSUseLocalDNSService=1;
+	}
+	
+	$sock->SET_INFO("SquidDNSUseLocalDNSService", $SquidDNSUseLocalDNSService);
+	
+}
+function SquidDNSUseSystem(){
+	$sock=new sockets();
+	$SquidDNSUseSystem=intval($sock->GET_INFO("SquidDNSUseSystem"));
+	if($SquidDNSUseSystem==1){
+		$SquidDNSUseSystem=0;
+	}else{
+		$SquidDNSUseSystem=1;
+	}
+	
+	$sock->SET_INFO("SquidDNSUseSystem", $SquidDNSUseSystem);	
 	
 }
 
@@ -77,16 +147,16 @@ function table(){
 
 	
 
-$html="<table class='table-$t' style='display: none' id='table-$t' style='width:99%'></table>
+$html="<table class='SQUID_LOCAL_DNS_SETTINGS' style='display: none' id='SQUID_LOCAL_DNS_SETTINGS' style='width:99%'></table>
 <script>
 var xmemnum=0;
 $(document).ready(function(){
-$('#table-$t').flexigrid({
+$('#SQUID_LOCAL_DNS_SETTINGS').flexigrid({
 	url: '$page?details-tablerows=yes&t=$t&field={$_GET["field"]}&value={$_GET["value"]}&EnableRemoteStatisticsAppliance=$EnableRemoteStatisticsAppliance',
 	dataType: 'json',
 	colModel : [
 		{display: '&nbsp;', name : 'zOrder', width :91, sortable : true, align: 'center'},
-		{display: '$dns_nameservers', name : 'server', width :652, sortable : false, align: 'left'},
+		{display: '<span style=font-size:22px>$dns_nameservers</span>', name : 'server', width :935, sortable : false, align: 'left'},
 		{display: '&nbsp;', name : 'zOrder', width :91, sortable : true, align: 'center'},
 		{display: '&nbsp;', name : 'dup', width :91, sortable : false, align: 'center'},		
 		{display: '&nbsp;', name : 'none2', width :91, sortable : false, align: 'center'},
@@ -100,7 +170,7 @@ $('#table-$t').flexigrid({
 	rp: 15,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 400,
+	height: 550,
 	singleSelect: true
 	
 	});   
@@ -120,7 +190,7 @@ function BlackList$t(){
 var x_dnsadd= function (obj) {
 	var results=obj.responseText;
 	if(results.length>3){alert(results);return;}
-	$('#table-$t').flexReload();
+	$('#SQUID_LOCAL_DNS_SETTINGS').flexReload();
 	if(document.getElementById('squid-services')){
 		LoadAjax('squid-services','squid.main.quicklinks.php?squid-services=yes');
 	}
@@ -130,7 +200,7 @@ var x_dnsdel= function (obj) {
 	var results=obj.responseText;
 	if(results.length>3){alert(results);return;}
 	$('#rowsquid-dns-'+xmemnum).remove();
-	$('#table-$t').flexReload();
+	$('#SQUID_LOCAL_DNS_SETTINGS').flexReload();
 }		
 		
 function dnsadd(){
@@ -151,7 +221,7 @@ function DnsDelete$t(num){
 var x_dnsupd= function (obj) {
 	var results=obj.responseText;
 	if(results.length>3){alert(results);return;}
-	$('#table-$t').flexReload();
+	$('#SQUID_LOCAL_DNS_SETTINGS').flexReload();
 	
 }
 
@@ -207,6 +277,7 @@ function details_tablerows(){
 	$MyPage=CurrentPageName();
 	$q=new mysql_squid_builder();
 	$squid=new squidbee();
+	$sock=new sockets();
 	$t=$_GET["t"];
 	$search='%';
 	$table="dns_servers";
@@ -223,8 +294,54 @@ function details_tablerows(){
 	$FORCE_FILTER=null;
 
 	$total=0;
-
-
+	
+	$enabled=1;
+	$SquidDNSUseSystem=intval($sock->GET_INFO("SquidDNSUseSystem"));
+	$SquidDNSUseLocalDNSService=intval($sock->GET_INFO("SquidDNSUseLocalDNSService"));
+	$LOCAL_ENABLED=1;
+	$SquidDNSUseSystem_icon="ok-42.png";
+	$SquidDNSUseSystem_color="black";
+	$SquidDNSUseLocalDNSService_icon="ok-42.png";
+	$SquidDNSUseLocalDNSService_color="black";
+	$TableMainColor="black";
+	$SquidDNSUseSystem_js="Loadjs('$MyPage?SquidDNSUseSystem-js=yes')";
+	$SquidDNSUseLocalDNSService_js="Loadjs('$MyPage?SquidDNSUseLocalDNSService-js=yes')";
+	
+	if($SquidDNSUseSystem==0){
+		$SquidDNSUseSystem_icon="danger42.png";
+	}
+	
+	if($SquidDNSUseLocalDNSService==0){
+		$SquidDNSUseLocalDNSService_icon="danger42.png";
+		$LOCAL_ENABLED=0;
+	}
+	if($SquidDNSUseSystem==1){
+		$TableMainColor="#898989";
+		$LOCAL_ENABLED=0;
+		$SquidDNSUseLocalDNSService_icon="ok-42-grey.png";
+		$SquidDNSUseLocalDNSService_color="#898989";
+		
+	}
+	if($sock->dnsmasq_enabled()==0){
+		$LOCAL_ENABLED=0;
+		$SquidDNSUseLocalDNSService_icon="ok-42-grey.png";
+		$SquidDNSUseLocalDNSService_color="#898989";
+		$SquidDNSUseLocalDNSService_js="blur()";
+		
+	}
+	
+	if($LOCAL_ENABLED==1){
+		$SquidDNSUseSystem_color="#898989";
+		
+	}
+	
+	$SquidDNSUseSystem_icon=imgsimple($SquidDNSUseSystem_icon,null,$SquidDNSUseSystem_js);
+	$SquidDNSUseSystem_text=$tpl->_ENGINE_parse_body("{squid_use_local_system_dns}");
+	
+	$SquidDNSUseLocalDNSService_icon=imgsimple($SquidDNSUseLocalDNSService_icon,null,$SquidDNSUseLocalDNSService_js);
+	$SquidDNSUseLocalDNSService_text=$tpl->_ENGINE_parse_body("{squid_use_local_service_dns}");
+	
+	
 	if(isset($_POST["sortname"])){if($_POST["sortname"]<>null){$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";}}
 	if(isset($_POST['page'])) {$page = $_POST['page'];}
 
@@ -247,6 +364,10 @@ function details_tablerows(){
 
 	$pageStart = ($page-1)*$rp;
 	if(is_numeric($rp)){$limitSql = "LIMIT $pageStart, $rp";}
+	
+	
+
+	
 
 	$sql="SELECT *  FROM $table WHERE 1 $searchstring $FORCE_FILTER $ORDER $limitSql";
 	$results = $q->QUERY_SQL($sql);
@@ -255,11 +376,34 @@ function details_tablerows(){
 
 	$data = array();
 	$data['page'] = $page;
-	$data['total'] = $total;
+	$data['total'] = $total+2;
 	$data['rows'] = array();
+	
+	
 
 	if(!$q->ok){	json_error_show($q->mysql_error."<br>$sql");}
-	if(mysql_num_rows($results)==0){json_error_show("no data");}
+	$data['rows'][] = array(
+			'id' => "squid-dns-A",
+			'cell' => array(
+					"<center style='font-size:36px;color:$SquidDNSUseSystem_color'>$SquidDNSUseSystem_icon</center>",
+					"<a href=\"javascript:blur();\" OnClick=\"javascript:$SquidDNSUseSystem_js\" 
+						style='font-size:36px;color:$SquidDNSUseSystem_color;text-decoration:underline'>{$SquidDNSUseSystem_text}</span>",
+					"<center style='font-size:36px;color:$SquidDNSUseSystem_color'>-</center>",
+					"<center style='font-size:36px;color:$SquidDNSUseSystem_color'>-</center>",
+					"<center style='font-size:36px;color:$SquidDNSUseSystem_color'>-</center>",
+			)
+	);
+	$data['rows'][] = array(
+			'id' => "squid-dns-A",
+			'cell' => array(
+					"<center style='font-size:36px;color:$SquidDNSUseLocalDNSService_color'>$SquidDNSUseLocalDNSService_icon</center>",
+					"<a href=\"javascript:blur();\" OnClick=\"javascript:$SquidDNSUseLocalDNSService_js\" 
+					style='font-size:36px;color:$SquidDNSUseLocalDNSService_color;;text-decoration:underline'>{$SquidDNSUseLocalDNSService_text} (127.0.0.1)</span>",
+					"<center style='font-size:36px;color:$SquidDNSUseLocalDNSService_color'>-</center>",
+					"<center style='font-size:36px;color:$SquidDNSUseLocalDNSService_color'>-</center>",
+					"<center style='font-size:36px;color:$SquidDNSUseLocalDNSService_color'>-</center>",
+			)
+	);	
 
 	$fontsize="16";
 
@@ -272,11 +416,11 @@ function details_tablerows(){
 		$data['rows'][] = array(
 				'id' => "squid-dns-{$ligne["ID"]}",
 				'cell' => array(
-						"<span style='font-size:36px'>{$ligne["zOrder"]}</span>",
-						"<span style='font-size:36px'>{$ligne["dnsserver"]}</span>",
-						"<span style='font-size:12.5px'>$up</span>",
-						"<span style='font-size:12.5px'>$down</span>",
-						"<span style='font-size:12.5px'>$delete</span>",
+						"<center style='font-size:36px;color:$TableMainColor'>{$ligne["zOrder"]}</center>",
+						"<span style='font-size:36px;color:$TableMainColor'>{$ligne["dnsserver"]}</span>",
+						"<center style='font-size:12.5px'>$up</center>",
+						"<center style='font-size:12.5px'>$down</center>",
+						"<center style='font-size:12.5px'>$delete</center>",
 				)
 		);		
 

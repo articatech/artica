@@ -52,15 +52,15 @@ function table(){
 	dataType: 'json',
 	colModel : [
 	{display: '&nbsp;', name : 'del', width :60, sortable : false, align: 'center'},
-	{display: '$certificates', name : 'certificates', width : 543, sortable : false, align: 'left'},
-	{display: '$type', name : 'certificates', width : 266, sortable : false, align: 'left'},
+	{display: '<span style=font-size:18px>$certificates</span>', name : 'certificates', width : 490, sortable : false, align: 'left'},
+	{display: '<span style=font-size:18px>$type</span>', name : 'certificates', width : 313, sortable : false, align: 'left'},
 	
 	],
 	
 	sortname: 'CommonName',
 	sortorder: 'asc',
 	usepager: true,
-	title: '$title',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: false,
 	rp: 50,
 	showTableToggleBtn: false,
@@ -88,7 +88,7 @@ function items(){
 	$q=new mysql();
 	$CommonName=$_GET["CommonName"];
 	$q=new mysql();
-	$sql="SELECT UseGodaddy,bundle,UploadCertWizard  FROM sslcertificates WHERE CommonName='$CommonName'";
+	$sql="SELECT *  FROM sslcertificates WHERE CommonName='$CommonName'";
 	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
 	$UseGodaddy=intval($ligne["UseGodaddy"]);
 	$bundle=trim($ligne["bundle"]);
@@ -97,34 +97,60 @@ function items(){
 	$data['total'] = 0;
 	$data['rows'] = array();
 
+	$UsePrivKeyCrt=intval($ligne["UsePrivKeyCrt"]);
 	
+	$keyfield="privkey";
+	$Certfield="crt";
+	if($UsePrivKeyCrt==0){
+		$Certfield="SquidCert";
+		$keyfield="Squidkey";
+	}
+	
+
+	
+	$PrivateKeyLength=strlen(trim($ligne[$keyfield]));
+	$CertLength=strlen(trim($ligne[$Certfield]));
+	$CSRLength=strlen(trim($ligne["csr"]));
 	
 	if($UseGodaddy==0){
 		$title=$tpl->javascript_parse_text("{CA_CERTIFICATE}");
 		$jsEdit="Loadjs('certificates.center.srca.php?CommonName=$CommonName&js=yes');";
-		$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\" style='font-size:22px;text-decoration:underline'>";
+		$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\" style='font-size:26px;text-decoration:underline'>";
 	
 		$data['rows'][] = array(
 			'id' => "srca",
 			'cell' => array(
-			"<img src='img/certificate-32.png'>",
-			"<span style='font-size:22px;'>$urljs{$title}</a></span>",
-			"<span style='font-size:22px;'>$title</a></span>"
+			"<img src='img/32-cert.png'>",
+			"<span style='font-size:26px;'>$urljs{$title}</a></span>",
+			"<span style='font-size:26px;'>$title</a></span>"
 			)
 			);
 		
 		
 	if($ligne["UploadCertWizard"]==0){	
+			$color="black";
+			$fontweight="bold";
+			
+		if($PrivateKeyLength<5){
+			$color="#898989";
+			$fontweight="normal";
+			$PrivateKeyLength=null;
+		}else{
+			$PrivateKeyLength=FormatBytes($PrivateKeyLength/1024);
+		}
+		
+		
 			$title=$tpl->javascript_parse_text("{RSA_PRIVATE_KEY}");
 			$jsEdit="Loadjs('certificates.center.privkey.php?CommonName=$CommonName&js=yes');";
-			$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\" style='font-size:22px;text-decoration:underline'>";
+			$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\" 
+			style='font-size:26px;text-decoration:underline;color:$color;font-weight:$fontweight'>";
 			
 			$data['rows'][] = array(
 					'id' => "privkey",
 					'cell' => array(
-							"<img src='img/certificate-32.png'>",
-							"<span style='font-size:22px;'>$urljs{$title}</a></span>",
-							"<span style='font-size:22px;'>RSA PRIVATE KEY</a></span>"
+							"<img src='img/32-cert.png'>",
+							"<span style='font-size:26px;'>$urljs{$title}</a> {$PrivateKeyLength}</span>",
+							"<span style='font-size:26px;color:$color;font-weight:$fontweight'>RSA PRIVATE KEY</a></span>"
 					)
 			);	
 		
@@ -132,29 +158,53 @@ function items(){
 	}
 	
 	$title=$tpl->javascript_parse_text("{certificate}");
+	$color="black";
+	$fontweight="bold";
+		
+	if($CertLength<5){
+		$color="#898989";
+		$fontweight="normal";
+	}else{
+		$CertLength=FormatBytes($CertLength/1024);
+	}
+	
 	$jsEdit="Loadjs('certificates.center.crt.php?CommonName=$CommonName&js=yes');";
-	$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\" style='font-size:22px;text-decoration:underline'>";
+	$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\" 
+	style='font-size:26px;text-decoration:underline;color:$color;font-weight:$fontweight'>";
+	
 	
 	$data['rows'][] = array(
 			'id' => "certificate",
 			'cell' => array(
-					"<img src='img/certificate-32.png'>",
-					"<span style='font-size:22px;'>$urljs{$title}</a></span>",
-					"<span style='font-size:22px;'>CERTIFICATE</a></span>"
+					"<img src='img/32-cert.png'>",
+					"<span style='font-size:26px;'>$urljs{$title}</a> $CertLength</span>",
+					"<span style='font-size:26px;color:$color;font-weight:$fontweight'>CERTIFICATE</a></span>"
 			)
 	);
 	
 	
+	$color="black";
+	$fontweight="bold";
+	
+	if($CSRLength<5){
+		$color="#898989";
+		$fontweight="normal";
+	}else{
+		$CSRLength=FormatBytes($CSRLength/1024);
+	}
 	$title=$tpl->javascript_parse_text("{CSR}");
 	$jsEdit="Loadjs('certificates.center.csr.php?CommonName=$CommonName&js=yes');";
-	$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\" style='font-size:22px;text-decoration:underline'>";
+	$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\" 
+	style='font-size:26px;text-decoration:underline;color:$color;font-weight:$fontweight'>";
+	
+	
 	
 	$data['rows'][] = array(
 			'id' => "CSR",
 			'cell' => array(
-					"<img src='img/certificate-32.png'>",
-					"<span style='font-size:22px;'>$urljs{$title}</a></span>",
-					"<span style='font-size:22px;'>CERTIFICATE REQUEST</a></span>"
+					"<img src='img/32-cert.png'>",
+					"<span style='font-size:26px;'>$urljs{$title}</a></span>",
+					"<span style='font-size:26px;color:$color;font-weight:$fontweight'>CERTIFICATE REQUEST</a></span>"
 							
 			)
 	);
@@ -163,14 +213,14 @@ function items(){
 if(strlen($bundle)>10){
 	$title=$tpl->javascript_parse_text("{certificate_bundle}");
 	$jsEdit="Loadjs('certificates.center.bundle.php?CommonName=$CommonName&js=yes');";
-	$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\" style='font-size:22px;text-decoration:underline'>";
+	$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\" style='font-size:26px;text-decoration:underline'>";
 	
 	$data['rows'][] = array(
 			'id' => "BUNDLE",
 			'cell' => array(
-					"<img src='img/certificate-32.png'>",
-					"<span style='font-size:22px;'>$urljs{$title}</a></span>",
-					"<span style='font-size:22px;'>CERTIFICATE BUNDLE</a></span>"
+					"<img src='img/32-cert.png'>",
+					"<span style='font-size:26px;'>$urljs{$title}</a></span>",
+					"<span style='font-size:26px;'>CERTIFICATE BUNDLE</a></span>"
 	
 							)
 	);
@@ -183,14 +233,14 @@ if(strlen($bundle)>10){
 if($UseGodaddy==1){	
 	$title=$tpl->javascript_parse_text("{certificate_bundle}");
 	$jsEdit="Loadjs('certificates.center.bundle.php?CommonName=$CommonName&js=yes');";
-	$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\" style='font-size:22px;text-decoration:underline'>";
+	$urljs="<a href=\"javascript:blur();\" OnClick=\"$jsEdit\" style='font-size:26px;text-decoration:underline'>";
 	
 	$data['rows'][] = array(
 			'id' => "BUNDLE",
 			'cell' => array(
-					"<img src='img/certificate-32.png'>",
-					"<span style='font-size:22px;'>$urljs{$title}</a></span>",
-					"<span style='font-size:22px;'>CERTIFICATE BUNDLE</a></span>"
+					"<img src='img/32-cert.png'>",
+					"<span style='font-size:26px;'>$urljs{$title}</a></span>",
+					"<span style='font-size:26px;'>CERTIFICATE BUNDLE</a></span>"
 				
 							)
 	);	

@@ -15,14 +15,34 @@ include_once(dirname(__FILE__) . '/ressources/class.system.network.inc');
 include_once(dirname(__FILE__) . '/ressources/class.squid.inc');
 
 
+if(isset($_GET["popup"])){popup();exit;}
 if(isset($_GET["service-status"])){ServiceStatus();exit;}
 if(isset($_POST["HyperCacheStoreID"])){HyperCacheStoreID();exit;}
 if(isset($_GET["websites-js"])){websites_js();exit;}
 if(isset($_GET["websites-popup"])){websites_popup();exit;}
 
 // --hypercachestoreid
-popup();
+tabs();
+function tabs(){
+	$page=CurrentPageName();
+	$tpl=new templates();
+	$array["popup"]='{settings}';
+	$array["rules"]='{rules}';
 
+	while (list ($num, $ligne) = each ($array) ){
+		if($num=="rules"){
+			$html[]= $tpl->_ENGINE_parse_body("<li style='font-size:26px'><a href=\"squid.hypercache.rules.php\"><span>$ligne</span></a></li>\n");
+			continue;
+		}
+		
+		
+		$html[]= $tpl->_ENGINE_parse_body("<li style='font-size:26px'><a href=\"$page?$num=yes\"><span>$ligne</span></a></li>\n");
+
+	}
+
+
+	echo build_artica_tabs($html, "hypercache_tabs",1490);
+}
 
 function websites_js(){
 	header("content-type: application/x-javascript");
@@ -66,6 +86,8 @@ function popup(){
 	$HyperCacheBuffer=intval($sock->GET_INFO("HyperCacheBuffer"));
 	$HyperCacheLicStatus=unserialize($sock->GET_INFO("HyperCacheLicStatus"));
 	$HyperCacheLicensedMode=intval($sock->GET_INFO("HyperCacheLicensedMode"));
+	$HyperCacheMaxProcesses=intval($sock->GET_INFO("HyperCacheMaxProcesses"));
+	if($HyperCacheMaxProcesses==0){$HyperCacheMaxProcesses=20;}
 	if($HyperCacheMemEntries==0){$HyperCacheMemEntries=500000;}
 	if($HyperCacheBuffer==0){$HyperCacheBuffer=50;}
 	$error_SSL_BUMP=null;
@@ -95,7 +117,7 @@ function popup(){
 
 	if(count($HyperCacheWebsitesList_AR)){
 		$count=count($HyperCacheWebsitesList_AR);
-		$HyperCacheWebsitesList_text="<div style='width:100%;text-align:right;margin-top:15px'>
+		$HyperCacheWebsitesList_text="<div style='width:99%;text-align:right;margin-top:15px'>
 		<a href=\"javascript:blur();\" OnClick=\"Loadjs('$page?websites-js=yes');\" style='text-decoration:underline'>$count {supported_websites}</a></div>";
 	}
 	
@@ -121,7 +143,8 @@ function popup(){
 			
 			
 			
-			$licestatus="<table style='margin-top:10px;margin-bottom:10px'>
+			$licestatus="
+			<table style='margin-top:10px;margin-bottom:10px'>
 			<tr>
 				<td valign='top' nowrap><img src='img/license-64.png'></td>
 				<td style='padding-left:15px;font-size:18px'>{hypercache_license}:&nbsp;
@@ -131,7 +154,24 @@ function popup(){
 		}
 	}
 	
-	
+	$start_up[5]=5;
+	$start_up[10]=10;
+	$start_up[15]=15;
+	$start_up[20]=20;
+	$start_up[25]=25;
+	$start_up[30]=30;
+	$start_up[35]=35;
+	$start_up[40]=40;
+	$start_up[45]=45;
+	$start_up[50]=50;
+	$start_up[55]=55;
+	$start_up[60]=60;
+	$start_up[65]=65;
+	$start_up[100]=100;
+	$start_up[150]=150;
+	$start_up[200]=200;
+	$start_up[300]=300;
+	$start_up[500]=500;
 	
 	
 	$SSL_BUMP=$squid->SSL_BUMP;
@@ -147,25 +187,46 @@ function popup(){
 		</table>";
 	}
 	
-	
+	if($HyperCacheLicensedMode==0){$licestatus=null;}
 	$html="<table style='width:100%'>
 	<tr>
 		<td style='width:240px;vertical-align:top'><div id='status-hypercache-testa'></div></td>
-		<td style='width:99%'>$error_SSL_BUMP$licestatus
-			<div style='width:98%' class=form>
-			". Paragraphe_switch_img("{HYPERCACHE_STOREID}", "{HYPERCACHE_STOREID_EXPLAIN}","HyperCacheStoreID",
-					$HyperCacheStoreID,null,1160)."
-			". Paragraphe_switch_img("{use_licensed_plugin}", "{HYPERCACHE_LICENSED_EXPLAIN}$HyperCacheWebsitesList_text","HyperCacheLicensedMode",
-					$HyperCacheLicensedMode,null,1160)."							
-							
-			$HyperCacheLicensedMode
+		<td style='width:99%'>$error_SSL_BUMP
+			<div style='width:97%' class=form>
 			<table style='width:100%'>
+			<tr>
+					<td colspan=2>
+			". Paragraphe_switch_img("{HYPERCACHE_STOREID}", "{HYPERCACHE_STOREID_EXPLAIN}","HyperCacheStoreID",
+					$HyperCacheStoreID,null,1050)."
+			</td>
+			<tr>
+		<td class=legend style='font-size:26px' widht=1% nowrap>{max_processes}:</td>
+		<td width=99%>". Field_array_Hash($start_up,"HyperCacheMaxProcesses",$HyperCacheMaxProcesses,null,null,0,
+				"font-size:26px")."</td>
+			</tr>	
+			<tr><td colspan=2 align='right'><hr>".button("{apply}","Save$t()",30)."</td></tr>
+		</table>				
+			</div>
+							
+			<div style='width:97%' class=form>				
+										
+							
+			
+			<table style='width:100%'>
+			<tr>
+					<td colspan=2>". Paragraphe_switch_img("{use_licensed_plugin}", "{HYPERCACHE_LICENSED_EXPLAIN}$HyperCacheWebsitesList_text","HyperCacheLicensedMode",
+					$HyperCacheLicensedMode,null,1050)."</td>
+			</tr>
+			<tr>
+			<td colspan=2>$licestatus</td>
 				<tr>
-					<td class=legend style='font-size:26px'>{hypercache_license}:</td>
+					<td class=legend style='font-size:26px' nowrap>{hypercache_license}:</td>
 					<td>".Field_text("HyperCacheStoreIDLicense", $HyperCacheStoreIDLicense,"font-size:26px;width:520px")."</td>
-					<td>&nbsp;</td>
 				</tr>
-			<tr><td colspan=3 align='right'><hr>".button("{apply}","Save$t()",30)."</td></tr>
+	
+						
+							
+			<tr><td colspan=2 align='right'><hr>".button("{apply}","Save$t()",30)."</td></tr>
 		</table>
 		</div>
 	</td>
@@ -184,9 +245,7 @@ function Save$t(){
 	XHR.appendData('HyperCacheStoreID',document.getElementById('HyperCacheStoreID').value);
 	XHR.appendData('HyperCacheStoreIDLicense',document.getElementById('HyperCacheStoreIDLicense').value);
 	XHR.appendData('HyperCacheLicensedMode',document.getElementById('HyperCacheLicensedMode').value);
-	
-	
-	
+	XHR.appendData('HyperCacheMaxProcesses',document.getElementById('HyperCacheMaxProcesses').value);
 	XHR.sendAndLoad('$page', 'POST',xSave$t);
 }
 
@@ -205,6 +264,7 @@ function HyperCacheStoreID(){
 	$sock->SET_INFO("HyperCacheStoreIDLicenseLastLic", $_POST["HyperCacheStoreIDLicenseLastLic"]);
 	$sock->SET_INFO("HyperCacheStoreIDLicense", $_POST["HyperCacheStoreIDLicense"]);
 	$sock->SET_INFO("HyperCacheLicensedMode", $_POST["HyperCacheLicensedMode"]);
+	$sock->SET_INFO("HyperCacheMaxProcesses", $_POST["HyperCacheMaxProcesses"]);
 	
 	
 }

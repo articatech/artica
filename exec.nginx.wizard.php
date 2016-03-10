@@ -55,6 +55,7 @@ function startx(){
 	$serverfrom=$array["www_cnx"];
 	$serverto=$array["www_dest"];
 	$peer_id=$array["peer-id"];
+	$MSEXCH=$array["MSEXCH"];
 	if(!is_numeric($peer_id)){$peer_id=0;}
 	$q=new mysql_squid_builder();
 	if($serverfrom==null){
@@ -179,8 +180,8 @@ events("Destin: $serverto",__LINE__);
 	
 	if($ligne["servername"]==null){
 		echo "Insterting $host:$local_port [".__LINE__."]\n";
-		$sql="INSERT IGNORE INTO reverse_www (`servername`,`port`,`ssl`,`cache_peer_id`,`enabled`,`default_server`) 
-				VALUES ('$host','$local_port','$ssl','$ID','1','0');";
+		$sql="INSERT IGNORE INTO reverse_www (`servername`,`port`,`ssl`,`cache_peer_id`,`enabled`,`default_server`,`owa`) 
+				VALUES ('$host','$local_port','$ssl','$ID','1','0','$MSEXCH');";
 		
 		$q->QUERY_SQL($sql);
 		
@@ -191,7 +192,7 @@ events("Destin: $serverto",__LINE__);
 		}
 	}else{
 		echo "Updating $host:$local_port [".__LINE__."]\n";
-		$sql="UPDATE `reverse_www` SET `cache_peer_id`='$ID',`ssl`='$ssl' WHERE servername='$host' and port='$local_port'";
+		$sql="UPDATE `reverse_www` SET `cache_peer_id`='$ID',`ssl`='$ssl',`owa`='$MSEXCH' WHERE servername='$host' and port='$local_port'";
 		$q->QUERY_SQL($sql);
 		if(!$q->ok){
 			echo $q->mysql_error."\n$sql\n";

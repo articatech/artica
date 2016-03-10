@@ -151,8 +151,8 @@ function USER_ALIASES_MAILING_LIST($userid){
 	$website_ssl_wl_help=$tpl->javascript_parse_text("{website_ssl_wl_help}");
 	$parameters=$tpl->javascript_parse_text("{parameters}");
 	$send_a_test_mail=$tpl->javascript_parse_text("{send_a_test_mail}");
-	
-	$explain=$tpl->_ENGINE_parse_body("<div style='font-size:13px' class=explain>{aliases_mailing_text}:&nbsp;&laquo;<b>{$u->mail}&raquo;</b></div>");
+	$apply=$tpl->javascript_parse_text("{apply}");
+	$explain=$tpl->_ENGINE_parse_body("<div style='font-size:16px' class=explain>{aliases_mailing_text}:&nbsp;&laquo;<b>{$u->mail}&raquo;</b></div>");
 	
 	//$q=new mysql_squid_builder();
 	//$q->QUERY_SQL("ALTER TABLE `usersisp` ADD UNIQUE (`email`)");
@@ -170,7 +170,8 @@ function USER_ALIASES_MAILING_LIST($userid){
 	$buttons="
 	buttons : [
 	$add_new_alias_js
-	{name: '<b>$send_a_test_mail</b>', bclass: 'eMail', onpress : SendTestMail},$bt_enable
+	{name: '<b>$send_a_test_mail</b>', bclass: 'eMail', onpress : SendTestMail},
+	{name: '<b>$apply</b>', bclass: 'apply', onpress : Apply$t},
 	],";	
 	
 $html="
@@ -179,8 +180,8 @@ $html="
 $explain
     	". $tpl->_ENGINE_parse_body("<table style='width:99%' class=form>
     	<tr>
-    		<td class=legend>{MailingListAddressGroup}:</td>
-    		<td align='left'>". Field_checkbox("MailingListAddressGroup",1,$u->MailingListAddressGroup,"Loadjs('$page?MailingListAddressGroupSwitch=yes&uid=$userid&ou=$u->ou')","{MailingListAddressGroup_text}")."</td>
+    		<td class=legend style='font-size:16px'>{MailingListAddressGroup}:</td>
+    		<td align='left'>". Field_checkbox_design("MailingListAddressGroup",1,$u->MailingListAddressGroup,"Loadjs('$page?MailingListAddressGroupSwitch=yes&uid=$userid&ou=$u->ou')","{MailingListAddressGroup_text}")."</td>
     	</tr>
     	</table>")."
 <table class='flexRT$t' style='display: none' id='flexRT$t' style='width:100%'></table>
@@ -193,7 +194,7 @@ $('#flexRT$t').flexigrid({
 	url: '$page?aliases-mailing-list=yes&ou={$_GET["ou"]}&t=$t&uid=$userid',
 	dataType: 'json',
 	colModel : [
-		{display: '$email', name : 'email', width : 480, sortable : false, align: 'left'},
+		{display: '<span style=font-size:18px>$email</span>', name : 'email', width : 480, sortable : false, align: 'left'},
 		{display: '&nbsp;', name : 'aaa', width : 31, sortable : false, align: 'center'},	
 		{display: '&nbsp;', name : 'del', width : 31, sortable : false, align: 'center'},
 		],
@@ -208,13 +209,18 @@ $('#flexRT$t').flexigrid({
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
-	width: 600,
+	width: '99%',
 	height: 300,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200]
 	
 	});   
 });
+
+
+function Apply$t(){
+	Loadjs('postfix.aliases.progress.php');
+}
 
 	var x_sslBumbAddwl=function(obj){
      	var tempvalue=obj.responseText;

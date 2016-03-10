@@ -1,6 +1,6 @@
 #!/usr/bin/php -q
 <?php
-$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 if($EnableIntelCeleron==1){die("EnableIntelCeleron==1\n");}
 ini_set('memory_limit','1000M');
 include_once(dirname(__FILE__)."/ressources/class.squid.familysites.inc");
@@ -16,6 +16,12 @@ include_once(dirname(__FILE__).'/framework/frame.class.inc');
 include_once(dirname(__FILE__).'/framework/class.settings.inc');
 $GLOBALS["LogFileDeamonLogDir"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/LogFileDeamonLogDir");
 if($GLOBALS["LogFileDeamonLogDir"]==null){$GLOBALS["LogFileDeamonLogDir"]="/home/artica/squid/realtime-events";}
+if(is_file("/usr/local/ArticaStats/bin/postgres")){
+	$GLOBALS["LogFileDeamonLogDir"]=@file_get_contents("/etc/artica-postfix/settings/Daemons/LogFileDeamonLogPostGresDir");
+	if($GLOBALS["LogFileDeamonLogDir"]==null){$GLOBALS["LogFileDeamonLogDir"]="/home/artica/squid-postgres/realtime-events";}
+}
+
+
 if(preg_match("#--verbose#",implode(" ",$argv))){echo "VERBOSED....\n";$GLOBALS["VERBOSE"]=true;$GLOBALS["TRACE_INFLUX"]=true;$GLOBALS["OUTPUT"]=true;$GLOBALS["debug"]=true;ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);}
 
 if($argv[1]=="--rtt"){RTT_TOMYSQL();}
@@ -43,7 +49,7 @@ function HOUR_TOMYSQL(){
 	@file_put_contents($pidFile, getmypid());
 	
 	$time=$unix->file_time_min($pidtime);
-	if(!$GLOBALS["VERBOSE"]){if($time<59){events("{$time}mn, require at lease 60mn");return;}}
+	if(!$GLOBALS["VERBOSE"]){if($time<59){events("{$time}mn, require minimal 60mn");return;}}
 	
 	@unlink($pidtime);
 	@file_put_contents($pidtime, time());
@@ -157,7 +163,7 @@ function RTT_TOMYSQL($nopid=false){
 		if($unix->process_exists($pid)){events("A process, $pid Already exists...");return;}
 		@file_put_contents($pidFile, getmypid());
 		$time=$unix->file_time_min($pidtime);
-		if(!$GLOBALS["VERBOSE"]){if($time<15){events("{$time}mn, require at lease 15mn");return;}}
+		if(!$GLOBALS["VERBOSE"]){if($time<15){events("{$time}mn, require minimal 15mn");return;}}
 	}
 	
 	@unlink($pidtime);

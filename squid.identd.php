@@ -103,7 +103,7 @@ function tabs(){
 	$sock=new sockets();
 	$compilefile="ressources/logs/squid.compilation.params";
 	if(!is_file($compilefile)){$sock->getFrameWork("squid.php?compil-params=yes");}
-	$COMPILATION_PARAMS=unserialize(base64_decode(file_get_contents($compilefile)));
+	$COMPILATION_PARAMS=unserialize(base64_decode(@file_get_contents($compilefile)));
 	
 	
 	if(!isset($COMPILATION_PARAMS["enable-ident-lookups"])){

@@ -10,6 +10,6 @@ The project's purpose is to provide a user-friendly tool allowing anyone to publ
 <DotClearHttpListenPort>HTTP service listen port</DotClearHttpListenPort>
 <EnableDotClearHTTPService>Enable HTTP service for DotClear</EnableDotClearHTTPService>
 <rebuild_tables>Rebuild tables</rebuild_tables>
-<tables_error>Mysql Tables errors</tables_error>
+<tables_error>MySQL Tables errors</tables_error>
 <tables_error_text>It seems that some tables missing in database[br]Click on the button bellow in order to install them</tables_error_text>
 <user_dotclear_access>Access to your DotClear area</user_dotclear_access>

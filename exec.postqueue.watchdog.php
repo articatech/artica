@@ -25,6 +25,37 @@ scan();
 function scan(){
 	$q=new mysql();
 	$unix=new unix();
+	
+	$TimeFile="/etc/artica-postfix/pids/exec.postqueue.watchdog.php.time";
+	$pidfile="/etc/artica-postfix/pids/exec.postqueue.watchdog.php.pid";
+	$unix=new unix();
+	
+	
+	if(system_is_overloaded(basename(__FILE__))){die();}
+	
+	$pid=$unix->get_pid_from_file($pidfile);
+	if($unix->process_exists($pid,basename(__FILE__))){
+		$timepid=$unix->PROCCESS_TIME_MIN($pid);
+		if($GLOBALS["VERBOSE"]){echo "$pid already executed since {$timepid}Mn\n";}
+		if(!$GLOBALS["FORCE"]){
+			if($timepid<14){return;}
+				$kill=$unix->find_program("kill");
+				unix_system_kill_force($pid);
+			}
+		}
+	
+	@file_put_contents($pidfile, getmypid());
+	if(!$GLOBALS["FORCE"]){
+		if(!$GLOBALS["VERBOSE"]){
+			$time=$unix->file_time_min($TimeFile);
+			if($time<5){echo "Current {$time}Mn, require at least 5mn\n";return;}
+		}
+	}
+	
+		
+	
+	
+	
 	$postconf=$unix->find_program("postconf");
 	if(!is_file($postconf)){return;}
 	$nice=EXEC_NICE();

@@ -32,7 +32,6 @@ pureftpd     in '/home/dtouzeau/developpement/artica-postfix/bin/src/artica-inst
 roundcube    in '/home/dtouzeau/developpement/artica-postfix/bin/src/artica-install/roundcube.pas',
 ntpd         in '/home/dtouzeau/developpement/artica-postfix/bin/src/artica-install/ntpd.pas',
 spfmilter    in '/home/dtouzeau/developpement/artica-postfix/bin/src/artica-install/spfmilter.pas',
-mimedefang   in '/home/dtouzeau/developpement/artica-postfix/bin/src/artica-install/mimedefang.pas',
 squid        in '/home/dtouzeau/developpement/artica-postfix/bin/src/artica-install/squid.pas',
 stunnel4     in '/home/dtouzeau/developpement/artica-postfix/bin/src/artica-install/stunnel4.pas',
 dkimfilter   in '/home/dtouzeau/developpement/artica-postfix/bin/src/artica-install/dkimfilter.pas',
@@ -83,7 +82,7 @@ private
        ntpd:tNTPD;
        spfm:tspf;
        samba:tsamba;
-       mimedef:tmimedefang;
+
        squid:Tsquid;
        stunnel:tstunnel;
        dkim: tdkim;
@@ -116,7 +115,7 @@ private
        function   POSTFIX_EXTRAINFOS_PATH(filename:string):string;
        procedure  SYSTEM_NETWORKS_SET_NIC_DEBIAN(nicname:string;ipadress:string;netmask:string;gateway:string;dhcp:string;broadcast:string='');
        function   FileSize_ko(path:string):longint;
-       procedure  GETTY_CHANGE_INITTAB();
+
        procedure SYSTEM_VERIFY_ISO();
        function SCAN_DISK_PARTITIONS_INODES_PHP(dev:string):string;
        function  SCAN_DISK_PARTITIONS_SIZE_PHP(dev:string):string;
@@ -2723,7 +2722,7 @@ begin
     kas3:=tkas3.Create(SYS);
     KASVER:=kas3.VERSION();
     kas3.Free;
-    ASVer:=spamass.SPAMASSASSIN_VERSION();
+
     ArrayList.Clear;
     result:='';
     rdiffbackup:=trdiffbackup.Create;
@@ -5907,7 +5906,7 @@ begin
           end else begin
              writeln('Starting......: /bin/login.old exists');
           end;
-          GETTY_CHANGE_INITTAB();
+
        end;
 
 
@@ -6275,8 +6274,7 @@ begin
         logs.Debuglogs('############ SPFMILTER_START ##################');
         spfm.SPFMILTER_START();
 
-        logs.Debuglogs('############ spamass MIMEDEFANG ##################');
-        mimedef.MIMEDEFANG_START();
+
 
         //DKIM
         logs.Debuglogs('############ dkim ##################');
@@ -11497,60 +11495,7 @@ begin
    end;
 end;
 //#####################################################################################
-procedure myconf.GETTY_CHANGE_INITTAB();
-var
-l:Tstringlist;
-RegExpr:TRegExpr;
-i:integer;
-begin
-l:=Tstringlist.Create;
-try
-   l.LoadFromFile('/etc/inittab');
-except
-   exit;
-end;
-RegExpr:=TRegExpr.Create;
-RegExpr.Expression:='ERASED BY ARTICA';
-for i:=0 to l.Count-1 do begin
-    if RegExpr.Exec(l.Strings[i]) then begin
-       RegExpr.free;
-       l.free;
-       exit;
-    end;
-end;
 
-l.Clear;
-l.free;
-l:=Tstringlist.Create;
-
-l.add('# /etc/inittab: init(8) configuration.');
-l.add('# $Id: inittab,v 1.91 2002/01/25 13:35:21 miquels Exp $');
-l.add('# ERASED BY ARTICA for autologon');
-l.add('');
-l.add('id:2:initdefault:');
-l.add('si::sysinit:/etc/init.d/rcS');
-l.add('~~:S:wait:/sbin/sulogin');
-l.add('l0:0:wait:/etc/init.d/rc 0');
-l.add('l1:1:wait:/etc/init.d/rc 1');
-l.add('l2:2:wait:/etc/init.d/rc 2');
-l.add('l3:3:wait:/etc/init.d/rc 3');
-l.add('l4:4:wait:/etc/init.d/rc 4');
-l.add('l5:5:wait:/etc/init.d/rc 5');
-l.add('l6:6:wait:/etc/init.d/rc 6');
-l.add('z6:6:respawn:/sbin/sulogin');
-l.add('ca:12345:ctrlaltdel:/sbin/shutdown -t1 -a -r now');
-l.add('pf::powerwait:/etc/init.d/powerfail start');
-l.add('pn::powerfailnow:/etc/init.d/powerfail now');
-l.add('po::powerokwait:/etc/init.d/powerfail stop');
-l.add('');
-l.add('1:2345:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/bin/artica-logon 38400 tty1');
-l.add('2:23:respawn:/sbin/getty -i -n -l /usr/share/artica-postfix/bin/artica-logon 38400 tty2');
-l.add('');
-logs.WriteToFile(l.Text,'/etc/inittab');
-writeln('Modify /etc/inittab done.....');
-l.free;
-end;
-//#####################################################################################
 procedure myconf.INSTALL_STATUS(APP:string);
 var tempstr:string;
 begin

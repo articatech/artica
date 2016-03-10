@@ -61,12 +61,12 @@ function recipient_popup_main_list(){
 	$build_parameters=$tpl->_ENGINE_parse_body("{build_parameters}");
 	$new_item=$tpl->_ENGINE_parse_body("{new_item}");
 	$import=$tpl->_ENGINE_parse_body("{import}");
-	
+	$title=$tpl->javascript_parse_text("{diffusion_lists}");
 	
 	$buttons="
 	buttons : [
-	{name: '$new_item', bclass: 'add', onpress : NewDiffListItem$t},
-	{name: '$import', bclass: 'Reconf', onpress :NewDiffListItemImport$t},
+	{name: '<strong style=font-size:18px>$new_item</strong>', bclass: 'add', onpress : NewDiffListItem$t},
+	{name: '<strong style=font-size:18px>$import</strong>', bclass: 'Reconf', onpress :NewDiffListItemImport$t},
 	],";		
 
 	
@@ -74,9 +74,8 @@ function recipient_popup_main_list(){
 $html="
 
 <input type='hidden' id='ou' value='$ou'>
-<div style='margin-left:-15px'>
 <table class='flexRT$t' style='display: none' id='flexRT$t' style='width:100%;'></table>
-</div>
+
 	
 <script>
 var memid$t='';
@@ -85,9 +84,9 @@ $('#flexRT$t').flexigrid({
 	url: '$page?recipient-list-table=yes&mainlist={$_GET["list"]}&hostname=$hostname&ou={$_GET["ou"]}&t=$t',
 	dataType: 'json',
 	colModel : [
-		{display: '$items', name : 'recipient', width : 401, sortable : true, align: 'left'},
+		{display: '<span style=font-size:20px>$items</span>', name : 'recipient', width : 450, sortable : true, align: 'left'},
 		{display: '&nbsp;', name : 'enable', width :31, sortable : true, align: 'center'},
-		{display: '$delete;', name : 'delete', width : 31, sortable : false, align: 'center'},
+		{display: '<span style=font-size:20px>$delete</span>', name : 'delete', width : 120, sortable : false, align: 'center'},
 		],
 	$buttons
 	searchitems : [
@@ -96,12 +95,12 @@ $('#flexRT$t').flexigrid({
 	sortname: 'recipient',
 	sortorder: 'asc',
 	usepager: true,
-	title: '',
+	title: '<span style=font-size:20px>{$_GET["list"]}</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
-	width: 519,
-	height: 370,
+	width: '99%',
+	height: 550,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200]
 	
@@ -109,7 +108,7 @@ $('#flexRT$t').flexigrid({
 });
 
 	function NewDiffListItemImport$t(){
-		YahooWin5('550','$page?items-import-popup=yes&t=$t&hostname=$hostname&ou={$_GET["ou"]}&mainlist={$_GET["list"]}&tt=$tt','$import');
+		YahooWin5('890','$page?items-import-popup=yes&t=$t&hostname=$hostname&ou={$_GET["ou"]}&mainlist={$_GET["list"]}&tt=$tt','$import');
 	}
 	
 	
@@ -260,16 +259,15 @@ function main_table(){
 	"javascript:AddRemoteDomain_form(\"$ou\",\"new domain\")","add_relay_domain",210);
 	$build_parameters=$tpl->_ENGINE_parse_body("{build_parameters}");
 	$new_diffusion_list=$tpl->javascript_parse_text("{new_diffusion_list}");
+	$title=$tpl->javascript_parse_text("{diffusion_lists}");
 	$buttons="
 	buttons : [
-	{name: '$new_diffusion_list', bclass: 'add', onpress : NewDiffList$t},
-	{name: '$build_parameters', bclass: 'Reconf', onpress :Build2$t},
+	{name: '<strong style=font-size:18px>$new_diffusion_list</strong>', bclass: 'add', onpress : NewDiffList$t},
+	{name: '<strong style=font-size:18px>$build_parameters</strong>', bclass: 'Reconf', onpress :Build2$t},
 	],";		
 
-$explain=$tpl->_ENGINE_parse_body("{mysql_routing_table_list_explain}");
-	
+
 $html="
-<div class=explain style='font-size:14px'>$explain</div>
 <input type='hidden' id='ou' value='$ou'>
 <table class='flexRT$t' style='display: none' id='flexRT$t' style='width:100%'></table>
 
@@ -281,10 +279,10 @@ $('#flexRT$t').flexigrid({
 	url: '$page?table-list=yes&hostname=$hostname&ou={$_GET["ou"]}&t=$t',
 	dataType: 'json',
 	colModel : [
-		{display: '$lists', name : 'recipient', width : 639, sortable : true, align: 'left'},
-		{display: '$items', name : 'transport', width :52, sortable : true, align: 'center'},
-		{display: '&nbsp;', name : 'enable', width :31, sortable : true, align: 'center'},
-		{display: '$delete;', name : 'delete', width : 31, sortable : false, align: 'center'},
+		{display: '<span style=font-size:22px>$lists</span>', name : 'recipient', width : 639, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>$items</span>', name : 'transport', width :156, sortable : true, align: 'center'},
+		{display: '<span style=font-size:22px>&nbsp;</span>', name : 'enable', width :31, sortable : true, align: 'center'},
+		{display: '<span style=font-size:22px>$delete</span>', name : 'delete', width : 156, sortable : false, align: 'center'},
 		],
 	$buttons
 	searchitems : [
@@ -293,12 +291,12 @@ $('#flexRT$t').flexigrid({
 	sortname: 'recipient',
 	sortorder: 'asc',
 	usepager: true,
-	title: '',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
-	width: 820,
-	height: 500,
+	width: '99%',
+	height: 550,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200]
 	
@@ -332,7 +330,7 @@ $('#flexRT$t').flexigrid({
 
 	function DiffusionList$t(recipient){
 		if(!recipient){recipient='';}
-		YahooWin4('550','$page?recipient='+recipient+'&t=$t&hostname=$hostname&ou={$_GET["ou"]}',recipient);
+		YahooWin4('890','$page?recipient='+recipient+'&t=$t&hostname=$hostname&ou={$_GET["ou"]}',recipient);
 	}
 
 	var X_DiffusionListDel$t= function (obj) {
@@ -608,18 +606,11 @@ function recipient_popup(){
 	
 	while (list ($num, $ligne) = each ($array) ){
 		
-		$html[]=$tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&list={$_GET["recipient"]}&hostname=$hostname&ou={$_GET["ou"]}&t={$_GET["t"]}\"><span>$ligne</span></a></li>\n");
+		$html[]=$tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&list={$_GET["recipient"]}&hostname=$hostname&ou={$_GET["ou"]}&t={$_GET["t"]}\"><span style='font-size:18px'>$ligne</span></a></li>\n");
 	}
 	
-	
-	echo "
-	<div id=main_config_diffusion_list style='width:100%;height:$height;overflow:auto;$fontsize'>
-		<ul>". implode("\n",$html)."</ul>
-	</div>
-		<script>
-		  $(document).ready(function() {
-			$(\"#main_config_diffusion_list\").tabs();});
-	</script>";		
+	echo build_artica_tabs($html, "main_config_diffusion_list");
+
 	
 	
 	
@@ -701,9 +692,9 @@ function recipient_popup_main_table(){
 			
 			$md=md5(serialize($ligne));
 			$cells=array();
-			$cells[]="<span style='font-size:14px;font-weight:bold'>{$ligne["recipient"]}</a>$forwarded";
-			$cells[]=Field_checkbox("$md-enabled", 1,$ligne["enabled"],"DiffusionListItemEnable$t('$md','{$ligne["recipient"]}')");
-			$cells[]=imgsimple("delete-24.png",null,"DiffusionListItemDel$t('{$ligne["recipient"]}','$md')");
+			$cells[]="<span style='font-size:22px;font-weight:bold'>{$ligne["recipient"]}</a>$forwarded";
+			$cells[]="<center>".Field_checkbox("$md-enabled", 1,$ligne["enabled"],"DiffusionListItemEnable$t('$md','{$ligne["recipient"]}')");
+			$cells[]="<center>".imgsimple("delete-32.png",null,"DiffusionListItemDel$t('{$ligne["recipient"]}','$md')");
 			
 			
 			
@@ -798,10 +789,10 @@ function table_list(){
 			$js="DiffusionList$t('{$ligne["recipient"]}')";
 			$md=md5(serialize($ligne));
 			$cells=array();
-			$cells[]="<a href=\"javascript:blur();\" Onclick=\"javascript:$js;\" style='font-size:14px;font-weight:bold;text-decoration:underline'>{$ligne["recipient"]}</a>$forwarded";
-			$cells[]="<span style='font-size:18px;font-weight:bold;'>$total</span>";
-			$cells[]=Field_checkbox("$md-enabled", 1,$ligne["enabled"],"DiffusionListEnable$t('$md','{$ligne["recipient"]}')");
-			$cells[]=imgsimple("delete-24.png",null,"DiffusionListDel$t('{$ligne["recipient"]}','$md')");
+			$cells[]="<a href=\"javascript:blur();\" Onclick=\"javascript:$js;\" style='font-size:22px;font-weight:bold;text-decoration:underline'>{$ligne["recipient"]}</a>$forwarded";
+			$cells[]="<center style='font-size:22px;font-weight:bold;'>$total</center>";
+			$cells[]="<center>".Field_checkbox("$md-enabled", 1,$ligne["enabled"],"DiffusionListEnable$t('$md','{$ligne["recipient"]}')")."</center>";
+			$cells[]="<center>".imgsimple("delete-32.png",null,"DiffusionListDel$t('{$ligne["recipient"]}','$md')")."</center>";
 			
 			
 			

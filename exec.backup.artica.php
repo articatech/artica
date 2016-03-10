@@ -26,6 +26,10 @@ if(preg_match("#--not-remove#",$GLOBALS["COMMANDLINE"])){$GLOBALS["SNAPSHOT_NO_D
 
 if(preg_match("#--verbose#",$GLOBALS["COMMANDLINE"])){$GLOBALS["VERBOSE"]=true;ini_set('html_errors',0);ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);}
 if($argv[1]=="--restore"){restore();die();}
+if($argv[1]=="--restore-squid"){restore_squidlogs($argv[2]);die();}
+
+
+
 if($argv[1]=="--snapshot"){snapshot();die();}
 if($argv[1]=="--snapshot-id"){snapshot_restore_sql($argv[2]);die();}
 if($argv[1]=="--snapshot-file"){snapshot_restore($argv[2]);die();}
@@ -237,7 +241,7 @@ function backup_artica_settings($BaseWorkDir){
 		copy($targetFile, "$BaseWorkDir/Daemons/$filename");
 		$GLOBALS["ARRAY_CONTENT"]["Daemons/$filename"]=@filesize("$BaseWorkDir/Daemons/$filename");
 	}
-	
+	echo "Backup /etc/artica-postfix/settings/Daemons done\n";
 	system_admin_events("settings/Daemons done\n",__FUNCTION__,__FILE__,__LINE__);
 	
 }
@@ -335,7 +339,7 @@ function snapshot_restore($tarball){
 	@mkdir($BaseWorkDir,0755,true);
 	progress(15,"{extracting}");
 	echo $tarball." -> $BaseWorkDir\n";
-	system("$tar xf $tarball -C $BaseWorkDir/");
+	system("$tar xpf $tarball -C $BaseWorkDir/");
 	if(!$GLOBALS["SNAPSHOT_NO_DELETE"]){
 		@unlink($tarball);
 	}
@@ -400,7 +404,7 @@ function snapshot(){
 	$gzip=$unix->find_program("gzip");
 	$sock=new sockets();
 	$rm=$unix->find_program("rm");
-	$BaseWorkDir="/usr/share/artica-postfix/snapshots/".time();
+	$BaseWorkDir=$unix->TEMP_DIR()."/snapshots/".time();
 	$tar=$unix->find_program("tar");
 	@mkdir($BaseWorkDir,0755,true);
 	
@@ -556,10 +560,23 @@ function snapshot(){
 	$temp=$unix->FILE_TEMP().".tar.gz";
 	$tempdir=$unix->TEMP_DIR();
 	chdir($BaseWorkDir);
-	progress(60,"{compressing}");
+	progress(60,"{compressing} {to} $temp");
+	system("cd  $BaseWorkDir");
 	system("$tar -czf $temp *");
+	
+	system("cd /root");
+	chdir("/root");
+	progress(65,"{removing} $BaseWorkDir");
+	echo "Remove: $BaseWorkDir....\n";
 	shell_exec("$rm -rf $BaseWorkDir");
-	echo "$temp\n";
+	
+	if(!is_file($temp)){
+		echo "$temp, no such file...\n";
+		progress(110,"{failed}");
+		return;
+	}
+
+	
 	$q=new mysql();
 	$q->CREATE_DATABASE("artica_snapshots");
 	
@@ -594,14 +611,18 @@ function snapshot(){
 	
 	
 	$zmd5=md5_file($temp);
-	$data=mysql_escape_string2(@file_get_contents($temp));
 	$size=@filesize($temp);
+	@chmod($temp,0777);
 	$final_array=mysql_escape_string2(serialize($GLOBALS["ARRAY_CONTENT"]));
+	
+	echo "********* INSERTING SNAPSHOT IN MYSQL DATABASE *************************\n";
+	
 	$q->QUERY_SQL("INSERT IGNORE INTO `snapshots` (zDate,snap,size,content,zmd5) 
-			VALUES (NOW(),'$data','$size','$final_array','$zmd5')","artica_snapshots");
+			VALUES (NOW(),LOAD_FILE('$temp'),'$size','$final_array','$zmd5')","artica_snapshots");
 	if(!$q->ok){
-		echo "$q->mysql_error\n";
-		progress(70,"{failed}");
+		echo "****************\n$q->mysql_error\n****************\n";
+		progress(110,"{failed}");
+		return;
 	}
 	@unlink($temp);
 	shell_exec("$rm -rf /usr/share/artica-postfix/snapshots");
@@ -961,7 +982,7 @@ function restore_nginx($sourceDir){
 	$tar=$unix->find_program("tar");
 	
 	@mkdir("/etc/nginx",0755,true);
-	shell_exec("$tar xf $sourceDir/nginx/tarball.tgz -C /etc/nginx/");
+	shell_exec("$tar xpf $sourceDir/nginx/tarball.tgz -C /etc/nginx/");
 
 }
 

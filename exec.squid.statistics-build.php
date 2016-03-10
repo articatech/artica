@@ -59,6 +59,7 @@ function xstart($md5){
 			exit;
 		break;
 		case "MEMBERS":
+			echo "Running /usr/share/artica-postfix/exec.squid.statistics.MEMBERS.build.php $md5\n";
 			system("$php /usr/share/artica-postfix/exec.squid.statistics.MEMBERS.build.php $md5");
 			exit;
 		break;
@@ -75,16 +76,62 @@ function xstart($md5){
 			exit;
 		break;
 		
+		case "IDS":
+			echo "Running exec.squid.statistics.IDS.build.php $md5\n";
+			system("$php /usr/share/artica-postfix/exec.system.statistics.IDS.build.php $md5");
+			exit;
+			break;		
+		
 		case "CATEGORIES":
 			system("$php /usr/share/artica-postfix/exec.squid.statistics.CATEGORIES.build.php $md5");
 			exit;
 			break;
 			
 			
+		case "CATEGORY_UNIQ":
+			system("$php /usr/share/artica-postfix/exec.squid.statistics.CATEGORIESUNIQUE.build.php $md5");
+			exit;
+			break;			
+			
+			
 		case "WEBFILTERING":
+			echo "Running exec.squid.statistics.WEBFILTERING.build.php $md5\n";
 			system("$php /usr/share/artica-postfix/exec.squid.statistics.WEBFILTERING.build.php $md5");
 			exit;
 			break;
+			
+		case "SMTP_MEMBERS":
+			echo "Running exec.postfix.statistics.MEMBERS.build.php $md5\n";
+			system("$php /usr/share/artica-postfix/exec.postfix.statistics.MEMBERS.build.php $md5");
+			exit;
+			break;
+			
+		case "SMTP_REFUSED":
+			echo "Running exec.postfix.statistics.SMTP_REFUSED.build.php $md5\n";
+			system("$php /usr/share/artica-postfix/exec.postfix.statistics.SMTP_REFUSED.build.php $md5");
+			exit;
+			break;	
+
+		case "SMTP_FLOW_MD":
+			echo "Running exec.postfix.statistics.SMTP_FLOW.build.php $md5\n";
+			system("$php /usr/share/artica-postfix/exec.postfix.statistics.SMTP_FLOW.build.php $md5");
+			exit;
+			break;	
+
+		case "SMTP_ATTACHS":
+			echo "Running exec.postfix.statistics.SMTP_ATTACHS.build.php $md5\n";
+			system("$php /usr/share/artica-postfix/exec.postfix.statistics.SMTP_ATTACHS.build.php $md5");
+			exit;
+			break;			
+			
+			
+
+		case "SMTP_UNIQ":
+			echo "Running /usr/share/artica-postfix/exec.postfix.statistics.MEMBERUNIQUE.build.php $md5\n";
+			system("$php /usr/share/artica-postfix/exec.postfix.statistics.MEMBERUNIQUE.build.php $md5");
+			exit;
+			break;			
+			
 		
 		
 		

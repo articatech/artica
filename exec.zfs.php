@@ -743,7 +743,7 @@ function InfluxDbSize(){
 	$percent=round($percent,3);
 	
 	
-	if($GLOBALS["VERBOSE"]){echo "$dir: $size Parition $TOT\n";}
+	if($GLOBALS["VERBOSE"]){echo "$dir: $size Partition $TOT\n";}
 	
 	$ARRAY["PERCENTAGE"]=$percent;
 	$ARRAY["SIZEKB"]=$size;

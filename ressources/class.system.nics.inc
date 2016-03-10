@@ -16,6 +16,7 @@ class system_nic{
 	var $DNS2;
 	var $dhcp=0;
 	var $ROUTES=array();
+	var $UseSPAN=0;
 	var $NICNAME=null;
 	var $NETWORK;
 	var $unconfigured=true;
@@ -46,11 +47,18 @@ class system_nic{
 	var $isFWAcceptArtica=1;
 	var $isFWLogBlocked=0;
 	var $QOSMAX=100;
+	var $FireQOS=0;
+	var $InputSpeed=0;
+	var $OutputSpeed=0;
 	var $QOS=1;
 	var $mysql_error;
 	var $firewall_policy="accept";
+	var $DenyCountries=0;
 	var $firewall_behavior=0;
 	var $firewall_masquerade=0;
+	var $firewall_artica=0;
+	var $ModemType=null;
+	var $SpeedUnit="kbit";
 	
 	var $ShoreWallServices=array();
 	function system_nic($eth=null){
@@ -194,7 +202,42 @@ class system_nic{
 			$sql="ALTER TABLE `nics` ADD `firewall_masquerade` smallint(1) NOT NULL DEFAULT 0,ADD INDEX ( `firewall_behavior` )";
 			$q->QUERY_SQL($sql,'artica_backup');
 		}		
+		if(!$q->FIELD_EXISTS("nics","DenyCountries","artica_backup")){
+			$sql="ALTER TABLE `nics` ADD `DenyCountries` smallint(1) NOT NULL DEFAULT 0,ADD INDEX ( `DenyCountries` )";
+			$q->QUERY_SQL($sql,'artica_backup');
+		}
+		if(!$q->FIELD_EXISTS("nics","firewall_artica","artica_backup")){
+			$sql="ALTER TABLE `nics` ADD `firewall_artica` smallint(1) NOT NULL DEFAULT 0,ADD INDEX ( `firewall_artica` )";
+			$q->QUERY_SQL($sql,'artica_backup');
+		}	
+		if(!$q->FIELD_EXISTS("nics","UseSPAN","artica_backup")){
+			$sql="ALTER TABLE `nics` ADD `UseSPAN` smallint(1) NOT NULL DEFAULT 0,ADD INDEX ( `UseSPAN` )";
+			$q->QUERY_SQL($sql,'artica_backup');
+		}
+		
+		if(!$q->FIELD_EXISTS("nics","FireQOS","artica_backup")){
+			$sql="ALTER TABLE `nics` ADD `FireQOS` smallint(1) NOT NULL DEFAULT 0,ADD INDEX ( `FireQOS` )";
+			$q->QUERY_SQL($sql,'artica_backup');
+		}		
+		
+		if(!$q->FIELD_EXISTS("nics","InputSpeed","artica_backup")){
+			$sql="ALTER TABLE `nics` ADD `InputSpeed` INT(10) NOT NULL DEFAULT 0,ADD INDEX ( `InputSpeed` )";
+			$q->QUERY_SQL($sql,'artica_backup');
+		}	
 
+		if(!$q->FIELD_EXISTS("nics","OutputSpeed","artica_backup")){
+			$sql="ALTER TABLE `nics` ADD `OutputSpeed` INT(10) NOT NULL DEFAULT 0,ADD INDEX ( `OutputSpeed` )";
+			$q->QUERY_SQL($sql,'artica_backup');
+		}		
+		if(!$q->FIELD_EXISTS("nics","ModemType","artica_backup")){
+			$sql="ALTER TABLE `nics` ADD `ModemType` VARCHAR(128) NULL,ADD INDEX ( `ModemType` )";
+			$q->QUERY_SQL($sql,'artica_backup');
+		}		
+		if(!$q->FIELD_EXISTS("nics","SpeedUnit","artica_backup")){
+			$sql="ALTER TABLE `nics` ADD `SpeedUnit` VARCHAR(20) NULL,ADD INDEX ( `SpeedUnit` )";
+			$q->QUERY_SQL($sql,'artica_backup');
+		}		
+		
 		
 		
 		if(!$q->FIELD_EXISTS("nics","MTU","artica_backup")){
@@ -221,6 +264,9 @@ class system_nic{
 		if(!isset($ligne["ipv6mask"])){$ligne["ipv6mask"]=null;}
 		if(!isset($ligne["ipv6addr"])){$ligne["ipv6addr"]=null;}
 		if(!isset($ligne["ipv6gw"])){$ligne["ipv6gw"]=null;}
+		if(!isset($ligne["UseSPAN"])){$ligne["UseSPAN"]=0;}
+		
+		
 		if(!isset($ligne["netzone"])){
 			$q->QUERY_SQL("ALTER TABLE `nics_switch` ADD `netzone` VARCHAR( 10 ) ,ADD INDEX ( `netzone` )","artica_backup");
 			$ligne["netzone"]=$this->eth;
@@ -240,6 +286,7 @@ class system_nic{
 		$this->ipv6gw=$ligne["ipv6gw"];
 		$this->metric=$ligne["metric"];
 		$this->NICNAME=$ligne["NICNAME"];
+		$this->UseSPAN=intval($ligne["UseSPAN"]);
 		$this->enabled=intval($ligne["enabled"]);
 		$this->isFW=$ligne["isFW"];
 		$this->isFWAcceptNet=$ligne["isFWAcceptNet"];
@@ -247,6 +294,8 @@ class system_nic{
 		$this->isFWLogBlocked=$ligne["isFWLogBlocked"];
 		$this->firewall_behavior=$ligne["firewall_behavior"];
 		$this->firewall_masquerade=$ligne["firewall_masquerade"];
+		$this->firewall_artica=$ligne["firewall_artica"];
+		$this->DenyCountries=$ligne["DenyCountries"];
 		$this->ShoreWallServices=unserialize(base64_decode($ligne["ShoreWallServices"]));
 		if($this->NICNAME==null){$this->NICNAME="Interface $this->eth";}
 		if($this->NETWORK==null){$this->NETWORK=$this->GetCDIRNetwork($this->IPADDR,$this->NETMASK);}
@@ -309,10 +358,12 @@ class system_nic{
 		$this->ipv6addr=$ligne["ipv6addr"];
 		$this->ipv6gw=$ligne["ipv6gw"];
 		$this->metric=$ligne["metric"];
+		$this->UseSPAN=intval($ligne["UseSPAN"]);
 		$this->ucarp_enabled=$ligne["ucarp-enable"];
 		$this->ucarp_master=$ligne["ucarp-master"];
 		$this->QOS=intval($ligne["QOS"]);
 		$this->QOSMAX=intval($ligne["QOSMAX"]);
+		$this->DenyCountries=intval($ligne["DenyCountries"]);
 		$this->firewall_masquerade=intval($ligne["firewall_masquerade"]);
 		if(isset($ligne["ucarp-vid"])){$this->ucarp_vid=$ligne["ucarp-vid"];}
 		if(isset($ligne["ucarp-vip"])){$this->ucarp_vip=$ligne["ucarp-vip"];}
@@ -321,6 +372,17 @@ class system_nic{
 		if(isset($ligne["Bridged"])){$this->Bridged=$ligne["Bridged"];}
 		if(isset($ligne["firewall_policy"])){$this->firewall_policy=$ligne["firewall_policy"];}
 		if(isset($ligne["firewall_behavior"])){$this->firewall_behavior=$ligne["firewall_behavior"];;}
+		if(isset($ligne["firewall_artica"])){$this->firewall_artica=$ligne["firewall_artica"];;}
+		
+		if(isset($ligne["FireQOS"])){$this->FireQOS=$ligne["FireQOS"];;}
+		if(isset($ligne["InputSpeed"])){$this->InputSpeed=$ligne["InputSpeed"];;}
+		if(isset($ligne["OutputSpeed"])){$this->OutputSpeed=$ligne["OutputSpeed"];;}
+		if(isset($ligne["ModemType"])){$this->ModemType=$ligne["ModemType"];;}
+		if(isset($ligne["SpeedUnit"])){$this->SpeedUnit=$ligne["SpeedUnit"];;}
+		
+		
+		
+		
 		
 		
 		$this->BridgedTo=$ligne["BridgedTo"];
@@ -627,11 +689,14 @@ class system_nic{
 		$this->DNS2=$this->CleanIPAddr($this->DNS2);
 		$this->ucarp_vip=$this->CleanIPAddr($this->ucarp_vip);
 		
-		
-		$ip=new IP();
-		if(!$ip->isIPAddress($this->IPADDR)){
-			echo __CLASS__."/".__FUNCTION__."/".__LINE__.": \"$this->IPADDR\" not a valid IP address\n";
-			return;
+		if($this->enabled==1){
+			if($this->UseSPAN==0){
+				$ip=new IP();
+				if(!$ip->isIPAddress($this->IPADDR)){
+					echo __CLASS__."/".__FUNCTION__."/".__LINE__.": \"$this->IPADDR\" not a valid IP address\n";
+					return;
+				}
+			}
 		}
 		
 		if($this->netzone==null){$this->netzone="$this->eth";}
@@ -645,6 +710,7 @@ class system_nic{
 		`GATEWAY`='$this->GATEWAY',
 		`BROADCAST`='$this->BROADCAST',
 		`NETWORK`='$this->NETWORK',
+		`UseSPAN`='$this->UseSPAN',
 		`DNS1`='$this->DNS1',
 		`DNS2`='$this->DNS2',
 		`dhcp`='$this->dhcp',
@@ -675,6 +741,13 @@ class system_nic{
 		`firewall_policy`='$this->firewall_policy',
 		`firewall_behavior`='$this->firewall_behavior',
 		`firewall_masquerade`='$this->firewall_masquerade',
+		`DenyCountries`='$this->DenyCountries',
+		`firewall_artica`='$this->firewall_artica',
+		`FireQOS`='$this->FireQOS',
+		`InputSpeed`='$this->InputSpeed',
+		`OutputSpeed`='$this->OutputSpeed',
+		`ModemType`='$this->ModemType',
+		`SpeedUnit`='$this->SpeedUnit',
 		`ROUTES`='$routes'
 		 WHERE `Interface`='$this->eth'";
 
@@ -715,6 +788,13 @@ class system_nic{
 				$q->QUERY_SQL("ALTER TABLE `nics` ADD `NICNAME` VARCHAR( 90 ) NOT NULL DEFAULT 'My Interface'",'artica_backup');
 				if(!$q->ok){echo $q->mysql_error;return;}
 			}	
+			if(!$q->FIELD_EXISTS("nics","UseSPAN","artica_backup")){
+				$q->QUERY_SQL("ALTER TABLE `nics` ADD `UseSPAN` smallint(1) NOT NULL DEFAULT '0'",'artica_backup');
+				if(!$q->ok){echo $q->mysql_error;return;}
+			}			
+			
+			
+			
 			$GLOBALS["NIC_TABLE_CHECKED"]=true;
 		}
 		
@@ -876,9 +956,17 @@ class system_nic{
 			
 			$GLOBALS["SCRIPTS"][]="# [".__LINE__."]";
 			$GLOBALS["SCRIPTS"][]="# [".__LINE__."] *******************************";
-			$GLOBALS["SCRIPTS"][]="# [".__LINE__."] **** SETTINGS for \"$eth\" ****";
+			$GLOBALS["SCRIPTS"][]="# [".__LINE__."] **** SETTINGS for \"$eth\" SPAN= {$ligne["UseSPAN"]} ****";
 			$GLOBALS["SCRIPTS"][]="# [".__LINE__."] *******************************";
 			$GLOBALS["SCRIPTS"][]="# [".__LINE__."]";
+			
+			if(intval($ligne["UseSPAN"])==1){
+				$GLOBALS["SCRIPTS"][]="# [".__LINE__."] UseSPAN == 1 , do nothing...";
+				$GLOBALS["SCRIPTS"][]="{$GLOBALS["ifconfig"]} $eth down";
+				$GLOBALS["SCRIPTS"][]="{$GLOBALS["ifconfig"]} $eth up";
+				continue;
+			}
+			
 			
 			if($ligne["IPADDR"]=="0.0.0.0"){
 				$GLOBALS["SCRIPTS"][]="# [".__LINE__."] {$ligne["IPADDR"]} bad format!";
@@ -1340,6 +1428,11 @@ class system_nic{
 		$EnableChilli=$sock->GET_INFO("EnableChilli");
 		if(!is_numeric($EnableChilli)){$EnableChilli=0;}
 		if(!isset($GLOBALS["PROC_NET_DEV"])){$this->LoadProcNetDev();}
+		if(!isset($GLOBALS["ethtoolbin"])){$GLOBALS["ethtoolbin"]=$unix->find_program("ethtool");}
+		if(!isset($GLOBALS["sysctl"])){$GLOBALS["sysctl"]=$unix->find_program("sysctl");}
+		
+		
+		
 		
 		if($EnableChilli==1){
 			$ChilliConf=unserialize(base64_decode($sock->GET_INFO("ChilliConf")));
@@ -1393,7 +1486,17 @@ class system_nic{
 		$f[]="iface lo inet loopback";
 		$f[]="";
 		$ISREAL=0;
-// ------------------------ DEBUT DES CARTES REELES ----------------------------------------------		
+// ------------------------ DEBUT DES CARTES REELES ----------------------------------------------	
+
+		
+		$EnableArticaAsGateway=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaAsGateway"));
+		
+		if($EnableArticaAsGateway==1){
+			$GLOBALS["SCRIPTS"][]="# [".__LINE__."] **** ACT AS GATEWAY ****";
+			$GLOBALS["SCRIPTS"][]="{$GLOBALS["sysctl"]} -w net.ipv4.ip_forward=1";
+		}
+		
+		
 		while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){	
 			$eth=trim($ligne["Interface"]);
 			$eth=str_replace("\n", "", $eth);
@@ -1412,6 +1515,9 @@ class system_nic{
 				echo "Starting......: ".date("H:i:s")." $eth skipping\n";
 				continue;
 			}
+			
+			
+			
 			
 			if(!preg_match("#^([a-z]+)([0-9]+)$#", $eth)){
 				$GLOBALS["SCRIPTS"][]="# [".__LINE__."] `$eth` bad format - SKIPPED";
@@ -1437,6 +1543,20 @@ class system_nic{
 			$GLOBALS["SCRIPTS"][]="# [".__LINE__."] *******************************";
 			$GLOBALS["SCRIPTS"][]="# [".__LINE__."]";
 			$GLOBALS["SCRIPTS"][]="# [".__LINE__."] Reload/flush Interface $eth (MTU $MTU)";
+			
+			if(is_file($GLOBALS["ethtoolbin"])){
+				$GLOBALS["SCRIPTS"][]="# [".__LINE__."] disabling GRO/LRO for Interface $eth";
+				$GLOBALS["SCRIPTS"][]="{$GLOBALS["ethtoolbin"]} -K $eth gro off";
+				$GLOBALS["SCRIPTS"][]="{$GLOBALS["ethtoolbin"]} -K $eth lro off";
+			}
+			
+			if(intval($ligne["UseSPAN"])==1){
+				$GLOBALS["SCRIPTS"][]="# [".__LINE__."] UseSPAN == 1 , do nothing...";
+				$GLOBALS["SCRIPTS"][]="{$GLOBALS["ifconfig"]} $eth down";
+				$GLOBALS["SCRIPTS"][]="{$GLOBALS["ifconfig"]} $eth up";
+				continue;
+			}
+			
 			$GLOBALS["SCRIPTS"][]="{$GLOBALS["ifconfig"]} $eth down";
 			$GLOBALS["SCRIPTS"][]="{$GLOBALS["ifconfig"]} $eth up";
 			$GLOBALS["SCRIPTS"][]="{$GLOBALS["ipbin"]} addr flush $eth";
@@ -1744,6 +1864,8 @@ class system_nic{
 		
 		$GW=false;
 		
+
+		
 		$GLOBALS["SCRIPTS"][]="{$GLOBALS["touchbin"]} /etc/artica-postfix/IPTABLES_BR_BRIDGE >/dev/null 2>&1";
 		$GLOBALS["SCRIPTS"][]="{$GLOBALS["sysctl"]} -w net.ipv4.ip_forward=1";
 		$GLOBALS["SCRIPTS"][]="# Table nics_bridge ". mysql_num_rows($results)." element(s) [".__CLASS__."/".__LINE__."]";
@@ -1834,8 +1956,12 @@ class system_nic{
 	}
 	
 	
+	
+	
+	
 	public function BuildVirtIps(){
-		
+		$LastMetric=$this->lastMetric();
+		if($LastMetric==0){$LastMetric=1;}
 		$sock=new sockets();
 		$NetWorkBroadCastAsIpAddr=$sock->GET_INFO("NetWorkBroadCastAsIpAddr");
 		$unix=new unix();
@@ -1854,9 +1980,9 @@ class system_nic{
 		if(!isset($GLOBALS["routebin"])){
 			$GLOBALS["routebin"]=$unix->find_program("route");
 		}
+		if(!isset($GLOBALS["ethtoolbin"])){$GLOBALS["ethtoolbin"]=$unix->find_program("ethtool");}
 		
-		
-		$sql="SELECT * FROM nics_virtuals WHERE failover=0 ORDER BY ID DESC";
+		$sql="SELECT * FROM nics_virtuals WHERE failover=0 ORDER BY ID";
 		$q=new mysql();
 		if(!$q->FIELD_EXISTS("nics_virtuals","failover","artica_backup")){$sql="ALTER TABLE `nics_virtuals` ADD `failover` TINYINT( 1 ) NOT NULL,ADD INDEX ( `failover` )";$q->QUERY_SQL($sql,'artica_backup');if(!$q->ok){echo $q->mysql_error."\n\n";}}
 		$results=$q->QUERY_SQL($sql,"artica_backup");
@@ -1874,10 +2000,12 @@ class system_nic{
 			$ligne["nic"]=trim($ligne["nic"]);
 			$eth=str_replace("\n", "", $ligne["nic"]);
 			$eth=str_replace("\r", "", $ligne["nic"]);
+			$metric=$ligne["metric"];
+			if($LastMetric>$metric){$metric=$LastMetric+1;$LastMetric=$metric;}
 			
 			$GLOBALS["SCRIPTS"][]="# [".__LINE__."]";
 			$GLOBALS["SCRIPTS"][]="# [".__LINE__."] *******************************";
-			$GLOBALS["SCRIPTS"][]="# [".__LINE__."] **** SETTINGS for VIRTAL INTERFACE \"{$ligne["nic"]}:{$ligne["ID"]}\" ****";
+			$GLOBALS["SCRIPTS"][]="# [".__LINE__."] **** SETTINGS for VIRTAL INTERFACE \"{$ligne["nic"]}:{$ligne["ID"]} Metric:$metric\" ****";
 			$GLOBALS["SCRIPTS"][]="# [".__LINE__."] *******************************";
 			$GLOBALS["SCRIPTS"][]="# [".__LINE__."]";
 			
@@ -1888,18 +2016,13 @@ class system_nic{
 				continue;
 			}
 			$eth="{$ligne["nic"]}:{$ligne["ID"]}";
+			$ethName="Net{$ligne["nic"]}{$ligne["ID"]}";
+			$CDIR=$ligne["cdir"];
 			if($NetWorkBroadCastAsIpAddr==1){$brd=$ligne["ipaddr"];}
 			if($ligne["gateway"]==null){$ligne["gateway"]="0.0.0.0";}
 			$GLOBALS["MEM_INTERFACES"][$eth]=$ligne["ipaddr"];
 				
-			$f[]="";
-			$f[]="iface $eth inet static";
-			$f[]="\taddress {$ligne["ipaddr"]}";
-			$f[]="\tnetmask {$ligne["netmask"]}";
-				
 			$ligne["cdir"]=$this->checkcdir($ligne["cdir"]);
-				
-				
 			echo "Starting......: ".date("H:i:s")." Virtual $eth net:{$ligne["cdir"]} {$ligne["ipaddr"]}/{$ligne["netmask"]} gateway {$ligne["gateway"]} ({$ligne["org"]})\n";
 			
 			
@@ -1923,46 +2046,41 @@ class system_nic{
 			$scripts=array();
 			if($GLOBALS["NoGatewayForVirtualNetWork"]==0){
 			if($ligne["gateway"]<>"0.0.0.0"){
+
+				$GLOBALS["SCRIPTS_ROUTES"][]="#[$eth/".__CLASS__."/".__LINE__."] Force Gateway={$ligne["ForceGateway"]}/{$ligne["gateway"]}";
 				if($ligne["ForceGateway"]==1){
-					$GLOBALS["SCRIPTS_ROUTES"][]="#[$eth/".__CLASS__."/".__LINE__."] Default gateway {$ligne["gateway"]}\n";
-					$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["routebin"]} add -net 0.0.0.0 gw {$ligne["gateway"]} dev $eth";
-					$scripts[]="\tpost-up {$GLOBALS["ipbin"]} rule add from {$ligne["ipaddr"]} table {$ligne["ID"]}0";
-					$scripts[]="\tpost-up {$GLOBALS["ipbin"]} route add default via {$ligne["gateway"]} metric 20{$ligne["metric"]} table {$ligne["ID"]}0";
+					$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="#";
+					$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="#";
+					$ROUTE_NUMBER=250+intval($ligne["ID"]);
+					if($ROUTE_NUMBER==299){$ROUTE_NUMBER=$ROUTE_NUMBER+1;}
+					$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="# ********************** TABLE $ROUTE_NUMBER $ethName **********************";
+					$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="#";
+					$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="#[$eth/".__CLASS__."/".__LINE__."] Default gateway {$ligne["gateway"]} $CDIR table number $ROUTE_NUMBER/$ethName\n";
+					$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="#";
+					$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="{$GLOBALS["echobin"]} \"$ROUTE_NUMBER	$ethName\" >> /etc/iproute2/rt_tables";
+					if($CDIR<>null){
+						$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="{$GLOBALS["ipbin"]} route flush table $ethName";
+						$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="{$GLOBALS["ipbin"]} route add $CDIR dev $eth src {$ligne["ipaddr"]} table $ethName";
+						$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="{$GLOBALS["ipbin"]} route add {$ligne["gateway"]} dev $eth src {$ligne["ipaddr"]} table $ethName";
+						
 					
+					}
+					$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="{$GLOBALS["ipbin"]} route add 0.0.0.0/0 dev $eth src {$ligne["ipaddr"]} table $ethName";
+					$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="{$GLOBALS["ipbin"]} route add broadcast $brd dev $eth src {$ligne["ipaddr"]} table $ethName";
+					$GLOBALS["SCRIPTS_ROUTES_RTTABLE"][]="{$GLOBALS["ipbin"]} rule add from {$ligne["ipaddr"]} table $ethName";
 					
-					$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} route flush cache";
-					$scripts[]="\tpost-up {$GLOBALS["ipbin"]} route flush cache";
-					$scripts[]="\tpost-down {$GLOBALS["ipbin"]} route del default via {$ligne["gateway"]} table {$ligne["ID"]}0";
-					$scripts[]="\tpost-down {$GLOBALS["ipbin"]} rule del from {$ligne["ipaddr"]} metric 20{$ligne["metric"]} table {$ligne["ID"]}0";
+				}else{
+					if($ligne["cdir"]<>null){
+						$mainroute="{$ligne["cdir"]} via {$ligne["gateway"]} src {$ligne["ipaddr"]} metric $metric";
+						$GLOBALS["SCRIPTS_ROUTES"][]="#[$eth/".__CLASS__."/".__LINE__."] $mainroute";
+						$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} route add $mainroute";
 					}
 				}
 			}
-				
-			if(count($scripts)==0){
-			if($ligne["gateway"]<>"0.0.0.0"){
-				if($ligne["cdir"]<>null){
-					$mainroute="{$ligne["cdir"]} via {$ligne["gateway"]} src {$ligne["ipaddr"]} metric 20{$ligne["metric"]}";
-					
-					$scripts[]="\tpost-up {$GLOBALS["ipbin"]} route add $mainroute";
-					
-					$GLOBALS["SCRIPTS_ROUTES"][]="# Added from line ".__LINE__;
-					$GLOBALS["SCRIPTS_ROUTES"][]="{$GLOBALS["ipbin"]} route flush cache";
-					$scripts[]="\tpost-up {$GLOBALS["ipbin"]} route flush cache";
-					$scripts[]="\tpost-down {$GLOBALS["ipbin"]} route del route $mainroute";
-					$scripts[]="\tpost-down {$GLOBALS["ipbin"]} route flush cache";
-					}
-				}
-			}
+		}
+	}		
 		
-			$f[]=@implode("\n", $scripts);
-			$f[]="\tbroadcast $brd";
-			$f[]="";
-			$f[]="";
-		}		
-		
-		return @implode("\n", $f);
-		
-	}
+}
 	
 	
 	

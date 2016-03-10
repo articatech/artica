@@ -58,6 +58,9 @@ class apache_certificate{
 			$certificate_subdir=str_replace("*", "_ALL_", $this->CommonName);
 			$Directory="$this->ssl_path/$certificate_subdir";
 			@mkdir($Directory,0755,true);
+			
+			
+			
 			$PRIVATE_KEY=$this->srca_content;
 			$CERTIFICATE=$this->crt_content;
 			$CHAIN=$this->bundle;
@@ -107,6 +110,9 @@ class apache_certificate{
 		if($this->UsePrivKeyCrt==0){
 			$this->srca_content=$this->Squidkey;
 			$this->crt_content=$this->SquidCert;
+		}else{
+			$this->srca_content=$ligne["privkey"];
+			$this->crt_content=$ligne["crt"];
 		}
 			
 

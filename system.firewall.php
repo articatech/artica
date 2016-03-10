@@ -30,7 +30,7 @@ if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;ini_set('display_errors', 1
 	if(isset($_POST["rule-delete"])){rule_delete();exit;}
 	if(isset($_POST["rule-enable"])){rule_enable();exit;}
 	if(isset($_GET["rule-time"])){rule_time();exit;}
-	if(isset($_POST["time-save"])){time_save();exit;}
+	
 	if(isset($_GET["generic"])){generic_tabs();exit;}
 	if(isset($_POST["EnableArticaAsGateway"])){EnableArticaAsGateway_save();exit;}
 	if(isset($_GET["FireHolInstall-js"])){FireHolInstall_js();exit;}
@@ -110,10 +110,28 @@ function tabs(){
 function FireHolWizard(){
 	$page=CurrentPageName();
 	$tpl=new templates();	
+	include_once('ressources/class.system.network.inc');
+	include_once('ressources/class.system.nics.inc');
+	include_once('ressources/class.tcpip.inc');
+	$net=new networking();
+	
+	$interfaces=$net->Local_interfaces();
+	unset($interfaces["lo"]);
+	
+	$t=$_GET["t"];
+	while (list ($eth, $none) = each ($interfaces) ){
+		$nic=new system_nic($eth);
+		$array[$eth]="$eth $nic->IPADDR - $nic->NICNAME";
+	}
+	
+	$router="<center style='margin:50px'>". button("{router_mode_require_2nics}",
+			"Loadjs('firehol.wizard.router.php')",34)."</center>";
+	if(count($array)<2){$router=null;}
+	
 	$t=time();
 	$html="<div style='width:98%' class=form>
 	<div style='font-size:42px;margin-bottom:10px'>{firewall_wizard}</div>
-		<center style='margin:50px'>". button("{router_mode_require_2nics}","Loadjs('firehol.wizard.router.php')",34)."</center>
+		$router
 		<center style='margin:50px'>". button("{single_mode}","Loadjs('firehol.wizard.single.php')",34)."</center>
 	</div>";
 	echo $tpl->_ENGINE_parse_body($html);
@@ -273,159 +291,9 @@ function rule_tab(){
 	
 }
 
-function rule_time(){
-	$page=CurrentPageName();
-	$tpl=new templates();
-	$eth=$_GET["eth"];
-	$ethC=new system_nic($eth);
-	$table=$_GET["table"];
-	$ID=$_GET["ID"];
-	$t=time();	
-	$q=new mysql();
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT * FROM iptables_main WHERE ID='$ID'","artica_backup"));
-	$title="{time_restriction}: $eth::".$tpl->javascript_parse_text($ligne["rulename"]);
-	$enabled=$ligne["enabled"];
-	$table=$ligne["MOD"];
-	$eth=$ligne["eth"];
-	$bt="{apply}";	
-	
-	$array_days=array(
-			1=>"monday",
-			2=>"tuesday",
-			3=>"wednesday",
-			4=>"thursday",
-			5=>"friday",
-			6=>"saturday",
-			7=>"sunday",
-	);
-	
-	$TTIME=unserialize($ligne["time_restriction"]);
-	
-	$tr[]="<table>";
-	
-	while (list ($num, $maks) = each ($array_days)){
-		
-		$tr[]="<tr>
-				<td class=legend style='font-size:16px'>{{$maks}}</td>
-				<td>". Field_checkbox("D{$num}-$t", 1,$TTIME["D{$num}"])."</td>
-			</tr>";
-		$jsF[]="if(document.getElementById('D{$num}-$t').checked){XHR.appendData('D{$num}',1); }else{ XHR.appendData('D{$num}',0); }";
-		$jsD[]="document.getElementById('D{$num}-$t').disabled=true;";
-		$jsE[]="document.getElementById('D{$num}-$t').disabled=false;";
-		
-	}
-	$tr[]="</table>";
-	
-	if($TTIME["ftime"]==null){$TTIME["ftime"]="20:00:00";}
-	if($TTIME["ttime"]==null){$TTIME["ttime"]="23:59:00";}
-	
-	$html="
-<div style='width:98%' class=form>
-	<div style='font-size:18px;margin-bottom:25px;margin-top:10px;margin-left:5px'>[$table] $title</div>
-	<table style='width:100%'>
-	<tr>
-	<td class=legend style='font-size:16px'>{enabled}:</td>
-	<td style='font-size:16px'>". Field_checkbox("enabled-$t", 1,$ligne["enablet"],"EnableCK$t()")."
-	</tr>
-	<tr>
-	<td class=legend style='font-size:16px'>{from_time}:</td>
-	<td style='font-size:16px'>". field_text("ftime-$t",$TTIME["ftime"],"font-size:16px;width:110px")."
-	</tr>
-	<tr>
-	<td class=legend style='font-size:16px'>{to_time}:</td>
-	<td style='font-size:16px'>". field_text("ttime-$t",$TTIME["ttime"],"font-size:16px;width:110px")."
-	</tr>	
-	<tr>
-		<td style='font-size:22px'>{days}:</td>
-		<td colspan=2>".@implode("", $tr)."</td>
-	</tr>
-	<tr>
-		<td colspan=2 align='right'><hr>". button("{apply}","Save$t()",22)."</td>
-	</tr>	
-	</table>
-</div>
-<script>
 
-var xSave$t= function (obj) {
-	var res=obj.responseText;
-	if (res.length>3){alert(res);}
-	var ID=$ID;
-	$('#flexRT{$_GET["t"]}').flexReload();
-	ExecuteByClassName('SearchFunction');
-}
 
-function Save$t(){
-	var XHR = new XHRConnection();
-	XHR.appendData('time-save',  '$ID');
-	XHR.appendData('ttime',  document.getElementById('ttime-$t').value);
-	XHR.appendData('ftime',  document.getElementById('ftime-$t').value);
-	if(document.getElementById('enabled-$t').checked){ XHR.appendData('enablet',1); }else{ XHR.appendData('enablet',0); }
-	".@implode("\n", $jsF)."
-	XHR.sendAndLoad('$page', 'POST',xSave$t);
-		
-	}
-	
-function EnableCK$t(){
-	if(document.getElementById('enabled-$t').checked){ 
-		document.getElementById('ttime-$t').disabled=false;
-		document.getElementById('ftime-$t').disabled=false;
-		".@implode("\n", $jsE)."
-	}else{
-		document.getElementById('ttime-$t').disabled=true;
-		document.getElementById('ftime-$t').disabled=true;
-		".@implode("\n", $jsD)."				
-	
-	}
-	
 
-}
-				
-EnableCK$t();
-</script>";
-echo $tpl->_ENGINE_parse_body($html);
-	
-}
-
-function time_save(){
-	
-	$ID=$_POST["time-save"];
-	
-	$array_days=array(
-			1=>"monday",
-			2=>"tuesday",
-			3=>"wednesday",
-			4=>"thursday",
-			5=>"friday",
-			6=>"saturday",
-			7=>"sunday",
-	);
-
-	while (list ($num, $maks) = each ($array_days)){	
-		if($_POST["D{$num}"]==1){$TTIME["D{$num}"]=1;}
-	}
-	$TTIME["ttime"]=$_POST["ttime"];
-	$TTIME["ftime"]=$_POST["ftime"];
-	
-	$TTIMEZ=mysql_escape_string2(serialize($TTIME));
-	
-	
-	$q=new mysql();
-	if(!$q->FIELD_EXISTS("iptables_main","time_restriction","artica_backup")){
-		$sql="ALTER TABLE `iptables_main` ADD `time_restriction` TEXT";
-		$q->QUERY_SQL($sql,"artica_backup");
-	}
-	
-	if(!$q->FIELD_EXISTS("iptables_main","enablet","artica_backup")){
-		$sql="ALTER TABLE `iptables_main` ADD `enablet` smallint( 1 ) NOT NULL DEFAULT '0',ADD INDEX ( enablet ) ";
-		$q->QUERY_SQL($sql,"artica_backup");
-	}
-	
-	$sql="UPDATE iptables_main SET `enablet`='{$_POST["enablet"]}',`time_restriction`='$TTIMEZ' WHERE ID='$ID'";
-	
-	$q->QUERY_SQL($sql,"artica_backup");
-	if(!$q->ok){echo $q->mysql_error."\n$sql";}	
-	
-}
 
 
 function rule_popup(){
@@ -825,105 +693,7 @@ function groupname(){
 	
 }
 
-function rule_save(){
-	$ID=$_POST["rule-save"];
-	$_POST["rulename"]=mysql_escape_string2(url_decode_special_tool($_POST["rulename"]));
-	
-	
-	$FADD_FIELDS[]="`rulename`";
-	$FADD_FIELDS[]="`proto`";
-	$FADD_FIELDS[]="`accepttype`";
-	$FADD_FIELDS[]="`enabled`";
-	$FADD_FIELDS[]="`OverideNet`";
-	$FADD_FIELDS[]="`MOD`";
-	$FADD_FIELDS[]="`eth`";
-	$FADD_FIELDS[]="`source_group`";
-	$FADD_FIELDS[]="`dest_group`";
-	$FADD_FIELDS[]="`destport_group`";
-	$FADD_FIELDS[]="`zOrder`";
-	$FADD_FIELDS[]="`ForwardTo`";
-	$FADD_FIELDS[]="`ForwardNIC`";
-	$FADD_FIELDS[]="`L7Mark`";
-	$FADD_FIELDS[]="`jlog`";
-	
-	
-	
-	$FADD_VALS[]=$_POST["rulename"];
-	$FADD_VALS[]=$_POST["proto"];
-	$FADD_VALS[]=$_POST["accepttype"];
-	$FADD_VALS[]=$_POST["enabled"];
-	$FADD_VALS[]=$_POST["OverideNet"];
-	$FADD_VALS[]=$_POST["table"];
-	$FADD_VALS[]=$_POST["interface"];
-	$FADD_VALS[]=$_POST["source_group"];
-	$FADD_VALS[]=$_POST["dest_group"];
-	$FADD_VALS[]=$_POST["destport_group"];
-	$FADD_VALS[]=$_POST["zOrder"];
-	$FADD_VALS[]=$_POST["ForwardTo"];
-	$FADD_VALS[]=$_POST["ForwardNIC"];
-	$FADD_VALS[]=$_POST["L7Mark"];
-	$FADD_VALS[]=$_POST["jlog"];
-	
-	
-	
-	if(isset($_POST["MARK"])){
-		$FADD_FIELDS[]="`MARK`";
-		$FADD_VALS[]=$_POST["MARK"];
-	
-	}
-	
-	if(isset($_POST["QOS"])){
-		$FADD_FIELDS[]="`QOS`";
-		$FADD_VALS[]=$_POST["QOS"];
-	
-	}
 
-	while (list ($num, $field) = each ($FADD_FIELDS)){
-		$EDIT_VALS[]="$field ='".$FADD_VALS[$num]."'";
-	}
-	
-	reset($FADD_VALS);
-	while (list ($num, $field) = each ($FADD_VALS)){
-		$ITEMSADD[]="'$field'";
-	}
-	
-	$q=new mysql();
-	if(!$q->FIELD_EXISTS("iptables_main","MARK","artica_backup")){
-		$sql="ALTER TABLE `iptables_main` ADD `MARK` INT( 10 ) NOT NULL DEFAULT 0";
-		$q->QUERY_SQL($sql,"artica_backup");
-	}
-	
-	if(!$q->FIELD_EXISTS("iptables_main","QOS","artica_backup")){
-		$sql="ALTER TABLE `iptables_main` ADD `QOS` INT( 10 ) NOT NULL DEFAULT 0";
-		$q->QUERY_SQL($sql,"artica_backup");
-	}
-	
-	if(!$q->FIELD_EXISTS("iptables_main","L7Mark","artica_backup")){
-		$sql="ALTER TABLE `iptables_main` ADD `L7Mark` INT( 10 ) NULL DEFAULT 0,ADD INDEX ( L7Mark ) ";
-		$q->QUERY_SQL($sql,"artica_backup");
-	}
-	if(!$q->FIELD_EXISTS("iptables_main","jlog","artica_backup")){
-		$sql="ALTER TABLE `iptables_main` ADD `jlog` smallint( 1 ) NOT NULL DEFAULT 0,ADD INDEX ( jlog )";
-		$q->QUERY_SQL($sql,"artica_backup");
-	}
-
-	
-	if($ID==0){
-		$sql="INSERT IGNORE INTO iptables_main ( ". @implode(",", $FADD_FIELDS).") VALUES (".@implode(",", $ITEMSADD).")";
-		
-	}else{
-		$sql="UPDATE iptables_main SET  ". @implode(",", $EDIT_VALS)." WHERE ID='$ID'";
-		
-	}
-	
-	
-	
-
-	
-	
-	$q->QUERY_SQL($sql,"artica_backup");
-	if(!$q->ok){echo $q->mysql_error."\n$sql";}
-}
 
 function containers_from_bridge($eth){
 	$q=new mysql();
@@ -1156,7 +926,7 @@ var xRuleGroupUpDown$t= function (obj) {
 	var res=obj.responseText;
 	if(res.length>3){alert(res);return;}
 	$('#flexRT$t').flexReload();
-	ExecuteByClassName('SearchFunction');
+	
 }
 
 function RuleGroupUpDown$t(ID,direction){
@@ -1201,66 +971,8 @@ function rule_delete(){
 	if(!$q->ok){echo "Error line:".__LINE__."\n".$q->mysql_error;return;}
 	
 }
-function rule_enable(){
-	$ID=$_POST["rule-enable"];
-	$q=new mysql();
-	$sql="SELECT `enabled` FROM iptables_main WHERE ID='$ID'";
-	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
-	if(!$q->ok){echo "Error line:".__LINE__."\n".$q->mysql_error;return;}
-	
-	if($ligne["enabled"]==0){
-		$sql="UPDATE iptables_main SET enabled='1' WHERE ID='$ID'";
-		$q->QUERY_SQL($sql,"artica_backup");
-		if(!$q->ok){echo "Error line:".__LINE__."\n".$q->mysql_error;return;}
-	}
-	if($ligne["enabled"]==1){
-		$sql="UPDATE iptables_main SET enabled='0' WHERE ID='$ID'";
-		$q->QUERY_SQL($sql,"artica_backup");
-		if(!$q->ok){echo "Error line:".__LINE__."\n".$q->mysql_error;return;}
-	}	
-	
-	
-	
 
-}
-function rule_order(){
-	$ID=$_POST["rule-order"];
-	$direction=$_POST["direction"];
-	$eth=$_POST["eth"];
-	$table=$_POST["table"];
-	
-	
-	//up =1, Down=0
-	$q=new mysql();
-	$sql="SELECT `zOrder`,`MOD`,`eth` FROM iptables_main WHERE ID='$ID'";
-	$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
-	if(!$q->ok){echo "Error line:".__LINE__."\n".$q->mysql_error;return;}
-	$table=$ligne["MOD"];
-	$eth=$ligne["eth"];
-	
-	$OlOrder=$ligne["zOrder"];
-	if($direction==1){$NewOrder=$OlOrder+1;}else{$NewOrder=$OlOrder-1;}
-	$sql="UPDATE iptables_main SET zOrder='$OlOrder' WHERE `zOrder`='$NewOrder' AND `MOD`='$table' AND `eth`='$eth'";
-	$q->QUERY_SQL($sql,"artica_backup");
-	if(!$q->ok){echo "Error line:".__LINE__."\n".$q->mysql_error;}
-	$sql="UPDATE iptables_main SET zOrder='$NewOrder' WHERE ID='$ID'";
-	$q->QUERY_SQL($sql,"artica_backup");
-	if(!$q->ok){echo "Error line:".__LINE__."\n".$q->mysql_error;}
-	
-	$results=$q->QUERY_SQL("SELECT ID FROM iptables_main WHERE `MOD`='$table' AND `eth`='$eth' ORDER BY zOrder","artica_backup");
-	if(!$q->ok){echo "Error line:".__LINE__."\n".$q->mysql_error;}
-	$c=1;
-	while ($ligne = mysql_fetch_assoc($results)) {
-		$ID=$ligne["ID"];
-		$q->QUERY_SQL("UPDATE iptables_main SET zOrder='$c' WHERE ID='$ID'","artica_backup");
-		if(!$q->ok){echo "Error line:".__LINE__."\n".$q->mysql_error;}
-		$c++;
-	
-	}
-		
-	
-	
-}
+
 
 
 function rules(){

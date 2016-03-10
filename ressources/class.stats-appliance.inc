@@ -7,7 +7,6 @@ class stats_appliance{
 	private $remote_server_ssl=0;
 	private $remote_server_port=0;
 	
-	
 	function stats_appliance(){
 		$this->EnableSquidRemoteMySQL=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableSquidRemoteMySQL"));
 		$squidRemostatisticsServer=@file_get_contents("/etc/artica-postfix/settings/Daemons/squidRemostatisticsServer");

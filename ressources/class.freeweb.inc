@@ -847,6 +847,11 @@
 		
 		
 		public function AllowOverride(){
+			
+			if($this->groupware=="UPDATEUTILITY"){
+				return "\t\tAllowOverride None";
+			}
+			
 			if(!isset($this->Params["SECURITY"]["DisableHtAccess"])){$this->Params["SECURITY"]["DisableHtAccess"]=0;}
 			$AllowOverride="all";
 			if(isset($this->Params["SECURITY"])){
@@ -1157,6 +1162,7 @@
 			$WORKING_DIRECTORY=$this->WORKING_DIRECTORY;
 			if(is_link($WORKING_DIRECTORY)){$WORKING_DIRECTORY=@readlink($WORKING_DIRECTORY);}
 			if(!is_dir($WORKING_DIRECTORY)){return;}
+			if($WORKING_DIRECTORY=="/usr/share/artica-postfix"){return;}
 			
 			$unix=new unix();
 			$TEMP_FILE=$unix->FILE_TEMP().".sh";
@@ -1180,6 +1186,19 @@
 			
 			}
 			if($this->gpid<>null){$apache_group=$this->gpid;}
+			$DIRS_EXPLODED=explode("/",$WORKING_DIRECTORY);
+			$PATH=null;
+			while (list ($index, $FOLDER) = each ($DIRS_EXPLODED)){
+				$FOLDER=trim($FOLDER);
+				if($FOLDER==null){continue;}
+				if($FOLDER=="/"){continue;}
+				$PATH=$PATH."/$FOLDER";
+				if($this->AS_ROOT){echo "$this->PrefixOutput [CLASS/".__LINE__."] $PATH -> 0755\n";}
+				@chmod($PATH,0755);
+				
+			
+			}
+			
 			
 			
 			if($this->AS_ROOT){echo "$this->PrefixOutput [CLASS/".__LINE__."] owned by $apache_usr/$apache_group\n";}
@@ -1360,7 +1379,7 @@
 			$httpdconf=$unix->LOCATE_APACHE_CONF_PATH();
 			$d_path=$unix->APACHE_DIR_SITES_ENABLED();
 			$DAEMON_PATH=$unix->getmodpathfromconf($httpdconf);
-			$APACHE_MODULES_PATH=$users->APACHE_MODULES_PATH;
+			$APACHE_MODULES_PATH=$unix->APACHE_MODULES_PATH();
 			$FreeWebsEnableModSecurity=intval($sock->GET_INFO("FreeWebsEnableModSecurity"));
 			
 			if($FreeWebsEnableModSecurity==0){
@@ -1656,7 +1675,7 @@
 				$UpdateUtilityUseLoop=$sock->GET_INFO("UpdateUtilityUseLoop");
 				if(!is_numeric($UpdateUtilityUseLoop)){$UpdateUtilityUseLoop=0;}
 				if($UpdateUtilityUseLoop==1){$UpdateUtilityStorePath="/automounts/UpdateUtility";}
-				$this->WORKING_DIRECTORY="$UpdateUtilityStorePath/databases/Updates";return false;}
+				$this->WORKING_DIRECTORY="$UpdateUtilityStorePath/database/Updates";return false;}
 			
 			
 			
@@ -2057,13 +2076,14 @@
 		
 		
 		private function chown_itk($directory){
+			if($directory=="/usr/share/artica-postfix"){return;}
 			$users=new usersMenus();
 			if(!$users->MPM_ITK_MODULE){return;}
 			if($this->uid==null){return;}
 			if(!is_numeric($this->gpid)){return;}
 			if($this->gpid==0){return;}	
 			$gp=new groups($this->gpid);
-			echo "$this->PrefixOutput [CLASS/".__LINE__."] set permissions for {$this->uid}:{$gp->groupName} on \"$directory\"\n"; 			
+			echo "$this->PrefixOutput [CLASS/".__LINE__."] chown {$this->uid}:{$gp->groupName} on \"$directory\"\n"; 			
 			$unix=new unix();
 			$chown=$unix->find_program("chown");
 			shell_exec("$chown  {$this->uid}:{$gp->groupName} \"$directory\"");
@@ -2074,6 +2094,8 @@
 		
 		public function chown($directory){
 			if(!is_dir($directory)){echo "$this->PrefixOutput [CLASS/".__LINE__."] chown \"$directory\" no such directory\n";return;}
+			if($directory=="/usr/share/artica-postfix"){return;}
+			
 			if($this->chown_itk($directory)){return;}
 			if(!isset($GLOBALS["CHOWNCOMMANDSFREEWBS"])){
 				$apacheusername=$this->APACHE_RUN_USER;
@@ -2429,6 +2451,8 @@
 			$array=$this->Params["PHP_VALUES"];
 			if($nginx){
 				while (list ($key, $val) = each ($array) ){
+					$cotes="\"";
+					if(is_numeric($val)){$cotes=null;}
 					$f[]="set \$php_value \"$key $val\";";
 				}
 				$line=@implode("\n", $f);
@@ -2438,7 +2462,9 @@
 			
 			
 			while (list ($key, $val) = each ($array) ){
-				$f[]="\tphp_value $key \"$val\"";
+				$cotes="\"";
+				if(is_numeric($val)){$cotes=null;}
+				$f[]="\tphp_value $key {$cotes}$val{$cotes}";
 			}
 		
 		}
@@ -2464,7 +2490,7 @@
 			if($this->groupware=="SPLASHSQUID"){return "splashproxy.php";}
 			if($this->groupware=="ARTICA_PRXYLOGS"){return "prxy.monitor.php";}
 			if($this->groupware=="ERRSQUID"){return "public.squid.error.php";}
-			if($this->groupware=="UFDBGUARD"){return "exec.squidguard.php";}
+			if($this->groupware=="UFDBGUARD"){return "ufdbguardd.php";}
 			if($this->groupware=="WEBDAVFREE"){return "index.html";}
 			if($this->groupware=="UPDATEUTILITY"){return "index.php";}
 			if($this->groupware=="WPAD"){return "proxy.pac";}
@@ -2476,6 +2502,48 @@
 			return "index.php index.html";
 			
 		}
+		
+		
+		public function SpecificsChowns(){
+			
+			$squidfiles["exec.logfile_daemon.php"]=true;
+			$squidfiles["external_acl_squid_ldap.php"]=true;
+			$squidfiles["external_acl_dynamic.php"]=true;
+			$squidfiles["external_acl_quota.php"]=true;
+			$squidfiles["external_acl_basic_auth.php"]=true;
+			$squidfiles["external_acl_restrict_access.php"]=true;
+			$squidfiles["external_acl_squid.php"]=true;
+			$squidfiles["ufdbgclient.php"]=true;
+			$squidfiles["external_ufdbunblock.php"]=true;
+			$squidfiles["external_acl_dynamic.php"]=true;
+			$squidfiles["external_acl_response.php"]=true;
+			$squidfiles["external_acl_usersMacs.php"]=true;
+			$squidfiles["picporn.php"]=true;
+			$squidfiles["external_acl_restrict_access.php"]=true;
+			$squidfiles["external_acl_categories.php"]=true;
+			$squidfiles["external_acl_basic_auth.php"]=true;
+			$squidfiles["external_acl_dynamic.php"]=true;
+			$squidfiles["external_acl_response.php"]=true;
+			$squidfiles["external_acl_size_quota.php"]=true;
+			$squidfiles["external_acl_squid_ldap.php"]=true;
+			$squidfiles["external_acl_squid_quota.php"]=true;
+			$squidfiles["external_acl_time_quota.php"]=true;
+			$squidfiles["external_acl_categorize.php"]=true;
+			$squidfiles["external_acl_quota.php"]=true;
+			$squidfiles["external_acl_restrict_access.php"]=true;
+			$squidfiles["external_acl_squid_extldap.php"]=true;
+			$squidfiles["external_acl_squid.php"]=true;
+			$squidfiles["external_acl_hotspot.php"]=true;
+			$artica_path="/usr/share/artica-postfix";
+			while (list ($filename,$line) = each ($squidfiles)){
+				if(!is_file("$artica_path/$filename")){continue;}
+				@chgrp("$artica_path/$filename", "squid");
+				@chown("$artica_path/$filename", "squid");
+				@chmod("$artica_path/$filename",0755);
+			}
+			
+		}
+		
 		
 		public function ErrorDocument(){
 			$f=array();
@@ -2584,7 +2652,7 @@
 			
 			if( $this->groupware=="ARTICA_ADMPRXY"){
 				$array=$this->ParseArticaDirectory("squid\.users\..*?\.php");
-				unset($array["exec.squidguard.php"]);
+				unset($array["ufdbguardd.php"]);
 			}
 			
 			if( $this->groupware=="MAILHOSTING"){
@@ -2601,7 +2669,7 @@
 			}
 			if( $this->groupware=="UFDBGUARD"){
 				$array=$this->ParseArticaDirectory();
-				unset($array["exec.squidguard.php"]);
+				unset($array["ufdbguardd.php"]);
 			}
 						
 			

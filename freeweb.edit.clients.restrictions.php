@@ -59,10 +59,10 @@ function params(){
 $enable_limit_by_addresses=$tpl->_ENGINE_parse_body("{enable_limit_by_addresses}");	
 	
 
-		
+		$title=$tpl->javascript_parse_text("{clients_restrictions}");
 		
 $buttons="buttons : [
-	{name: '$add', bclass: 'Add', onpress : AuthIpAdd},
+	{name: '<strong style=font-size:18px>$add</strong>', bclass: 'Add', onpress : AuthIpAdd},
 		],	";
 
 
@@ -70,8 +70,8 @@ $buttons="buttons : [
 echo "
 <table style='width:99%' class=form>
 	<tr>
-		<td class=legend style='font-size:14px'>$enable_limit_by_addresses:</td>
-		<td>". Field_checkbox("LimitByIp",1,$Params["LimitByIp"]["enabled"],"enable_ip_authentication_save$t()")."</td>
+		<td class=legend style='font-size:18px'>$enable_limit_by_addresses:</td>
+		<td>". Field_checkbox_design("LimitByIp",1,$Params["LimitByIp"]["enabled"],"enable_ip_authentication_save$t()")."</td>
 	</tr>	
 </table>
 <table class='$t' style='display: none' id='$t' style='width:99%'></table>
@@ -94,11 +94,11 @@ $buttons
 	sortname: 'zDate',
 	sortorder: 'desc',
 	usepager: true,
-	title: '',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
-	width: 820,
+	width: '99%',
 	height: 300,
 	singleSelect: true
 	
@@ -154,9 +154,7 @@ $buttons
 	
 	
 	";
-	
-	
-	echo $tpl->_ENGINE_parse_body($html);
+
 	}
 	
 	
@@ -237,14 +235,14 @@ function Query(){
 	}
 	$page=1;
 	$COUNT_ROWS=count($hash);
-	if($COUNT_ROWS==0){$data['page'] = $page;$data['total'] = 0;$data['rows'] = array();echo json_encode($data);return ;}
+if($COUNT_ROWS==0){json_error_show("no data");}
 	if(isset($_POST["sortname"])){if($_POST["sortname"]<>null){$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";}}	
 	if (isset($_POST['page'])) {$page = $_POST['page'];}
 	$_POST["query"]=trim($_POST["query"]);
 	$total = $COUNT_ROWS;
 	if (isset($_POST['rp'])) {$rp = $_POST['rp'];}	
 	
-
+	if($COUNT_ROWS==0){json_error_show("no data");}
 	
 	$pageStart = ($page-1)*$rp;
 	$limitSql = "LIMIT $pageStart, $rp";
@@ -253,11 +251,11 @@ function Query(){
 	$data['total'] = $total;
 	$data['rows'] = array();
 	
-	
+	$c=0;
 	while (list ($num, $ligne) = each ($hash) ){
 		if($ligne==null){continue;}
 		if($_POST["query"]<>null){if(!preg_match("#{$_POST["query"]}#", $ligne)){continue;}}
-		
+		$c++;
 		
 		$added=null;
 		$id=md5($ligne);
@@ -276,7 +274,7 @@ $jscat="<a href=\"javascript:blur();\"
 		$delete)
 		);
 	}
-	
+	if($c==0){json_error_show("no data");}
 	
 echo json_encode($data);	
 }

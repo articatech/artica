@@ -48,7 +48,7 @@ function js(){
 
 	echo "
 	function Start$t(){
-	RTMMail('800','$page?popup=yes','$title');
+	RTMMail('890','$page?popup=yes','$title');
 }
 Start$t();";
 
@@ -243,6 +243,7 @@ function WINDOWS_SERVER_ADMIN(){
 	$array["WINDOWS_SERVER_ADMIN"]=$WINDOWS_SERVER_ADMIN;
 	$array["WINDOWS_SERVER_PASS"]=$WINDOWS_SERVER_PASS;
 	$sock->SaveConfigFile(base64_encode(serialize($array)), "KerbAuthInfos");
+	$sock->SET_INFO("EnableKerbAuth", 1);
 	
 }
 

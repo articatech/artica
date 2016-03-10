@@ -36,9 +36,8 @@ function delete_js(){
 	header("content-type: application/x-javascript");
 	$tpl=new templates();
 	$q=new mysql();
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT portname FROM gateway_secure WHERE ID='{$_GET["ID"]}'"));
-	$TITLE=utf8_encode($ligne["portname"]);
-	$confirm=$tpl->javascript_parse_text("{delete} $TITLE ?");
+	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT portname FROM gateway_secure WHERE ID='{$_GET["ID"]}'","artica_backup"));
+	$confirm=$tpl->javascript_parse_text("{delete} {$_GET["ID"]}:{$ligne["portname"]} ?");
 	$html="
 	var xDel$t= function (obj) {
 	var res=obj.responseText;
@@ -107,6 +106,7 @@ function port_popup(){
 	$tpl=new templates();
 	$page=CurrentPageName();
 	$t=$_GET["t"];
+	if(!is_numeric($t)){$t=time();}
 	$btname="{add}";
 	$q=new mysql();
 	$ID=$_GET["ID"];
@@ -439,7 +439,7 @@ function search(){
 		$delete=imgsimple("delete-48.png",null,"Loadjs('$MyPage?delete-js=yes&ID={$ligne["ID"]}')");
 
 		$href="<a href=\"javascript:blur();\"
-		OnClick=\"javascript:Loadjs('$MyPage?port-js=yesID={$ligne["ID"]}');\"
+		OnClick=\"javascript:Loadjs('$MyPage?port-js=yes&ID={$ligne["ID"]}');\"
 		style=\"font-size:22px;text-decoration:underline;color:$color\">";
 
 		

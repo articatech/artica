@@ -92,8 +92,8 @@ function Save(){
 	if($SquidGuardApachePort==0){$SquidGuardApachePort=9020;}
 	
 	$sock->SET_INFO("SquidGuardServerName", $_POST["servername_squidguard"]);
-	$SquidGuardIPWeb="http://".$_POST["servername_squidguard"].":$SquidGuardApachePort/exec.squidguard.php";
-	$SquidGuardIPWebSSL="https://".$_POST["servername_squidguard"].":$SquidGuardApacheSSLPort/exec.squidguard.php";
+	$SquidGuardIPWeb="http://".$_POST["servername_squidguard"].":$SquidGuardApachePort/ufdbguardd.php";
+	$SquidGuardIPWebSSL="https://".$_POST["servername_squidguard"].":$SquidGuardApacheSSLPort/ufdbguardd.php";
 	$sock->SET_INFO("SquidGuardIPWeb",$SquidGuardIPWeb);
 	$sock->SET_INFO("SquidGuardIPWebSSL",$SquidGuardIPWebSSL);
 }

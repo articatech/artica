@@ -4,12 +4,12 @@ Il utilise Sendmail's &quot;Milter&quot; API, certains code en C, et certains co
 Les gens utilisent MIMEDefang pour: [ul]
 
 [li] Bloquer les virus [/ li]
-[li] Bloquer ou tagger les spams [/ li]
-[li] Supprimerune partie du courrier en HTML[/li]
+[li] Bloquer ou &eacute;tiquetter les spams [/ li]
+[li] Supprimer une partie du courrier en HTML[/li]
 [li] Ajouter les avertissements Boilerplate pour les courrier sortant [/ li]
 [li] Supprimer ou modifier des pi&egrave;ces jointes [/li]
 [li] Remplacer les pi&egrave;ces jointes avec l'URL's [/li]
-[li] Mettre en %u0153uvre des contr&ocirc;les d'acc&egrave;s complexes. [/li]
+[li] Mettre en ?uvre des contr&ocirc;les d'acc&egrave;s complexes. [/li]
 [/ul]</about>
 <AddWarningsInline>Ajouter Avertissements En ligne</AddWarningsInline>
 <AddWarningsInline_text>Si vous l'activez alors MIMEDefang tente sans rel&acirc;che d'ajouter des avertissements directement dans le corps du message (texte ou html), plut&ocirc;t que d'ajouter une partie &quot;WARNING.TXT&quot; MIME distincte.[br]

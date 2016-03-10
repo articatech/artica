@@ -63,7 +63,7 @@ class squid_auto_tasks{
 		$EnableSargGenerator=$GLOBALS["CLASS_SOCKETS"]->GET_INFO("EnableSargGenerator");
 		$CacheManagement2=$GLOBALS["CLASS_SOCKETS"]->GET_INFO("CacheManagement2");
 		if(!is_numeric($EnableSargGenerator)){$EnableSargGenerator=0;}
-		if(!is_numeric($CacheManagement2)){$CacheManagement2=0;}
+		if(!is_numeric($CacheManagement2)){$CacheManagement2=1;}
 		$CACHE_DYN_PARAMS=unserialize(base64_decode($GLOBALS["CLASS_SOCKETS"]->GET_INFO("SquidDynamicCaches")));
 		if(!is_numeric($CACHE_DYN_PARAMS["INTERVAL"])){$CACHE_DYN_PARAMS["INTERVAL"]=420;}
 		if($CACHE_DYN_PARAMS["INTERVAL"]<60){$CACHE_DYN_PARAMS["INTERVAL"]=60;}
@@ -436,16 +436,6 @@ if($ifStatisticsMustBeExecuted){
 			}
 		}
 			
-
-			
-		
-
-
-		
-
-			
-			
-				
 		$this->events("FINISH: statistics_tasks() *** *** ***",_CLASS_."/".__FUNCTION__,__LINE__);
 	}
 	

@@ -56,12 +56,12 @@ $('#POSTFIX_QUEUE_DETAILS').flexigrid({
 	dataType: 'json',
 	colModel : [
 		
-		{display: '$date', name : 'website', width : 135, sortable : true, align: 'left'},
-		{display: '$from', name : 'from', width : 180, sortable : true, align: 'left'},
-		{display: '$to', name : 'recipients', width : 181, sortable : true, align: 'left'},
-		{display: '$event', name : 'event', width : 494, sortable : true, align: 'left'},
-		{display: 'process', name : 'rep', width : 41, sortable : true, align: 'center'},
-		{display: '$delete', name : 'del', width : 41, sortable : false, align: 'center'},
+		{display: '<span style=font-size:18px>$date</span>', name : 'website', width : 135, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$from</span>', name : 'from', width : 180, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$to</span>', name : 'recipients', width : 181, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$event</span>', name : 'event', width : 769, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>process</span>', name : 'rep', width : 41, sortable : true, align: 'center'},
+		{display: '<span style=font-size:18px>$delete</span>', name : 'del', width : 41, sortable : false, align: 'center'},
 
 		],
 	
@@ -73,7 +73,7 @@ $('#POSTFIX_QUEUE_DETAILS').flexigrid({
 	sortname: 'zDate',
 	sortorder: 'desc',
 	usepager: true,
-	title: '<span style=font-size:11px>$title</span>',
+	title: '<span style=font-size:18px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
@@ -352,17 +352,17 @@ function search(){
 		$to=$ligne["recipients"];
 		$date=$ligne["zDate"];
 		$from=$ligne["from"];
-		$delete=imgsimple("delete-32.png",null,"Loadjs('$MyPage?delete-message=$msgid&hostname={$_GET["hostname"]}')");
-		$run=imgsimple("32-run.png",null,"Loadjs('$MyPage?process-message=$msgid')");
-		$linkZoom="<a href=\"javascript:Loadjs('$MyPage?js-message=$msgid');\" style='font-size:12px;text-decoration:underline'>";
+		$delete=imgsimple("delete-32.png",null,"Loadjs('postfix.queue.monitoring.php?delete-message=$msgid&hostname={$_GET["hostname"]}')");
+		$run=imgsimple("32-run.png",null,"Loadjs('postfix.queue.monitoring.php?process-message=$msgid')");
+		$linkZoom="<a href=\"javascript:Loadjs('postfix.queue.monitoring.php?js-message=$msgid');\" style='font-size:18px;text-decoration:underline'>";
 		$data['rows'][] = array(
 				'id' => "$msgid",
 				'cell' => array(
-						"$date",
-						"$linkZoom$from</a>",
-						"$to",
-						"{$ligne["event"]}",$run
-						,$delete)
+						"<span style='font-size:16px'>$date</span>",
+						"<span style='font-size:16px'>$linkZoom$from</a></span>",
+						"<span style='font-size:16px'>$to</span>",
+						"<span style='font-size:16px'>{$ligne["event"]}</span>","<center>$run</center>",
+						"<center>$delete</center>")
 		);
 }
 echo json_encode($data);

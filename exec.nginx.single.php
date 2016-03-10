@@ -217,6 +217,14 @@ function configure_single_freeweb($servername){
 
 
 	$host=new nginx($servername);
+	if($host->owa==1){
+		$nginx_exchange=new nginx_exchange($servername);
+		build_progress("$servername: {building}",50);
+		$nginx_exchange->buildConfig();
+		build_progress("$servername: {building} {done}",90);
+		return;
+	}
+	
 
 
 	if(isset($NOPROXY[$groupware])){
@@ -319,9 +327,25 @@ function BuildReverse($ligne,$backupBefore=false){
 	echo "Starting......: ".date("H:i:s")." [INIT]:  ListenPort..............:$ListenPort\n";
 	echo "Starting......: ".date("H:i:s")." [INIT]:  SSL.....................:$SSL\n";
 	echo "Starting......: ".date("H:i:s")." [INIT]:  Certificate.............:$certificate\n";
+	echo "Starting......: ".date("H:i:s")." [INIT]:  OWA.....................:{$ligne["owa"]}\n";
+	
+	
+	if($ligne["owa"]==1){
+		$GLOBALS["OUTPUT"]=true;
+		$nginx_exchange=new nginx_exchange($ligne["servername"]);
+		build_progress("{$ligne["servername"]}: {building} Microsoft Exchange Configuration",50);
+		$nginx_exchange->buildConfig();
+		build_progress("{$ligne["servername"]}: {building} Microsoft Exchange Configuration {done}",70);
+		$Took=distanceOfTimeInWords($T1,time(),true);
+		nginx_admin_mysql(2, "Success build Microsoft Exchange Configuration configuration for {$ligne["servername"]} took: $Took", "Took: $Took",__FILE__,__LINE__);
+		build_progress("{$ligne["servername"]}: Microsoft Exchange Configuration {done}",80);
+		return true;
+		
+	}
+	
 	
 	build_progress("{$ligne["servername"]}:$ListenPort [SSL:$SSL]",20);
-	echo "Starting......: ".date("H:i:s")." [INIT]:  protect remote web site `{$ligne["servername"]}:$ListenPort [SSL:$SSL]`\n";
+	echo "Starting......: ".date("H:i:s")." [INIT]: Protect remote web site `{$ligne["servername"]}:$ListenPort [SSL:$SSL]`\n";
 	
 	
 	if($ligne["servername"]==null){
@@ -339,7 +363,7 @@ function BuildReverse($ligne,$backupBefore=false){
 
 	if($ListenPort==80 && $SSL==1){
 		build_progress("{$ligne["servername"]}: Building HTTP",40);
-		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]:  HTTP/HTTPS Enabled...\n";}
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]:  HTTP/HTTPS Enabled [".__LINE__."]...\n";}
 		$host->set_RedirectQueries($ligne["RedirectQueries"]);
 		$host->set_forceddomain($ligne2["forceddomain"]);
 		$host->set_ssl(0);
@@ -380,6 +404,7 @@ function BuildReverse($ligne,$backupBefore=false){
 	if($ligne["port"]==443){ $ligne2["ssl"]=1; }
 	build_progress("{$ligne["servername"]}",50);
 	$host->BackupBefore=$backupBefore;
+	$host->set_owa($ligne["owa"]);
 	$host->set_RedirectQueries($ligne["RedirectQueries"]);
 	$host->set_ssl_certificate($certificate);
 	$host->set_ssl_certificate($ligne2["ssl_commname"]);

@@ -155,8 +155,11 @@ function status(){
 		</tr>				
 	</table>
 	<br>
-		<div style='width:90%;text-align:right;margin-bottom:20px'>".
-		button("{unlink}", "Loadjs('$page?unlink-js=yes')",32)."</div>
+		<div style='width:90%;text-align:right;margin-bottom:20px;font-size:32px'>".
+		button("{unlink}", "Loadjs('$page?unlink-js=yes')",32)."&nbsp;&nbsp;|&nbsp;&nbsp;".
+		button("{unlink} - Force", "Loadjs('squid.failover.unlink.progress.php?force=yes');",32)."
+				
+		</div>
 	";
 		
 		
@@ -182,8 +185,8 @@ function status(){
 		<div style='width:100%;text-align:right'>". imgtootltip("refresh-32.png","{refresh}","RefreshTab('main_failover_tabs')")."</div>	
 		</td>
 		<td	style='text-align:left;vertical-align:top;width:70%'>
-				<div style='font-size:30px;margin-bottom:15px'>{failover}</div>
-				<div class=explain style='font-size:14px;'>{failover_explain}</div>
+				<div style='font-size:45px;margin-bottom:15px'>{failover}</div>
+				<div class=explain style='font-size:20px;'>{failover_explain}</div>
 				$error
 				$statTable
 		</td>
@@ -210,18 +213,20 @@ function tabs(){
 		while (list ($num, $ligne) = each ($array) ){
 			
 			if($num=="events"){
-				$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"squid.watchdog-events.php?text-filter=failover\" style='font-size:16px'><span>$ligne</span></a></li>\n");
+				$html[]= $tpl->_ENGINE_parse_body("<li>
+						<a href=\"squid.watchdog-events.php?text-filter=failover\" 
+						style='font-size:26px'><span>$ligne</span></a></li>\n");
 				continue;
 			}
 			
 			
-			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes\" style='font-size:16px'><span>$ligne</span></a></li>\n");
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes\" style='font-size:26px'><span>$ligne</span></a></li>\n");
 			
 		}
 	
 	
 	
-		echo build_artica_tabs($html, "main_failover_tabs")."<script>LeftDesign('failover-256-opac20.png');</script>";
+		echo build_artica_tabs($html, "main_failover_tabs",1490)."<script>LeftDesign('failover-256-opac20.png');</script>";
 	
 	
 	

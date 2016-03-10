@@ -88,6 +88,11 @@ function js(){
 			RefreshTab('tabs_listnics2');
 		}
 		
+		
+		if(document.getElementById('SYSTEM_NICS_VIRTUALS_LIST')){
+			$('#SYSTEM_NICS_VIRTUALS_LIST').flexReload();
+		}
+		
 		if(document.getElementById('nics-infos-system')){
 			LoadAjaxRound('nics-infos-system','admin.dashboard.system.php?nics-infos=yes');
 		}
@@ -168,7 +173,7 @@ echo "
 				<img src=\"img/wait_verybig.gif\">
 	</center>
 	<textarea style='margin-top:5px;font-family:Courier New;
-	font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+	font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 	overflow:auto;font-size:11px' id='procedure3-text$t'>$data</textarea>
 	</div>
 	<script>
@@ -197,7 +202,7 @@ function procedure3(){
 	<center><hr style='border:1px solid'>". button($button,"ApplyNetWorkFinal$t()",22)."</center>
 	
 		<textarea style='margin-top:5px;font-family:Courier New;
-		font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+		font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 		overflow:auto;font-size:11px' id='procedure3-text$t'>$datas</textarea>
 	</div>
 	
@@ -329,7 +334,7 @@ function ApplyNetWorkFinal_tests(){
 	$data2=base64_decode($sock->getFrameWork("services.php?netstart-log=yes"));
 	$datas=$datas."\n".$data2;
 echo "
-<textarea style='margin-top:5px;font-family:Courier New; font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E; overflow:auto;font-size:11px' id='procedure3-text$t'>$datas</textarea>
+<textarea style='margin-top:5px;font-family:Courier New; font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E; overflow:auto;font-size:11px' id='procedure3-text$t'>$datas</textarea>
 <script>
 	TIMER$t=1;
 	finish$t();

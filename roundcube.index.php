@@ -126,9 +126,9 @@ $tpl=new templates();
 	
 	
 	$freeweb=Paragraphe_switch_img("{enable_freeweb}","{enable_freeweb_text}","EnableFreeWebB",
-			$EnableFreeWeb,null,1120);
+			$EnableFreeWeb,null,1090);
 	$Roundcube=Paragraphe_switch_img("{enable_roundcubehttp}","{enable_enable_roundcubehttp_text}",
-			"RoundCubeHTTPEngineEnabled",$RoundCubeHTTPEngineEnabled,null,1120);
+			"RoundCubeHTTPEngineEnabled",$RoundCubeHTTPEngineEnabled,null,1090);
 	
 	$form="
 	<hr>
@@ -325,12 +325,12 @@ function main_tabs(){
 	$array["mysql"]='{mysql}';
 	$array["mains"]='{settings}';
 	$array["settings"]='{options}';
-	$array["rlogs"]='{rlogs}';
+	//$array["rlogs"]='{rlogs}';
 	
 	//$array["multiple-roundcube"]='{multiple_webmail}';
 	$tpl=new templates();
 	
-	$style="style='font-size:18px'";
+	$style="style='font-size:24px'";
 	while (list ($num, $ligne) = each ($array) ){
 		
 		if($num=="mains"){
@@ -344,7 +344,7 @@ function main_tabs(){
 	
 	
 	
-	return build_artica_tabs($html, "main_config_roundcube")."<script>
+	return build_artica_tabs($html, "main_config_roundcube",1490)."<script>
 			
 				function LoadMainRoundCube(){
 		YahooWinS(745,'$page?ajax-pop=yes','$title');
@@ -582,20 +582,20 @@ function main_mysql(){
 			<div style='width:98%' class=form>
 			<table style='width:100%'>
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px' style='font-size:14px'>{RoundCubePath}:</strong></td>
-				<td valign='top' nowrap align='left'><strong style='font-size:10px'>$user->roundcube_folder</td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px' style='font-size:20px'>{RoundCubePath}:</strong></td>
+				<td valign='top' nowrap align='left'><strong style='font-size:18px'>$user->roundcube_folder</td>
 			</tr>
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px' style='font-size:14px'>{roundcube_mysql_sources}:</strong></td>
-				<td valign='top' nowrap align='left'><strong style='font-size:10px'>$user->roundcube_mysql_sources</strong></td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px' style='font-size:20px'>{roundcube_mysql_sources}:</strong></td>
+				<td valign='top' nowrap align='left'><strong style='font-size:18px'>$user->roundcube_mysql_sources</strong></td>
 			</tr>	
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px' style='font-size:14px'>{database}:</strong></td>
-				<td valign='top' nowrap align='left'><strong style='font-size:14px'>roundcubemail</strong></td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px' style='font-size:20px'>{database}:</strong></td>
+				<td valign='top' nowrap align='left'><strong style='font-size:20px'>roundcubemail</strong></td>
 			</tr>
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px' style='font-size:14px'>{database_status}:</strong></td>
-				<td valign='top' nowrap align='left'><strong style='font-size:14px'>$status</strong></td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px' style='font-size:20px'>{database_status}:</strong></td>
+				<td valign='top' nowrap align='left'><strong style='font-size:20px'>$status</strong></td>
 			</tr>
 			<tr>
 			<td valign='top' nowrap align='right' colspan=2>
@@ -653,8 +653,8 @@ function mysql_status(){
 	$ListenPort=$sock->GET_INFO("RoundCubeRemoteMySQLServerPort");
 		$exptr="
 		<tr>
-		<td style='font-size:14px' class=legend>{mysql_server}:</td>
-		<td style='font-size:14px;font-weight:bold' class=legend>$mysqlserver:$ListenPort</td>
+		<td style='font-size:20px' class=legend>{mysql_server}:</td>
+		<td style='font-size:20px;font-weight:bold' class=legend>$mysqlserver:$ListenPort</td>
 		</tr>		
 				
 		";
@@ -670,12 +670,12 @@ function mysql_status(){
 	$ListenPort=$TuningParameters["ListenPort"];
 	$exptr="
 	<tr>
-	<td style='font-size:14px' class=legend>{listen_port}:</td>
-	<td style='font-size:14px;font-weight:bold' class=legend>$ListenPort</td>
+	<td style='font-size:20px' class=legend>{listen_port}:</td>
+	<td style='font-size:20px;font-weight:bold' class=legend>$ListenPort</td>
 	</tr>
 	<tr>
-	<td style='font-size:14px' class=legend>{directory}:</td>
-	<td style='font-size:14px;font-weight:bold' class=legend>$WORKDIR</td>
+	<td style='font-size:20px' class=legend>{directory}:</td>
+	<td style='font-size:20px;font-weight:bold' class=legend>$WORKDIR</td>
 	</tr>	
 	";
 	
@@ -684,8 +684,8 @@ function mysql_status(){
 	$html="
 	<table style='width:100%'>
 	<tr>
-		<td style='font-size:14px' class=legend>{APP_ROUNDCUBE_DB}:</td>
-		<td style='font-size:14px;font-weight:bold' class=legend>$RoundCubeMySQLServiceType_status</td>
+		<td style='font-size:20px' class=legend>{APP_ROUNDCUBE_DB}:</td>
+		<td style='font-size:20px;font-weight:bold' class=legend>$RoundCubeMySQLServiceType_status</td>
 	</tr>$exptr
 	</table>
 	
@@ -728,50 +728,50 @@ $html="
 			<div id='wait'></div>
 			<table style='width:99%' class=form>
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px'>{RoundCubePath}:</strong></td>
-				<td valign='top' nowrap align='left'><strong style='font-size:14px'>$user->roundcube_folder</td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px'>{RoundCubePath}:</strong></td>
+				<td valign='top' nowrap align='left'><strong style='font-size:20px'>$user->roundcube_folder</td>
 			</tr>
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px'>{roundcube_web_folder}:</strong></td>
-				<td valign='top' nowrap align='left'><strong style='font-size:14px'>$user->roundcube_web_folder</td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px'>{roundcube_web_folder}:</strong></td>
+				<td valign='top' nowrap align='left'><strong style='font-size:20px'>$user->roundcube_web_folder</td>
 			</tr>			
 
 					
 			
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px'>{RoundCubeHTTPEngineEnabled}:</strong></td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px'>{RoundCubeHTTPEngineEnabled}:</strong></td>
 				<td valign='top' nowrap align='left'>" . Field_checkbox('RoundCubeHTTPEngineEnabled',1,$round->RoundCubeHTTPEngineEnabled,'{enable_disable}')."</td>
 			</tr>
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px'>{listen_port}:</strong></td>
-				<td valign='top' nowrap align='left'>" . Field_text('https_port',$RoundCubeHTTPSPort,'width:50px;font-size:14px')."</td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px'>{listen_port}:</strong></td>
+				<td valign='top' nowrap align='left'>" . Field_text('https_port',$RoundCubeHTTPSPort,'width:50px;font-size:20px')."</td>
 			</tr>
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px'>HTTPS:</strong></td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px'>HTTPS:</strong></td>
 				<td valign='top' nowrap align='left'>" . Field_checkbox('ssl_enabled',1,$round->roundCubeArray["ssl_enabled"])."</td>
 			</tr>			
 			
 					
 			<tr>
-				<td align='right' class=legend style='font-size:14px'>{lighttp_max_proc}:</strong></td>
-				<td>" . Field_text('lighttp_max_proc',trim($round->lighttp_max_proc),'width:50px;font-size:14px')."</td>
+				<td align='right' class=legend style='font-size:20px'>{lighttp_max_proc}:</strong></td>
+				<td>" . Field_text('lighttp_max_proc',trim($round->lighttp_max_proc),'width:50px;font-size:20px')."</td>
 			</tr>
 			<tr>
-				<td align='right' class=legend style='font-size:14px'>{lighttp_min_proc}:</strong></td>
-				<td>" . Field_text('lighttp_min_proc',trim($round->lighttp_min_proc),'width:50px;font-size:14px')."</td>
+				<td align='right' class=legend style='font-size:20px'>{lighttp_min_proc}:</strong></td>
+				<td>" . Field_text('lighttp_min_proc',trim($round->lighttp_min_proc),'width:50px;font-size:20px')."</td>
 			</tr>
 			<tr>
-				<td align='right' class=legend style='font-size:14px'>$lighttp_max_load_per_proc:</strong></td>
-				<td>" . Field_text('lighttp_max_load_per_proc',trim($round->lighttp_max_load_per_proc),'width:50px;font-size:14px')."</td>
+				<td align='right' class=legend style='font-size:20px'>$lighttp_max_load_per_proc:</strong></td>
+				<td>" . Field_text('lighttp_max_load_per_proc',trim($round->lighttp_max_load_per_proc),'width:50px;font-size:20px')."</td>
 			</tr>		
 		
 			<tr>
-				<td align='right' class=legend style='font-size:14px'>{PHP_FCGI_CHILDREN}:</strong></td>
-				<td>" . Field_text('PHP_FCGI_CHILDREN',trim($round->PHP_FCGI_CHILDREN),'width:50px;font-size:14px')."</td>
+				<td align='right' class=legend style='font-size:20px'>{PHP_FCGI_CHILDREN}:</strong></td>
+				<td>" . Field_text('PHP_FCGI_CHILDREN',trim($round->PHP_FCGI_CHILDREN),'width:50px;font-size:20px')."</td>
 			</tr>	
 			<tr>
-				<td align='right' class=legend style='font-size:14px'>{PHP_FCGI_MAX_REQUESTS}:</strong></td>
-				<td>" . Field_text('PHP_FCGI_MAX_REQUESTS',trim($round->PHP_FCGI_MAX_REQUESTS),'width:50px;font-size:14px')."</td>
+				<td align='right' class=legend style='font-size:20px'>{PHP_FCGI_MAX_REQUESTS}:</strong></td>
+				<td>" . Field_text('PHP_FCGI_MAX_REQUESTS',trim($round->PHP_FCGI_MAX_REQUESTS),'width:50px;font-size:20px')."</td>
 			</tr>				
 			<tr>
 			<td colspan=2 align='right'>
@@ -886,7 +886,7 @@ function form2(){
 	$round=new roundcube();
 	$artica=new artica_general();
 	$debug_levela=array(1=>"log",2=>"report",4=>"show",8=>"trace");
-	$debug_level=Field_array_Hash($debug_levela,'debug_level',$round->roundCubeArray["debug_level"],null,null,0,"font-size:14px");
+	$debug_level=Field_array_Hash($debug_levela,'debug_level',$round->roundCubeArray["debug_level"],null,null,0,"font-size:20px");
 	$tpl=new templates();
 	$lighttp_max_load_per_proc=$tpl->_ENGINE_parse_body('{lighttp_max_load_per_proc}');
 	if(strlen($lighttp_max_load_per_proc)>40){$lighttp_max_load_per_proc=texttooltip(substr($lighttp_max_load_per_proc,0,37)."...",$lighttp_max_load_per_proc);}
@@ -899,56 +899,56 @@ function form2(){
 	
 $html="<div id='wait'></div><table style='width:99%' class=form>
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px'>{user_link}:</strong></td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px'>{user_link}:</strong></td>
 				<td valign='top' nowrap align='left'>" . Field_text('user_link',$round->roundCubeArray["user_link"],'width:195px')."</td>
 			</tr>
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px'>{roundcube_ldap_directory}:</strong></td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px'>{roundcube_ldap_directory}:</strong></td>
 				<td valign='top' nowrap align='left'>" . Field_checkbox('ldap_ok',1,$round->roundCubeArray["ldap_ok"])."</td>
 			</tr>							
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px'>{debug_level}:</strong></td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px'>{debug_level}:</strong></td>
 				<td valign='top' nowrap align='left'><strong>$debug_level</td>
 			</tr>
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px'>$enable_caching:</strong></td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px'>$enable_caching:</strong></td>
 				<td valign='top' nowrap align='left'>" . Field_TRUEFALSE_checkbox('enable_caching',$round->roundCubeArray["enable_caching"])."</td>
 			</tr>
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px'>{upload_max_filesize}:</strong></td>
-				<td valign='top' nowrap align='left' style='font-size:14px'>" . Field_text('upload_max_filesize',$round->roundCubeArray["upload_max_filesize"],'width:90px;font-size:14px')."M</td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px'>{upload_max_filesize}:</strong></td>
+				<td valign='top' nowrap align='left' style='font-size:20px'>" . Field_text('upload_max_filesize',$round->roundCubeArray["upload_max_filesize"],'width:90px;font-size:20px')."M</td>
 			</tr>
 			
 					
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px'>$auto_create_user:</strong></td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px'>$auto_create_user:</strong></td>
 				<td valign='top' nowrap align='left'>" . Field_TRUEFALSE_checkbox('auto_create_user',$round->roundCubeArray["auto_create_user"])."</td>
 			</tr>
 			<tr>
-				<td align='right' class=legend style='font-size:14px'>{default_host}:</strong></td>
-				<td>" . Field_text('default_host',trim($round->roundCubeArray["default_host"]),'width:230px;font-size:14px')."</td>
+				<td align='right' class=legend style='font-size:20px'>{default_host}:</strong></td>
+				<td>" . Field_text('default_host',trim($round->roundCubeArray["default_host"]),'width:230px;font-size:20px')."</td>
 			</tr>
 						
 			<tr>
-				<td valign='top' nowrap align='right' class=legend style='font-size:14px'>Sieve:</strong></td>
-				<td valign='top' nowrap align='left' style='font-size:14px'>" . Field_text('sieve_port',$round->SieveListenIp.":".$round->roundCubeArray["sieve_port"],'width:190px;font-size:14px')."</td>
+				<td valign='top' nowrap align='right' class=legend style='font-size:20px'>Sieve:</strong></td>
+				<td valign='top' nowrap align='left' style='font-size:20px'>" . Field_text('sieve_port',$round->SieveListenIp.":".$round->roundCubeArray["sieve_port"],'width:190px;font-size:20px')."</td>
 			</tr>						
 						
 			<tr>
-				<td align='right' class=legend style='font-size:14px'>{locale_string}:</strong></td>
-				<td>" . Field_text('locale_string',trim($round->roundCubeArray["locale_string"]),'width:60px;font-size:14px')."</td>
+				<td align='right' class=legend style='font-size:20px'>{locale_string}:</strong></td>
+				<td>" . Field_text('locale_string',trim($round->roundCubeArray["locale_string"]),'width:60px;font-size:20px')."</td>
 			</tr>		
 		
 			<tr>
-				<td align='right' class=legend style='font-size:14px'>{product_name}:</strong></td>
-				<td>" . Field_text('product_name',trim($round->roundCubeArray["product_name"]),'width:180px;font-size:14px')."</td>
+				<td align='right' class=legend style='font-size:20px'>{product_name}:</strong></td>
+				<td>" . Field_text('product_name',trim($round->roundCubeArray["product_name"]),'width:180px;font-size:20px')."</td>
 			</tr>	
 			<tr>
-				<td align='right' class=legend style='font-size:14px'>{skip_deleted}:</strong></td>
+				<td align='right' class=legend style='font-size:20px'>{skip_deleted}:</strong></td>
 				<td>" . Field_TRUEFALSE_checkbox('skip_deleted',$round->roundCubeArray["skip_deleted"])."</td>
 			</tr>
 			<tr>
-				<td align='right' class=legend style='font-size:14px'>{flag_for_deletion}:</strong></td>
+				<td align='right' class=legend style='font-size:20px'>{flag_for_deletion}:</strong></td>
 				<td style='padding-left:-3px'>
 				<table style='width:100%;margin-left:-4px;padding:0px'>
 				<tr>

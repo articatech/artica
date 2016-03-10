@@ -107,8 +107,20 @@ function page(){
 	
 	}
 	
+	//javascript:
 	
-	$html[]=Field_button_table_autonome("{apply}","Submit$t",40);
+	
+	$html[]="
+	<tr>
+		<td colspan=2 align='right' style='font-size:40px'>
+			". button("{apply_parameters}","Submit$t(1);",40)."&nbsp;&nbsp;|&nbsp;&nbsp;"
+			. button("{apply}","Submit$t()",40)."</td>
+		</tr>
+			
+	";
+	
+	
+	
 	$html[]="</table>";
 	$html[]="</div>
 <script>
@@ -118,9 +130,19 @@ var xSubmit$t= function (obj) {
 	$('#NGINX_MAIN_TABLE').flexReload();
 	alert('$you_need_to_compile');
 }
+var xSubmitCompile$t= function (obj) {
+	var results=obj.responseText;
+	if(results.length>3){alert(results);return;}
+	$('#NGINX_MAIN_TABLE').flexReload();
+	Loadjs('nginx.single.progress.php?servername=$servername');
+}
+
+
+
+
 	
 	
-function Submit$t(){
+function Submit$t(Compile){
 	var XHR = new XHRConnection();
 	var AS_PEER_CERTIFICATE=$AS_PEER_CERTIFICATE;
 	XHR.appendData('servername','$servername');
@@ -138,8 +160,11 @@ function Submit$t(){
 	XHR.appendData('certificate',document.getElementById('certificate-$t').value);
 	XHR.appendData('ssl_ciphers',document.getElementById('ssl_ciphers-$t').value);
 	
-	
-	XHR.sendAndLoad('$page', 'POST',xSubmit$t);
+	if(!Compile){
+		XHR.sendAndLoad('$page', 'POST',xSubmit$t);
+	}else{
+		XHR.sendAndLoad('$page', 'POST',xSubmitCompile$t);
+	}
 }
 
 function SwitchOffCertificate$t(){

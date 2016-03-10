@@ -24,7 +24,7 @@ function js(){
 	$page=CurrentPageName();
 	$tpl=new templates();
 	$title=$tpl->_ENGINE_parse_body("{$_GET["hostname"]}::{mailbox_agent}");
-	$html="YahooWin5('501','$page?popup=yes&hostname={$_GET["hostname"]}&ou={$_GET["ou"]}','$title')";
+	$html="YahooWin5('890','$page?popup=yes&hostname={$_GET["hostname"]}&ou={$_GET["ou"]}','$title')";
 	echo $html;
 }
 
@@ -36,14 +36,14 @@ function popup(){
 	$t=time();
 	$html="
 	<div id='$t'></div>
-	<div class=explain style='font-size:14px'>{postfix_mailbox_transport_art_expl}</div>
+	<div class=explain style='font-size:18px'>{postfix_mailbox_transport_art_expl}</div>
 	<table style='width:99%' class=form>
 	<tr>
-		<td class=legend style='font-size:16px'>{agent_address}:</td>
-		<td class=legend>". Field_text("mailbox_transport-$t",$main->GET("mailbox_transport"),"font-size:16px;width:300px",null,null,null,false,"SaveMailBoxTransportCK$t(event)")."</td>
+		<td class=legend style='font-size:22px'>{agent_address}:</td>
+		<td>". Field_text("mailbox_transport-$t",$main->GET("mailbox_transport"),"font-size:22px;width:590px",null,null,null,false,"SaveMailBoxTransportCK$t(event)")."</td>
 	</tr>
 	<tr>
-		<td colspan=2 align='right'><hr>". button("{apply}", "SaveMailBoxTransport$t()","18px")."</td>
+		<td colspan=2 align='right'><hr>". button("{apply}", "SaveMailBoxTransport$t()","30px")."</td>
 	</tr>
 	</table>
 	<script>

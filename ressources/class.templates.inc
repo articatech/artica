@@ -895,6 +895,7 @@ function Field_checkbox_design($name,$enabledatas,$value=null,$js=null,$help=nul
 	$def=$value;
 	$checked=false;
 	$CheckBoxDesignHidden=null; 
+	if($name==null){$name=md5(microtime());}
 	$GLOBALS["AUTO_FORM"][$name]="check";
 	$help=str_replace("\n", "<br>", $help);
 	$default_text="// js:$js,";
@@ -1725,7 +1726,8 @@ function Field_autocomplete($name,$value=null,$style=null,$autocomplete_script=n
 	$shadow=null;
 	$shadowjs=null;
 	$helptxt=null;
-
+	$class=null;
+	$help=null;
 
 	if(preg_match("#explain=(.+?);#", $style,$re)){
 		$help=$re[1];
@@ -2008,7 +2010,61 @@ function string_to_flexregex($searchindix=null){
 	return string_to_regex($_POST["query"]);
 }
 
-function string_to_flexquery($searchindix=null){
+function string_to_flexPostGresquery($searchindix=null){
+	if(isset($_GET["SearchQuery"])){
+		$_POST["query"]=$_GET["SearchQuery"];
+		$_POST["qtype"]=$_REQUEST["qtype"];
+	}
+
+	if(isset($_GET["$searchindix"])){
+		$_POST["query"]=$_GET[$searchindix];
+		$_POST["qtype"]=$_REQUEST["qtype"];
+
+	}
+
+	if(!isset($_POST["qtype"])){return "true";}
+	if(!isset($_POST["query"])){return "true";}
+	if(trim($_POST["query"])==null){return "true";}
+	$STRICT=false;
+	
+	$search=$_POST["query"];
+	if(preg_match("#^regex\s+(.+)#", $_POST["query"],$re)){$search=$re[1];$REGEXP=true;}
+	if(preg_match("#^regex:(.+)#", $_POST["query"],$re)){$search=$re[1];$REGEXP=true;}
+	if(preg_match("#^strict:(.+)#", $_POST["query"],$re)){$search=$re[1];$REGEXP=true;}
+
+	if(!$REGEXP){
+		$search=string_to_sql_search($_POST["query"],$STRICT);
+	}else{
+		$search="*$search";
+		$search=str_replace("**", "*", $search);
+		$search=str_replace("*", "*?", $search);
+	}
+	if($search==null){return null;}
+
+	if(strpos($_POST["qtype"], ',')>0){
+		$Fields=explode(",",$_POST["qtype"]);
+
+	}else{
+		$Fields[]=$_POST["qtype"];
+	}
+	$COM=" ILIKE ";
+	if($REGEXP){$COM="~*";}
+	
+	
+	
+
+
+	while (list ($index, $F) = each ($Fields) ){
+		if(trim($F)==null){continue;}
+		$tta[]="( CAST( $F as text) $COM '$search')";
+	}
+	
+	if(count($tta)==1){return " {$tta[0]}";}
+	return " (" .@implode($tta, " OR ").")";
+
+}
+
+function string_to_flexquery($searchindix=null,$POSTGREY=false){
 	if(isset($_GET["SearchQuery"])){
 		$_POST["query"]=$_GET["SearchQuery"];
 		$_POST["qtype"]=$_REQUEST["qtype"];
@@ -2051,6 +2107,9 @@ function string_to_flexquery($searchindix=null){
 	}
 	
 	if(count($tta)==1){return " AND {$tta[0]}";}
+	if($POSTGREY){
+		return "WHERE (" .@implode($tta, " OR ").")";
+	}
 	return "AND (" .@implode($tta, " OR ").")";
 	
 }
@@ -2098,10 +2157,11 @@ function imgtootltip($img,$tooltip=null,$js=null,$align=null,$imgid=null){
 	if(preg_match("#-([0-9]+)-grey\.(png|gif|jpeg)$#",basename($image_path),$re)){
 			$width=";max-width:{$re[1]}px;width:{$re[1]}px";
 	}	
-	
+	if(!is_dir("/usr/share/artica-postfix/ressources/logs/web/help")){@mkdir("/usr/share/artica-postfix/ressources/logs/web/help",0755,true);}
 	if(!is_file("/usr/share/artica-postfix/ressources/logs/web/help/$md5")){
 		$tpl=new templates();
 		$content=$tpl->_ENGINE_parse_body($tooltip);
+		
 		@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/help/$md5",$content );
 	}else{
 		$content=@file_get_contents("/usr/share/artica-postfix/ressources/logs/web/help/$md5");
@@ -2362,6 +2422,7 @@ function texttooltip($text,$tooltip=null,$js=null,$dbclk=null,$NOHREF=0,$style=n
 	if(!is_file("/usr/share/artica-postfix/ressources/logs/web/help/$md5")){
 		$tpl=new templates();
 		$content=$tpl->_ENGINE_parse_body($tooltip);
+		
 		@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/help/$md5",$content );
 	}else{
 		$content=@file_get_contents("/usr/share/artica-postfix/ressources/logs/web/help/$md5");
@@ -2721,130 +2782,7 @@ FUNCTION AJAX_CLOSE($divname='zone'){
 return "<a href='#' OnClick=\"javascript:HideDive('$divname');\">";
 	
 }
-function statusLogs($line){
 
-	$stat=array(
-	"daemon started"=>"S",
-	"failed to parse line"=>"C",
-	"fatal"=>"C",
-	"No route to host"=>"W",
-	"Connection refused"=>"W",
-	"Unable to"=>"W",
-	"warning"=>"W",
-	"KASINFO"=>"K",
-	"kav4mailservers/bin/smtpscanner"=>"K",
-	"server killed"=>"SS",
-	"server pid"=>"ST",
-	"process\s+[0-9]+\s+exited"=>"SS",
-	"server successfully"=>"SR",
-	"Startup"=>"SR",
-	"Starting"=>"SR",
-	"Listening for"=>"NET",
-	"server successfully spawned"=>"SR",
-	"prefork: child states"=>"ST",
-	"server started"=>"S",
-	"statistics:"=>"STAT",
-	"No ap-mailfiler"=>"SS",
-	"KASNOTICE Logs"=>"K",
-	"permission denied"=>"PERM",
-	"terminating on signal 15"=>"SS",
-	"unknown user"=>"UK",
-	"Must issue a STARTTLS"=>"BC",
-	"Binding to TCP port"=>"S",
-	"starting! pid"=>"S",
-	"Recipient address rejected"=>"W",
-	"Permission denied"=>"W",
-	"status=deferred"=>"W",
-	"Server closing!"=>"SS",
-	"stopping authdaemond"=>"SS",
-	"SIGTERM: Stopping"=>"SS",
-	"exited normally"=>"SS",
-	"resource usage:"=>"INFO",
-	"stopping the"=>"SS",
-	"keepup2date failed"=>"W",
-	"socket error"=>"W",
-	"timeout after"=>"W",
-	"reload configuration"=>"SR",
-	"awakened"=>"ST",
-	"protocol error"=>"W",
-	"UNEXPECTEDLY"=>"C",
-	"Can't locate"=>"W",
-	"bounced"=>"W",
-	"couldn't find"=>"W",
-	"sleeping"=>"ST",
-	"verification error"=>"W",
-	"connect to\s+.+failed"=>"C",
-	"transaction error"=>"W",
-	"mismatch"=>"W",
-	"authorization failure"=>"W",
-	"\:\: ERROR "=>"C",
-	"SASL\(\-13\)"=>"W",
-	"archiving log file"=>"AR",
-	"archiving database"=>"AR",
-	"checkpointing cyrus databases"=>"AR",
-	"Ok: queued as "=>"MBX",
-	"Delivered:\s+"=>"MBX",
-	"postfix\/qmgr.+removed"=>"MBXR",
-	"to=<.+?>,\s+relay=procmail,\s+delay"=>"MDA",
-	"postfix\/smtpd.+client=.+"=>"NETINFOS",
-	"postfix\/smtpd.+\s+connect from.+"=>"NET",
-	"postfix\/smtpd.+\s+disconnect from.+"=>"NETSTOP",
-	"postfix\/pipe.+to=.+relay=.+status=sent\s+\(delivered via.+"=>"MDA",
-	"postfix\/cleanup.+message.+"=>"MAIL",
-	"Subject: "=>"MAIL",
-	"procmail: Match on"=>"INFO",
-	"procmail: No match on"=>"DELETE",
-	"Connection timed out"=>"W",
-	"Config error in line"=>"W",
-	"no such file"=>"W",
-	"mailbox does not"=>"W",
-	"is restarted"=>"S",
-	"Starting slave"=>"S",
-	"accepted connection"=>"NET",
-	"refreshing the Postfix"=>"S",
-	"authenticate failed"=>"C",
-	"is not running"=>"C",
-	"access denied"=>"W",
-	"reload.+?version"=>"S",
-	"1.1\" 40[2-9]"=>"UK",
-	"check failed of .*? in groups"=>"UK",
-	"_DIE"=>"W",
-	"TROUBLE in"=>"W",
-	'"\s+404\s+[0-9]+\s+"'=>"DELETE"
-	);
-	
-	while (list ($num, $val) = each ($stat) ){
-			if(preg_match('#' . $num . '#i',$line)>0){$img=$val;}
-		
-	}
-	
-	switch ($img) {
-		case "AR":return 'img/cab_small.gif';break;
-		case "BC":return 'img/status_bad_config.jpg';break;
-		case "UK":return 'img/unknown-user-22.png';break;
-		case "PERM":return 'img/status_permission.gif';break;
-		case "STAT":return 'img/status_statistics.jpg';break;
-		case "SR":return 'img/status_service_run.png';break;
-		case "S":return 'img/status_service_run.png';break;
-		case "ST":return 'img/status_service_wait.png';break;
-		case"SS":return 'img/status_service_removed.png';break;
-		case "C":return 'img/status_critical.png';break;
-		case "W":return 'img/status_warning.png';break;
-		case "MBX":return 'img/mailbox_hd.png';break;
-		case "MBXR":return 'img/mailbox_hd_ed.gif';break;
-		case "MDA":return 'img/mailbox-2-arrow.gif';break;
-		case 'NET':return 'img/tree-folder-network-24.png';break;
-		case 'NETSTOP':return 'img/tree-network-delete.gif';break;
-		case 'NETINFOS':return 'img/tree-network-infos.gif';break;
-		case 'MAIL':return 'img/mailbox_storage.gif';break;
-		case "INFO":return 'img/16-infos.png';break;
-		case "DELETE":return "img/ed_delete.gif";break;
-		case "K":return 'img/k.gif';break;
-		default:return 'img/status_ok.png';break;
-
-	}
-	
-}
 
 class template_users{
 	var $head;
@@ -3488,6 +3426,7 @@ function Paragraphe_switch_img($title,$text,$field_name=null,$value=null,$tips=n
 	if($width>550){$fontsize=16;$fontsize_title=18;$margin="margin-bottom:15px;";}
 	if($width>849){$fontsize=18;$fontsize_title=22;$margin="margin-bottom:15px;";}
 	if($width>1000){$fontsize=22;$fontsize_title=24;$margin="margin-bottom:20px;";}
+	if($width>1399){$fontsize=26;$fontsize_title=28;$margin="margin-bottom:30px;";}
 	$class="BodyContent";
 	if($MINIADM){$class="MiniAdmParagrapheSwitchIm";}
 	
@@ -3644,6 +3583,15 @@ function Paragraphe32($title,$text,$js,$img,$size=220){
 		}
 	}
 	
+	
+	$title_size=14;
+	$text_size=12;
+	
+	if($size>499){
+		$title_size=24;
+		$text_size=22;
+	}
+	
 		$id=md5($js);
 		$img_id="{$id}_img";
 		
@@ -3657,8 +3605,8 @@ function Paragraphe32($title,$text,$js,$img,$size=220){
 			<input type='hidden' name='{$img_id}_org' id='{$img_id}_org' value='img/$img'>
 			" . imgtootltip($img,"{$text}","$js",null,$img_id)."</td>
 			<td style='text-align:left'>
-				<strong style='font-size:14px;line-height:normal'>$title</strong>
-				<div style='font-size:12px;line-height:normal'>$text</div><!-- replace -->
+				<strong style='font-size:{$title_size}px;line-height:normal'>$title</strong>
+				<div style='font-size:{$text_size}px;line-height:normal'>$text</div><!-- replace -->
 				
 			</td>
 			</tr>
@@ -3690,9 +3638,9 @@ function Paragraphe32($title,$text,$js,$img,$size=220){
 	<input type='hidden' name='{$img_id}_org' id='{$img_id}_org' value='img/$img'>
 	" . imgtootltip($img,"{$text}","$js",null,$img_id)."</td>
 	<td>
-	<strong style='font-size:{$fontsizeDef}px;line-height:normal'>$title</strong>
+	<strong style='font-size:{$title_size}px;line-height:normal'>$title</strong>
 	<div style='min-height:75px'>
-		<div style='font-size:11px;line-height:normal'>$text</div><!-- replace -->
+		<div style='font-size:{$text_size}px;line-height:normal'>$text</div><!-- replace -->
 	</div>
 		</td>
 	</tr>
@@ -4837,6 +4785,10 @@ function CheckSessions(){
 				}
 		}}	
 		
+		$noback["squid.hostspot.emergency.disable.progress.php"]=true;
+		$noback["squid.hostspot.emergency.enable.progress.php"]=true;
+		$noback["squid.hostspot.restart.web.progress.php"]=true;
+		$noback["squid.webauth.maintenance.php"]=true;
 		$noback["SquidReloadInpublicAlias.php"]=true;
 		$noback["itchart.php"]=true;
 		$noback["ufdbgclient.php"]=true;
@@ -4859,6 +4811,7 @@ function CheckSessions(){
 		$noback["cyrus.murder.listener.php"]=true;
 		$noback["cluster.listener.php"]=true;
 		$noback["exec.squidguard.php"]=true;
+		$noback["ufdbguardd.php"]=true;
 		$noback["proxy.pac.php"]=true;
 		$noback["logon.form.php"]=true;
 		$noback["squid.logon.php"]=true;
@@ -5749,7 +5702,7 @@ $pid=getmypid();
 $file=basename($file);
 $pidfile="/etc/artica-postfix/croned.1/$file.pid";
 if(file_exists($pidfile)){
-	$currentpid=trim(file_get_contents($pidfile));
+	$currentpid=trim(@file_get_contents($pidfile));
 	write_syslog("NewPID PID: $pid");
 	write_syslog("Current PID: $currentpid");
 	if($currentpid<>$pid){
@@ -6142,13 +6095,15 @@ class tweak_array{
 			return $array;
 		}
 } 
-function button($text,$js,$fontsize=12.5,$width=0){
+function button($text,$js,$fontsize=12.5,$width=0,$height=0){
 	$fontsizeSrc=$fontsize;
 	$width_text=null;
 	$tpl=new templates();
 	if(is_numeric($fontsize)){if($fontsize>0){$fontsize="{$fontsize}px";}}
 	if($fontsize==null){$fontsize="12px";}
 	$miniadm=false;
+	$height_text=null;
+	$lineheight=null;
 	if($_SESSION["MINIADM"]){$miniadm=true;}
 	$page=CurrentPageName();
 	$Loading=$tpl->javascript_parse_text("{loading}");
@@ -6156,6 +6111,12 @@ function button($text,$js,$fontsize=12.5,$width=0){
 		
 	if(preg_match("#^([0-9]+)px#", $fontsize,$re)){$fontsize=$re[1];}
 	$btid=md5("$text$js$fontsize".time());
+	
+	if($height>0){
+		if($height>29){$lineheight=";line-height:1.9 !important";}
+		$height_text=";height:{$height}px;vertical-align:middle$lineheight";
+	}
+	
 	if($miniadm){
 		
 		
@@ -6179,7 +6140,8 @@ function button($text,$js,$fontsize=12.5,$width=0){
 	
 	if($width>0){$width_text=";width:{$width}px";}
 	return "<a href=\"javascript:blur()\" OnClick=\"javascript:$js\" 
-	id='$btid' class=\"Button2014 Button2014-success Button2014-lg\"  style=\"font-size:{$fontsize}px;text-transform:capitalize$width_text\" 
+	id='$btid' class=\"Button2014 Button2014-success Button2014-lg\"  
+	style=\"font-size:{$fontsize}px;text-transform:capitalize$width_text$height_text\" 
 	data-loading-text=\"$Loading...\" >&laquo;&nbsp;$text&nbsp;&raquo;</a>";
 	
 	
@@ -7696,20 +7658,9 @@ function InfluxQueryFromUTC($time){return QueryToUTC($time);}
 
 function QueryToUTC($time){
 
-	$UTC_TIME=strtotime(gmdate("Y-m-d H:i:s"));
-	$CURRENTIME=time();
-	if($CURRENTIME>$UTC_TIME){
-		$diff=$CURRENTIME-$UTC_TIME;
-		$sep="-";
-	}
-	if($UTC_TIME>$CURRENTIME){
-		$diff=$UTC_TIME-$CURRENTIME;
-		$sep="+";
-	}
-	
-	$DateStr=date("Y-m-d H:i:s",$time);
-	$TimeIntval=strtotime(date("Y-m-d H:i:s",$time)." $sep$diff seconds");
-	return $TimeIntval;
+	$timestamp =$time+date("Z");
+	return strtotime(gmdate("Y-m-d H:i:s",$timestamp));
+
 	
 }
 function is_iterable($var)

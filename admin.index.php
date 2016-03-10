@@ -1089,6 +1089,7 @@ function START_ALL_SERVICES(){
 }
 
 function EmergencyStart(){
+	include_once(dirname(__FILE__)."/ressources/class.status.logs.inc");
 	$service_cmd=$_GET["EmergencyStart"];
 	$sock=new sockets();
 	$datas=$sock->getfile("EmergencyStart:$service_cmd");

@@ -185,7 +185,7 @@ function CheckBranch(){
 
 function CheckCyrusByDomains(){
 	if(!is_file('/etc/artica-postfix/settings/Daemons/EnableVirtualDomainsInMailBoxes')){return null;}
-	$EnableVirtualDomainsInMailBoxes=trim(file_get_contents('/etc/artica-postfix/settings/Daemons/EnableVirtualDomainsInMailBoxes'));
+	$EnableVirtualDomainsInMailBoxes=trim(@file_get_contents('/etc/artica-postfix/settings/Daemons/EnableVirtualDomainsInMailBoxes'));
 	if($EnableVirtualDomainsInMailBoxes<>1){return null;}
 	$users=new usersMenus();
 	$cyrus_text_password=$users->cyrus_ldap_admin_password;	

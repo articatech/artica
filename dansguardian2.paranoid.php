@@ -9,7 +9,7 @@ if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;ini_set('html_errors',0);in
 	include_once('ressources/class.artica.inc');
 	include_once('ressources/class.ini.inc');
 	include_once('ressources/class.squid.inc');
-	include_once('ressources/class.dansguardian.inc');
+	include_once('ressources/class.squid.familysites.inc');
 	header("Pragma: no-cache");	
 	header("Expires: 0");
 	header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
@@ -22,27 +22,23 @@ if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;ini_set('html_errors',0);in
 if(isset($_GET["settings"])){settings();exit;}
 if(isset($_GET["table"])){table();exit;}
 if(isset($_GET["js"])){js();}
-if(isset($_GET["add-perso-cat-js"])){add_category_js();exit;}
+if(isset($_GET["rule-js"])){rule_js();exit;}
+
 if(isset($_GET["tabs"])){tabs();exit;}
 if(isset($_GET["categories"])){categories();exit;}
 if(isset($_GET["search"])){items();exit;}
+
 if(isset($_GET["delete-js"])){delete_js();exit;}
-if(isset($_GET["add-perso-cat-tabs"])){add_category_tabs();exit;}
+if(isset($_GET["delete-all-js"])){delete_all_js();exit;}
+if(isset($_GET["popup"])){popup();exit;}
 
 
 if(isset($_POST["UfdbEnableParanoidMode"])){UfdbEnableParanoidMode();exit;}
-
 if(isset($_POST["delete"])){delete();exit;}
-
+if(isset($_POST["object"])){save();exit;}
+if(isset($_POST["delete-all"])){delete_all();exit;}
 
 tabs();
-
-
-function js(){
-	$page=CurrentPageName();
-	echo "AnimateDiv('BodyContent');LoadAjax('BodyContent','$page?tabs=yes');";
-	
-}
 
 function delete_js(){
 	header("content-type: application/x-javascript");
@@ -56,7 +52,7 @@ var xDelete$t= function (obj) {
 	var results=obj.responseText;
 	if(results.length>3){alert(results);return;};
 	$('#PARANOID_TABLE').flexReload();
-	Loadjs('squid.global.wl.center.progress.php');
+	
 }
 
 function DeletePersonalCat$t(){
@@ -70,6 +66,33 @@ DeletePersonalCat$t();";
 	echo $html;
 }
 
+function delete_all_js(){
+	header("content-type: application/x-javascript");
+	$tpl=new templates();
+	$page=CurrentPageName();
+	$delete_personal_cat_ask=$tpl->javascript_parse_text("{delete_all} ?");
+	$t=time();
+	$html="
+	
+var xDelete$t= function (obj) {
+	var results=obj.responseText;
+	if(results.length>3){alert(results);return;};
+	$('#PARANOID_TABLE').flexReload();
+	Loadjs('squid.paranoid.progress.php');
+}
+	
+function DeletePersonalCat$t(){
+	if(!confirm('$delete_personal_cat_ask')){return;}
+	var XHR = new XHRConnection();
+	XHR.appendData('delete-all','yes');
+	XHR.sendAndLoad('$page', 'POST',xDelete$t);
+}
+	
+	DeletePersonalCat$t();";
+	echo $html;	
+	
+}
+
 function delete(){
 	
 	$q=new mysql_squid_builder();
@@ -77,70 +100,146 @@ function delete(){
 	if(!$q->ok){echo $q->mysql_error;}
 	
 }
+function delete_all(){
+	$q=new mysql_squid_builder();
+	$q->QUERY_SQL("TRUNCATE TABLE webfilters_paranoid");
+	if(!$q->ok){echo $q->mysql_error;}	
+}
 
 
-function add_category_js(){
+function rule_js(){
 	header("content-type: application/x-javascript");
 	$tpl=new templates();
 	$page=CurrentPageName();
 	$widownsize=995;
+	$value=$_GET["value"];
+	if($value==null){
+		$addCat=$tpl->javascript_parse_text("{new_rule}");
+	}else{
+		$addCat=$tpl->javascript_parse_text("$value");
+	}
 	$t=$_GET["t"];
-	$title=$tpl->_ENGINE_parse_body("{your_categories}::{new_category}");
-	$html="YahooWin5('$widownsize','$page?add-perso-cat-tabs=yes&cat={$_GET["cat"]}&t=$t','$title');";
+	$valuenc=urlencode($_GET["value"]);
+	$html="YahooWin5('$widownsize','$page?popup=yes&value=$valuenc&t=$t','$addCat');";
 	echo $html;
 }
 
-function add_category_tabs(){
+function popup(){
+	$q=new mysql_squid_builder();
+	$bt="{add}";
+	$t=time();
+	if($_GET["value"]<>null){
+		$sql="SELECT * FROM webfilters_paranoid WHERE `pattern`='{$_GET["value"]}'";
+		$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
+		$bt="{apply}";
+		if($ligne["object"]=="dstdomain"){$ligne["website"]=$ligne["pattern"];}
+		if($ligne["object"]=="src"){$ligne["ipaddr"]=$ligne["pattern"];}
+		if($ligne["object"]=="dstdomainsrc"){
+			$f=explode("/",$ligne["pattern"]);
+			$ligne["website"]=$f[1];
+			$ligne["ipaddr"]=$f[0];
+		}
+	}else{
+		
+	}
 	$tpl=new templates();
 	$page=CurrentPageName();
+	
+	$objects["dstdomain"]="{dstdomain}";
+	$objects["src"]="{src}";
+	$objects["dstdomainsrc"]="{dstdomainsrc}";
 
-
-	$catname=trim($_GET["cat"]);
-	$catname_enc=urlencode($catname);
-
-	if($_GET["cat"]==null){
-		$catname="{new_category}";
+$html="<div style='width:98%' class=form>
+<table style='width:100%'>
+	<tr>
+		<td class=legend style='font-size:22px'>{type}:</td>
+		<td>". Field_array_Hash($objects, "object-$t",$ligne["object"],"CheckObject$t()",'',0,"font-size:22px;")."</td>
+	</tr>
+	<tr>
+		<td class=legend style='font-size:22px'>{ipaddr}:</td>
+		<td>". field_ipv4("ipaddr-$t",$ligne["ipaddr"],"font-size:22px")."</td>
+	</tr>
+	<tr>
+		<td class=legend style='font-size:22px'>{website}:</td>
+		<td>". Field_text("website-$t",$ligne["website"],"font-size:22px;width:350px")."</td>
+	</tr>
+	<tr>
+	<tr>
+		<td colspan=2 align='right'><hr>". button($bt,"Save$t()",30)."</td>
+	</tr>
+</table>
+</div>	
+<script>
+var xSave$t= function (obj) {
+	var results=obj.responseText;
+	if(results.length>3){alert(results);return;};
+	$('#PARANOID_TABLE').flexReload();
+	var value='{$_GET["value"]}';
+	if(value.length==0){
+		YahooWin5Hide();
 	}
-
-	$array["add-perso-cat-popup"]=$catname;
-	if($_GET["cat"]<>null){
-		$array["manage"]='{websites}';
-		$array["urls"]='{urls}';
-		$array["security"]='{permissions}';
-		
-	}
-
-	$fontsize=18;
-	$catzenc=urlencode($_GET["cat"]);
-	$t=$_GET["t"];
-	while (list ($num, $ligne) = each ($array) ){
-
-		if($num=="manage"){
-			$html[]= $tpl->_ENGINE_parse_body("<li style='font-size:{$fontsize}px'><a href=\"squid.categories.php?popup=yes&category=$catname_enc&tablesize=695&t=$t\" style='font-size:18px'><span>$ligne</span></a></li>\n");
-			continue;
-		}
-
-		if($num=="urls"){
-			$html[]= $tpl->_ENGINE_parse_body("<li style='font-size:{$fontsize}px'><a href=\"squid.categories.urls.php?popup=yes&category=$catname_enc&tablesize=695&t=$t\" style='font-size:18px'><span>$ligne</span></a></li>\n");
-			continue;
-		}
-
-		if($num=="security"){
-			$html[]= $tpl->_ENGINE_parse_body("<li style='font-size:{$fontsize}px'><a href=\"squid.categories.security.php?popup=yes&category=$catname_enc&tablesize=695&t=$t\" style='font-size:18px'><span>$ligne</span></a></li>\n");
-			continue;
-		}
-
-		
-		$html[]= $tpl->_ENGINE_parse_body("<li style='font-size:{$fontsize}px'><a href=\"$page?$num=$t&t=$t&cat=$catname_enc\" style='font-size:18px'><span>$ligne</span></a></li>\n");
-	}
-
-
-
-	echo build_artica_tabs($html, "main_zoom_catz");
-
-
 
 }
+
+function Save$t(){
+	var XHR = new XHRConnection();
+	XHR.appendData('object',document.getElementById('object-$t').value);
+	XHR.appendData('ipaddr',document.getElementById('ipaddr-$t').value);
+	XHR.appendData('website',document.getElementById('website-$t').value);
+	XHR.sendAndLoad('$page', 'POST',xSave$t);
+}
+
+function CheckObject$t(){
+	var type=document.getElementById('object-$t').value;
+	document.getElementById('ipaddr-$t').disabled=true;
+	document.getElementById('website-$t').disabled=true;
+	if(type=='dstdomain'){
+		document.getElementById('website-$t').disabled=false;
+	}
+	if(type=='src'){
+		document.getElementById('ipaddr-$t').disabled=false;
+	}
+	if(type=='dstdomainsrc'){
+		document.getElementById('ipaddr-$t').disabled=false;
+		document.getElementById('website-$t').disabled=false;
+	}	
+	
+}
+CheckObject$t();
+</script>
+";
+echo $tpl->_ENGINE_parse_body($html);
+
+}
+function save(){
+	$type=$_POST["object"];
+	
+	if($_POST["website"]<>null){
+		
+		if(strpos($_POST["website"], "://")){
+			$parse_url=parse_url($_POST["website"]);
+			$_POST["website"]=$parse_url["host"];
+		}
+		
+		$fam=new squid_familysite();
+		$_POST["website"]=$fam->GetFamilySites($_POST["website"]);
+		
+	}
+	
+	if($type=="src"){$pattern=$_POST["ipaddr"];}
+	if($type=="dstdomain"){$pattern=$_POST["website"];}
+	if($type=="dstdomainsrc"){$pattern="{$_POST["ipaddr"]}/{$_POST["website"]}";}
+	
+	$q=new mysql_squid_builder();
+	$q->QUERY_SQL("DELETE FROM webfilters_paranoid WHERE `pattern`='$pattern'");
+	
+	$sql="INSERT IGNORE INTO `webfilters_paranoid` (pattern,object,zDate) 
+	VALUES ('$pattern','$type',NOW())";
+	$q->QUERY_SQL($sql);
+	if(!$q->ok){echo $q->mysql_error;}
+	
+}
+
 
 
 function settings(){
@@ -151,10 +250,12 @@ function settings(){
 	$UfdbEnableParanoidMode=intval($sock->GET_INFO("UfdbEnableParanoidMode"));
 	$UfdbEnableParanoidBlockW=intval($sock->GET_INFO("UfdbEnableParanoidBlockW"));
 	$UfdbEnableParanoidBlockR=intval($sock->GET_INFO("UfdbEnableParanoidBlockR"));
-	if($UfdbEnableParanoidBlockW==0){$UfdbEnableParanoidBlockW=100;}
 	$UfdbEnableParanoidBlockC=intval($sock->GET_INFO("UfdbEnableParanoidBlockC"));
-	if($UfdbEnableParanoidBlockC==0){$UfdbEnableParanoidBlockC=500;}
-	if($UfdbEnableParanoidBlockR==0){$UfdbEnableParanoidBlockR=24;}	
+	$UfdbEnableParanoidBlockU=intval($sock->GET_INFO("UfdbEnableParanoidBlockU"));
+	if($UfdbEnableParanoidBlockW<1000){$UfdbEnableParanoidBlockW=5000;}
+	if($UfdbEnableParanoidBlockC<1000){$UfdbEnableParanoidBlockC=5000;}
+	if($UfdbEnableParanoidBlockR==0){$UfdbEnableParanoidBlockR=24;}
+	if($UfdbEnableParanoidBlockU==0){$UfdbEnableParanoidBlockU=100;}	
 	
 	
 	
@@ -163,6 +264,13 @@ function settings(){
 	$html="<div style='width:98%' class=form>
 		$p
 		<table style='width:100%'>	
+		
+		
+		<tr>
+			<td class=legend style='font-size:22px'>{events_number_to_deny_a_website_and_the_user}:</td>
+			<td>". Field_text("UfdbEnableParanoidBlockU",$UfdbEnableParanoidBlockU,"font-size:22px;width:150px")."</td>
+		</tr>		
+		
 		<tr>
 			<td class=legend style='font-size:22px'>{events_number_to_deny_a_website}:</td>
 			<td>". Field_text("UfdbEnableParanoidBlockW",$UfdbEnableParanoidBlockW,"font-size:22px;width:150px")."</td>
@@ -185,7 +293,7 @@ function settings(){
 var xSave$t= function (obj) {
 	var results=obj.responseText;
 	if(results.length>3){alert(results);return;};
-	RefreshTab('main_squid_paranoid');
+	Loadjs('squid.paranoid.progress.php');
 
 }
 
@@ -195,6 +303,7 @@ function Save$t(){
 	XHR.appendData('UfdbEnableParanoidBlockW',document.getElementById('UfdbEnableParanoidBlockW').value);
 	XHR.appendData('UfdbEnableParanoidBlockC',document.getElementById('UfdbEnableParanoidBlockC').value);
 	XHR.appendData('UfdbEnableParanoidBlockR',document.getElementById('UfdbEnableParanoidBlockR').value);
+	XHR.appendData('UfdbEnableParanoidBlockU',document.getElementById('UfdbEnableParanoidBlockU').value);
 	XHR.sendAndLoad('$page', 'POST',xSave$t);
 }
 </script>
@@ -282,7 +391,7 @@ function table(){
 	$SaveToDisk=$tpl->_ENGINE_parse_body("{SaveToDisk}");
 	$date=$tpl->_ENGINE_parse_body("{date}");
 	$delete=$tpl->_ENGINE_parse_body("{delete}");
-	$category=$tpl->_ENGINE_parse_body("{category}");
+	$addCat=$tpl->_ENGINE_parse_body("{new_rule}");
 	$tablewith=691;
 	$compilesize=35;
 	$size_elemnts=50;
@@ -290,18 +399,21 @@ function table(){
 	$title=$tpl->javascript_parse_text("{generated_rules}");
 	$deletetext=$tpl->javascript_parse_text("{purge}");
 	$delete=$tpl->javascript_parse_text("{delete}");
+	$delete_all=$tpl->javascript_parse_text("{delete_all}");
+	$Apply=$tpl->javascript_parse_text("{apply}");
+	$t=time();
 	
 	$add=$tpl->javascript_parse_text("{add}");
 
 	$buttons="	buttons : [
-		{name: '<strong style=font-size:18px>$addCat</strong>', bclass: 'add', onpress : AddNewCategory},
-		{name: '<strong style=font-size:18px>$size</strong>', bclass: 'Search', onpress : LoadCategoriesSize},
-		{name: '<strong style=font-size:18px>$test_categories</strong>', bclass: 'Search', onpress : LoadTestCategories},
+		{name: '<strong style=font-size:18px>$addCat</strong>', bclass: 'add', onpress : NewParanoidRule},
+		{name: '<strong style=font-size:18px>$Apply</strong>', bclass: 'Search', onpress : Apply$t},
+		{name: '<strong style=font-size:18px>$delete_all</strong>', bclass: 'Delz', onpress : Del$t},
 		
 		
 		
 	],";
-	$buttons=null;
+	
 	$t=time();
 	$html="
 			
@@ -336,6 +448,17 @@ $(document).ready(function(){
 
 });
 });
+
+function Apply$t(){
+	Loadjs('squid.paranoid.progress.php');
+}
+function NewParanoidRule(){
+	Loadjs('$page?rule-js=yes&value=');
+}
+
+function Del$t(){
+	Loadjs('$page?delete-all-js=yes&value=');
+}
 
 
 </script>
@@ -443,69 +566,3 @@ function items(){
 	
 }
 
-function add_category_save(){
-	$_POST["personal_database"]=url_decode_special_tool($_POST["personal_database"]);
-	$_POST["category_text"]=url_decode_special_tool($_POST["category_text"]);
-	$org=$_POST["personal_database"];
-
-
-	include_once(dirname(__FILE__)."/ressources/class.html.tools.inc");
-	$html=new htmltools_inc();
-	$dans=new dansguardian_rules();
-
-	$_POST["personal_database"]=strtolower($html->StripSpecialsChars($_POST["personal_database"]));
-
-	if($_POST["personal_database"]==null){
-		echo "No category set or wrong category name \"$org\"\n";
-		return;
-	}
-
-	if($_POST["personal_database"]=="security"){$_POST["personal_database"]="security2";}
-	if($_POST["CatzByGroupA"]<>null){$_POST["CatzByGroupL"]=$_POST["CatzByGroupA"];}
-
-	$_POST["CatzByGroupL"]=mysql_escape_string2($_POST["CatzByGroupL"]);
-
-	$_POST["category_text"]=url_decode_special_tool($_POST["category_text"]);
-	$_POST["category_text"]=mysql_escape_string2($_POST["category_text"]);
-	$q=new mysql_squid_builder();
-	$sql="SELECT category FROM personal_categories WHERE category='{$_POST["personal_database"]}'";
-	$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
-	if($ligne["category"]<>null){
-		$sql="UPDATE personal_categories
-		SET category_description='{$_POST["category_text"]}',
-		`PublicMode`='{$_POST["PublicMode"]}',
-		master_category='{$_POST["CatzByGroupL"]}'
-		WHERE category='{$_POST["personal_database"]}'
-		";
-	}else{
-
-		if(isset($dans->array_blacksites[$_POST["personal_database"]])){
-				$tpl=new templates();
-				echo $tpl->javascript_parse_text("{$_POST["personal_database"]}:{category_already_exists}");
-				return;
-		}
-
-		$sql="INSERT IGNORE INTO personal_categories (category,category_description,master_category,PublicMode)
-		VALUES ('{$_POST["personal_database"]}','{$_POST["category_text"]}','{$_POST["CatzByGroupL"]}','{$_POST["PublicMode"]}');";
-		}
-
-
-
-
-	$q->QUERY_SQL($sql);
-	if(!$q->ok){echo $q->mysql_error;return;}
-	$q->CreateCategoryTable($_POST["personal_database"]);
-	$sql="TRUNCATE TABLE webfilters_categories_caches";
-	$dans->CategoriesTableCache();
-	$dans->CleanCategoryCaches();
-	
-}
-function delete_category(){
-
-	$category=trim($_POST["delete-personal-cat"]);
-	if(strlen($category)==0){return;}
-	$q=new mysql_squid_builder();
-	if(!$q->DELETE_CATEGORY($category)){return;}
-	
-	
-}

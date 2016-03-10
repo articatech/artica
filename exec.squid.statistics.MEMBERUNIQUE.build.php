@@ -42,126 +42,130 @@ function build_progress($text,$pourc){
 
 
 function GRAB_DATAS($ligne,$md5){
+	
+	
+	
 	$GLOBALS["zMD5"]=$md5;
 	$params=unserialize($ligne["params"]);
+	
+	while (list($num,$val)=each($params)){
+		echo "$num........: $val\n";
+	
+	}
+	
 	$influx=new influx();
-	$from=InfluxQueryFromUTC($params["FROM"]);
-	$to=InfluxQueryFromUTC($params["TO"]);
+	$mintime=strtotime("2008-01-01 00:00:00");
+	$params["TO"]=intval($params["TO"]);
+	$params["FROM"]=abs(intval($params["FROM"]));
+	if($params["FROM"]<$mintime){$params["FROM"]=strtotime(date("Y-m-d 00:00:00"));}
+	$params["TO"]=intval($params["TO"]);
+	if($params["TO"]<$mintime){$params["TO"]=time();}
+	
+	$influx=new influx();
+	$from=$params["FROM"];
+	$to=$params["TO"];
 	$interval=$params["INTERVAL"];
+	$USER_FIELD=strtolower($params["USER"]);
+	$SEARCH=$params["SEARCH"];
 	
 	
-	$q=new mysql_squid_builder();
-	$q->QUERY_SQL("DROP TABLE `tmp_{$md5}user`");
+	$sql="CREATE TABLE IF NOT EXISTS \"{$md5}report\"
+	(zdate timestamp,
+	mac macaddr,
+	ipaddr INET,
+	userid VARCHAR(64) NULL,
+	category VARCHAR(64) NULL,
+	familysite VARCHAR(128) NULL,
+	size BIGINT,
+	rqs BIGINT)";
 	
-	$sql="CREATE TABLE IF NOT EXISTS `tmp_{$md5}user`
-	(`ZDATE` DATETIME,
-	`SIZE` INT UNSIGNED NOT NULL DEFAULT 1,
-	`RQS` INT UNSIGNED NOT NULL DEFAULT 1,
-	`CATEGORY` VARCHAR(60),
-	`FAMILYSITE` VARCHAR(128),
-	`USERID` VARCHAR(60),
-	`IPADDR` VARCHAR(60),
-	`MAC` VARCHAR(60),
-	KEY `ZDATE`(`ZDATE`),
-	KEY `CATEGORY`(`CATEGORY`),
-	KEY `FAMILYSITE`(`FAMILYSITE`),
-	KEY `USERID`(`USERID`),
-	KEY `IPADDR`(`IPADDR`),
-	KEY `MAC`(`MAC`))  ENGINE = MYISAM;";
+	$q=new postgres_sql();
 	
 	$q->QUERY_SQL($sql);
-	
 	
 	if(!$q->ok){
 		echo "********** FAILED **********\n";
 		echo $q->mysql_error."\n";
-		build_progress("{step} {insert_data}: MySQL engine, {failed}",110);
+		build_progress("{step} {insert_data}: PostreSQL engine, {failed}",110);
 		return false;
 	}
 	
+	$q->QUERY_SQL("create index zdate{$md5}report on \"{$md5}report\"(zdate);");
+	$q->QUERY_SQL("create index familysite{$md5}report on \"{$md5}report\"(familysite);");
+	$q->QUERY_SQL("create index user{$md5}report on \"{$md5}report\"(ipaddr,userid,familysite);");
 	
-	$FIELDS["MAC"]="MAC";
-	$FIELDS["IPADDR"]="IPADDR";
-	$FIELDS["USERID"]="USERID";
+	$FIELDS["MAC"]="mac";
+	$FIELDS["IPADDR"]="ipaddr";
+	$FIELDS["USERID"]="userid";
 	
-	
-	$sql="SELECT SIZE,FAMILYSITE,RQS,CATEGORY,MAC,IPADDR,USERID FROM access_log WHERE (time >'".date("Y-m-d H:i:s",$from)."' and time < '".date("Y-m-d H:i:s",$to)."')";
-	if(isset($params["USER"])){
-		
-		
-		while (list ($field, $size) = each ($FIELDS) ){
-			$FINAL_FIELDS[]=$field;
-		}
-		
-		$sql="SELECT SIZE,FAMILYSITE,RQS,CATEGORY,".@implode(",", $FINAL_FIELDS)." FROM access_log WHERE (time >'".date("Y-m-d H:i:s",$from)."' and time < '".date("Y-m-d H:i:s",$to)."')";
+	$TimeGroup="zdate";
+	$distance=$influx->DistanceHour($from,$to);
+	echo "Distance: {$distance} hours\n";
+	if($distance>4){
+		$TimeGroup="date_trunc('hour', zdate) as zdate";
 	}
 	
+	$NOFILL="userid !='none' AND ";
+	
+	if($USER_FIELD<>"userid"){$NOFILL=null;}
+	if($SEARCH=="none"){$NOFILL=null;}
 	
 	
+	$sqlA[]="SELECT SUM(size) as size, SUM(rqs) as RQS,$TimeGroup,FAMILYSITE, CATEGORY, MAC, IPADDR, USERID FROM access_log";
+	$sqlA[]="WHERE $NOFILL $USER_FIELD='$SEARCH' and (zDate >'".date("Y-m-d H:i:s",$from)."'";
+	$sqlA[]="and zDate < '".date("Y-m-d H:i:s",$to)."')";
+	$sqlA[]="GROUP BY zdate, FAMILYSITE, CATEGORY, MAC, IPADDR, USERID";
+	
+	
+	if($distance>23){
+		$sqlA=array();
+		echo "Distance: {$distance} hours: Use the Month table\n";
+		$sqlA[]="SELECT SUM(SIZE) as size, SUM(RQS) as rqs,zdate,familysite, category, mac, ipaddr, userid FROM access_month";
+		$sqlA[]="WHERE $NOFILL $USER_FIELD='$SEARCH' and (zDate >='".date("Y-m-d H:i:s",$from)."'";
+		$sqlA[]="and zDate <= '".date("Y-m-d H:i:s",$to)."')";
+		$sqlA[]="GROUP BY zdate, FAMILYSITE, CATEGORY, MAC, IPADDR, USERID";
+		
+	}
+	
+	if($distance>720){
+		$sqlA=array();
+		echo "Distance: {$distance} hours: Use the Year table\n";
+		$sqlA[]="SELECT SUM(SIZE) as size, SUM(RQS) as rqs,zdate,familysite, category, mac, ipaddr, userid FROM access_year";
+		$sqlA[]="WHERE $NOFILL $USER_FIELD='$SEARCH' and (zDate >='".date("Y-m-d H:i:s",$from)."'";
+		$sqlA[]="and zDate <= '".date("Y-m-d H:i:s",$to)."')";
+		$sqlA[]="GROUP BY zdate, FAMILYSITE, CATEGORY, MAC, IPADDR, USERID";
+	
+	}	
+	
+
+	$sql=@implode(" ", $sqlA);
+	
+	$sql="INSERT INTO \"{$md5}report\" (size,rqs,zdate,familysite, category, mac, ipaddr, userid) $sql";
 	
 	echo "$sql\n";
 	build_progress("{step} {waiting_data}: BigData engine, (websites) {please_wait}",6);
-	$GLOBALS["CSV1"][]=array("date","website","uid","ipaddr","mac","SizeBytes","SizeText","hits");
-	$main=$influx->QUERY_SQL($sql);
-	echo "MAIN(1): ".count($main)." items\n";
-	if(count($main)<2){
-		$sql="SELECT SIZE,FAMILYSITE,RQS,".@implode(",", $FINAL_FIELDS)." FROM access_log WHERE (time >'".date("Y-m-d H:i:s",$from)."' and time < '".date("Y-m-d H:i:s",$to)."')";
-		$main=$influx->QUERY_SQL($sql);
-		echo "MAIN(2): ".count($main)." items\n";
-	}
 	
+	$q->QUERY_SQL($sql);
+
 	
-	$c=0;
-	foreach ($main as $row) {
-		$time=InfluxToTime($row->time);
-		$SIZE=intval($row->SIZE);
-		if($SIZE==0){continue;}
-		$RQS=intval($row->RQS);
-		$CATEGORY=mysql_escape_string2($row->CATEGORY);
-		$FAMILYSITE=mysql_escape_string2($row->FAMILYSITE);
-		$MAC=mysql_escape_string2($row->MAC);
-		$IPADDR=mysql_escape_string2($row->IPADDR);
-		$USERID=mysql_escape_string2($row->USERID);
-		$DATE=date("Y-m-d H:00:00",$time);
-		
-		
-		
-		//if($GLOBALS["VERBOSE"]){echo "$DATE','$SIZE','$RQS','$CATEGORY','$FAMILYSITE','$USERID','$IPADDR','$MAC'\n";}
-		$f[]="('$DATE','$SIZE','$RQS','$CATEGORY','$FAMILYSITE','$USERID','$IPADDR','$MAC')";
-		$SIZE_TEXT=FormatBytes($SIZE/1024);
-		$GLOBALS["CSV1"][]=array($DATE,$FAMILYSITE,$USERID,$IPADDR,$MAC,$SIZE,$SIZE_TEXT,$RQS);
-		$c++;
-		if(count($f)>500){
-			
-			$q->QUERY_SQL("INSERT IGNORE INTO `tmp_{$md5}user` (`ZDATE`,`SIZE`,`RQS`,`CATEGORY`,`FAMILYSITE`,`USERID`,`IPADDR`,`MAC`)
-			VALUES ".@implode(",", $f));
-			$f=array();
-			if(!$q->ok){
-				echo "********** FAILED **********\n";
-				echo $q->mysql_error."\n";
-				build_progress("{step} {insert_data}: MySQL engine, {failed}",110);
-				return false;
-			}
-		}
-		
-	}
-	
-	if(count($f)>0){
-		
-		$q->QUERY_SQL("INSERT IGNORE INTO `tmp_{$md5}user` (`ZDATE`,`SIZE`,`RQS`,`CATEGORY`,`FAMILYSITE`,`USERID`,`IPADDR`,`MAC`) VALUES ".@implode(",", $f));
-		if(!$q->ok){
-			echo "********** FAILED **********\n";
-			echo $q->mysql_error."\n";
-			build_progress("{step} {insert_data}: MySQL engine, {failed}",110);
-			return false;
-		}
-	}	
-	
-	
-	if($c==0){
-		echo "MAIN_ARRAY is null....\n";
+
+	if(!$q->ok){
+		echo "***************\n$postgres->mysql_error\n***************\n";
+		$q->QUERY_SQL("DROP TABLE \"{$md5}report\"");
 		return false;
 	}
+	
+	$sql="SELECT COUNT(*) AS tcount FROM \"{$md5}report\"";
+	$ligne=pg_fetch_assoc($q->QUERY_SQL($sql));
+	$total = intval($ligne["tcount"]);
+	
+	echo "Member $total items inserted to PostGreSQL\n";
+	
+	if($total==0){
+		$q->QUERY_SQL("DROP TABLE \"{$md5}report\"");
+		return false;
+	}
+
 	return true;
 }
 
@@ -173,6 +177,9 @@ function REMOVE_TABLES($md5){
 
 
 function BUILD_REPORT($md5){
+	
+	echo basename(__FILE__)." $md5\n";
+	
 	build_progress("{building_query}",5);
 	$unix=new unix();
 	
@@ -180,6 +187,10 @@ function BUILD_REPORT($md5){
 	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT * FROM reports_cache WHERE `zmd5`='$md5'"));
 	
 	$params=unserialize($ligne["params"]);
+	$influx=new influx();
+	$mintime=strtotime("2008-01-01 00:00:00");$params["TO"]=intval($params["TO"]);$params["FROM"]=abs(intval($params["FROM"]));
+	if($params["FROM"]<$mintime){$params["FROM"]=strtotime(date("Y-m-d 00:00:00"));}
+	$params["TO"]=intval($params["TO"]);if($params["TO"]<$mintime){$params["TO"]=time();}
 	$influx=new influx();
 	$from=InfluxQueryFromUTC($params["FROM"]);
 	$to=InfluxQueryFromUTC($params["TO"]);
@@ -191,17 +202,6 @@ function BUILD_REPORT($md5){
 	$SEARCH=$params["SEARCH"];
 	
 
-	if($SEARCH<>null){
-		$searchuser_sql=str_replace("*", "%", $SEARCH);
-		if(strpos(" $SEARCH", "%")>0){
-			$searchuser_sql=" HAVING $USER_FIELD LIKE '$SEARCH'";
-		}else{
-			$searchuser_sql=" HAVING `$USER_FIELD`='$SEARCH'";
-		}
-		
-	}
-	
-	
 	
 	
 	if(!GRAB_DATAS($ligne,$md5)){
@@ -209,138 +209,22 @@ function BUILD_REPORT($md5){
 		return;
 	}
 	
+	$q=new postgres_sql();
+	$q->QUERY_SQL("COPY (SELECT * from \"{$md5}report\") To '/tmp/{$md5}report.csv' with CSV HEADER;");
+	$values_size=@filesize("/tmp/{$md5}report.csv");
+	$values=mysql_escape_string2(@file_get_contents("/tmp/{$md5}report.csv"));
+	echo "MD5:{$GLOBALS["zMD5"]} {$values_size}Bytes ". FormatBytes($values_size/1024)."\n";
 	$q=new mysql_squid_builder();
-
-	
-	//zDate,familysite,user,size,hits
-	
-	
-	
-	$sql="SELECT SUM(SIZE) as SIZE, SUM(RQS) as RQS,$USER_FIELD,`ZDATE` FROM `tmp_{$md5}user` 
-	GROUP BY $USER_FIELD,`ZDATE` $searchuser_sql ORDER BY `ZDATE`";
-	
-	echo "********** SQL **********\n";
-	echo $sql."\n";
-	echo "********** SQL **********\n";
-	$results=$q->QUERY_SQL($sql);
+	$q->QUERY_SQL("UPDATE reports_cache SET `builded`=1,`values`='$values',`values_size`='$values_size' WHERE `zmd5`='{$GLOBALS["zMD5"]}'");
 	
 	if(!$q->ok){
-		echo "$sql\n$q->mysql_error\n";
-		build_progress("MySQL error [".__LINE__."]",110);		
-		return;
-	}
-	$c=0;
-	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
-		$time=$ligne["ZDATE"];
-		$c++;
-		if(intval($ligne["SIZE"])==0){continue;}
-		$size=$ligne["SIZE"]/1024;
-		$size=round($size/1024,2);
-		
-		$xdata[]=$ligne["ZDATE"];
-		$ydata[]=$size;
-		
-	}
-	
-	echo "Building chronology\n";
-	$sql="SELECT SUM(SIZE) as SIZE, SUM(RQS) as RQS,`ZDATE`,FAMILYSITE,$USER_FIELD
-	FROM `tmp_{$md5}user` GROUP BY FAMILYSITE,$USER_FIELD,ZDATE $searchuser_sql ORDER BY ZDATE";
-	
-	echo "********** SQL **********\n";
-	echo $sql."\n";
-	echo "********** SQL **********\n";
-	
-	
-	$results=$q->QUERY_SQL($sql);
-	
-	if(!$q->ok){
-		echo "$sql\n$q->mysql_error\n";
-		build_progress("MySQL error [".__LINE__."]",110);
-		return;
-	}
-	
-	$c=0;
-	
-	$MAIN["CSV"][]=array("time","bytes","site","hits");
-	
-	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
-		$c++;
-		$time=$ligne["ZDATE"];
-		if($GLOBALS["VERBOSE"]){echo "CHRONOS: {$ligne["FAMILYSITE"]} $time'\n";}
-		
-		$MAIN["CRONOS"][]=array("TIME"=>$time,"BYTES"=>$ligne["SIZE"],"SITE"=>$ligne["FAMILYSITE"],
-				"RQS"=>$ligne["RQS"]);
-		
-		$MAIN["CSV"][]=array("$time","{$ligne["SIZE"]}","{$ligne["FAMILYSITE"]}","{$ligne["RQS"]}");
-	}
-
-	
-	
-	
-
-	
-	$MAIN["GRAPH1"]["xdata"]=$xdata;
-	$MAIN["GRAPH1"]["ydata"]=$ydata;
-	
-	if($c==0){build_progress("{chronology}: {failed} C == 0",110);return;}
-//----------------------------------------------------------------------------------------------------------
-	$results=$q->QUERY_SQL("SELECT USERID as uid,IPADDR as ipaddr,MAC as mac FROM `tmp_{$md5}user` GROUP BY uid,ipaddr,mac");
-	build_progress("{parsing_data} (2)",25);
-	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
-		$IDENT[]=array("IPADDR"=>$ligne["ipaddr"],"USERID"=>$ligne["uid"],"MAC"=>$ligne["mac"]);
-	}		
-//----------------------------------------------------------------------------------------------------------
-
-	$sql="SELECT SUM(SIZE) as SIZE,FAMILYSITE,$USER_FIELD FROM `tmp_{$md5}user` 
-	GROUP BY FAMILYSITE,$USER_FIELD $searchuser_sql ORDER BY SIZE DESC";
-	echo "********** SQL **********\n";
-	echo $sql."\n";
-	echo "********** SQL **********\n";
-	
-	
-	$results=$q->QUERY_SQL($sql);
-	build_progress("{parsing_data} (2)",30);
-	
-	if(!$q->ok){
-		echo "$sql\n$q->mysql_error\n";
-		build_progress("MySQL error [".__LINE__."]",110);
-		return;
-	}
-	
-	$tt=0;
-	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
-			$size=$ligne["SIZE"];
-			$FAMILYSITE=$ligne["FAMILYSITE"];
-			$size=$size/1024;
-			$PieData2[$FAMILYSITE]=$size;
-			if($GLOBALS["VERBOSE"]){echo "PIE DATA: $FAMILYSITE' -> $size\n";}
-			if($tt<11){ 
-					$MAIN["GRAPH2"]["PIEDATA"][$FAMILYSITE]=$size; 
-					$MAIN["GRAPH2"]["TABLE"][$FAMILYSITE]=$size; 
-			}
-			$tt++;
-			$MAIN["FAMS"][$FAMILYSITE]=$ligne["SIZE"];
-	}
-//----------------------------------------------------------------------------------------------------------
-	echo "MD5:{$GLOBALS["zMD5"]}\n";
-	
-	
-	
-	
-	REMOVE_TABLES($GLOBALS["zMD5"]);
-	$encoded_data=base64_encode(serialize($MAIN));
-	$datasize=strlen($encoded_data);
-	echo "Saving ".strlen($encoded_data)." bytes...\n";
-	
-	
-	$q->QUERY_SQL("UPDATE reports_cache SET `builded`=1,`values`='$encoded_data',`values_size`='$datasize' WHERE `zmd5`='{$GLOBALS["zMD5"]}'");
-	
-	if(!$q->ok){
-		echo $q->mysql_error."\n";
-		build_progress("MySQL {failed}",110);
+	echo $q->mysql_error."\n";
+		build_progress("PostGreSQL {failed}",110);
 		return;
 	}
 	
 	build_progress("{success}",100);
+	
+
 
 }

@@ -64,7 +64,8 @@ function build_query_js(){
 	$interval=$_GET["interval"];
 	$t=$_GET["t"];
 	$user=$_GET["user"];
-	$md5=md5("FLOW:$from$to$interval$user");
+	$search=$_GET["search"];
+	$md5=md5("FLOW:$from$to$interval$user$search");
 	$_SESSION["SQUID_STATS_DATE1"]=$_GET["date1"];
 	$_SESSION["SQUID_STATS_TIME1"]=$_GET["time1"];
 	
@@ -87,8 +88,10 @@ function build_query_js(){
 		$array["TO"]=$to;
 		$array["INTERVAL"]=$interval;
 		$array["USER"]=$user;
+		$array["SEARCH"]=$search;
 		$serialize=mysql_escape_string2(serialize($array));
-		$title="{flow}: $timetext1 - {to} $timetext2 $interval - $user";
+		$title="{flow}: $timetext1 - {to} $timetext2 $interval - $user $search";
+		$title=mysql_escape_string2($title);
 		$sql="INSERT IGNORE INTO `reports_cache` (`zmd5`,`title`,`report_type`,`zDate`,`params`) VALUES 
 		('$md5','$title','FLOW',NOW(),'$serialize')";
 		$q->QUERY_SQL($sql);
@@ -123,6 +126,12 @@ function remove_cache_js(){
 	$tpl=new templates();
 	$q=new mysql_squid_builder();
 	$zmd5=$_GET["zmd5"];
+	
+	if(trim($zmd5)==null){
+		echo "alert('No cache ID sent');";
+		return;
+	}
+	
 	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT ID,`title` FROM `reports_cache` WHERE `zmd5`='$zmd5'"));
 	if(!$q->ok){echo "alert('".$tpl->javascript_parse_text($q->mysql_error)."')";return;}
 	$title=$tpl->javascript_parse_text("{delete} id {$ligne["ID"]} \"{$ligne["title"]}\" ($zmd5)");
@@ -142,6 +151,10 @@ var xLinkEdHosts$t= function (obj) {
 	if( document.getElementById('BROWSE_STATISTICS_CACHES') ){
 		$('#BROWSE_STATISTICS_CACHES').flexReload();
 	}
+	if( document.getElementById('SQUID_STATISTICS_MEMBERS') ){
+		$('#SQUID_STATISTICS_MEMBERS').flexReload();
+	}	
+	
 	
 	
 }
@@ -160,7 +173,12 @@ function remove_cache(){
 	$zmd5=$_POST["remove-cache"];
 	$q=new mysql_squid_builder();
 	$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='{$_POST["remove-cache"]}'");
-	$tpl=new templates();
+	
+	$table="{$_POST["remove-cache"]}report";
+	$postgres=new postgres_sql();
+	$postgres->QUERY_SQL("DROP TABLE \"$table\"");
+	
+	
 	$table="chronos$zmd5";
 	if($q->TABLE_EXISTS($table)){
 		$q->QUERY_SQL("DROP TABLE `$table`");
@@ -184,10 +202,8 @@ function requeteur_popup(){
 	$members["IPADDR"]="{ipaddr}";
 	
 	
-	$q=new influx();
-	$date_start=date("Y-m-d",intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/DATE_START")));
-	$date_end=date("Y-m-d",intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/DATE_END")));
-	$Selectore="mindate:$date_start;maxdate:$date_end";
+	$q=new postgres_sql();
+	$Selectore=$q->fieldSelectore();
 	
 	
 	$stylelegend="style='vertical-align:top;font-size:18px;padding-top:5px' nowrap";
@@ -201,6 +217,10 @@ function requeteur_popup(){
 		<td $stylelegend class=legend>{members}:</td>
 		<td style='vertical-align:top;font-size:18px;'>". Field_array_Hash($members,"members-$t",$_SESSION["SQUID_STATS_MEMBER"],"blur()",null,0,"font-size:18px;")."</td>
 	</tr>
+	<tr>
+		<td style='vertical-align:middle;font-size:18px' class=legend>{search}:</td>
+		<td style='vertical-align:top;font-size:18px'>". Field_text("search-$t",$_SESSION["SQUID_STATS_MEMBER_SEARCH"],";font-size:18px;width:98%")."</td>
+	</tr>	
 	<tr>
 		<td $stylelegend class=legend>{from_date}:</td>
 		<td style='vertical-align:top;font-size:18px'>". field_date("from-date-$t",$_SESSION["SQUID_STATS_DATE1"],";font-size:18px;width:160px",$Selectore)."
@@ -224,8 +244,8 @@ function Run$t(){
 	var time2=document.getElementById('to-time-$t').value;
 	var user=document.getElementById('members-$t').value;
 	var interval=document.getElementById('interval-$t').value;
-	Loadjs('$page?query-js=yes&t=$t&container=graph-$t&date1='+date1+'&time1='+time1+'&date2='+date2+'&time2='+time2+'&interval='+interval+'&user='+user);
-
+	var search=encodeURIComponent(document.getElementById('search-$t').value);
+	Loadjs('$page?query-js=yes&t=$t&container=graph-$t&date1='+date1+'&time1='+time1+'&date2='+date2+'&time2='+time2+'&interval='+interval+'&user='+user+'&search='+search);
 }
 </script>
 ";	
@@ -260,7 +280,10 @@ function page(){
 	if($ligne["zmd5"]<>null){
 		$nextFunction="Loadjs('$page?graph1=yes&t=$t&container=graph-$t&zmd5={$ligne["zmd5"]}&t=$t');";
 		$content="<center><img src=img/loader-big.gif></center>";
-		$title="<div style='font-size:30px;margin-bottom:20px'>".$tpl->javascript_parse_text($ligne["title"])."</div>";
+			$title="<div style='font-size:26px;margin-bottom:20px'>".
+	texttooltip($tpl->javascript_parse_text($ligne["title"]),
+	"{edit}","Loadjs('squid.statistics.edit.report.php?zmd5={$ligne["zmd5"]}&t=$t')").
+	"</div>";
 	}
 
 	$html="$title<div style='text-align:left' id='button-$t'></div>
@@ -272,22 +295,22 @@ function page(){
 	
 	<table style='width:100%'>
 	<tr>
-		<td width=90%>		
-			<div style='width:800px;height:550px' id='graph2-$t'></div>
+		<td style='width:800px'>		
+			<div id='graph2-$t' style='width:800px;height:550px'></div>
 		</td>
-		<td style='width:5%;vertical-align:top'>		
-			<div id='table1-$t'></div>
+		<td style='width:680px;vertical-align:top'>		
+			<div id='table1-$t' style='width:100%'></div>
 		</td>
 	</tr>
 	<tr>
 		<td colspan=2><p>&nbsp;</p></td>
 	</tr>
 	<tr>
-		<td width=90%>		
+		<td style='width:800px'>		
 			<div style='width:800px;height:550px' id='graph3-$t'></div>
 		</td>
-		<td style='width:5%;vertical-align:top'>		
-			<div  id='table3-$t'></div>
+		<td style='width:680px;vertical-align:top'>		
+			<div  id='table3-$t' style='width:100%'></div>
 		</td>
 	</tR>
 </table>	
@@ -303,27 +326,25 @@ echo $tpl->_ENGINE_parse_body($html);
 }
 function graph1(){
 	
-	$q=new mysql_squid_builder();
+	$q=new postgres_sql();
 	$zmd5=$_GET["zmd5"];
 	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	if(strlen($values)==0){echo "alert('NO data...{$ligne["values"]}');";$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");return;}
-	$MAIN=unserialize(base64_decode($values));
-	
-	if(!isset($MAIN["GRAPH1"])){
-		echo "alert('Corrupted data...{$ligne["values"]}');UnlockPage();";
-		$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");
-		return;
-	}
-	
 	$page=CurrentPageName();
 	$time=time();
+	$table="{$zmd5}report";
 	
-	$xdata=$MAIN["GRAPH1"]["xdata"];
-	$ydata=$MAIN["GRAPH1"]["ydata"];
+	$results=$q->QUERY_SQL("SELECT SUM(size) as size, zdate FROM \"$table\" GROUP BY zdate order by zdate ASC");
 	
 	
+
+	
+	while($ligne=@pg_fetch_assoc($results)){
+		$size=$ligne["size"];
+		$size=$size/1024;
+		$size=round($size/1024);
+		$xdata[]=$ligne["zdate"];
+		$ydata[]=$size;
+	}
 	
 	
 	$title="{downloaded_flow} (MB)";
@@ -351,16 +372,28 @@ function graph2(){
 	$page=CurrentPageName();
 	$tpl=new templates();
 	
-	$q=new mysql_squid_builder();
+	$q=new postgres_sql();
 	$zmd5=$_GET["zmd5"];
-	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
+
+	$time=time();
+	$table="{$zmd5}report";
 	
-	if(strlen($values)==0){echo "alert('NO data...{$ligne["values"]}');UnlockPage();";$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");return;}
-	$MAIN=unserialize(base64_decode($values));
+	$results=$q->QUERY_SQL("SELECT SUM(size) as size, familysite FROM \"$table\" GROUP BY familysite LIMIT 15");
 	
-	$PieData=$MAIN["GRAPH2"]["PIEDATA"];
+	if($GLOBALS["VERBOSE"]){echo "<span style=color:red>SELECT SUM(size) as size, familysite FROM \"$table\" GROUP BY familysite LIMIT 15</span><br>\n";}
+	
+	if(!$q->ok){
+		if($GLOBALS["VERBOSE"]){echo "<span style=color:red>$q->mysql_error</span><br>\n";}
+	}
+	
+	while($ligne=@pg_fetch_assoc($results)){
+		$size=$ligne["size"];
+		$size=$size/1024;
+		$size=round($size/1024);
+		$PieData[$ligne["familysite"]]=$size;
+	}
+	
+	
 	$highcharts=new highcharts();
 	$highcharts->container=$_GET["container"];
 	$highcharts->PieDatas=$PieData;
@@ -395,19 +428,29 @@ function remove_cache_button(){
 function graph3(){
 	$page=CurrentPageName();
 	$tpl=new templates();
-	$q=new mysql_squid_builder();
+	$q=new postgres_sql();
 	$zmd5=$_GET["zmd5"];
 	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	$MAIN=unserialize(base64_decode($values));
+	
+	$time=time();
+	$table="{$zmd5}report";
+	
+	$results=$q->QUERY_SQL("SELECT SUM(size) as size, \"user\" FROM \"$table\" GROUP BY \"user\" LIMIT 15");
+	
+	while($ligne=@pg_fetch_assoc($results)){
+		$size=$ligne["size"];
+		$size=$size/1024;
+		$size=round($size/1024);
+		$PieData[$ligne["user"]]=$size;
+	}
+	
 	
 	$highcharts=new highcharts();
 	$highcharts->container="graph3-{$_GET["t"]}";
-	$highcharts->PieDatas=$MAIN["GRAPH3"]["PIEDATA"];
+	$highcharts->PieDatas=$PieData;
 	$highcharts->ChartType="pie";
-	$highcharts->PiePlotTitle="{$MAIN["GRAPH3"]["TYPE"]}";
-	$highcharts->Title=$tpl->_ENGINE_parse_body("{$MAIN["GRAPH3"]["TYPE"]}/{size} (MB)");
+	$highcharts->PiePlotTitle=$PieData;
+	$highcharts->Title=$tpl->_ENGINE_parse_body("{member}/{size} (MB)");
 	echo $highcharts->BuildChart();	
 	echo "LoadAjax('table3-{$_GET["t"]}','$page?table3=yes&zmd5=$zmd5&t={$_GET["t"]}');\n";
 	
@@ -418,14 +461,25 @@ function table3(){
 	$q=new mysql_squid_builder();
 	$tpl=new templates();
 	$zmd5=$_GET["zmd5"];
-	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	$MAIN=unserialize(base64_decode($values));
+	
+	
+	$q=new postgres_sql();
+	
+	$table="{$zmd5}report";
+	
+	$results=$q->QUERY_SQL("SELECT SUM(size) as size, \"user\" FROM \"$table\" GROUP BY \"user\" LIMIT 15");
+	
 	
 	$html[]="<table style='width:100%'>";
 	$html[]=$tpl->_ENGINE_parse_body("<tr><th style='font-size:18px;padding:8px'>{members}</td><th style='font-size:18px'>{size}</td></tr>");
-	while (list ($site, $size) = each ($MAIN["GRAPH3"]["TABLE"]) ){
+	
+	
+	while($ligne=@pg_fetch_assoc($results)){
+		$size=$ligne["size"];
+		$site=$ligne["user"];
+	
+	
+
 		$js="Loadjs('squid.statistics.report.member.php?from-zmd5=$zmd5&USER_DATA=".urlencode($site)."');";
 		$href="<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='font-size:18px;text-decoration:underline'>";
 		
@@ -450,19 +504,20 @@ function table1(){
 	$tpl=new templates();
 	$zmd5=$_GET["zmd5"];
 	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	$MAIN=unserialize(base64_decode($values));
+	
+	$q=new postgres_sql();
+
+	$table="{$zmd5}report";
+	
+	$results=$q->QUERY_SQL("SELECT SUM(size) as size, familysite FROM \"$table\" GROUP BY familysite LIMIT 15");
 	
 	$html[]="<table style='width:100%'>";
 	$html[]=$tpl->_ENGINE_parse_body("<tr><th style='font-size:18px;padding:8px'>{websites}</td><th style='font-size:18px'>{size}</td></tr>");
-	while (list ($site, $size) = each ($MAIN["GRAPH2"]["TABLE"]) ){
+	while($ligne=@pg_fetch_assoc($results)){
+		$familysite=$ligne["familysite"];
+		$size=$ligne["size"];
 		if($size>1024){$size=FormatBytes($size/1024);}else{$size="$size Bytes";}
-		
-		
-		
-		
-		$html[]="<tr><td style='font-size:18px;padding:8px'>$site</a></td><td style='font-size:18px'>$size</td></tr>";
+		$html[]="<tr><td style='font-size:18px;padding:8px'>$familysite</a></td><td style='font-size:18px'>$size</td></tr>";
 	}
 		
 	$html[]="</table>";

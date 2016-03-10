@@ -43,6 +43,7 @@ function restart() {
 		
 	stop(true);
 	sleep(1);
+	build();
 	start(true);
 	
 }
@@ -206,14 +207,14 @@ function build(){
 	if(!is_numeric($EnableSNMPD)){$EnableSNMPD=0;}
 	$SNMPDCommunity=$sock->GET_INFO("SNMPDCommunity");
 	if($SNMPDCommunity==null){$SNMPDCommunity="public";}
-	
+	$EnableProxyInSNMPD=intval($sock->GET_INFO("EnableProxyInSNMPD"));
 	$WizardSavedSettings=unserialize(base64_decode($sock->GET_INFO("WizardSavedSettings")));
 	
 	$organization=$WizardSavedSettings["organization"];
 	$mail=$WizardSavedSettings["mail"];
 	
 
-$f[]="agentAddress udp:161";
+$f[]="agentAddress 161";
 
 $f[]="view   systemonly  included   .1.3.6.1.2.1.1";
 $f[]="view   systemonly  included   .1.3.6.1.2.1.25.1";
@@ -250,20 +251,26 @@ $f[]="load   12 10 5";
 $f[]="iquerySecName   internalUser       ";
 $f[]="rouser          internalUser";
 $f[]="defaultMonitors          yes";
+
+
 $unix=new unix();
-$squid=$unix->LOCATE_SQUID_BIN();
-if($squid<>null){
-	$f[]="proc  $squid";
-	$SquidSNMPPort=intval($sock->GET_INFO("SquidSNMPPort"));
-	$SquidSNMPComunity=$sock->GET_INFO("SquidSNMPComunity");
-	if($SquidSNMPPort==0){$SquidSNMPPort=$squid->snmp_port;}
-	if($SquidSNMPComunity==null){$SquidSNMPComunity=$squid->snmp_community;}
-	if($SquidSNMPComunity==null){$SquidSNMPComunity="public";}
-	if(is_file("/usr/share/squid3/mib.txt")){$moib=" -m /usr/share/squid3/mib.txt";}
-	$f[]="proxy$moib -v 1 -c $SquidSNMPComunity 127.0.0.1:$SquidSNMPPort .1.3.6.1.4.1.3495.1";
 
+if($EnableProxyInSNMPD==1){
+	$squid=$unix->LOCATE_SQUID_BIN();
+	if($squid<>null){
+		$f[]="proc  $squid";
+		$SquidSNMPPort=intval($sock->GET_INFO("SquidSNMPPort"));
+		$SquidSNMPComunity=$sock->GET_INFO("SquidSNMPComunity");
+		if($SquidSNMPPort==0){$SquidSNMPPort=intval($squid->snmp_port);}
+		if($SquidSNMPPort==0){$SquidSNMPPort=3401;}
+		
+		if($SquidSNMPComunity==null){$SquidSNMPComunity=$squid->snmp_community;}
+		if($SquidSNMPComunity==null){$SquidSNMPComunity="public";}
+		if(is_file("/usr/share/squid3/mib.txt")){$moib=" -m /usr/share/squid3/mib.txt";}
+		$f[]="proxy$moib -v 1 -c $SquidSNMPComunity 127.0.0.1:$SquidSNMPPort .1.3.6.1.4.1.3495.1";
+	
+	}
 }
-
 
 
 

@@ -380,7 +380,12 @@ function MinimalStatus(){
 	}
 
 	if($SessionPathInMemory>0){
-		$sessionInfos=unserialize((base64_decode($sock->getFrameWork("services.php?SessionPathInMemoryInfos=yes"))));
+		
+		if(!is_file("/etc/artica-postfix/settings/Daemons/SessionPathInMemoryInfos")){
+			$sessionInfos=unserialize((base64_decode($sock->getFrameWork("services.php?SessionPathInMemoryInfos=yes"))));
+		}else{
+			$sessionInfos=unserialize(base64_decode(@file_get_contents("/etc/artica-postfix/settings/Daemons/SessionPathInMemoryInfos")));
+		}
 		$color="#5DD13D";
 		if($sessionInfos["POURC"]>70){$sesscolor="#F59C44";}
 		if($sessionInfos["POURC"]>79){$sesscolor="#D32D2D";}
@@ -985,8 +990,6 @@ function html_Memory_usage(){
 		<div style=\"border: 1px solid $sesscolor; width: 100px; background-color: white; padding-left: 0px; margin-top: 3px;\">
 				<div style=\"width: {$ppc}px; text-align: center; color: white; padding-top: 3px; padding-bottom: 3px; background-color:$sesscolor;\"> </div>
 		</div>";		
-	}else{
-		writelogs("services.php?files-descriptors=yes -> NO AN ARRAY",__CLASS__."/".__FUNCTION__,__FILE__,__LINE__);
 	}
 	
 	$bb=null;

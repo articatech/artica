@@ -277,10 +277,21 @@ echo json_encode($data);
 }
 
 function Parse_haproxy($line){
-	$line=str_replace(",", ",<br>", $line);
-
+	
+	
+	//0=HASTATS 1=1451328946 2=192.168.1.8 3=articaproxy 4=proxies_service 5=- 6=- 7= 8=- 9=- 10=CONNECT clients4.google.com:443 HTTP/1.1 11=403 12=+188 13=228 14=PR
+	if(strpos(" $line", "HASTATS:::")>0){
+		$lineZ=explode(":::",$line);
+		$servicename=$lineZ[4];
+		$backend_name=$lineZ[7];
+		$uri=$lineZ[10];
+		$HTTP_CODE=$lineZ[11];
+		$PR=$lineZ[14];
+		$backend_name_js="<a href=\"javascript:blur();\"  OnClick=\"javascript:Loadjs('haproxy.php?backend-js=yes&backendname=$backend_name&servicename=$servicename&t=');\" style=\"text-decoration:underline;color:#CF0707;font-weight:bolder\">";
+		return "($PR) $backend_name_js$backend_name</a> [$HTTP_CODE] From $servicename/$backend_name to $uri";
+	}
+	
 	if(preg_match("#Server\s+(.+?)\/(.+?)\s+is\s+#", $line,$re)){
-		$js="<a href=\"javascript:blur();\"  OnClick=\"javascript:Loadjs('haproxy.php?backend-js=yes&backendname={$re[2]}&servicename={$re[1]}&t=');\" style=\"text-decoration:underline;color:#CF0707;font-weight:bolder\">";
 		$line=str_replace($re[2], "$js{$re[2]}</a>", $line);
 		return $line;
 		

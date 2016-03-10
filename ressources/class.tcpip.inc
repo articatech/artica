@@ -45,7 +45,6 @@ class IP {
 		if ( !$ip ) return false;
 		if ( is_array( $ip ) ) {return false;}
 		$r=explode(".",$ip);
-		if($GLOBALS["VERBOSE"]){echo "$ip == ".count($r)." items\n";}
 		if(count($r)>4){return false;}
 		if(count($r)<4){return false;}
 		
@@ -505,6 +504,7 @@ public static function ipv4ToIpv6Cdir( $original_ip_str ) {
 	 *     2001:0db8:85a3::7344             			 Single IP
 	 * @return array(string, int)
 	 */
+	
 	public static function parseRange( $range ) {
 		// Use IPv6 functions if needed
 		if ( self::isIPv6( $range ) ) {

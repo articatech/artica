@@ -35,7 +35,7 @@ function import($ou,$path){
 	
 	$tmpfile=$unix->FILE_TEMP();
 	uncompress($path,$tmpfile);
-	$datas=unserialize(base64_decode(file_get_contents($tmpfile)));
+	$datas=unserialize(base64_decode(@file_get_contents($tmpfile)));
 	if(!is_array($datas)){
 		if($GLOBALS["VERBOSE"]){echo "Unable to import $ou $path, no such array\n";return;}
 		$unix->send_email_events(basename(__FILE__)."::Unable to import $ou $path, no such array", null, "import");

@@ -140,7 +140,7 @@ function NewRule$t(){
 }
 
 function SquidBuildNow$t(){
-	Loadjs('firehol.progress.php');
+	Loadjs('postgres.progress.php');
 }
 
 function SSLOptions$t(){

@@ -42,9 +42,8 @@ Si vous en avez plus qu'un, s&eacute;parez les par une virgule.</BLOCK_DOMAIN_HO
 <enable_amavis_text>Amavisd-new est une interface entre postfix et les filtres de contenu et antivirus.
 Il fournit les services d'anti-spam avec SpamAssassin et d'antivirus avec ClamAV</enable_amavis_text>
 <enable_APP_MAILARCHIVER>Activer le plugin Open Mail Archiver</enable_APP_MAILARCHIVER>
-<enable_APP_MAILARCHIVER_text>Si vous le placez sur vert, tous les courrier qui seront envoy&eacute;s &agrave; l'Internet ou envoy&eacute; aux bo&icirc;tes aux lettres (&agrave; l'exclusion des courrier bloqu&eacute;s) seront sauvegard&eacute;s dans une base de donn&eacute;es Mysql.[br]
-Dans ce cas vos utilisateurs seront autoris&eacute;s &agrave; chercher/r&eacute;exp&eacute;dier les messages sauvegard&eacute;s[br][br]Si vous ne d&eacute;sirez pas utiliser cette fonction, placer sur rouge ...[br][br]
-Artica utilise le logiciel MailArchiver qui peut &ecirc;tre trouv&eacute; ici :[br] https://www.milter.org/milter/61</enable_APP_MAILARCHIVER_text>
+<enable_APP_MAILARCHIVER_text>Si vous le placez sur vert, tous les courriels qui seront re&ccedil;us par la passerelle (&agrave; l'exclusion des courriels bloqu&eacute;s et en fonction des r&egrave;gles de sauvegardes ) seront conserv&eacute;s sur ce serveur.[br]
+Dans ce cas vos utilisateurs seront autoris&eacute;s &agrave; chercher/r&eacute;exp&eacute;dier les messages sauvegard&eacute;s[br]Si vous ne d&eacute;sirez pas utiliser cette fonction, placer sur rouge ...</enable_APP_MAILARCHIVER_text>
 <enable_assp>Activer Anti-Spam SMTP Proxy</enable_assp>
 <enable_assp_text>Activer ce module Anti-Spam qui impl&eacute;m&eacute;nte toutes les fonctions demand&eacute;es pour combattre les pourriels.</enable_assp_text>
 <enable_backup>Activer la sauvegarde en temps r&eacute;el</enable_backup>

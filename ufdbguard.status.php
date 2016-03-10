@@ -27,7 +27,8 @@ if(!$usersmenus->AsDansGuardianAdministrator){
 	if(isset($_GET["PhishTankApiKey-popup"])){PhishTankApiKey_popup();exit;}
 	if(isset($_POST["PhishTankApiKey"])){PhishTankApiKey_save();exit;}
 	if(isset($_POST["EnableSquidPhishTank"])){EnableSquidPhishTank_save();exit;}
-	
+	if(isset($_POST["EnableHTTPSURBL"])){EnableHTTPSURBL_save();exit;}
+	if(isset($_POST["WebFilteringRansomware"])){WebFilteringRansomware_save();exit;}
 	
 	
 	
@@ -77,6 +78,15 @@ function PhishTankApiKey_save(){
 function EnableSquidPhishTank_save(){
 	$sock=new sockets();
 	$sock->SET_INFO("EnableSquidPhishTank",$_POST["EnableSquidPhishTank"]);
+}
+function EnableHTTPSURBL_save(){
+	$sock=new sockets();
+	$sock->SET_INFO("EnableHTTPSURBL",$_POST["EnableHTTPSURBL"]);
+}
+
+function WebFilteringRansomware_save(){
+	$sock=new sockets();
+	$sock->SET_INFO("WebFilteringRansomware",$_POST["WebFilteringRansomware"]);	
 }
 
 function PhishTankApiKey_js(){
@@ -245,11 +255,27 @@ function page(){
 	$tpl=new templates();
 	$sock=new sockets();
 	$q=new mysql_squid_builder();
+	
+	$SquidUFDBUrgency=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidUFDBUrgency"));
+	
+	
+	if($SquidUFDBUrgency==1){
+		echo $tpl->_ENGINE_parse_body("<center style='margin:90px'>
+				<p style='font-size:20px'>{proxy_in_webfiltering_emergency_mode_explain}</p>
+		
+				".button("{proxy_in_webfiltering_emergency_mode}",
+				"Loadjs('squid.urgency.php?ufdb=yes');",40)."</center>");
+		
+		
+		
+		return;
+		
+		
+	}
+	
+	
 	if($sock->EnableUfdbGuard()==0){
-		
-		
 		if($q->COUNT_ROWS("webfilter_rules")==0){
-			
 			echo $tpl->_ENGINE_parse_body("<center style='margin:90px'>".button("{activate_the_webfiltering_engine_wizard}","Loadjs('dansguardian2.wizard.rule.php')",40)."</center>");
 			return;
 		}
@@ -332,6 +358,8 @@ function main(){
 	$datas=$UFDB;
 	$EnableKerbAuth=$sock->GET_INFO("EnableKerbAuth");
 	$EnableGoogleSafeSearch=$sock->GET_INFO("EnableGoogleSafeSearch");
+	$EnableHTTPSURBL=intval($sock->GET_INFO("EnableHTTPSURBL"));
+	$WebFilteringRansomware=intval($sock->GET_INFO("WebFilteringRansomware"));
 	$EnableGoogleSafeBrowsing=intval($sock->GET_INFO("EnableGoogleSafeBrowsing"));
 	$EnableGoogleSafeBrowsing_popupon=$tpl->javascript_parse_text("{EnableGoogleSafeBrowsing_popupon}");
 	$EnableGoogleSafeBrowsing_popupoff=$tpl->javascript_parse_text("{EnableGoogleSafeBrowsing_popupoff}");
@@ -400,6 +428,16 @@ function main(){
 					,"EnableGoogleSafeBrowsing-$t",$EnableGoogleSafeBrowsing,null,750
 			);
 	
+	$EnableHTTPSURBL_field=Paragraphe_switch_img("{EnableHTTPSURBL}",
+			"{EnableHTTPSURBL_explain}"
+			,"EnableHTTPSURBL-$t",$EnableHTTPSURBL,null,750
+	);
+	
+	$WebFilteringRansomware_field=Paragraphe_switch_img("{WebFilteringRansomware}",
+			"{WebFilteringRansomware_explain}"
+			,"WebFilteringRansomware-$t",$WebFilteringRansomware,null,750
+	);
+	
 	
 	
 	$EnablePhishtank=Paragraphe_switch_img("{PhishTank_enable}",
@@ -421,6 +459,8 @@ function main(){
 	
 	$EnableGoogleSafeBrowsing_button=button("{apply}","EnableGoogleSafeBrowsing$t()",26);
 	$EnablePhishtank_button=button("{apply}","EnablePhishtank$t()",26);
+	$EnableHTTPSURBL__button=button("{apply}","EnableHTTPSURBL$t()",26);
+	$WebFilteringRansomware__button=button("{apply}","EnableRansomware$t()",26);
 	
 	if($UfdbUseArticaClient==0){
 		$EnableGoogleSafeBrowsing_field=Paragraphe_switch_disable("{EnableGoogleSafeBrowsing}", 
@@ -428,15 +468,26 @@ function main(){
 				,"EnableGoogleSafeBrowsing-$t",$EnableGoogleSafeBrowsing,null,750
 		);
 		
+		$WebFilteringRansomware_field=Paragraphe_switch_disable("{WebFilteringRansomware}",
+				"{WebFilteringRansomware_explain}"
+				,"WebFilteringRansomware-$t",$WebFilteringRansomware,null,750
+		);		
+		
 		$EnablePhishtank=Paragraphe_switch_disable("{PhishTank_enable}",
 				"{PhishTank_about}"
 				,"EnableSquidPhishTank-$t",$EnableSquidPhishTank,null,750
 		);
 		
+		$EnableHTTPSURBL_field=Paragraphe_switch_disable("{EnableHTTPSURBL}",
+				"{EnableHTTPSURBL_explain}"
+				,"EnableHTTPSURBL-$t",$EnableHTTPSURBL,null,750
+		);
+		
 		
 		$EnableGoogleSafeBrowsing_button=null;
 		$EnablePhishtank_button=null;
-		
+		$EnableHTTPSURBL__button=null;
+		$WebFilteringRansomware__button=null;
 	}
 	
 	if($UFDB["UseRemoteUfdbguardService"]==1){
@@ -452,6 +503,17 @@ function main(){
 			$EnablePhishtank
 			<div style='text-align:right'>$EnablePhishtank_button</div>
 			</div>");	
+	
+	echo $tpl->_ENGINE_parse_body("<div style='margin-bottom:20px;margin-top:20px;width:98%' class=form>
+			$EnableHTTPSURBL_field
+			<div style='text-align:right'>$EnableHTTPSURBL__button</div>
+			</div>");
+	
+	echo $tpl->_ENGINE_parse_body("<div style='margin-bottom:20px;margin-top:20px;width:98%' class=form>
+			$WebFilteringRansomware_field
+			<div style='text-align:right'>$WebFilteringRansomware__button</div>
+			</div>");		
+	
 	
 	
 if($UseRemoteUfdbguardService==0){	
@@ -482,8 +544,8 @@ echo $tpl->_ENGINE_parse_body("<div style='margin-bottom:20px;margin-top:20px;wi
 	
 	
 	if($SquidGuardIPWeb==null){
-		$SquidGuardIPWeb="http://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApachePort."/exec.squidguard.php";
-		$fulluri="http://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApachePort."/exec.squidguard.php";
+		$SquidGuardIPWeb="http://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApachePort."/ufdbguardd.php";
+		$fulluri="http://".$_SERVER['SERVER_ADDR'].':'.$SquidGuardApachePort."/ufdbguardd.php";
 		$sock->SET_INFO("SquidGuardIPWeb", $fulluri);
 	}else{
 		$fulluri=$SquidGuardIPWeb;
@@ -574,6 +636,22 @@ echo $tpl->_ENGINE_parse_body("<div style='margin-bottom:20px;margin-top:20px;wi
 		
 	}	
 	
+	var xEnableHTTPSURBL$t= function (obj) {
+		var res=obj.responseText;
+		LoadAjaxRound('main-ufdb-frontend','ufdbguard.status.php');
+		Loadjs('squid.reload.progress.php');
+		
+	}	
+	
+	
+	function EnableRansomware$t(){
+		if(!document.getElementById('WebFilteringRansomware-$t')){ alert('Error in field, please refresh...'); return; }
+		var XHR = new XHRConnection();
+		XHR.appendData('WebFilteringRansomware', document.getElementById('WebFilteringRansomware-$t').value);
+		XHR.sendAndLoad('$page', 'POST',xEnableHTTPSURBL$t);  
+	}
+	
+	
 	function EnableGoogleSafeBrowsing$t(){
 		if(!document.getElementById('EnableGoogleSafeBrowsing-$t')){alert('Error in field, please refresh...'); return; }
 		var XHR = new XHRConnection();
@@ -582,6 +660,14 @@ echo $tpl->_ENGINE_parse_body("<div style='margin-bottom:20px;margin-top:20px;wi
 		if(EnableGoogleSafeBrowsing==0){if(!confirm('$EnableGoogleSafeBrowsing_popupoff')){return;} }
 		XHR.appendData('EnableGoogleSafeBrowsing', EnableGoogleSafeBrowsing);
 		XHR.sendAndLoad('$page', 'POST',xEnableGoogleSafeBrowsing$t); 	
+	
+	}
+	
+	function EnableHTTPSURBL$t(){
+		if(!document.getElementById('EnableHTTPSURBL-$t')){ alert('Error in field, please refresh...'); return; }
+		var XHR = new XHRConnection();
+		XHR.appendData('EnableHTTPSURBL', document.getElementById('EnableHTTPSURBL-$t').value);
+		XHR.sendAndLoad('$page', 'POST',xEnableHTTPSURBL$t);
 	
 	}
 	

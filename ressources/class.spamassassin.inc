@@ -1,5 +1,6 @@
 <?php
-if(!is_file("class.ldap.inc")){include_once(dirname(__FILE__) . '/class.ldap.inc');}else{include_once('class.ldap.inc');}
+include_once(dirname(__FILE__) . '/class.ldap.inc');
+include_once(dirname(__FILE__) . '/class.mysql.inc');
 
 
 class spamassassin{
@@ -181,10 +182,80 @@ function SaveRelayCountry(){
 		$this->global_conf=$sock->GET_INFO("SpamAssassinConfFile");
 	}
 	
+	public function REMOVE_DOMAIN($domain,$key){
+		$q=new mysql();
+		$xglobal="%$domain";
+		$q->QUERY_SQL("DELETE FROM userpref WHERE `username`='$xglobal' AND preference='$key'","artica_backup");
+		
+	}
+	
+	public function SET_DOMAIN($domain,$key,$value){
+		$q=new mysql();
+		if(!$q->TABLE_EXISTS("userpref", "artica_backup")){$q->check_storage_table();}
+		$xglobal="%$domain";
+		$q=new mysql();
+		if(!$q->TABLE_EXISTS("userpref", "artica_backup")){$q->check_storage_table();}
+		
+		
+		$sql="SELECT `prefid` FROM userpref WHERE `username`='$xglobal' AND preference='$key'";
+		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
+		$prefid=intval($ligne["prefid"]);
+		if($prefid==0){
+			$q->QUERY_SQL("INSERT INTO userpref (username,preference,value) VALUES ('$xglobal','$key','$value');","artica_backup");
+		}else{
+			$q->QUERY_SQL("UPDATE userpref SET `value`='$value' WHERE prefid='$prefid'","artica_backup");
+		}
+		if(!$q->ok){echo $q->mysql_error;}
+	}
+	
+	public function GET_DOMAIN($domain,$key){
+		$q=new mysql();
+		$xglobal="%$domain";
+		$sql="SELECT value FROM userpref WHERE `username`='$xglobal' AND preference='$key'";
+		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
+		$value=$ligne["value"];
+		if($value==null){return $this->GET_MYSQL($key);}
+		return $value;	
+	
+	}
+
+	public function GET_MYSQL($key){
+		$xglobal="\$GLOBAL";
+		$q=new mysql();
+		if(!$q->TABLE_EXISTS("userpref", "artica_backup")){$q->check_storage_table();}
+		
+		
+		$sql="SELECT `value` FROM userpref WHERE `username`='$xglobal' AND preference='$key'";
+		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
+		$value=$ligne["value"];
+		return $value;	
+		
+	}
+	
+	public function SET_MYSQL($key,$value){
+		$xglobal="\$GLOBAL";
+		$q=new mysql();
+		if(!$q->TABLE_EXISTS("userpref", "artica_backup")){$q->check_storage_table();}
+		
+		
+		$sql="SELECT `prefid` FROM userpref WHERE `username`='$xglobal' AND preference='$key'";
+		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"artica_backup"));
+		$prefid=intval($ligne["prefid"]);
+		if($prefid==0){
+			$q->QUERY_SQL("INSERT INTO userpref (username,preference,value) VALUES ('$xglobal','$key','$value');","artica_backup");
+		}else{
+			$q->QUERY_SQL("UPDATE userpref SET `value`='$value' WHERE prefid='$prefid'","artica_backup");
+		}
+		if(!$q->ok){echo $q->mysql_error;}
+		
+	}
+	
 	
 	function BuildConfig(){
 				$conf=null;
 				$this->buildDefault();
+				$SpamassassinDelegation=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SpamassassinDelegation"));
+				
 		
 				
 				$conf=$conf ."# This is the right place to customize your installation of SpamAssassin.\n";
@@ -199,6 +270,23 @@ function SaveRelayCountry(){
 				$conf=$conf ."# more infos in http://spamassassin.apache.org/full/3.2.x/doc/Mail_SpamAssassin_Conf.html\n";
 				$conf=$conf ."###########################################################################\n";
 				$conf=$conf ."\n";
+				$conf=$conf ."#SpamassassinDelegation:$SpamassassinDelegation\n";
+				
+				if($SpamassassinDelegation==1){
+					$q=new mysql();
+					$conf=$conf ."user_scores_dsn                  DBI:mysql:artica_backup:$q->mysql_server:$q->mysql_port\n";
+					if($q->mysql_password<>null){
+						$conf=$conf ."user_scores_sql_password         $q->mysql_password\n";
+					}
+					$conf=$conf ."user_scores_sql_username         $q->mysql_admin\n";
+					$conf=$conf ."user_scores_sql_custom_query     SELECT preference, value FROM userpref WHERE username = _USERNAME_ OR username = '\$GLOBAL' OR username = CONCAT('%',_DOMAIN_) ORDER BY username ASC\n";
+					$conf=$conf ."\n";
+						
+				}
+				
+				
+				
+				
 				$conf=$conf ."#   Add *****SPAM***** to the Subject header of spam e-mails\n";
 				$conf=$conf ."add_header spam Flag _YESNOCAPS_\n";
 				$conf=$conf ."add_header ham Checker-Version SpamAssassin _VERSION_ (_SUBVERSION_) on _HOSTNAME_\n";
@@ -263,6 +351,7 @@ function SaveRelayCountry(){
 				$conf=$conf ."#   Bayesian classifier auto-learning (default: 1)\n";
 				$conf=$conf ."#\n";
 				$conf=$conf ."bayes_auto_learn {$this->main_array["bayes_auto_learn"]}\n";
+				$conf=$conf ."bayes_learn_to_journal 1\n";
 				$conf=$conf ."# DNS TUNNING\n";
 				
 				if($this->EnableSpamassassinDnsEval==0){
@@ -273,11 +362,7 @@ function SaveRelayCountry(){
 				}
 				
 				$conf=$conf ."\n";
-				$conf=$conf ."\n"; 
-				$conf=$conf ."#Auto white-listing\n";       
-				$conf=$conf ."auto_whitelist_file_mode 0666\n";
-				$conf=$conf ."auto_whitelist_path /etc/spamassassin/auto_whitelist\n";
-				$conf=$conf ."\n";
+
 				
 				
 				$conf=$conf ."\n"; 
@@ -299,6 +384,8 @@ function SaveRelayCountry(){
 				$conf=$conf ."# bayes_ignore_header X-Bogosity\n";
 				$conf=$conf ."# bayes_ignore_header X-Spam-Flag\n";
 				$conf=$conf ."# bayes_ignore_header X-Spam-Status\n";
+				
+
 				$conf=$conf.$this->keywords();
 				$conf=$conf.$this->LargeSubjects();
 				$conf=$conf .$this->MaxRCPT();
@@ -306,7 +393,12 @@ function SaveRelayCountry(){
 				$conf=$conf.$this->report_template();
 				$spamassassin_rules=$this->spamassassin_rules();
 				if($spamassassin_rules<>null){$conf=$conf."\n".$spamassassin_rules;}
-				
+				$conf=$conf ."score USER_IN_WHITELIST -10\n";
+				$conf=$conf ."score LOTS_OF_MONEY 1.0\n";
+				$conf=$conf ."score T_MONEY_PERCENT 1.0\n";
+				$conf=$conf ."header ALWAYS_HIT Subject =~ /.?/\n";
+				$conf=$conf ."describe ALWAYS_HIT A rule that always hits\n";
+				$conf=$conf ."score ALWAYS_HIT 0.00001\n";
 				return $conf;
 		
 		
@@ -348,22 +440,21 @@ private function spamassassin_rules(){
 }
 	
 private function report_template(){
+	$sock=new sockets();
+	$SpamAssassinTemplate=trim($sock->GET_INFO("SpamAssassinTemplate"));
+	if($SpamAssassinTemplate==null){
+		$SpamAssassinTemplate="\nSpam detection software, running on the system (_HOSTNAME_), has\nidentified this incoming email as possible spam.  The original message\nhas been attached to this so you can view it (if it isn't spam) or label\nsimilar future email.  If you have any questions, see\n_CONTACTADDRESS_ for details.\n\nContent preview:  _PREVIEW_\n\nContent analysis details:   (_SCORE_ points, _REQD_ required)\n\npts rule name              description\n ---- ---------------------- -----------------------------------------\n_SUMMARY_";
+	}
+	
+$tt=explode("\n",$SpamAssassinTemplate);	
+	
 $f[]="";	
 $f[]="clear_report_template";
 $f[]="report << begin content Filter report :";
-$f[]="report Spam detection software, running on the system (_HOSTNAME_), has";
-$f[]="report identified this incoming email as possible spam.  The original message";
-$f[]="report has been attached to this so you can view it (if it isn't spam) or label";
-$f[]="report similar future email.  If you have any questions, see";
-$f[]="report _CONTACTADDRESS_ for details.";
-$f[]="report";
-$f[]="report Content preview:  _PREVIEW_";
-$f[]="report";
-$f[]="report Content analysis details:   (_SCORE_ points, _REQD_ required)";
-$f[]="report";
-$f[]="report pts rule name              description";
-$f[]="report  ---- ---------------------- -----------------------------------------";
-$f[]="report _SUMMARY_";
+while (list ($num, $ligne) = each ($tt) ){
+	$f[]="report $ligne";
+	
+}
 $f[]="report end content filter report >>";
 $f[]="";
 return @implode("\n",$f);
@@ -376,7 +467,7 @@ private function MaxRCPT(){
 	
 	$main=new maincf_multi("master","master");
 	$max_rcpt_to=$main->GET("max_rcpt_to");
-	if($max_rcpt_to==0){return array();}
+	if($max_rcpt_to==0){return null;}
 	$sock=new sockets();
 	$ArticaPolicyFilterMaxRCPTInternalDomainsOnly=$sock->GET_INFO("ArticaPolicyFilterMaxRCPTInternalDomainsOnly");
 	$SpamassassinMaxRCPTScore=$sock->GET_INFO("SpamassassinMaxRCPTScore");

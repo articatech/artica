@@ -173,6 +173,7 @@ function TransArray(){
 	$trans["category_associations"]="associations";
 	$trans["category_astrology"]="astrology";
 	$trans["category_audio_video"]="audio-video";
+	$trans["category_youtube"]="youtube";
 	$trans["category_automobile_bikes"]="automobile/bikes";
 	$trans["category_automobile_boats"]="automobile/boats";
 	$trans["category_automobile_carpool"]="automobile/carpool";
@@ -322,14 +323,7 @@ function Clean_table($category_table){
 	$noclean["categoryuris_malware"]=true;
 	echo "Cleaning $category_table\n";
 	$q=new mysql_squid_builder();
-	$sql="DELETE FROM $category_table WHERE LENGTH(pattern)<5";
-	$q->QUERY_SQL($sql);
-	if(!$q->ok){
-		echo "$sql\n$q->mysql_error\n";
-		sendEmail("Error $category_table in line ".__LINE__." $q->mysql_error", "Function:".__FUNCTION__);
-		ufdbguard_admin_events("$q->mysql_error", __FUNCTION__, __FILE__, __LINE__, "cloud");
-		return;
-	}
+	
 
 	if(isset($noclean[$category_table])){return;}
 

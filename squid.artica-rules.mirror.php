@@ -59,7 +59,7 @@ function events_id(){
 
 	
 	echo "<textarea style='margin-top:5px;
-	font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;overflow:auto;font-size:11px' id='textToParseCats-$t'>{$ligne["RunEvents"]}</textarea>";
+	font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;overflow:auto;font-size:11px' id='textToParseCats-$t'>{$ligne["RunEvents"]}</textarea>";
 }
 
 function run_js(){

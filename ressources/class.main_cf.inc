@@ -19,6 +19,8 @@ class sender_dependent_relayhost_maps{
 	var $dn;
 	var $sender_dependent_relayhost_maps_hash=array();
 	var $last_error;
+	
+	
 	function sender_dependent_relayhost_maps(){
 		$this->verifyBranch();
 		$this->loadTable();
@@ -699,8 +701,10 @@ private	function Create_mynetworks_maps_ldap(){
 		include_once(dirname(__FILE__) . '/class.ldap.inc');
 		$ldap=new clladp();
 		$this->Create_mynetworks_maps_ldap();
+		if($GLOBALS["VERBOSE"]){echo "load_mynetworks()<br>\n";}
 		$Nets=$ldap->load_mynetworks();
 		if(!is_array($Nets)){
+			if($GLOBALS["VERBOSE"]){echo "load_mynetworks() Net not an array<br>\n";}
 			$this->build_default_my_networks();
 			$Nets=$ldap->load_mynetworks();
 			}
@@ -1262,7 +1266,7 @@ public	function BuildMilters($asarray=false){
 		$user->LoadModulesEnabled();
 		if($sock->GET_INFO("EnableAmavisInMasterCF")==null){$sock->SET_INFO("EnableAmavisInMasterCF","0");}
 		$KasxFilterEnabled=$sock->GET_INFO("KasxFilterEnabled");
-		$ClamavMilterEnabled=$sock->GET_INFO("ClamavMilterEnabled");
+		$ClamavMilterEnabled=intval($sock->GET_INFO("ClamavMilterEnabled"));
 		$SpamAssMilterEnabled=$sock->GET_INFO("SpamAssMilterEnabled");
 		$EnableDKFilter=$sock->GET_INFO("EnableDKFilter");
 		$EnableDkimMilter=$sock->GET_INFO("EnableDkimMilter");
@@ -1270,8 +1274,13 @@ public	function BuildMilters($asarray=false){
 		$EnablePostfixKLMS=$sock->GET_INFO("EnablePostfixKLMS");
 		$EnableKlms=$sock->GET_INFO("EnableKlms");
 		$RemoteMilterService=trim(strtolower($sock->GET_INFO("RemoteMilterService")));
-		$MimeDefangEnabled=trim($sock->GET_INFO("MimeDefangEnabled",true));	
+		$MimeDefangEnabled=intval($sock->GET_INFO("MimeDefangEnabled"));	
 		$EnableMilterRegex=intval($sock->GET_INFO("EnableMilterRegex"));
+		$MimeDefangClamav=intval($sock->GET_INFO("MimeDefangClamav"));
+		$MimeDefangSpamAssassin=intval($sock->GET_INFO("MimeDefangSpamAssassin"));
+		if($MimeDefangEnabled==0){$MimeDefangSpamAssassin=0;}
+		if($MimeDefangSpamAssassin==1){$SpamAssMilterEnabled=0;}
+		
 		$nosmtpd_milters=array();
 		$smtpd_milters=array();
 		$FORCE_PROTO3=false;
@@ -1279,8 +1288,8 @@ public	function BuildMilters($asarray=false){
 		$artica=new artica_general();
 		$milter_protcol=3;
 		$postfix_version=$user->POSTFIX_VERSION;
-		$MailArchiverEnabled=$sock->GET_INFO("MailArchiverEnabled");
-		if(!is_numeric($MailArchiverEnabled)){$MailArchiverEnabled=0;}
+		$MailArchiverEnabled=0;
+		
 		$milter_connect_macros="j _ {daemon_name} {if_name} {if_addr} {client_name} {client_addr} {client_resolve} {client_ptr}";
 		$milter_helo_macros = "{tls_version} {cipher} {cipher_bits} {cert_subject} {cert_issuer}";
 		$milter_mail_macros = "i {auth_type} {auth_authen} {auth_ssf} {auth_author} {mail_mailer} {mail_host} {mail_addr} {client_addr} {if_addr}";
@@ -1292,6 +1301,8 @@ public	function BuildMilters($asarray=false){
 		if(!is_numeric($EnableKlms)){$EnableKlms=1;}
 		if(!is_numeric($MimeDefangEnabled)){$MimeDefangEnabled=0;}
 		
+		if($MimeDefangEnabled==0){$MimeDefangClamav=0;}
+		if($MimeDefangClamav==1){$ClamavMilterEnabled=0;}
 		
 		$array_final["smtpd_milters"]=null;
 		$array_final["milter_connect_macros"]=$milter_connect_macros;
@@ -1443,7 +1454,7 @@ public	function BuildMilters($asarray=false){
 	//------------------------------------------------------------------------------		
 			if($user->CLAMAV_MILTER_INSTALLED){
 				if($ClamavMilterEnabled==1){
-					$smtpd_milters[]="unix:$user->CLAMAV_MILTER_SOCKET";
+					$smtpd_milters[]="unix:/var/spool/postfix/var/run/clamav/clamav-milter.ctl";
 				}
 			}
 	//------------------------------------------------------------------------------		
@@ -2163,6 +2174,7 @@ class systeminfos{
 	}
 	
 	function ParseIP(){
+		if(!isset($GLOBALS["ARRAY_IP"])){$GLOBALS["ARRAY_IP"]=array();}
 		if(count($GLOBALS["ARRAY_IP"])>0){$this->array_ip=$GLOBALS["ARRAY_IP"];return;}
 		$sock=new sockets();
 		$datas=array();
@@ -2371,6 +2383,7 @@ class systeminfos{
 			
 			
 		}
+		if(!isset($array["IP"])){$array["IP"]=null;}
 		if($array["IP"]==null){$array["IP"]="0.0.0.0";}
 		return $array;
 	
@@ -3297,7 +3310,7 @@ class bounces_templates{
 	
 	
 	function BuildDefaults(){
-		if($this->templates_array["failure_template"]["Charset"]==null){$this->templates_array["failure_template"]["Charset"]="us-ascii";}
+		if($this->templates_array["failure_template"]["Charset"]==null){$this->templates_array["failure_template"]["Charset"]="ISO-8859-1";}
 		if($this->templates_array["failure_template"]["From"]==null){$this->templates_array["failure_template"]["From"]="MAILER-DAEMON (Mail Delivery System)";}
 		if($this->templates_array["failure_template"]["Subject"]==null){$this->templates_array["failure_template"]["Subject"]="Undelivered Mail Returned to Sender";}
 		if($this->templates_array["failure_template"]["Postmaster-Subject"]==null){$this->templates_array["failure_template"]["Postmaster-Subject"]=$this->templates_array["failure_template"]["Subject"];}
@@ -3310,7 +3323,7 @@ class bounces_templates{
 		
 		
 		
-		if($this->templates_array["delay_template"]["Charset"]==null){$this->templates_array["delay_template"]["Charset"]="us-ascii";}
+		if($this->templates_array["delay_template"]["Charset"]==null){$this->templates_array["delay_template"]["Charset"]="ISO-8859-1";}
 		if($this->templates_array["delay_template"]["From"]==null){$this->templates_array["delay_template"]["From"]="MAILER-DAEMON (Mail Delivery System)";}
 		if($this->templates_array["delay_template"]["Subject"]==null){$this->templates_array["delay_template"]["Subject"]="Delayed Mail (still being retried)";}
 		if($this->templates_array["delay_template"]["Postmaster-Subject"]==null){$this->templates_array["delay_template"]["Postmaster-Subject"]=$this->templates_array["failure_template"]["Subject"];}
@@ -3322,7 +3335,7 @@ class bounces_templates{
 		}
 
 		
-		if($this->templates_array["success_template"]["Charset"]==null){$this->templates_array["success_template"]["Charset"]="us-ascii";}
+		if($this->templates_array["success_template"]["Charset"]==null){$this->templates_array["success_template"]["Charset"]="ISO-8859-1";}
 		if($this->templates_array["success_template"]["From"]==null){$this->templates_array["success_template"]["From"]="MAILER-DAEMON (Mail Delivery System)";}
 		if($this->templates_array["success_template"]["Subject"]==null){$this->templates_array["success_template"]["Subject"]="Successful Mail Delivery Report";}
 		if($this->templates_array["success_template"]["Postmaster-Subject"]==null){$this->templates_array["success_template"]["Postmaster-Subject"]=$this->templates_array["failure_template"]["Subject"];}
@@ -3333,7 +3346,7 @@ class bounces_templates{
 			"\nThis is the mail system at host \$myhostname.\n\nYour message was successfully delivered to the destination(s)\nlisted below. If the message was delivered to mailbox you will\nreceive no further notifications. Otherwise you may still receive\nnotifications of mail delivery errors from other systems.\n\n                   The mail system\n;";
 		}
 
-		if($this->templates_array["verify_template"]["Charset"]==null){$this->templates_array["verify_template"]["Charset"]="us-ascii";}
+		if($this->templates_array["verify_template"]["Charset"]==null){$this->templates_array["verify_template"]["Charset"]="ISO-8859-1";}
 		if($this->templates_array["verify_template"]["From"]==null){$this->templates_array["verify_template"]["From"]="MAILER-DAEMON (Mail Delivery System)";}
 		if($this->templates_array["verify_template"]["Subject"]==null){$this->templates_array["verify_template"]["Subject"]="Mail Delivery Status Report";}
 		if($this->templates_array["verify_template"]["Postmaster-Subject"]==null){$this->templates_array["verify_template"]["Postmaster-Subject"]=$this->templates_array["failure_template"]["Subject"];}

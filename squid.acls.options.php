@@ -168,8 +168,9 @@ function popup(){
 		var XHR = new XHRConnection();
 		var UseDynamicGroupsAcls=0;
 		var SquidDebugAcls=0;
+		alert('".__LINE__."');
 		if(document.getElementById('UseDynamicGroupsAcls-$t').checked){UseDynamicGroupsAcls=1;}
-		if(document.getElementById('SquidDebugAcls-$t').checked){SquidDebugAcls=1;}
+		//if(document.getElementById('SquidDebugAcls-$t').checked){SquidDebugAcls=1;}
 		XHR.appendData('UseDynamicGroupsAcls',UseDynamicGroupsAcls);
 		XHR.appendData('SquidDebugAcls',SquidDebugAcls);
 		XHR.appendData('DYN_TTL',document.getElementById('DYN_TTL').value);

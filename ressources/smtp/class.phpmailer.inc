@@ -301,6 +301,7 @@ class PHPMailer {
    * @var string
    */
   public $Version         = '5.1';
+  public $MyFile		  = __FILE__;
 
   /////////////////////////////////////////////////
   // PROPERTIES, PRIVATE AND PROTECTED

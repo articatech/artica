@@ -146,12 +146,6 @@ function popup(){
 		<td width=1%>". help_icon("{WrongMXPlugin}")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:18px'>RBL DNSBL:</td>
-		<td>". Field_checkbox("EnableSpamassassinDnsEval",1,$EnableSpamassassinDnsEval)."</td>
-		<td>&nbsp;</td>
-		<td width=1%>&nbsp;</td>
-	</tr>
-	<tr>
 		<td class=legend style='font-size:18px'>URIDNSBL:</td>
 		<td>". Field_checkbox("EnableSpamassassinURIDNSBL",1,$EnableSpamassassinURIDNSBL)."</td>
 		<td>&nbsp;</td>

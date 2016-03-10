@@ -628,9 +628,7 @@ end;
 
 if ParamStr(1)='--php-ini' then
 begin
-zlighttpd:=Tlighttpd.Create(SYS);
-zlighttpd.LIGHTTPD_ADD_INCLUDE_PATH();
-writeln('Writing php.ini done');
+fpsystem('/usr/bin/php /usr/share/artica-postfix/exec.php.ini.php');
 halt(0);
 end;
 if ParamStr(1)='--squid-version-bin' then
@@ -1742,9 +1740,6 @@ end;
 
 if paramStr(1)='--apache-groupware-php' then
 begin
-xopengoo:=Topengoo.Create(SYS);
-xopengoo.WritePhpConfig();
-writeln('done..');
 halt(0);
 end;
 
@@ -2307,7 +2302,6 @@ end;
 
 if ParamStr(1)='--php-include' then
 begin
-zlighttpd.LIGHTTPD_ADD_INCLUDE_PATH();
 halt(0);
 end;
 

@@ -1,9 +1,15 @@
 $AdminAddress = 'postmaster@localhost';
 $AdminName = "MIMEDefang Administrator's Full Name";
 $DaemonAddress = 'mimedefang@localhost';
+$ClamdSock='/var/run/clamav/clamav.sock';
 $AddWarningsInline = 0;
+$MailArchiverEnabled=0;
+$MimeDefangClamav=0;
+$MimeDefangDisclaimer=0;
+$DebugMimeFilter=1;
 md_graphdefang_log_enable('mail', 1);
 # $MaxMIMEParts = 50;
+# copy_or_link("./INPUTMSG", "./Work/INPUTMSG");
 
 $Stupidity{"NoMultipleInlines"} = 0;
 
@@ -49,7 +55,7 @@ sub filter_bad_filename  {
 #***********************************************************************
 sub filter_begin {
     my($entity) = @_;
-    my $DebugMimeFilter=0;
+    
     # ALWAYS drop messages with suspicious chars in headers
     if ($SuspiciousCharsInHeaders) {
         md_graphdefang_log('suspicious_chars');
@@ -57,36 +63,43 @@ sub filter_begin {
 	# Do NOT allow message to reach recipient(s)
 	return action_discard();
     }
-	if($DebugMimeFilter==1){md_syslog("info", "filter_begin() start");}
-    # Copy original message into work directory as an "mbox" file for
-    # virus-scanning
-    md_copy_orig_msg_to_work_dir_as_mbox_file();
+    $MailArchiverEnabled=int(ReadFileIntoString("/etc/artica-postfix/settings/Daemons/MimeDefangArchiver"));
+    $MimeDefangClamav=int(ReadFileIntoString("/etc/artica-postfix/settings/Daemons/MimeDefangClamav"));
+    $MimeDefangDisclaimer=int(ReadFileIntoString("/etc/artica-postfix/settings/Daemons/MimeDefangDisclaimer"));
 
-    # Scan for viruses if any virus-scanners are installed
-    my($code, $category, $action) = message_contains_virus();
+    md_syslog("info", "filter_begin() start DebugMimeFilter = $DebugMimeFilter, MailArchiverEnabled=$MailArchiverEnabled, MimeDefangClamav=$MimeDefangClamav, MimeDefangDisclaimer=$MimeDefangDisclaimer");
 
-    # Lower level of paranoia - only looks for actual viruses
-    $FoundVirus = ($category eq "virus");
+    if($MimeDefangClamav==1){
+	    # Copy original message into work directory as an "mbox" file for
+	    # virus-scanning
+	    md_copy_orig_msg_to_work_dir_as_mbox_file();
 
-    # Higher level of paranoia - takes care of "suspicious" objects
-    # $FoundVirus = ($action eq "quarantine");
+	    # Scan for viruses if any virus-scanners are installed
+	    my($code, $category, $action) = message_contains_virus();
 
-    if ($FoundVirus) {
-	md_graphdefang_log('virus', $VirusName, $RelayAddr);
-	md_syslog('warning', "Discarding because of virus $VirusName");
-	return action_discard();
-    }
+	    # Lower level of paranoia - only looks for actual viruses
+	    $FoundVirus = ($category eq "virus");
 
-    if ($action eq "tempfail") {
-	action_tempfail("Problem running virus-scanner");
-	md_syslog('warning', "Problem running virus scanner: code=$code, category=$category, action=$action");
-    }
+	    # Higher level of paranoia - takes care of "suspicious" objects
+	    # $FoundVirus = ($action eq "quarantine");
+
+	    if ($FoundVirus) {
+		md_graphdefang_log('virus', $VirusName, $RelayAddr);
+		md_syslog('warning', "Discarding because of virus $VirusName");
+		return action_discard();
+	    }
+
+	    if ($action eq "tempfail") {
+	 	# action_tempfail("Problem running virus-scanner");
+		md_syslog('warning', "Problem running virus scanner: code=$code, category=$category, action=$action");
+	    }
+      }
 }
 
 
 #***********************************************************************
 sub filter {
-    my $DebugMimeFilter=1;
+    
     my($entity, $fname, $ext, $type) = @_;
 	my $MimeDefangFileHostingSubjectPrepend;
 	my $MimeDefangFileHostingText;
@@ -96,7 +109,7 @@ sub filter {
     return if message_rejected(); # Avoid unnecessary work
     
 
-	if($DebugMimeFilter==1){md_syslog("info", "filter_bad_filename(entity) ?");}
+    if($DebugMimeFilter==1){md_syslog("info", "filter_bad_filename(entity) ?");}
     if (filter_bad_filename($entity)) {
         md_graphdefang_log('bad_filename', $fname, $type);
 		return action_drop_with_warning("An attachment named $fname was removed from this document as it\nconstituted a security hazard.  If you require this document, please contact\nthe sender and arrange an alternate means of receiving it.\n");
@@ -134,7 +147,7 @@ sub is_filehosting_rule(){
 	my $EnableFileHosting=0;
 	my $recipt;
 	my $recipt_domain;
-	my $DebugMimeFilter=1;
+	
 	if($DebugMimeFilter==1){
 		md_syslog("info", "is_filehosting_rule() Checks localdomain for \"$sender_domain\" =>".$hashLocalDomains{ $sender_domain });
 		
@@ -213,7 +226,7 @@ sub is_compress_rule(){
 	my $currentSender=canonicalize_email($Sender);
 	my $recipt;
 	my $recipt_domain;
-	my $DebugMimeFilter=1;
+	
 	if($DebugMimeFilter==1){md_syslog("info", "is_compress_rule() Checks localdomain for \"$sender_domain\" =>".$hashLocalDomains{ $sender_domain });}
 	
 	my $firstpattern="**";
@@ -274,7 +287,7 @@ sub is_compress_rule(){
 #***********************************************************************
 sub filter_filehosting(){
 	my($entity, $fname, $ext, $type) = @_;
-	my $DebugMimeFilter=1;
+	
 	my $EnableFileHosting=1;
 	my $MaxFileSize=0;
 	if($DebugMimeFilter==1){md_syslog("info", "filter_filehosting()  Enabled ? = $EnableFileHosting");}
@@ -314,7 +327,7 @@ sub filter_filehosting(){
 #***********************************************************************
 sub filter_autocompress(){
 	my($entity, $fname, $ext, $type) = @_;
-	my $DebugMimeFilter=1;
+	
 	my $EnableCompression=1;
 	my($comp_exts, $re);
 	my $MaxCompress=0;
@@ -411,81 +424,124 @@ sub get_domain ($) {
 #***********************************************************************
 sub DB_CONNECT() {
 	use DBI;
-	my $dsn = 'DBI:mysql:defang:localhost';
-	my $db_user_name = 'defang';
-	my $db_password = 'dbpassword';
+	my $dsn = ReadFileIntoString("/etc/artica-postfix/settings/Daemons/MySQLPerlDSN");
+	my $db_user_name = ReadFileIntoString("/etc/artica-postfix/settings/Daemons/MySQLPerlUsername");
+	my $db_password = ReadFileIntoString("/etc/artica-postfix/settings/Daemons/MySQLPerlPassword");
 	my $dbh = DBI->connect($dsn, $db_user_name, $db_password);
+	if(!$dbh){
+		my $error = $dbh->{'mysql_error'};
+		md_syslog("info", "MySQL error: $error on DSN $dsn");
+		return false;
+	}
 	return $dbh;
 }
 #***********************************************************************
-
-sub is_disclaimer(){
-
-	my $sender_domain=get_domain($Sender);
-	my %hashLocalDomains = ();
-	my %hashDisclaimers= ();
-	my $currentSender=canonicalize_email($Sender);
-	my $recipt;
-	my $recipt_domain;
-	my $DebugMimeFilter=1;
-	if($DebugMimeFilter==1){md_syslog("info", "is_disclaimer() Checks localdomain for \"$sender_domain\" =>".$hashLocalDomains{ $sender_domain });}
-	
-	if(!$hashLocalDomains{ $sender_domain }){
-		if($DebugMimeFilter==1){md_syslog("debug", "is_disclaimer() \"$sender_domain\" is a foreign domain...");}
+# %PROCEDURE: CopyMessage
+# %ARGUMENTS:
+#  src -- source filename
+#  dest -- destination filename
+# %RETURNS:
+#  1 on success; 0 on failure.
+# %DESCRIPTION:
+#  Copies a file: reads the file and copies the data.
+#***********************************************************************
+sub CopyMessage {
+	my($src, $dst) = @_;
+ 	open(IN, "<$src") or return 0;
+ 	if (!open(OUT, ">$dst")) {
+		close(IN);
 		return 0;
 	}
-	
-	my $firstpattern="**";
-	if($hashCompressesRules{ $firstpattern }){
-		if($DebugMimeFilter==1){md_syslog("info", "is_disclaimer() OK to create disclaimer  \"$sender_domain\" => everyone");}
-		return $hashDisclaimers{ $firstpattern };
-	}		
-	
-	foreach (@Recipients) {
+	my($n, $string);
+	while (($n = read(IN, $string, 4096)) > 0) {
+		print OUT $string;
+	}
+	close(IN);
+	close(OUT);
+	return 1;
+}
+#***********************************************************************
+
+
+sub is_backup(){
+   my $currentSender=canonicalize_email($Sender);
+   my $sender_domain=get_domain($Sender);
+   my $dbh=DB_CONNECT();
+   my $ref;
+   if(!$dbh){return false;}
+
+   foreach (@Recipients) {
         $recipt=canonicalize_email($_);
         $recipt_domain=get_domain($_);
-        
-        $firstpattern="$currentSender$recipt";
-        if($hashDisclaimers{ $firstpattern }){
-        	if($DebugMimeFilter==1){md_syslog("info", "is_disclaimer() OK to create disclaimer  \"$currentSender\" => \"$recipt\"");}
-       	 	return $hashDisclaimers{ $firstpattern };
-        }
-             
-        
-       $firstpattern="$currentSender$recipt_domain";
-	   if($hashDisclaimers{ $firstpattern }){
-        	if($DebugMimeFilter==1){md_syslog("info", "is_disclaimer() OK to create disclaimer  \"$currentSender\" => \"$recipt_domain\"");}
-       	 	return $hashDisclaimers{ $firstpattern };
-        }
-        
-       $firstpattern="$sender_domain$recipt";
-	   if($hashDisclaimers{ $firstpattern }){
-        	if($DebugMimeFilter==1){md_syslog("info", "is_disclaimer() OK to create disclaimer  \"$sender_domain\" => \"$recipt\"");}
-       	 	return $hashDisclaimers{ $firstpattern };
-        } 
-        
-       $firstpattern="$sender_domain$recipt_domain";
-	   if($hashDisclaimers{ $firstpattern }){
-        	if($DebugMimeFilter==1){md_syslog("info", "is_disclaimer() OK to create disclaimer  \"$sender_domain\" => \"$recipt_domain\"");}
-       	 	return $hashDisclaimers{ $firstpattern };
-        }                    
-               
-        
-    }
-    
-    my $firstpattern="$currentSender*";
-	if($hashDisclaimers{ $firstpattern }){
-		if($DebugMimeFilter==1){md_syslog("info", "is_disclaimer() OK to create disclaimer  \"$currentSender\" => everyone");}
-		return $hashDisclaimers{ $firstpattern };
-	}
-	
-	
-	my $firstpattern="$sender_domain*";
-	if($hashDisclaimers{ $firstpattern }){
-		if($DebugMimeFilter==1){md_syslog("info", "is_disclaimer() OK to create disclaimer  \"$sender_domain\" => everyone");}
-		return $hashDisclaimers{ $firstpattern };
-	}
-	
+
+   	$sth = $dbh->prepare("SELECT ID FROM mimedefang_backup WHERE sender = '*'  AND recipient='*'");
+   	$sth->execute();
+  	while( $ref = $sth->fetchrow_hashref) { my $ID=$ref->{ID}; if($ID>0){return 2;} } 
+
+  	$sth = $dbh->prepare("SELECT ID FROM mimedefang_backup WHERE sender = '*'  AND recipient='$recipt_domain'");
+   	$sth->execute();
+  	while( $ref = $sth->fetchrow_hashref){ my $ID=$ref->{ID}; if($ID>0){return 2;} }
+
+  	$sth = $dbh->prepare("SELECT ID FROM mimedefang_backup WHERE sender = '$sender_domain'  AND recipient='*'");
+   	$sth->execute();
+  	while( $ref = $sth->fetchrow_hashref){ my $ID=$ref->{ID}; if($ID>0){return 2;} }
+
+  	$sth = $dbh->prepare("SELECT ID FROM mimedefang_backup WHERE sender = '$currentSender'  AND recipient='$recipt_domain'");
+   	$sth->execute();
+  	while( $ref = $sth->fetchrow_hashref){ my $ID=$ref->{ID}; if($ID>0){return 2;} } 
+
+  	$sth = $dbh->prepare("SELECT ID FROM mimedefang_backup WHERE sender = '$currentSender'  AND recipient='*'");
+   	$sth->execute();
+  	while( $ref = $sth->fetchrow_hashref){ my $ID=$ref->{ID}; if($ID>0){return 2;} } 
+
+
+  }
+
+  return false;
+
+}
+
+
+sub is_disclaimer(){
+   if($DebugMimeFilter==1){md_syslog("info", "is_disclaimer() MimeDefangDisclaimer == $MimeDefangDisclaimer");}
+
+   if($MimeDefangDisclaimer==0){
+	if($DebugMimeFilter==1){md_syslog("info", "is_disclaimer() MimeDefangDisclaimer == 0 -> SKIP");}
+	return false;
+}
+   my $currentSender=canonicalize_email($Sender);
+   my $sender_domain=get_domain($Sender);
+   my $dbh=DB_CONNECT();
+   my $ref;
+   if(!$dbh){return false;}
+
+   foreach (@Recipients) {
+        $recipt=canonicalize_email($_);
+        $recipt_domain=get_domain($_);
+
+   	$sth = $dbh->prepare("SELECT zmd5,textcontent,htmlcontent FROM mimedefang_disclaimer WHERE mailfrom = '*'  AND mailto='*'");
+   	$sth->execute();
+  	while( $ref = $sth->fetchrow_hashref) { my $ID=$ref->{zmd5}; if( length($ID)>0 ){return ($ID,$ref->{textcontent},$ref->{htmlcontent});} } 
+
+  	$sth = $dbh->prepare("SELECT zmd5,textcontent,htmlcontent FROM mimedefang_disclaimer WHERE mailfrom = '*'  AND mailto='$recipt_domain'");
+   	$sth->execute();
+  	while( $ref = $sth->fetchrow_hashref){ my $ID=$ref->{zmd5}; if( length($ID)>0 ){return ($ID,$ref->{textcontent},$ref->{htmlcontent});} }
+
+  	$sth = $dbh->prepare("SELECT zmd5,textcontent,htmlcontent FROM mimedefang_disclaimer WHERE mailfrom = '$sender_domain'  AND mailto='*'");
+   	$sth->execute();
+  	while( $ref = $sth->fetchrow_hashref){ my $ID=$ref->{zmd5}; if( length($ID)>0 ){return ($ID,$ref->{textcontent},$ref->{htmlcontent});} }
+
+  	$sth = $dbh->prepare("SELECT zmd5,textcontent,htmlcontent FROM mimedefang_disclaimer WHERE mailfrom = '$currentSender'  AND mailto='$recipt_domain'");
+   	$sth->execute();
+  	while( $ref = $sth->fetchrow_hashref){ my $ID=$ref->{zmd5}; if( length($ID)>0 ){return ($ID,$ref->{textcontent},$ref->{htmlcontent});} } 
+
+  	$sth = $dbh->prepare("SELECT zmd5,textcontent,htmlcontent FROM mimedefang_disclaimer WHERE mailfrom = '$currentSender'  AND mailto='*'");
+   	$sth->execute();
+  	while( $ref = $sth->fetchrow_hashref){ my $ID=$ref->{zmd5}; if( length($ID)>0 ){return ($ID,$ref->{textcontent},$ref->{htmlcontent});} } 
+
+
+  }
+
 	if($DebugMimeFilter==1){md_syslog("info", "is_disclaimer() No rule match");}
 	return 0;
 
@@ -495,6 +551,9 @@ sub is_disclaimer(){
 #  You cannot replace the body (because multipart parts have no body),
 #  but you should check for bad filenames.
 #***********************************************************************
+
+
+
 sub filter_multipart {
 	md_graphdefang_log('filter_multipart');
     my($entity, $fname, $ext, $type) = @_;
@@ -519,7 +578,7 @@ sub filter_multipart {
 
 #***********************************************************************\n";
 sub filter_recipient($$$$$$$$$) {
-	my $DebugMimeFilter=1;
+	
 	my $results;
 	my ($recipient, $sender, $ip, $hostname, $first, $helo,$rcpt_mailer, $rcpt_host, $rcpt_addr) = @_;
 	#if($DebugMimeFilter==1){md_syslog("info", "from=$sender $hostname [$ip] $first $rcpt_mailer $rcpt_host to $recipient ($rcpt_addr)");}
@@ -557,7 +616,8 @@ sub filter_end {
     my($entity) = @_;
    # my $head = $entity->head;
     my $DisclaimerMd5Head;
-    my $DebugMimeFilter=1;
+    
+    my $recipt='';
 
     # If you want quarantine reports, uncomment next line
     # send_quarantine_notifications();
@@ -625,19 +685,50 @@ sub filter_end {
     # $DisclaimerMd5Head=$head->get("X-$DisclaimerMd5");
     
     # --------------------- Check and add disclaimer ------------- START
-	$DisclaimerMd5=is_disclaimer();
+	my ($DisclaimerMd5,$textcontent,$htmlcontent)=is_disclaimer();
+	if($DebugMimeFilter==1){md_syslog("info", "is_disclaimer() return $DisclaimerMd5");}
 	if(length($DisclaimerMd5)>5){
-		if(length($DisclaimerMd5Head)==0){
-			$disclength=ReadFileIntoString("/var/spool/MD-disclaimers/$DisclaimerMd5.txt");
-			if($DebugMimeFilter==1){md_syslog("debug", "/var/spool/MD-disclaimers/$DisclaimerMd5.txt ".length($disclength)." bytes");}
-			if(length($disclength)>0){append_text_boilerplate($entity, $disclength, 0);}
-			$disclength=ReadFileIntoString("/var/spool/MD-disclaimers/$DisclaimerMd5.html");
-			if($DebugMimeFilter==1){md_syslog("info", "/var/spool/MD-disclaimers/$DisclaimerMd5.html ".length($disclength)." bytes");}
-			if(length($disclength)>0){append_html_boilerplate($entity, $disclength, 0);}
+		if($DebugMimeFilter==1){md_syslog("debug", "TEXT ".length($textcontent)." bytes");}
+		if(length($textcontent)>0){append_text_boilerplate($entity, $textcontent, 0);}
+		if($DebugMimeFilter==1){md_syslog("info", "HTML ".length($htmlcontent)." bytes");}
+		if(length($htmlcontent)>0){append_html_boilerplate($entity, $htmlcontent, 0);}
 		}	
 	}
 	 # --------------------- Check and add disclaimer ------------- END
-	 
+
+	foreach (@Recipients) {
+	 $recipt=$recipt.";".canonicalize_email($_);
+	}
+
+
+	
+
+	my $isBackup=is_backup();
+	if($DebugMimeFilter==1){md_syslog("info", "isBackup == $isBackup");}
+	if( is_backup() ==2 ){
+		   if ( -e "./INPUTMSG" ) {
+			my $totalsize = -s "./INPUTMSG";
+			my $headersize = 0;
+			my $ctx = Digest::SHA1->new;
+			open(FILE, "<./INPUTMSG") && do {
+			    binmode(FILE);
+			    while (<FILE>) {
+				$ctx->add($_);
+				$headersize += length;
+				last if ( /^$/ );
+			    }
+			    $header_hash = $ctx->b64digest;
+			    $ctx->addfile(*FILE);
+			    $body_hash = $ctx->b64digest;
+			    $body_length = $totalsize - $headersize;
+			    close(FILE);
+			}
+		    }
+	        $FinalLog="$Subject|||$Sender|||$recipt|||$body_hash|||$body_length";
+		WriteToFile("/var/spool/MIMEDefang/BACKUP/$body_hash.email",FinalLog);
+		CopyMessage("./INPUTMSG","/var/spool/MIMEDefang/BACKUP/$body_hash.msg");
+		if($DebugMimeFilter==1){md_syslog("info", "Backup Message $body_hash, $recipt length $body_length");}
+	}
 	 
 	 
     # action_rebuild();
@@ -655,6 +746,17 @@ sub ReadFileIntoString{
 	return $results;
 }
 #***********************************************************************
+sub WriteToFile{
+	 my($fname,$data) = @_;
+	if(open(DAT, ">$fname")){
+	 print DAT $data;
+	 close DAT;
+	}else{
+		md_syslog("info", "$fname unable to write, permission denied");
+	}
+}
+#***********************************************************************
+
 $overlongheader = 0;
 sub check_header_length {
 	my ($h,$s) = @_;
@@ -668,7 +770,7 @@ sub check_header_length {
 }
 #***********************************************************************
 sub load_modules{
-	my $DebugMimeFilter=1;
+	
 	foreach my $mn (@_) {
 		my $mnk = $mn;
 		$mnk =~ s/^\s+//;

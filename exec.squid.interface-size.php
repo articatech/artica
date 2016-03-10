@@ -1,6 +1,6 @@
 <?php
 if(is_file("/usr/bin/cgclassify")){if(is_dir("/cgroups/blkio/php")){shell_exec("/usr/bin/cgclassify -g cpu,cpuset,blkio:php ".getmypid());}}
-$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 if($EnableIntelCeleron==1){die("EnableIntelCeleron==1\n");}
 $GLOBALS["BYPASS"]=true;
 $GLOBALS["DEBUG_INFLUX_VERBOSE"]=true;
@@ -106,9 +106,8 @@ function MAX_MIN(){
 	$q=new influx();
 	$sock=new sockets();
 	
-	$InFluxBackupDatabaseDir=$sock->GET_INFO("InFluxBackupDatabaseDir");
-	if($InFluxBackupDatabaseDir==null){$InFluxBackupDatabaseDir="/home/artica/influx/backup";}
-	
+	if(!function_exists("pg_fetch_assoc")){return;}
+
 	
 	$timefile=$unix->file_time_min("{$GLOBALS["BASEDIR"]}/DATE_START");
 	if($timefile<1440){
@@ -116,31 +115,85 @@ function MAX_MIN(){
 		return;
 	}
 	
-	
-	$main=$q->QUERY_SQL("SELECT ZDATE FROM access_log LIMIT 5");
-	
-	foreach ($main as $row) {
-		
-		$ZDATE=$main->ZDATE;
-		if(date("Y",$ZDATE)==date("Y")){
-			$date_end=$ZDATE;
-			break;
-		}
-	}
+	$q=new postgres_sql();
+	$ligne=pg_fetch_assoc($q->QUERY_SQL("SELECT MAX(zDate) as MAX, MIN(zDate) as MIN from access_log"));
 	
 	
-	if($GLOBALS["VERBOSE"]){echo "* * *\n";}
-	$today=date("Y-m-d");
-	$data=$q->QUERY_SQL("SELECT MAX(ZDATE) as MAX FROM access_log WHERE time >'$today'");
-	$date_end=$data[0]->MAX;
+	events("Time: Minimal: {$ligne["min"]} Maximal: {$ligne["max"]}");
 	
-	$date_start=$data[0]->MIN;
-	if($GLOBALS["VERBOSE"]){echo "* * *\n";}
+	$date_start=strtotime($ligne["min"]);
+	$date_end=strtotime($ligne["max"]);
 	
+	
+    if($GLOBALS["VERBOSE"]){echo "* * *\n";}
 	if($GLOBALS["VERBOSE"]){echo "* * * START FROM {$date_start} ". date("Y-m-d H:i:s",$date_start)."\n";}
 	if($GLOBALS["VERBOSE"]){echo "* * * END TO {$date_end} ". date("Y-m-d H:i:s",$date_end)."\n";}
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/DATE_START",$date_start);
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/DATE_END",$date_end);
+}
+
+function NOT_CATEGORIZED(){
+	
+	$q=new postgres_sql();
+	$ligne=pg_fetch_assoc($q->QUERY_SQL("SELECT COUNT(familysite) as tcount FROM not_categorized"));
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/NOT_CATEGORIZED",$ligne["tcount"]);
+	
+}
+
+function MAX_FILE_CACHE(){
+	
+	
+	
+}
+
+function APACHE_STATISTICS(){
+	
+	$q=new mysql_squid_builder();
+	$sql="SELECT SUM(SIZE) AS SIZE, SUM(RQS) as RQS FROM dashboard_apache_sizes";
+	$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
+	$SIZE=intval($ligne["SIZE"]);
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/APACHEDSIZE", $ligne["SIZE"]);
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/APACHEDRQS", $ligne["RQS"]);
+	
+	
+	
+	$sql="SELECT COUNT(*) as tcount FROM reverse_www WHERE enabled=1";
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/REVERSE_COUNT", $ligne["tcount"]);
+	if($SIZE>0){
+		
+		$sql="SELECT SUM(SIZE) as SIZE,TIME FROM dashboard_apache_sizes GROUP BY TIME ORDER BY TIME";
+		$results=$q->QUERY_SQL($sql);
+		
+		events("$sql -> ".mysql_num_rows($results)." items");
+		if(!$q->ok){events($q->mysql_error);}
+		
+		
+		while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
+			$SIZEA=$ligne["SIZE"];
+			$SIZEA=$SIZEA/1024;
+			$SIZEA=round($SIZEA/1024,2);
+			$xdata[]=$ligne["TIME"];
+			$ydata[]=$SIZEA;
+			
+			
+		}
+		
+		$MAIN["xdata"]=$xdata;
+		$MAIN["ydata"]=$ydata;
+		@file_put_contents("{$GLOBALS["BASEDIR"]}/NGINX_FLUX_HOUR", serialize($MAIN));
+		if(count($xdata)<2){@unlink("{$GLOBALS["BASEDIR"]}/NGINX_FLUX_HOUR");}
+		
+	}
+	
+	$dateint=InfluxQueryFromUTC(strtotime("-48 hours"));
+	$date=date("Y-m-d H:00:00",$dateint);
+	$qSimple=new mysql();
+	$sql="SELECT COUNT(ID) as tcount FROM apache_admin_mysql WHERE severity=0 AND zDate>'$date'";
+	$ligne=mysql_fetch_array($qSimple->QUERY_SQL($sql,"artica_events"));
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/APACHE_WATCHDOG_COUNT_EVENTS", $ligne["tcount"]);
+	@chmod("{$GLOBALS["BASEDIR"]}/APACHE_WATCHDOG_COUNT_EVENTS", 0777);
+	
+	
 }
 
 function backup_size(){
@@ -159,7 +212,38 @@ function backup_size(){
 	
 }
 
-
+function FLUX_HOUR_POSTGRES(){
+	
+	
+	$now=date("Y-m-d H:i:s",strtotime("-24 hour"));
+	$q=new postgres_sql();
+	$TimeGroup="date_trunc('hour', zdate) as zdate";
+	$sql="SELECT SUM(size) as SIZE,$TimeGroup FROM access_log WHERE zdate>='$now' GROUP BY zdate ORDER BY zdate ASC";
+	echo "FLUX_HOUR:: POSTGRES: ******************\n $sql\n **********************\n";
+	$results=$q->QUERY_SQL($sql);
+	
+	events("$sql -> ".pg_num_rows($results)." items");
+	if(!$q->ok){events($q->mysql_error);}
+	
+	
+	while($ligne=@pg_fetch_assoc($results)){
+			$size=intval($ligne["size"])/1024;
+			$size=$size/1024;
+			$time=strtotime($ligne["zdate"]);
+			$min=date("l H:i:00",$time);
+			echo "FLUX_HOUR: $min = $size\n";
+			$xdata[]=$min;
+			$ydata[]=$size;
+	}
+	
+	build_progress("{refresh_dashboard_values} FLUX HOUR ".count($xdata)." items",16);
+	$MAIN["xdata"]=$xdata;
+	$MAIN["ydata"]=$ydata;
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/FLUX_HOUR", serialize($MAIN));
+	if(count($xdata)<2){@unlink("{$GLOBALS["BASEDIR"]}/FLUX_HOUR");}
+	
+	
+}
 
 function FLUX_HOUR($astimeout=false){
 	$TimeFile="/etc/artica-postfix/pids/exec.squid.interface-size.php.FLUX_HOUR.time";
@@ -183,7 +267,7 @@ function FLUX_HOUR($astimeout=false){
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/UPTIME",$UPTIME);
 	CACHES_AVG();
 	
-	$now=InfluxQueryFromUTC(strtotime("-24 hour"));
+	$now=strtotime("-24 hour");
 	$MAIN=array();
 	$xdata=array();
 	$ydata=array();
@@ -193,19 +277,29 @@ function FLUX_HOUR($astimeout=false){
 	$influx=new influx();
 	$sock=new sockets();
 	
-	$q=new mysql_squid_builder();
+	echo "# # # # # # # # # # # # # # # # # # # # #\n";
+	echo "# # # # # # # # FLUX_HOUR # # # # # # # #\n";
+	echo "# # # # # # # # # # # # # # # # # # # # #\n";
 	
-	if(!$q->TABLE_EXISTS("dashboard_size_day")){events("Table: dashboard_size_day not ready");}
-	if(!$q->TABLE_EXISTS("dashboard_countwebsite_day")){events("Table: dashboard_countwebsite_day not ready");}
-	if(!$q->TABLE_EXISTS("dashboard_user_day")){events("Table: dashboard_user_day not ready");}
-	if(!$q->TABLE_EXISTS("dashboard_blocked_day")){events("Table: dashboard_blocked_day not ready");}
+	
+	$q=new mysql_squid_builder();
+	$q2=new postgres_sql();
+	if(!$q->TABLE_EXISTS("dashboard_size_day")){
+		if($q2->TABLE_EXISTS("access_log")){
+			FLUX_HOUR_POSTGRES();
+			return;
+			
+		}
+		
+		return;
+	}
 	
 	
 	
 	if($q->TABLE_EXISTS("dashboard_size_day")){
 		build_progress("{refresh_dashboard_values} FLUX HOUR",16);
 		$sql="SELECT SUM(SIZE) as SIZE,TIME FROM dashboard_size_day GROUP BY TIME ORDER BY TIME ASC";
-		echo "FLUX_HOUR:: ****************** $sql **********************\n";
+		echo "FLUX_HOUR:: MySQL ****************** $sql **********************\n";
 		$results=$q->QUERY_SQL($sql);
 		
 		events("$sql -> ".mysql_num_rows($results)." items");
@@ -225,8 +319,12 @@ function FLUX_HOUR($astimeout=false){
 		build_progress("{refresh_dashboard_values} FLUX HOUR ".count($xdata)." items",16);
 		$MAIN["xdata"]=$xdata;
 		$MAIN["ydata"]=$ydata;
+		
+		
+		echo "# # # FLUX_HOUR:: ".count($xdata)." ITEMS # # #\n";
+		
 		@file_put_contents("{$GLOBALS["BASEDIR"]}/FLUX_HOUR", serialize($MAIN));
-		if(count($xdata)<2){@unlink("{$GLOBALS["BASEDIR"]}/FLUX_HOUR");}
+		if(count($xdata)<2){@unlink("{$GLOBALS["BASEDIR"]}/FLUX_HOUR");FLUX_HOUR_POSTGRES();}
 	}
 	
 	
@@ -253,14 +351,7 @@ function FLUX_HOUR($astimeout=false){
 			@file_put_contents("{$GLOBALS["BASEDIR"]}/TOP_USER", serialize(array($ligne["SIZE"],$ligne["USER"])));
 		
 		}
-		
-		
-		
-		
 	}	
-	
-	
-	
 	// -----------------------------------------------------------------------------------------------------
 	if($q->TABLE_EXISTS("dashboard_blocked_day")){	
 		build_progress("{refresh_dashboard_values} TOP_BLOCKED",16);
@@ -291,9 +382,11 @@ function FLUX_HOUR($astimeout=false){
 	if($q->TABLE_EXISTS("dashboard_countuser_day")){
 		build_progress("{refresh_dashboard_values}",50);
 		$sql="SELECT COUNT(USER) AS TCOUNT,TIME FROM dashboard_user_day GROUP BY TIME ORDER BY TIME ASC";
-		echo "FLUX_RQS:: ****************** $sql **********************\n";
+		echo "MEMBERS_GRAPH:: ****************** $sql **********************\n";
 		$results=$q->QUERY_SQL($sql);
-		events("$sql -> ".mysql_num_rows($results)." items");
+		$CountDedashboard_countuser_day=mysql_num_rows($results);
+		events("$sql -> $CountDedashboard_countuser_day items");
+		
 		if(!$q->ok){events($q->mysql_error);}
 		while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
 				
@@ -305,12 +398,41 @@ function FLUX_HOUR($astimeout=false){
 		$MAIN["ydata"]=$ydata;
 		if(count($ydata)>1){@file_put_contents("{$GLOBALS["BASEDIR"]}/MEMBERS_GRAPH", serialize($MAIN));}
 	}
-	build_progress("{done} FLUX HOUR",100);
+	build_progress("{done} FLUX MEMBERS_GRAPH",100);
 	// -----------------------------------------------------------------------------------------------------
 }
 
+function FLUX_RQS_POSTGRES(){
+	$now=date("Y-m-d H:i:s",strtotime("-24 hour"));
+	$q=new postgres_sql();
+	
+	$TimeGroup="date_trunc('hour', zdate) as zdate";
+	$sql="SELECT SUM(RQS) as RQS,$TimeGroup FROM access_log 
+	WHERE zdate>='$now' GROUP BY zdate ORDER BY zdate ASC";
+	
+	
+	
+	echo "FLUX_RQS_POSTGRES:: POSTGRES: ******************\n $sql\n **********************\n";
+	$results=$q->QUERY_SQL($sql);
+	
+	events("$sql -> ".pg_num_rows($results)." items");
+	if(!$q->ok){events($q->mysql_error);}
+	while($ligne=@pg_fetch_assoc($results)){
+		$min=date("l H:i",strtotime($ligne["zdate"]));
+		echo "FLUX_RQS: $min = {$ligne["rqs"]}\n";
+		$xdata[]=$min;
+		$ydata[]=$ligne["rqs"];
+	}
+	$MAIN["xdata"]=$xdata;
+	$MAIN["ydata"]=$ydata;
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/FLUX_RQS", serialize($MAIN));
+	if(count($xdata)<2){@unlink("{$GLOBALS["BASEDIR"]}/FLUX_RQS");}
+	
+	
+}
+
 function FLUX_RQS(){
-	$now=InfluxQueryFromUTC(strtotime("-24 hour"));
+	
 	$MAIN=array();
 	$xdata=array();
 	$ydata=array();
@@ -320,7 +442,7 @@ function FLUX_RQS(){
 	$q=new mysql_squid_builder();
 	if(!$q->TABLE_EXISTS("dashboard_size_day")){DUMP_HOUR();return;}
 	$sql="SELECT SUM(RQS) as RQS,TIME FROM dashboard_size_day GROUP BY TIME ORDER BY TIME ASC";
-	echo "FLUX_RQS:: ****************** $sql **********************\n";
+	echo "FLUX_RQS:: dashboard_size_day ****************** $sql **********************\n";
 	$results=$q->QUERY_SQL($sql);
 	events("$sql -> ".mysql_num_rows($results)." items");
 	if(!$q->ok){events($q->mysql_error);}
@@ -334,19 +456,32 @@ function FLUX_RQS(){
 	$MAIN["xdata"]=$xdata;
 	$MAIN["ydata"]=$ydata;
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/FLUX_RQS", serialize($MAIN));
-	if(count($xdata)<2){@unlink("{$GLOBALS["BASEDIR"]}/FLUX_RQS");}
+	if(count($xdata)<2){@unlink("{$GLOBALS["BASEDIR"]}/FLUX_RQS");FLUX_RQS_POSTGRES();}
 	// -----------------------------------------------------------------------------------------------------
 	DUMP_HOUR();
 	
 }
+
+function DUMP_HOUR_PROGRESS($text,$pourc){
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/DUMP_HOUR_PROGRESS";
+	echo "{$pourc}% $text\n";
+	$cachefile=$GLOBALS["CACHEFILE"];
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	@file_put_contents($cachefile, serialize($array));
+	@chmod($cachefile,0755);
+	}
 
 function DUMP_HOUR(){
 	
 	$TimeFile="/etc/artica-postfix/pids/exec.squid.interface-size.php.DUMP_HOUR.time";
 	$unix=new unix();
 	$xtime=$unix->file_time_min($TimeFile);
-	if($xtime<59){events("Aborting current {$xtime}mn, require 1h minimal");return;}
-	
+	if(!$GLOBALS["FORCE"]){
+		if(!$GLOBALS["VERBOSE"]){
+			if($xtime<119){events("Aborting current {$xtime}mn, require 2h minimal");return;}
+		}
+	}
 	@unlink($TimeFile);
 	@file_put_contents($TimeFile, time());
 	
@@ -372,7 +507,12 @@ function DUMP_HOUR(){
 		
 			) ENGINE=MYISAM;");
 	
-	if(!$q->ok){events("FATAL: $q->mysql_error");}
+	if(!$q->ok){
+		DUMP_HOUR_PROGRESS("{mysql_error} CREATE TABLE",110);
+		echo $q->mysql_error."\n";
+		events("FATAL: $q->mysql_error");
+		return;
+	}
 	
 	
 	
@@ -380,79 +520,91 @@ function DUMP_HOUR(){
 	$MySQLStatisticsRetentionDays=intval($sock->GET_INFO("MySQLStatisticsRetentionDays"));
 	if($MySQLStatisticsRetentionDays==0){$MySQLStatisticsRetentionDays=5;}
 	
-	$influx=new influx();
+	$postgres=new postgres_sql();
 	events("MySQL Statistics Retention Days:$MySQLStatisticsRetentionDays");
 	$c=0;
 	$TRUNCATE=false;
 	$prefix="INSERT IGNORE INTO `dashboard_volume_day` (`TIME`,`FAMILYSITE`,`USERID`,`IPADDR`,`MAC`,`CATEGORY`,`SIZE`,`RQS`) VALUES ";
 	
-	for($i=0;$i<$MySQLStatisticsRetentionDays+1;$i++){
-		$timeQuery=time();
-		if($i>0){$timeQuery=strtotime("-$i day");}
-		$sql="SELECT * FROM access_log WHERE time > '".date("Y-m-d 00:00:00",$timeQuery)."' AND time < '".date("Y-m-d 23:59:59",$timeQuery)."'";
-		$main=$influx->QUERY_SQL($sql);
+	
+	$timeQuery=time();
+	$TimeGroup="date_trunc('hour', zdate) as zdate";
+	$timeQuery=date("Y-m-d H:i:s",strtotime("-$MySQLStatisticsRetentionDays day"));
 		
-		if(!is_iterable($main)){
-			events("dashboard_volume_day:".date("Y-m-d 00:00:00",$timeQuery). " no data returned");
-			continue;
-		}
+	$sql="SELECT SUM(size) as size, SUM(RQS) as RQS,
+	familysite,ipaddr,mac,userid,category,
+	$TimeGroup	FROM access_log 
+	WHERE zdate > '$timeQuery'
+	GROUP BY zdate,familysite,ipaddr,mac,userid,category ORDER by zdate";
+	
+	 
+	echo "******************************\n$sql\n******************************\n";
+	
+	
+	DUMP_HOUR_PROGRESS("{query}...",50);
+	$results=$postgres->QUERY_SQL($sql);
+	if(!$postgres->ok){
+		DUMP_HOUR_PROGRESS("{mysql_error} QUERY",110);
+		echo $postgres->mysql_error."\n";
+		events("FATAL: $q->mysql_error");
+		return;
+		
+	}	
+	
+	
 		
 		$d=0;
-		foreach ($main as $row) {
+		while($ligne=@pg_fetch_assoc($results)){
 			$CATEGORY=null;
-			$time=date("Y-m-d H:00:00",$row->ZDATE);
-			$FAMILYSITE=mysql_escape_string2($row->FAMILYSITE);
-			$IPADDR=mysql_escape_string2($row->IPADDR);
-			$USERID=mysql_escape_string2($row->USERID);
-			$MAC=mysql_escape_string2($row->MAC);
-			$RQS=mysql_escape_string2($row->RQS);
-			$SIZE=mysql_escape_string2($row->SIZE);
-			if(property_exists($row,"CATEGORY")){$CATEGORY=mysql_escape_string2($row->CATEGORY);}
-			$RSQL[]="('$time','$FAMILYSITE','$USERID','$IPADDR','$MAC','$CATEGORY','$SIZE','$RQS')";
+			$zDate=$ligne["zdate"];
+			
+			$FAMILYSITE=mysql_escape_string2($ligne["familysite"]);
+			$IPADDR=mysql_escape_string2($ligne["ipaddr"]);
+			$USERID=mysql_escape_string2($ligne["userid"]);
+			$MAC=mysql_escape_string2($ligne["mac"]);
+			$RQS=mysql_escape_string2($ligne["rqs"]);
+			$SIZE=mysql_escape_string2($ligne["size"]);
+			$CATEGORY=mysql_escape_string2($ligne["category"]);
+			$RSQL[]="('$zDate','$FAMILYSITE','$USERID','$IPADDR','$MAC','$CATEGORY','$SIZE','$RQS')";
 			$c++;
 			$d++;
 			if(count($RSQL)>500){
+				echo "$c...\n";
 				if(!$TRUNCATE){events("dashboard_volume_day:TRUNCATE TABLE");$q->QUERY_SQL("TRUNCATE TABLE `dashboard_volume_day`");$TRUNCATE=TRUE;}
 				$q->QUERY_SQL($prefix.@implode(",", $RSQL));
-				if(!$q->ok){events("FATAL! $q->mysql_error");return;}
+				if(!$q->ok){events("FATAL! $q->mysql_error");
+					DUMP_HOUR_PROGRESS("{mysql_error} at $c",110);
+					return;
+				}
 				$RSQL=array();
 			}
 			
-			
-			
-			
 		}
-		
+			
 		if(count($RSQL)>0){
 			if(!$TRUNCATE){events("dashboard_volume_day:TRUNCATE TABLE");$q->QUERY_SQL("TRUNCATE TABLE `dashboard_volume_day`");$TRUNCATE=TRUE;}
 			$q->QUERY_SQL($prefix.@implode(",", $RSQL));
-			if(!$q->ok){events("FATAL! $q->mysql_error");return;}
+			if(!$q->ok){events("FATAL! $q->mysql_error");
+			DUMP_HOUR_PROGRESS("{mysql_error} at $c",110);
+			return;}
 			$RSQL=array();
 		}
 		
-		events("dashboard_volume_day:".date("Y-m-d 00:00:00",$timeQuery). " $d inserted rows");
-		
-		
-		
-	}
-	
-	if(count($RSQL)>0){
-		if(!$TRUNCATE){events("dashboard_volume_day:TRUNCATE TABLE");$q->QUERY_SQL("TRUNCATE TABLE `dashboard_volume_day`");$TRUNCATE=TRUE;}
-		$q->QUERY_SQL($prefix.@implode(",", $RSQL));
-		if(!$q->ok){events("FATAL! $q->mysql_error");return;}
-		$RSQL=array();
-	}	
-	
+	DUMP_HOUR_PROGRESS("Total $c inserted rows",80);
 	events("dashboard_volume_day: Total $c inserted rows");
-	FAMILY_SITES_DAY();
-	FULL_USERS_DAY();
+	echo "******************************\nFAMILY_SITES_DAY();\n******************************\n";
 	
+	echo "******************************\nFULL_USERS_DAY();\n******************************\n";
+	DUMP_HOUR_PROGRESS("FULL_USERS_DAY",90);
+	FULL_USERS_DAY();
+	DUMP_HOUR_PROGRESS("{done}",100);
 }
 
 
 function FULL_USERS_DAY(){
 	
 	$q=new mysql_squid_builder();
+	if(!$q->TABLE_EXISTS("dashboard_user_day")){return;}
 	$q->QUERY_SQL("CREATE TABLE IF NOT EXISTS `FULL_USERS_DAY` (
 			`user` varchar(128) NOT NULL,
 			`hits` BIGINT UNSIGNED NOT NULL,
@@ -491,7 +643,7 @@ function FULL_USERS_DAY(){
 
 function FAMILY_SITES_DAY(){
 	$q=new mysql_squid_builder();	
-	
+	if(!$q->TABLE_EXISTS("dashboard_countwebsite_day")){return;}
 
 	$q->QUERY_SQL("CREATE TABLE IF NOT EXISTS `FAMILY_SITES_DAY` (
 			`familysite` varchar(128) NOT NULL,
@@ -614,7 +766,7 @@ function USERAGENTS(){
 }
 
 function squidhour_clean(){
-	
+	$array=array();
 	$q=new mysql_squid_builder();
 	$sql="SELECT table_name as c FROM information_schema.tables WHERE table_schema = 'squidlogs'"; 
 		
@@ -664,9 +816,9 @@ function squidhour_clean(){
 
 
 function WEBFILTERING(){
-	$influx=new influx();
-	$now=InfluxQueryFromUTC(strtotime("-4 hour"));
-	$q=new mysql_squid_builder();
+	$q=new postgres_sql();
+	$now=date("Y-m-d H:i:s",strtotime("-4 hour"));
+	
 	$t1=time();
 	$date=date("YW");
 	// -----------------------------------------------------------------------------------------------------
@@ -677,37 +829,11 @@ function WEBFILTERING(){
 	@unlink("{$GLOBALS["BASEDIR"]}/BLOCKED_HOUR");
 	@unlink("{$GLOBALS["BASEDIR"]}/BLOCKED_CHART1");
 	@unlink("{$GLOBALS["BASEDIR"]}/BLOCKED_CHART2");
-	$sql="SELECT rulename,website FROM webfilter WHERE time >{$now}s";
+	$sql="SELECT count(*),date_trunc('hour', zDate) as zDate FROM webfilter WHERE zDate >'{$now}' GROUP BY zDate";
 	
-	
-	$tmp="temp_".time();
-	$q->QUERY_SQL("CREATE TABLE IF NOT EXISTS `$tmp` (
-			`stime` DATETIME NOT NULL,
-			`rulename` varchar(128) NOT NULL,
-			`website` varchar(128) NOT NULL,
-			KEY `stime` (`stime`),
-			KEY `rulename` (`rulename`),
-			KEY `website` (`website`)
-	) ENGINE=MYISAM;");
-	
-	$c=0;
-	$main=$influx->QUERY_SQL($sql);
-	foreach ($main as $row) {
-		$time=InfluxToTime($row->time);
-		$website=$row->website;
-		$rulename=$row->rulename;
-		$xtime=date("Y-m-d H:i:00",$time);
-		if($GLOBALS["VERBOSE"]){echo "WEBFILTER: ('$xtime','$rulename','$website')\n"; }
-		$f[]="('$xtime','$rulename','$website')";
-	}
-	
-	if(count($f)>0){
-		$q->QUERY_SQL("INSERT IGNORE INTO `$tmp` (stime,rulename,website) VALUES ".@implode(",", $f));
-	}
-
-	$results=$q->QUERY_SQL("SELECT COUNT(*) as tcount,stime FROM `$tmp` GROUP BY stime ORDER BY stime");
+	$results=$q->QUERY_SQL($sql);
 	if(!$q->ok){echo $q->mysql_error."\n";}
-	
+	$c=0;
 	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
 		$min=$ligne["stime"];
 		$size=$ligne["tcount"];
@@ -730,7 +856,7 @@ function WEBFILTERING(){
 	$ydata=array();
 	
 	$c=0;
-	$results=$q->QUERY_SQL("SELECT COUNT(*) as tcount,rulename FROM `$tmp` GROUP BY rulename ORDER BY tcount DESC LIMIT 0,10");
+	$results=$q->QUERY_SQL("SELECT COUNT(*) as tcount,rulename FROM webfilter  WHERE zDate >'{$now}' GROUP BY rulename ORDER BY tcount DESC LIMIT 10");
 	if(!$q->ok){echo $q->mysql_error."\n";}
 	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
 		$size=$ligne["tcount"];
@@ -745,7 +871,7 @@ function WEBFILTERING(){
 	}
 	
 	
-	$sql="SELECT COUNT(website) as tcount,website FROM `$tmp` GROUP BY website ORDER BY tcount DESC LIMIT 0,10";
+	$sql="SELECT COUNT(website) as tcount,website FROM webfilter WHERE zDate >'{$now}' GROUP BY website ORDER BY tcount DESC LIMIT 10";
 	$results=$q->QUERY_SQL($sql);
 	if(!$q->ok){echo $q->mysql_error."\n";}
 	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
@@ -754,7 +880,7 @@ function WEBFILTERING(){
 	}
 	
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/BLOCKED_CHART2", serialize($MAIN));
-	$q->QUERY_SQL("DROP TABLE `$tmp`");
+	
 		
 	
 }
@@ -801,6 +927,7 @@ function parse(){
 	$sock=new sockets();
 	$EnableKerbAuth=intval($sock->GET_INFO("EnableKerbAuth"));
 	$ActiveDirectoryEmergency=intval($sock->GET_INFO("ActiveDirectoryEmergency"));
+	if(!is_file("/etc/artica-postfix/settings/Daemons/SQUIDEnable")){@file_put_contents("/etc/artica-postfix/settings/Daemons/SQUIDEnable", 1);}
 	if($ActiveDirectoryEmergency==1){$EnableKerbAuth=0;}
 	
 	$pid=@file_get_contents($pidfile);
@@ -844,9 +971,22 @@ function parse(){
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/WATCHDOG_COUNT_EVENTS", $ligne["tcount"]);
 	@chmod("{$GLOBALS["BASEDIR"]}/WATCHDOG_COUNT_EVENTS", 0777);
 	
+	build_progress("{refresh_dashboard_values} APACHE_STATISTICS (2)",11);
+	APACHE_STATISTICS();
+	build_progress("{refresh_dashboard_values} NETWORK_INTERFACES_RXTX (3)",11);
+	NETWORK_INTERFACES_RXTX();
+	build_progress("{refresh_dashboard_values} COUNT_OF_SURICATA (4)",11);
+	COUNT_OF_SURICATA();
+	build_progress("{refresh_dashboard_values} NOT_CATEGORIZED (5)",11);
+	NOT_CATEGORIZED();
 	
 	
 	
+	$SQUIDEnable=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SQUIDEnable"));
+	if($SQUIDEnable==0){
+		build_progress("{done}",100);
+		return;
+	}
 	
 	if($SquidPerformance>1){
 		if(is_file("/etc/cron.d/artica-stats-hourly")){
@@ -875,7 +1015,7 @@ function parse(){
 	$tables[]="dashboard_blocked_day";
 	
 	
-	while (list ($num, $table) = each ($array) ){
+	while (list ($num, $table) = each ($tables) ){
 		if(!$q->TABLE_EXISTS($table)){events("Table: $table is not yet ready...");continue;}
 		$NUM=$q->COUNT_ROWS($table);
 		events("Table: $table $NUM rows");
@@ -892,87 +1032,8 @@ function parse(){
 	
 	build_progress("{refresh_dashboard_values}",13);
 // -----------------------------------------------------------------------------------------------------	
-	$COUNT_DE_SNI_CERTS_TIME=1000000;
-	$COUNT_DE_SNI_CERTS="{$GLOBALS["BASEDIR"]}/COUNT_DE_SNI_CERTS";
-	if(is_file($COUNT_DE_SNI_CERTS)){$COUNT_DE_SNI_CERTS_TIME=$unix->file_time_min($COUNT_DE_SNI_CERTS);}
-	if($GLOBALS["VERBOSE"]){echo "COUNT_DE_SNI_CERTS_TIME = $COUNT_DE_SNI_CERTS_TIME\n";$COUNT_DE_SNI_CERTS_TIME=999999;}
-	if($COUNT_DE_SNI_CERTS_TIME>60){
-		$sql="SELECT COUNT(website) as tcount,website FROM sni_certs WHERE time > {$now}s GROUP BY time(24h),website";
-		$f=array();
-		echo $sql."\n";
-		$main=$influx->QUERY_SQL($sql);
-		foreach ($main as $row) {
-			$website=$row->website;
-			$count=intval($row->tcount);
-			if($GLOBALS["VERBOSE"]){echo "SNI: $website -> $count\n";}
-			$f[]="('$count','$website')";
-		}
-		if(count($f)>0){
-			$q=new mysql_squid_builder();
-			$q->QUERY_SQL("CREATE TABLE IF NOT EXISTS sni_certs (`hits` BIGINT UNSIGNED, `websites` VARCHAR(128) NOT NULL PRIMARY KEY, KEY `hits` (`hits`) ) ENGINE=MYISAM");
-			$q->QUERY_SQL("TRUNCATE TABLE sni_certs");
-			$q->QUERY_SQL("INSERT IGNORE INTO sni_certs (hits,websites) VALUES ".@implode(",", $f));
-			@unlink($COUNT_DE_SNI_CERTS);
-			@file_put_contents($COUNT_DE_SNI_CERTS,count($f));
-			
-		}
-	}
-	
-	
 	build_progress("{refresh_dashboard_values}",14);
-	$NETS=$unix->NETWORK_ALL_INTERFACES();
-// -----------------------------------------------------------------------------------------------------
-	while (list ($Interface, $array) = each ($NETS) ){	
 
-		$sql="SELECT SUM(RX) as size FROM ethrxtx WHERE time > {$now}s AND ETH='$Interface' GROUP BY time(10m) ORDER BY ASC";
-	
-		if($GLOBALS["VERBOSE"]){echo "\n*****\n$sql\n******\n";}
-		$MAIN=array();
-		$xdata=array();
-		$ydata=array();
-		$main=$influx->QUERY_SQL($sql);
-	
-		foreach ($main as $row) {
-			$time=InfluxToTime($row->time);
-			$min=date("H:i",$time);
-			$size=intval($row->size)/1024;
-			if($GLOBALS["VERBOSE"]){echo "($time): ethrxtx $Interface:RX: $min -> $size\n";}
-		
-			$size=$size/1024;
-			if(round($size)==0){continue;}
-			$xdata[]=$min;
-			$ydata[]=round($size);
-		}
-		$MAIN["xdata"]=$xdata;
-		$MAIN["ydata"]=$ydata;
-		@file_put_contents("{$GLOBALS["BASEDIR"]}/FLUX_{$Interface}_RX", serialize($MAIN));
-		if(count($xdata)<2){@unlink("{$GLOBALS["BASEDIR"]}/FLUX_{$Interface}_RX");}	
-		
-	
-		$sql="SELECT SUM(TX) as size FROM ethrxtx WHERE time > {$now}s AND ETH='$Interface' GROUP BY time(10m) ORDER BY ASC";
-	
-		$MAIN=array();
-		$xdata=array();
-		$ydata=array();
-		build_progress("{refresh_dashboard_values}",15);
-		$main=$influx->QUERY_SQL($sql);
-		
-		foreach ($main as $row) {
-			$time=InfluxToTime($row->time);
-			$min=date("H:i",$time);
-			$size=intval($row->size)/1024;
-			$size=$size/1024;
-			if($size==0){continue;}
-			if($GLOBALS["VERBOSE"]){echo "ethrxtx $Interface:TX: $min -> $size\n";}
-			$xdata[]=$min;
-			$ydata[]=round($size);
-		}
-		$MAIN["xdata"]=$xdata;
-		$MAIN["ydata"]=$ydata;
-		@file_put_contents("{$GLOBALS["BASEDIR"]}/FLUX_{$Interface}_TX", serialize($MAIN));
-		if(count($xdata)<2){@unlink("{$GLOBALS["BASEDIR"]}/FLUX_{$Interface}_TX");}	
-	
-	}
 // -----------------------------------------------------------------------------------------------------	
 	build_progress("{cleaning_databases}",16);
 	squidhour_clean();
@@ -980,7 +1041,7 @@ function parse(){
 	FLUX_RQS();
 	build_progress("{refresh_dashboard_values}",18);
 	build_progress("{refresh_dashboard_values}",19);
-	USERAGENTS();
+	//USERAGENTS();
 	build_progress("{calculate_dates}",20);
 	MAX_MIN();
 	backup_size();
@@ -1038,6 +1099,73 @@ function parse(){
 	build_progress("{refresh_dashboard_values} {done}",100);
 	
 	// -----------------------------------------------------------------------------------------------------	
+}
+
+
+function NETWORK_INTERFACES_RXTX(){
+	$unix=new unix();
+	$influx=new influx();
+	$NETS=$unix->NETWORK_ALL_INTERFACES();
+	$hostname=$unix->hostname_g();
+	$now=date("Y-m-d H:i:s",strtotime("-24 hour"));
+	$q=new postgres_sql();
+	
+	// -----------------------------------------------------------------------------------------------------
+	while (list ($Interface, $array) = each ($NETS) ){
+	
+		$sql="SELECT SUM(RX) as size FROM ethrxtx,date_trunc('hour', zdate) as zdate 
+		WHERE zdate > '{$now}'
+		AND eth='$Interface' AND proxyname='$hostname' GROUP BY zdate ORDER BY zdate ASC";
+	
+		if($GLOBALS["VERBOSE"]){echo "\n*****\n$sql\n******\n";}
+		$MAIN=array();
+		$xdata=array();
+		$ydata=array();
+		$results=$q->QUERY_SQL($sql);
+	
+		while($ligne=@pg_fetch_assoc($results)){
+			
+			$min=$ligne["zdate"];
+			$size=intval($ligne["size"])/1024;
+			if($GLOBALS["VERBOSE"]){echo "($min): ethrxtx $Interface:RX: $min -> $size\n";}
+	
+			$size=$size/1024;
+			if(round($size)==0){continue;}
+			$xdata[]=$min;
+			$ydata[]=round($size);
+		}
+		$MAIN["xdata"]=$xdata;
+		$MAIN["ydata"]=$ydata;
+		@file_put_contents("{$GLOBALS["BASEDIR"]}/FLUX_{$Interface}_RX", serialize($MAIN));
+		if(count($xdata)<2){@unlink("{$GLOBALS["BASEDIR"]}/FLUX_{$Interface}_RX");}
+	
+	
+		$sql="SELECT SUM(TX) as size,date_trunc('hour', zdate) as zdate FROM ethrxtx 
+		WHERE zdate > '{$now}' AND eth='$Interface'  
+		AND proxyname='$hostname' GROUP BY zdate ORDER BY zdate ASC";
+	
+		$MAIN=array();
+		$xdata=array();
+		$ydata=array();
+		build_progress("{refresh_dashboard_values}",15);
+		$results=$q->QUERY_SQL($sql);
+	
+		while($ligne=@pg_fetch_assoc($results)){
+			$min=$ligne["zdate"];
+			$size=intval($ligne["size"])/1024;
+			if($GLOBALS["VERBOSE"]){echo "($min): ethrxtx $Interface:RX: $min -> $size\n";}
+	
+			$size=$size/1024;
+			if(round($size)==0){continue;}
+			$xdata[]=$min;
+			$ydata[]=round($size);
+		}
+		$MAIN["xdata"]=$xdata;
+		$MAIN["ydata"]=$ydata;
+		@file_put_contents("{$GLOBALS["BASEDIR"]}/FLUX_{$Interface}_TX", serialize($MAIN));
+		if(count($xdata)<2){@unlink("{$GLOBALS["BASEDIR"]}/FLUX_{$Interface}_TX");}
+	
+	}
 }
 
 
@@ -1246,10 +1374,6 @@ function CACHES_AVG(){
 		$arrayStore["USED"]=intval($arrayStore["USED"]);
 		$arrayStore["PERC"]=intval($arrayStore["PERC"]);
 	
-		if($arrayStore["USED"]==0 && $arrayStore["PERC"]>0){
-			$arrayStore["USED"]=$unix->DIRSIZE_BYTES($directory);
-		}
-		
 		if($directory=="MEM"){continue;}
 		if($arrayStore["USED"]==0){continue;}
 		
@@ -1314,7 +1438,9 @@ function CachedOrNot(){
 	events("dashboard_cached: $size_no_cached bytes");
 	
 	$TOTAL=$size_no_cached+$size_cached;
-	$CACHED_AVG=($size_cached/$TOTAL)*100;
+	if($TOTAL>0){
+		$CACHED_AVG=($size_cached/$TOTAL)*100;
+	}
 	
 	events("Cached AVG Rate: $CACHED_AVG");
 
@@ -1338,7 +1464,9 @@ function CachedOrNot(){
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/COUNT_DE_BLOCKED", intval($COUNT_DE_BLOCKED));
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/CACHED_AVG", $CACHED_AVG);
 	@file_put_contents("{$GLOBALS["BASEDIR"]}/PROXY_REQUESTS_NUMBER", intval($proxy_requests));
-	@file_put_contents("{$GLOBALS["BASEDIR"]}/TOTAL_CACHED", serialize($CACHES_RATES));
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/TOTAL_CACHED", $size_no_cached);
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/TOTAL_CACHED_ARRAY", serialize($CACHES_RATES));
+	
 	@chmod("{$GLOBALS["BASEDIR"]}/TOTAL_CACHED",0777);
 	@chmod("{$GLOBALS["BASEDIR"]}/PROXY_REQUESTS_NUMBER",0777);
 	
@@ -1404,6 +1532,15 @@ function stats_apps_clients(){
 	}
 	@file_put_contents($TimeFile, $q->COUNT_ROWS("StatsApplianceReceiver"));
 	@chmod("$TimeFile",0755);
+}
+
+function COUNT_OF_SURICATA(){
+	$q=new postgres_sql();
+	$sql="SELECT SUM(xcount) as xcount FROM suricata_events";
+	$ligne=pg_fetch_assoc($q->QUERY_SQL($sql));
+	@file_put_contents("{$GLOBALS["BASEDIR"]}/COUNT_OF_SURICATA", intval($ligne["xcount"]));
+	
+	
 }
 
 

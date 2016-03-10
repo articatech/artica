@@ -1116,8 +1116,27 @@ class user{
 	function MaillingListGroupEnable($value){
 		$ldap=$this->ldapClass;
 		$array["MailingListAddressGroup"][0]=$value;
-		$dn="cn=$this->mail,cn=aliases-mailing,ou=$this->ou,dc=organizations,$ldap->suffix";
 		
+		
+		$dn="cn=aliases-mailing,ou=$this->ou,dc=organizations,$ldap->suffix";
+		if(!$ldap->ExistsDN($dn)){
+			$upd["cn"][]="aliases-mailing";
+			$upd["objectClass"][]='top';
+			$upd["objectClass"][]='PostFixStructuralClass';
+			if(!$ldap->ldap_add($dn,$upd)){return false;}
+				
+		}
+		
+		
+		$dn="cn=$this->mail,cn=aliases-mailing,ou=$this->ou,dc=organizations,$ldap->suffix";
+		if(!$ldap->ExistsDN($dn)){
+			$upd["cn"][]=$this->mail;
+			$upd["objectClass"][]='top';
+			$upd["objectClass"][]='MailingAliasesTable';
+			$upd["MailingListAddress"][]=$email;
+			if(!$ldap->ldap_add($dn,$upd)){return false;}
+			return true;
+		}
 		
 		if(!$ldap->Ldap_modify($dn,$array)){echo $ldap->ldap_last_error;return;}
 		$sock=new sockets();
@@ -1491,6 +1510,7 @@ class user{
 	
 	
 	function AddAliasesMailing($email){
+		$email=trim(strtolower($email));
 		$ldap=$this->ldapClass;
 		$dn="cn=aliases-mailing,ou=$this->ou,dc=organizations,$ldap->suffix";
 		if(!$ldap->ExistsDN($dn)){
@@ -2436,10 +2456,13 @@ function FTPSettingsEdit(){
 	
 	if(!$ldap->Ldap_modify($this->dn,$upd)){return;}
 	$sock=new sockets();
-	if(!$GLOBALS["NO_COMPILE_POSTFIX"]){$sock->getFrameWork("cmd.php?pure-ftpd-users=yes");
-	$datas=trim(base64_decode($sock->getFrameWork("cmd.php?chown=".base64_encode($this->homeDirectory)."&uid=".base64_encode($this->uid))));
+	if(!$GLOBALS["NO_COMPILE_POSTFIX"]){
+		$sock->getFrameWork("cmd.php?pure-ftpd-users=yes");
+		$uidchown=trim(strtolower($this->uid));
+		if(preg_match("#^(.+?)@#", $uidchown,$re)){$uidchown=$re[1];}
+		$datas=trim(base64_decode($sock->getFrameWork("cmd.php?chown=".base64_encode($this->homeDirectory)."&uid=".base64_encode($uidchown))));
 	}
-	if(strlen($datas)>0){echo $datas;}
+	
 }
 	
 	
@@ -3910,17 +3933,7 @@ function UsersInterfaceDatasDelete(){
 			$sql="DELETE FROM quarantine_report_users WHERE userid='$uid'";
 			$q->QUERY_SQL($sql,"artica_backup");
 			
-			//delete picasa schedule
-			$sql="DELETE FROM picasa WHERE userid='$uid'";
-			$q->QUERY_SQL($sql,"artica_backup");			
 			
-			
-			
-			$sql="DELETE FROM quotaroot WHERE userid='$uid'";
-			$q->QUERY_SQL($sql,"artica_backup");	
-					
-			$sql="DELETE FROM webdavusers WHERE userid='$uid'";
-			$q->QUERY_SQL($sql,"artica_backup");				
 			
 			$sql="DELETE FROM hostsusers WHERE uid='$uid'";
 			$q->QUERY_SQL($sql,"artica_backup");

@@ -9,6 +9,7 @@ if(isset($_GET["httptrack"])){httptrack();exit;}
 if(isset($_GET["httptrack-id"])){httptrack_simple();exit;}
 if(isset($_GET["xapian-db-size"])){localdbsize();exit;}
 if(isset($_GET["DeleteDatabasePath"])){DeleteDatabasePath();exit;}
+if(isset($_GET["httptrack-progress"])){httptrack_progress();exit;}
 
 
 
@@ -58,6 +59,26 @@ function localdbsize(){
 	echo "<articadatascgi>$size</articadatascgi>";
 	
 }
+
+function httptrack_progress(){
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/web/freewebs.HTTrack.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/freewebs.HTTrack.progress.log";
+	@unlink($GLOBALS["CACHEFILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);$array["POURC"]=2;$array["TEXT"]="{please_wait}";@file_put_contents($GLOBALS["CACHEFILE"], serialize($array));
+	@chmod($GLOBALS["LOGSFILES"],0777);
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.httptrack.php --progress >{$GLOBALS["LOGSFILES"]} 2>&1 &";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
+	
+}
+
+
 function DeleteDatabasePath(){
 	$DeleteDatabasePath=base64_decode($_GET["DeleteDatabasePath"]);
 	if($DeleteDatabasePath==null){return;}

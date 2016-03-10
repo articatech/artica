@@ -8,23 +8,44 @@ include_once(dirname(__FILE__) . '/ressources/class.system.network.inc');
 
 
 if($argv[1]=="--run"){run();exit;}
+if($argv[1]=="--pgsql"){pgsql();exit;}
 
 
 
 install();
 function install(){
-	if(extension_loaded('snmp')){return;}
+	
+	
+	
+	if(extension_loaded('snmp')){pgsql();return;}
 	$unix=new unix();
 	
 	$FileTime="/etc/artica-postfix/pids/".basename(__FILE__).".time";
 	if($unix->file_time_min($FileTime)<15){return;}
 	@unlink($FileTime);
 	@file_put_contents($FileTime, time());
+	squid_admin_mysql(1, "Installing missing package php5-snmp", null,__FILE__,__LINE__);
 	$unix->DEBIAN_INSTALL_PACKAGE("php5-snmp");
+	system("/usr/share/artica-postfix/exec.php.ini.php");
+	system("/etc/init.d/artica-webconsole restart");
+	system("/etc/init.d/artica-status restart");
+	
+}
+function pgsql(){
+	if(extension_loaded('pgsql')){return;}
+	$unix=new unix();
+
+	$FileTime="/etc/artica-postfix/pids/".basename(__FILE__).".time";
+	if($unix->file_time_min($FileTime)<15){return;}
+	@unlink($FileTime);
+	@file_put_contents($FileTime, time());
+	squid_admin_mysql(1, "Installing missing package php5-pgsql", null,__FILE__,__LINE__);
+	$unix->DEBIAN_INSTALL_PACKAGE("php5-pgsql");
+	
+	system("/usr/share/artica-postfix/exec.php.ini.php");
 	system("/etc/init.d/artica-webconsole restart");
 	system("/etc/init.d/artica-status restart");
 }
-
 
 
 

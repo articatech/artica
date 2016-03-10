@@ -172,6 +172,16 @@ function table(){
 	$tpl=new templates();
 	$page=CurrentPageName();
 	$rule=$tpl->_ENGINE_parse_body("{rule}");
+	$nic=new system_nic($_GET["nic"]);
+	
+	
+	if($nic->firewall_behavior==1){
+		echo FATAL_ERROR_SHOW_128("{error_firewall_behavior_lan}");
+		return;		
+	}
+	
+	
+	
 	
 	$t=time();
 	$service2=$tpl->_ENGINE_parse_body("{service2}");
@@ -179,7 +189,7 @@ function table(){
 	$local_services=$tpl->_ENGINE_parse_body("{local_services}");
 	$log=$tpl->_ENGINE_parse_body("{LOG}");
 	$new_rule=$tpl->_ENGINE_parse_body("{zDate}");
-	$new_rule=$tpl->_ENGINE_parse_body("{new_service}");
+	$new_rule=$tpl->_ENGINE_parse_body("{link_service}");
 	$name=$tpl->_ENGINE_parse_body("{name}");
 	$allow_rules=$tpl->_ENGINE_parse_body("{allow_rules}");
 	$banned_rules=$tpl->_ENGINE_parse_body("{banned_rules}");
@@ -209,12 +219,12 @@ function table(){
 	
 	],	";
 	$html="
-	<table class='FIREHOLE_{$_GET["table"]}{$_GET["nic"]}' style='display: none' id='FIREHOLE_{$_GET["table"]}{$_GET["nic"]}' style='width:99%'></table>
+	<table class='FIREHOLE_{$_GET["xtable"]}{$_GET["nic"]}' style='display: none' id='FIREHOLE_{$_GET["xtable"]}{$_GET["nic"]}' style='width:99%'></table>
 	<script>
 	var IptableRow='';
 	$(document).ready(function(){
-	$('#FIREHOLE_{$_GET["table"]}{$_GET["nic"]}').flexigrid({
-	url: '$page?interfaces=yes&t=$t&xtable={$_GET["table"]}&nic={$_GET["nic"]}',
+	$('#FIREHOLE_{$_GET["xtable"]}{$_GET["nic"]}').flexigrid({
+	url: '$page?interfaces=yes&t=$t&xtable={$_GET["xtable"]}&nic={$_GET["nic"]}',
 	dataType: 'json',
 	colModel : [
 	{display: '<span style=font-size:22px>$service2</span>', name : 'service', width :364, sortable : true, align: 'left'},
@@ -272,7 +282,7 @@ XHR.sendAndLoad('$page', 'POST',x_EmptyRules);
 }
 
 function NewRule$t(){
-	Loadjs('firehol.BrowseService.php?xtable={$_GET["table"]}&nic={$_GET["nic"]}');
+	Loadjs('firehol.BrowseService.php?xtable={$_GET["xtable"]}&nic={$_GET["nic"]}');
 }
 
 function IpTablesInboundRuleResfresh(){

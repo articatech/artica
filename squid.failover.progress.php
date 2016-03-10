@@ -140,9 +140,10 @@ if($prc==100){
 		if(!RTMMailOpen()){return;}
 		document.getElementById('title-$t').innerHTML='$title';
 		$('#progress-$t').progressbar({ value: $prc });
-		RTMMailHide();
-		YahooWin6Hide();
-		RefreshTab('main_failover_tabs');
+			RTMMailHide();
+			YahooWin6Hide();
+			RefreshTab('main_failover_tabs');
+			CacheOff();
 		}
 	setTimeout(\"Start$time()\",1000);
 	";	
@@ -185,7 +186,7 @@ $html="
 <div id='progress-$t' style='height:50px'></div>
 <p>&nbsp;</p>
 <textarea style='margin-top:5px;font-family:Courier New;
-font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 overflow:auto;font-size:11px' id='text-$t'></textarea>
 	
 <script>

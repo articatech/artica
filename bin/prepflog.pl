@@ -114,10 +114,10 @@ is that having taken into account the way pflogsumm
 works, it should be easier to integrate in the
 future, if indeed that step is found to be a useful one.
 
-Any feedback is welcome: john@gufonero.com
+Any feedback is welcome: john@voipsupport.it
 
 The script is currently available at:
-http://www.gufonero.com/postfix/
+http://www.voipsupport.it/
 
 =head1 COPYRIGHT AND LICENSE
 
@@ -153,7 +153,7 @@ use Getopt::Long;
 eval { require Date::Calc };
 my $hasDateCalc = $@ ? 0 : 1;
 
-my $release = "0.4";
+my $release = "0.4.1";
 my $debug = 0;
 
 use vars qw(

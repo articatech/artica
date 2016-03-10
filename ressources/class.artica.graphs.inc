@@ -1,11 +1,4 @@
 <?php
-	include_once (dirname(__FILE__) .'/jpgraph-3/src/jpgraph.php');
-	include_once (dirname(__FILE__) .'/jpgraph-3/src/jpgraph_line.php');
-	include_once (dirname(__FILE__) .'/jpgraph-3/src/jpgraph_pie.php');
-	include_once (dirname(__FILE__) .'/jpgraph-3/src/jpgraph_pie3d.php');
-	include_once (dirname(__FILE__) .'/class.templates.inc');
-	
-	
 class artica_graphs{
 	var $Area;
 	var $ydata=array();
@@ -37,7 +30,11 @@ class artica_graphs{
 	function artica_graphs($filename=null,$max_ttl=null){
 		$this->filename=$filename;
 		$this->file_ttl=$max_ttl;
-		
+		include_once (dirname(__FILE__) .'/jpgraph-3/src/jpgraph.php');
+		include_once (dirname(__FILE__) .'/jpgraph-3/src/jpgraph_line.php');
+		include_once (dirname(__FILE__) .'/jpgraph-3/src/jpgraph_pie.php');
+		include_once (dirname(__FILE__) .'/jpgraph-3/src/jpgraph_pie3d.php');
+		include_once (dirname(__FILE__) .'/class.templates.inc');
 		
 	}
 	

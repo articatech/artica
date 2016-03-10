@@ -83,10 +83,14 @@ function popup(){
 		"{qualcomm_atheros_explain}","ModeProbeAlx",0,null,1450);
 	}
 	
+	//$gateway=Paragraphe('relayhost.png','{APP_ARTICA_GAYTEWAY}','{APP_ARTICA_GAYTEWAY_TEXT}',"javascript:Loadjs('index.gateway.php?script=yes')");
+	
+	
+	
 	$html="
 	<div style='width:98%' class=form>
 	$alxform		
-	
+	$gateway
 	<div style='margin-top:20px;text-align:right'><hr>". button("{apply}", "Save$t()",32)."</div>
 	</div>
 	

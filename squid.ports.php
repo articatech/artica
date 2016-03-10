@@ -7,7 +7,8 @@ include_once(dirname(__FILE__).'/ressources/class.templates.inc');
 include_once(dirname(__FILE__).'/ressources/class.ldap.inc');
 include_once(dirname(__FILE__).'/ressources/class.users.menus.inc');
 include_once(dirname(__FILE__).'/ressources/class.squid.inc');
-include_once('ressources/class.system.network.inc');
+include_once(dirname(__FILE__).'/ressources/class.system.network.inc');
+
 
 $usersmenus=new usersMenus();
 if(!$usersmenus->AsSquidAdministrator){
@@ -234,7 +235,15 @@ function PatchTable(){
 		if(!$q->ok){echo $q->mysql_error."\n";}
 	}
 	
-	
+	if(!$q->FIELD_EXISTS("proxy_ports", "FTP_TRANSPARENT")){
+		$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `FTP_TRANSPARENT` smallint(6) NOT NULL DEFAULT '0',ADD INDEX( `FTP_TRANSPARENT` )");
+		if(!$q->ok){echo $q->mysql_error."\n";}
+	}	
+	if(!$q->FIELD_EXISTS("proxy_ports", "SOCKS")){
+		$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `SOCKS` smallint(1) NOT NULL DEFAULT '0',ADD INDEX( `SOCKS` )");
+		if(!$q->ok){echo $q->mysql_error."\n";}
+	}	
+
 	
 	if(!$q->FIELD_EXISTS("proxy_ports", "MIKROTIK_PORT")){
 		$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `MIKROTIK_PORT` smallint(6) NOT NULL DEFAULT '0',ADD INDEX( `WANPROXY_PORT` )");
@@ -271,6 +280,15 @@ function PatchTable(){
 	}
 	if(!$q->FIELD_EXISTS("proxy_ports", "WANPROXY_PORT")){
 		$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `WANPROXY_PORT` smallint(6) NOT NULL DEFAULT '0',ADD INDEX( `WANPROXY_PORT` )");
+		if(!$q->ok){echo $q->mysql_error."\n";}
+	}
+	
+	if(!$q->FIELD_EXISTS("proxy_ports", "FTP_TRANSPARENT")){
+		$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `FTP_TRANSPARENT` smallint(6) NOT NULL DEFAULT '0',ADD INDEX( `FTP_TRANSPARENT` )");
+		if(!$q->ok){echo $q->mysql_error."\n";}
+	}
+	if(!$q->FIELD_EXISTS("proxy_ports", "SOCKS")){
+		$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `SOCKS` smallint(1) NOT NULL DEFAULT '0',ADD INDEX( `SOCKS` )");
 		if(!$q->ok){echo $q->mysql_error."\n";}
 	}
 	
@@ -313,7 +331,10 @@ function PatchTable(){
 		$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `WanProxyCache` SMALLINT(10) NOT NULL DEFAULT '1'");
 		if(!$q->ok){echo $q->mysql_error."\n";}
 	}
-		
+	if(!$q->FIELD_EXISTS("proxy_ports", "ProxyProtocol")){
+		$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `ProxyProtocol` SMALLINT(1) NOT NULL DEFAULT '0'");
+		if(!$q->ok){echo $q->mysql_error."\n";}
+	}		
 	
 	
 	
@@ -554,10 +575,19 @@ function port_popup_main(){
 				
 				
 	<tr>
-		<td class=legend style='font-size:20px'>{transparent}:</td>
+		<td class=legend style='font-size:20px'>{transparent} (HTTP):</td>
 		<td style='font-size:20px'>". Field_checkbox_design("transparent-$t", 1,$ligne["transparent"],"CheckTransparent()")."</td>
 		<td>&nbsp;</td>
 	</tr>
+		<input type=hidden id='FTP_TRANSPARENT-$t' value=0>		
+	<tr>
+		<td class=legend style='font-size:20px'>". texttooltip("{proxy_protocol}","{proxy_protocol_explain}").":</td>
+		<td style='font-size:20px'>". Field_checkbox_design("ProxyProtocol-$t", 1,$ligne["ProxyProtocol"],"")."</td>
+		<td>&nbsp;</td>
+	</tr>				
+				
+				
+				
 	<tr>
 		<td class=legend style='font-size:20px'>". texttooltip("{enable_nat_compatibility}","{squid_enable_nat_compatibility_text}").":</td>
 		<td style='font-size:20px'>". Field_checkbox_design("is_nat-$t", 1,$ligne["is_nat"],"CheckNat()")."</td>
@@ -575,6 +605,9 @@ function port_popup_main(){
 		<td style='font-size:20px'>". Field_checkbox_design("Parent-$t", 1,$ligne["Parent"],"CheckParent()")."</td>
 		<td>&nbsp;</td>
 	</tr>
+			
+				
+				
 	<tr>
 		<td class=legend style='font-size:20px'>". texttooltip("{WAN_PARENT}","{WAN_PARENT_EXPLAIN}").":</td>
 		<td style='font-size:20px'>". Field_checkbox_design("WANPROXY-$t", 1,$ligne["WANPROXY"],"CheckWANProxy()")."</td>
@@ -700,6 +733,8 @@ function port_popup_main(){
 		if(document.getElementById('WANPROXY-$t').checked){XHR.appendData('WANPROXY',1);}else{XHR.appendData('WANPROXY',0);}
 		if(document.getElementById('NoAuth-$t').checked){XHR.appendData('NoAuth',1);}else{XHR.appendData('NoAuth',0);}
 		if(document.getElementById('MIKROTIK_PORT-$t').checked){XHR.appendData('MIKROTIK_PORT',1);}else{XHR.appendData('MIKROTIK_PORT',0);}
+		if(document.getElementById('FTP_TRANSPARENT-$t').checked){XHR.appendData('FTP_TRANSPARENT',1);}else{XHR.appendData('FTP_TRANSPARENT',0);}
+		if(document.getElementById('ProxyProtocol-$t').checked){XHR.appendData('ProxyProtocol',1);}else{XHR.appendData('ProxyProtocol',0);}
 		
 		
 		
@@ -709,100 +744,122 @@ function port_popup_main(){
 	
 	function CheckTransparent(){
 		if(document.getElementById('transparent-$t').checked){
-			document.getElementById('MIKROTIK_PORT-$t').checked=false;
-			document.getElementById('TProxy-$t').checked=false;
-			document.getElementById('TProxy-$t').disabled=false;
 			document.getElementById('NoAuth-$t').checked=false;
 			document.getElementById('NoAuth-$t').disabled=true;
-			document.getElementById('is_nat-$t').checked=false;
-			document.getElementById('WCCP-$t').checked=false;
-			document.getElementById('Parent-$t').checked=false;
-			document.getElementById('ICP-$t').checked=false;
-			document.getElementById('WANPROXY-$t').checked=false;
-			document.getElementById('outgoing_addr-$t').disabled=false;
-			document.getElementById('WANPROXY_PORT-$t').disabled=true;
-			document.getElementById('MIKROTIK_PORT-$t').disabled=true;
+			DisableAllExcept('transparent-$t');
 			
 		}else{
 			document.getElementById('NoAuth-$t').disabled=false;
 		}
+	
+	}
+	
+	function DisableAllExcept(id){
+	
+		if(id!=='MIKROTIK_PORT-$t'){
+			document.getElementById('MIKROTIK_PORT-$t').checked=false;
+			document.getElementById('MIKROTIK_PORT-$t').disabled=true;
+		}
+		
+		if(id!=='TProxy-$t'){
+			document.getElementById('TProxy-$t').checked=false;
+			document.getElementById('TProxy-$t').disabled=true;
+		}		
+	
+		if(id!=='is_nat-$t'){
+			document.getElementById('is_nat-$t').checked=false;
+			document.getElementById('is_nat-$t').disabled=true;
+		}
+		if(id!=='WCCP-$t'){
+			document.getElementById('WCCP-$t').checked=false;
+			document.getElementById('WCCP-$t').disabled=true;
+		}
+		
+		if(id!=='Parent-$t'){
+			document.getElementById('Parent-$t').checked=false;
+			document.getElementById('Parent-$t').disabled=true;
+		}
+		if(id!=='ICP-$t'){
+			document.getElementById('ICP-$t').checked=false;
+			document.getElementById('ICP-$t').disabled=true;
+		}		
+		if(id!=='WANPROXY-$t'){
+			document.getElementById('WANPROXY-$t').checked=false;
+			document.getElementById('WANPROXY-$t').disabled=true;
+		}
+		if(id!=='FTP_TRANSPARENT-$t'){
+			document.getElementById('FTP_TRANSPARENT-$t').checked=false;
+			document.getElementById('FTP_TRANSPARENT-$t').disabled=true;
+		}
+
+		
+	}
+	
+	function EnableAll(){
+		document.getElementById('MIKROTIK_PORT-$t').disabled=false;
+		document.getElementById('TProxy-$t').disabled=false;
+		document.getElementById('NoAuth-$t').disabled=false;
+		document.getElementById('is_nat-$t').disabled=false;
+		document.getElementById('WCCP-$t').disabled=false;
+		document.getElementById('Parent-$t').disabled=false;
+		document.getElementById('ICP-$t').disabled=false;
+		document.getElementById('WANPROXY-$t').disabled=false;
+		document.getElementById('FTP_TRANSPARENT-$t').disabled=false;
+		document.getElementById('ProxyProtocol-$t').disabled=false;
+		
+		
+	}
+	
+
+	
+	
+	function CheckTransparentFTP(){
+		
+		if(document.getElementById('FTP_TRANSPARENT-$t').checked){
+			DisableAllExcept('FTP_TRANSPARENT-$t');
+			document.getElementById('WANPROXY_PORT-$t').disabled=false;
+			document.getElementById('NoAuth-$t').checked=false;
+			document.getElementById('NoAuth-$t').disabled=true;
+			document.getElementById('outgoing_addr-$t').disabled=false;
+			document.getElementById('sslcertificate-$t').disabled=true;
+			
+		}else{
+			EnableAll();
+			document.getElementById('WANPROXY_PORT-$t').disabled=true;
+			document.getElementById('NoAuth-$t').disabled=false;
+			document.getElementById('sslcertificate-$t').disabled=false;
+		}
+	
 	
 	}
 	
 	function CheckTransparentT(){
 		if(document.getElementById('TProxy-$t').checked){
-			document.getElementById('transparent-$t').checked=false;
-			document.getElementById('MIKROTIK_PORT-$t').checked=false;
-			document.getElementById('is_nat-$t').checked=false;
-			document.getElementById('WCCP-$t').checked=false;
-			document.getElementById('Parent-$t').checked=false;
-			document.getElementById('ICP-$t').checked=false;
-			document.getElementById('WANPROXY-$t').checked=false;
-			document.getElementById('outgoing_addr-$t').disabled=false;
-			document.getElementById('WANPROXY_PORT-$t').disabled=true;
-			document.getElementById('MIKROTIK_PORT-$t').disabled=true;
+			DisableAllExcept('TProxy-$t');
 			document.getElementById('NoAuth-$t').checked=false;
 			document.getElementById('NoAuth-$t').disabled=true;
 		}else{
+			EnableAll();
 			document.getElementById('NoAuth-$t').disabled=false;
-			document.getElementById('MIKROTIK_PORT-$t').disabled=false;
 		}
 	}
 	
 	function CheckMikrotik(){
 		if(document.getElementById('MIKROTIK_PORT-$t').checked){
-			document.getElementById('transparent-$t').checked=false;
-			
-			document.getElementById('TProxy-$t').checked=false;
-			document.getElementById('TProxy-$t').disabled=true;
-			
-			document.getElementById('is_nat-$t').checked=false;
-			document.getElementById('WCCP-$t').checked=false;
-			document.getElementById('Parent-$t').checked=false;
-			document.getElementById('ICP-$t').checked=false;
-			document.getElementById('WANPROXY-$t').checked=false;
+			DisableAllExcept('MIKROTIK_PORT-$t');
 			document.getElementById('outgoing_addr-$t').disabled=false;
-			
-			document.getElementById('transparent-$t').disabled=true;
-			document.getElementById('is_nat-$t').disabled=true;
-			document.getElementById('WCCP-$t').disabled=true;
-			document.getElementById('Parent-$t').disabled=true;
-			document.getElementById('WANPROXY-$t').disabled=true;
-			document.getElementById('ICP-$t').disabled=true;
-			document.getElementById('FTP-$t').disabled=true;
-			
-			document.getElementById('WANPROXY_PORT-$t').disabled=true;
 			document.getElementById('NoAuth-$t').checked=false;
 			document.getElementById('NoAuth-$t').disabled=true;
 		}else{
 			document.getElementById('NoAuth-$t').disabled=false;
-			document.getElementById('TProxy-$t').disabled=false;
-			document.getElementById('transparent-$t').disabled=false;
-			document.getElementById('is_nat-$t').disabled=false;
-			document.getElementById('WCCP-$t').disabled=false;
-			document.getElementById('Parent-$t').disabled=false;
-			document.getElementById('WANPROXY-$t').disabled=false;
-			document.getElementById('ICP-$t').disabled=false;
-			document.getElementById('FTP-$t').disabled=false;
+			EnableAll();
 		}
 	}
 	
 	
 	function CheckWCCP(){
 		if(document.getElementById('WCCP-$t').checked){
-			document.getElementById('FTP-$t').disabled=true;
-			document.getElementById('FTP-$t').checked=false;
-			document.getElementById('transparent-$t').checked=false;
-			document.getElementById('MIKROTIK_PORT-$t').checked=false;
-			document.getElementById('TProxy-$t').checked=false;
-			document.getElementById('is_nat-$t').checked=false;
-			document.getElementById('Parent-$t').checked=false;
-			document.getElementById('ICP-$t').checked=false;
-			document.getElementById('WANPROXY-$t').checked=false;
-			document.getElementById('sslcertificate-$t').disabled=false;
-			document.getElementById('outgoing_addr-$t').disabled=false;
-			document.getElementById('WANPROXY_PORT-$t').disabled=true;
-			document.getElementById('MIKROTIK_PORT-$t').disabled=true;
+			DisableAllExcept('WCCP-$t');
 			document.getElementById('NoAuth-$t').checked=false;
 			document.getElementById('NoAuth-$t').disabled=true;
 		}else{
@@ -813,70 +870,42 @@ function port_popup_main(){
 	
 	function CheckNat(){
 		if(document.getElementById('is_nat-$t').checked){
-			document.getElementById('FTP-$t').disabled=true;
-			document.getElementById('FTP-$t').checked=false;
-		
-		    document.getElementById('MIKROTIK_PORT-$t').checked=false;
-			document.getElementById('transparent-$t').checked=false;
-			document.getElementById('TProxy-$t').checked=false;
-			document.getElementById('WCCP-$t').checked=false;
-			document.getElementById('Parent-$t').checked=false;
-			document.getElementById('ICP-$t').checked=false;
-			document.getElementById('WANPROXY-$t').checked=false;
-			document.getElementById('sslcertificate-$t').disabled=false;
-			document.getElementById('outgoing_addr-$t').disabled=false;
-			document.getElementById('WANPROXY_PORT-$t').disabled=true;
-			document.getElementById('MIKROTIK_PORT-$t').disabled=true;
+			DisableAllExcept('is_nat-$t');
 			document.getElementById('NoAuth-$t').checked=false;
 			document.getElementById('NoAuth-$t').disabled=true;
 		}else{
 			document.getElementById('NoAuth-$t').disabled=false;
-			document.getElementById('MIKROTIK_PORT-$t').disabled=false;
+			EnableAll();
 		}
 	}
 	
 	function CheckParent(){
 		if(document.getElementById('Parent-$t').checked){
-			document.getElementById('FTP-$t').disabled=true;
-			document.getElementById('FTP-$t').checked=false;
-		
-		
-			document.getElementById('MIKROTIK_PORT-$t').checked=false;
-			document.getElementById('transparent-$t').checked=false;
-			document.getElementById('TProxy-$t').checked=false;
-			document.getElementById('WCCP-$t').checked=false;
-			document.getElementById('is_nat-$t').checked=false;
-			document.getElementById('ICP-$t').checked=false;
-			document.getElementById('WANPROXY-$t').checked=false;
+			DisableAllExcept('Parent-$t');
+			document.getElementById('NoAuth-$t').checked=false;
+			document.getElementById('NoAuth-$t').disabled=true;
 			document.getElementById('outgoing_addr-$t').disabled=false;
-			document.getElementById('WANPROXY_PORT-$t').disabled=true;
-			document.getElementById('MIKROTIK_PORT-$t').disabled=true;
+			
 			
 		}else{
-			document.getElementById('MIKROTIK_PORT-$t').disabled=false;
+			document.getElementById('NoAuth-$t').disabled=false;
+			EnableAll();
 		}
 	
 	}
 	
 	function CheckICP(){
 		if(document.getElementById('ICP-$t').checked){
-		
-			document.getElementById('FTP-$t').disabled=true;
-			document.getElementById('FTP-$t').checked=false;
-		
-			document.getElementById('MIKROTIK_PORT-$t').checked=false;
-			document.getElementById('transparent-$t').checked=false;
-			document.getElementById('TProxy-$t').checked=false;
-			document.getElementById('WCCP-$t').checked=false;
-			document.getElementById('Parent-$t').checked=false;
-			document.getElementById('is_nat-$t').checked=false;
-			document.getElementById('UseSSL-$t').checked=false;
-			document.getElementById('WANPROXY-$t').checked=false;
+			DisableAllExcept('ICP-$t');
 			document.getElementById('outgoing_addr-$t').disabled=true;
-			document.getElementById('WANPROXY_PORT-$t').disabled=true;
-			document.getElementById('MIKROTIK_PORT-$t').disabled=true;
+			document.getElementById('sslcertificate-$t').disabled=true;
+			document.getElementById('UseSSL-$t').disabled=true;
+			
 		}else{
-			document.getElementById('MIKROTIK_PORT-$t').disabled=false;
+			EnableAll();
+			document.getElementById('outgoing_addr-$t').disabled=false;
+			document.getElementById('sslcertificate-$t').disabled=false;
+			document.getElementById('UseSSL-$t').disabled=false;
 		}
 	}
 	
@@ -927,6 +956,7 @@ function port_popup_main(){
 	
 	
 	function Check$t(){
+		
 		document.getElementById('nic-$t').disabled=true;
 		document.getElementById('port-$t').disabled=true;
 		document.getElementById('xnote-$t').disabled=true;
@@ -941,11 +971,15 @@ function port_popup_main(){
 		document.getElementById('Parent-$t').disabled=true;
 		document.getElementById('ICP-$t').disabled=true;
 		document.getElementById('WANPROXY_PORT-$t').disabled=true;
+		document.getElementById('FTP_TRANSPARENT-$t').disabled=true;
 		document.getElementById('MIKROTIK_PORT-$t').disabled=true;
 		document.getElementById('NoAuth-$t').disabled=true;
+		document.getElementById('ProxyProtocol-$t').disabled=true;
 
 		
 		if(document.getElementById('enabled-$t').checked){
+			document.getElementById('ProxyProtocol-$t').disabled=false;
+			document.getElementById('FTP_TRANSPARENT-$t').disabled=false;
 			document.getElementById('NoAuth-$t').disabled=false;
 			document.getElementById('transparent-$t').disabled=false;
 			document.getElementById('nic-$t').disabled=false;
@@ -984,6 +1018,8 @@ function CheckGlobal$t(){
 	CheckWANProxy();
 	CheckUseSSL$t();
 	CheckMikrotik();
+	CheckTransparentFTP();
+
 }
 Check$t();
 CheckGlobal$t();
@@ -1025,12 +1061,20 @@ function port_save(){
 	$FTP=intval($_POST["FTP"]);
 	$WANPROXY=intval($_POST["WANPROXY"]);
 	$WANPROXY_PORT=intval($_POST["WANPROXY_PORT"]);
+	$FTP_TRANSPARENT=intval($_POST["FTP_TRANSPARENT"]);
 	$MIKROTIK_PORT=intval($_POST["MIKROTIK_PORT"]);
+	$SOCKS=intval($_POST["SOCKS"]);
 	$NoAuth=intval($_POST["NoAuth"]);
+	$ProxyProtocol=intval($_POST["ProxyProtocol"]);
 	$nic=$_POST["nic"];
 	$sock=new sockets();
 	$SquidAllow80Port=intval($sock->GET_INFO("SquidAllow80Port"));
 	$tpl=new templates();
+	$SquidMgrListenPort=intval($sock->GET_INFO("SquidMgrListenPort"));
+	
+	if($port>65535){$port=65535;}
+	if($WANPROXY_PORT>65635){$WANPROXY_PORT=65635;}
+	if($MIKROTIK_PORT>65635){$MIKROTIK_PORT=65635;}
 	
 	if($MIKROTIK_PORT==1){
 		$FTP=0;
@@ -1038,6 +1082,7 @@ function port_save(){
 		$TProxy=0;
 		$WCCP=0;
 		$Parent=0;
+		$FTP_TRANSPARENT=0;
 		$_POST["is_nat"]=0;
 		if($nic==null){
 			echo $tpl->javascript_parse_text("{mikrotik_error_interface}");
@@ -1045,11 +1090,29 @@ function port_save(){
 		}
 	}
 	
+	if($FTP_TRANSPARENT==1){
+		$transparent=0;$TProxy=0;$WCCP=0;$Parent=0;$ICP=0;$FTP=0;
+		if(!is_file("/usr/sbin/frox")){
+			echo $tpl->javascript_parse_text("{module_in_squid_not_installed}");
+			return;
+			
+		}
+		
+		if($WANPROXY_PORT==0){
+			echo $tpl->javascript_parse_text("{error} {missing_valuefor}: {proxy_port}");
+			return;
+		}
+		
+	}
+	
+
+	
 	if($FTP==1){
 		$transparent=0;
 		$TProxy=0;
 		$WCCP=0;
 		$Parent=0;
+		$FTP_TRANSPARENT=0;
 		$sslcertificate=null;
 		$UseSSL=0;
 		$nic=null;
@@ -1074,6 +1137,7 @@ function port_save(){
 		$_POST["is_nat"]=0;
 		$ICP=0;
 		$FTP=0;
+		$FTP_TRANSPARENT=0;
 		
 	}
 	
@@ -1094,11 +1158,20 @@ function port_save(){
 		}	
 	}
 	
+	if($port==$SquidMgrListenPort){
+		echo "$port == Manager port $SquidMgrListenPort (not allowed!)\n";
+		return;
+		
+	}
+	
+
+	
 	if(intval($_POST["is_nat"])==1){
 		$transparent=0;
 		$TProxy=0;
 		$WCCP=0;
 		$WANPROXY_PORT=0;
+		$FTP_TRANSPARENT=0;
 	}
 	
 	if($ICP==1){
@@ -1111,6 +1184,11 @@ function port_save(){
 		$nic=null;
 		$outgoing_addr=null;
 		$WANPROXY_PORT=0;
+		$FTP_TRANSPARENT=0;
+	}
+	
+	if($UseSSL==1){
+		$ProxyProtocol=0;
 	}
 	
 	
@@ -1127,10 +1205,30 @@ function port_save(){
 	
 	$is_nat=intval($_POST["is_nat"]);
 	
-	$sqladd="INSERT INTO proxy_ports (WANPROXY_PORT,WANPROXY,FTP,ICP,Parent,WCCP,is_nat,nic,ipaddr,port,xnote,enabled,transparent,TProxy,outgoing_addr,PortName,UseSSL,sslcertificate,NoAuth,MIKROTIK_PORT) 
-	VALUES ('$WANPROXY_PORT','$WANPROXY','$FTP','$ICP','$Parent','$WCCP','$is_nat','$nic','$ipaddr','$port','$xnote','$enabled','$transparent','$TProxy','$outgoing_addr','$PortName','$UseSSL','$sslcertificate',$NoAuth,'$MIKROTIK_PORT')";
+	$sqladd="INSERT INTO proxy_ports (WANPROXY_PORT,WANPROXY,FTP,ICP,Parent,WCCP,is_nat,nic,ipaddr,port,xnote,enabled,transparent,TProxy,outgoing_addr,PortName,UseSSL,sslcertificate,NoAuth,MIKROTIK_PORT,FTP_TRANSPARENT,SOCKS,ProxyProtocol) 
+	VALUES ('$WANPROXY_PORT','$WANPROXY','$FTP','$ICP','$Parent','$WCCP','$is_nat','$nic','$ipaddr','$port','$xnote','$enabled','$transparent','$TProxy','$outgoing_addr','$PortName','$UseSSL','$sslcertificate',$NoAuth,'$MIKROTIK_PORT','$FTP_TRANSPARENT','$SOCKS','$ProxyProtocol')";
+	
+	
+	$q=new mysql_squid_builder();
+	
+	if($ID==0){
+		
+		$sql="SELECT ID,PortName FROM proxy_ports WHERE port='$port'";
+		$ligne=@mysql_fetch_array($q->QUERY_SQL($sql));
+		$ID=intval($ligne["ID"]);
+		
+		if($ID>0){
+			$PortName=$ligne["PortName"];
+			echo $tpl->javascript_parse_text("$port: {error_port_already_usedby}:$PortName");
+			return;
+		}
+		
+	}
+	
+	
 	$sqledit="UPDATE proxy_ports SET 
 	WANPROXY_PORT='$WANPROXY_PORT',
+	FTP_TRANSPARENT='$FTP_TRANSPARENT',
 	WANPROXY='$WANPROXY',
 	FTP='$FTP',
 	ICP='$ICP',
@@ -1147,11 +1245,13 @@ function port_save(){
 	enabled='$enabled',nic='$nic',`is_nat`='$is_nat',
 	outgoing_addr='$outgoing_addr',
 	PortName='$PortName',
+	SOCKS='$SOCKS',
 	UseSSL='$UseSSL',
 	sslcertificate='$sslcertificate',
+	ProxyProtocol='$ProxyProtocol',
 	`NoAuth`='$NoAuth'
 	WHERE ID=$ID";
-	$q=new mysql_squid_builder();
+	
 	
 
 	
@@ -1161,14 +1261,15 @@ function port_save(){
 	
 	if($port==$InfluxAdminPort){echo "Failed, reserved port Influx Admin Port\n";return;}
 	if($port==9900){echo "Failed, reserved port WanProxy Monitor\n";return;}
-	if($port==8086){echo "Failed, reserved port Influx query port\n";return;}
+	if($port==5432){echo "Failed, reserved port PostgreSQL query port\n";return;}
 	if($port==8088){echo "Failed, reserved port Unifi HTTP Port\n";return;}
 	if($port==8089){echo "Failed, reserved port Influx Meta Port\n";return;}
 	if($port==8090){echo "Failed, reserved port Raft Port\n";return;}
 	if($port==8099){echo "Failed, reserved port Influx Cluster Port\n";return;}
 	if($port==13298){echo "Failed, reserved port Proxy NAT backend port\n";return;}
-	if($port==21){echo "Failed, reserved port Local FTP service port\n";return;}
+	if($SquidAllow80Port==0){if($port==21){echo "Failed, reserved port Local FTP service port\n";return;}}
 	if($port==25){echo "Failed, reserved port Local SMTP service port\n";return;}
+	if($port==31337){echo "Failed, reserved port Local RedSocks\n";return;}
 	
 	if(!$q->FIELD_EXISTS("proxy_ports", "is_nat")){
 		$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `is_nat` smallint(1) NOT NULL DEFAULT '0'");
@@ -1225,6 +1326,10 @@ function port_save(){
 	}
 	if(!$q->FIELD_EXISTS("proxy_ports", "WANPROXY_PORT")){
 		$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `WANPROXY_PORT` smallint(6) NOT NULL DEFAULT '0',ADD INDEX( `WANPROXY_PORT` )");
+		if(!$q->ok){echo $q->mysql_error."\n";}
+	}
+	if(!$q->FIELD_EXISTS("proxy_ports", "ProxyProtocol")){
+		$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `ProxyProtocol` SMALLINT(1) NOT NULL DEFAULT '0'");
 		if(!$q->ok){echo $q->mysql_error."\n";}
 	}
 	
@@ -1374,7 +1479,9 @@ if(isset($_POST["sortname"])){if($_POST["sortname"]<>null){$ORDER="ORDER BY {$_P
 if(isset($_POST['page'])) {$page = $_POST['page'];}
 
 $searchstring=string_to_flexquery();
+$WorkingPort=1;
 	if($searchstring<>null){
+		$WorkingPort=0;
 		$sql="SELECT COUNT(*) as TCOUNT FROM `$table` WHERE 1 $FORCE_FILTER $searchstring";
 		$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
 		$total = $ligne["TCOUNT"];
@@ -1405,7 +1512,7 @@ $searchstring=string_to_flexquery();
 
 	$data = array();
 	$data['page'] = $page;
-	$data['total'] = $total;
+	$data['total'] = $total+$WorkingPort;
 	$data['rows'] = array();
 	
 	$ZPORTS=explode("\n",@file_get_contents("/etc/squid3/listen_ports.conf"));
@@ -1416,6 +1523,24 @@ $searchstring=string_to_flexquery();
 		if(!preg_match("#http.*?_port\s+.*?:([0-9]+)#", $ligne,$re)){continue;}
 		$CONFIGURED_PORT[$re[1]]=true;
 	}
+	
+	if($WorkingPort==1){
+		$SquidMgrListenPort=intval($sock->GET_INFO("SquidMgrListenPort"));
+		$data['rows'][] = array(
+				'id' => "00",
+				'cell' => array(
+						"<center style='font-size:30px;font-weight:normal;color:#8a8a8a'>
+						<img src='img/folder-network-48.png'></center>",
+						"<span style='font-size:30px;;color:#8a8a8a'>0.0.0.0</span> ",
+						"<span style='font-size:30px;;color:#8a8a8a'>$SquidMgrListenPort</span>&nbsp;<span style='font-size:18px;font-weight:bold;color:#8a8a8a'>".$tpl->javascript_parse_text("{internal_port} ({used_by_artica})")."</span>",
+						"<center style='margin-top:3px;color:#8a8a8a'></a></center>",
+						"<center style='margin-top:3px;color:#8a8a8a'></a></center>",
+						"<center style='margin-top:3px;font-size:30px;font-weight:normal;color:#8a8a8a'><img src='img/check-48.png'></center>",
+						"<center style='margin-top:3px;font-size:30px;font-weight:normal;color:#8a8a8a'>&nbsp;</center>",)
+		);
+		
+	}
+	
 	
 
 	if(!$q->ok){json_error_show($q->mysql_error."<br>$sql");}
@@ -1437,6 +1562,7 @@ $searchstring=string_to_flexquery();
 		$ipaddr=$ligne["ipaddr"];
 		$port=$ligne["port"];
 		$enabled=$ligne["enabled"];
+		$text_ssl=null;
 		$eth=$ligne["nic"];
 		$UseSSL=intval($ligne["UseSSL"]);
 		$icon="folder-network-48.png";
@@ -1451,9 +1577,17 @@ $searchstring=string_to_flexquery();
 		$firwall_error=null;
 		$WANPROXY_PORT=0;
 		$NOT_TEST=false;
+		
 		$tproxy_note=$tpl->_ENGINE_parse_body("<br><strong style='font-size:16px'>({connected_port})</strong>");
 		$noauthT=null;
-		if($UseSSL==1){$icon_ssl=imgsimple("32-cert.png");}
+		if($UseSSL==1){
+			$icon_ssl=imgsimple("32-cert.png");
+			$sslcertificate=$ligne["sslcertificate"];
+			$sslcertificateEncode=urlencode($sslcertificate);
+			$text_ssl=$tpl->_ENGINE_parse_body("<br><span style='font-size:16px'>{certificate}:</span> <a href=\"javascript:blur();\" OnClick=\"javascript:Loadjs('certificates.center.php?certificate-edit-js=yes&CommonName=$sslcertificateEncode');\"
+			style='font-size:16px;text-decoration:underline'>$sslcertificate</a>");
+		
+		}
 		
 		if($ligne["enabled"]==0){
 			$color="#A0A0A0";
@@ -1478,6 +1612,16 @@ $searchstring=string_to_flexquery();
 		}
 		if($ligne["WANPROXY"]==1){
 			$tproxy_note=$tpl->_ENGINE_parse_body("<br><strong style='font-size:16px'>(TCP {WAN_PARENT} - {parent_proxy})</strong>");
+			$NOT_TEST=true;
+			$WANPROXY_PORT=$ligne["WANPROXY_PORT"];
+			$tproxy_note=$tproxy_note.$tpl->_ENGINE_parse_body("<br><strong style='font-size:16px'>{forward_to_port}: 127.0.0.1:$WANPROXY_PORT</strong>");
+		}
+		
+		if($ligne["FTP_TRANSPARENT"]==1){
+			$icon="folder-network-48-tr.png";
+			if($ligne["enabled"]==0){$icon="folder-network-48-trg.png";}
+			$transparent=imgsimple($check);
+			$tproxy_note=$tpl->_ENGINE_parse_body("<br><strong style='font-size:16px'>( FTP Transparent )</strong>");
 			$NOT_TEST=true;
 			$WANPROXY_PORT=$ligne["WANPROXY_PORT"];
 			$tproxy_note=$tproxy_note.$tpl->_ENGINE_parse_body("<br><strong style='font-size:16px'>{forward_to_port}: 127.0.0.1:$WANPROXY_PORT</strong>");
@@ -1555,6 +1699,11 @@ $searchstring=string_to_flexquery();
 			
 		}
 		
+		if($ligne["ProxyProtocol"]==1){
+			$tproxy_note=$tproxy_note."&nbsp;<strong style='color:#0612C6;font-size:16px'>".$tpl->javascript_parse_text("{proxy_protocol}")."</strong>";
+			
+		}
+		
 		
 		if($eth<>null){
 			$nic=new system_nic($eth);
@@ -1614,7 +1763,7 @@ $searchstring=string_to_flexquery();
 						"<center style='font-size:30px;font-weight:normal;color:$color'>
 							<img src='img/$icon'></center>",
 						"$EditJs$ipaddr</a> ",
-						"$EditJs$port</a>&nbsp;<span style='font-size:18px;font-weight:bold;color:$color'>$PortName</span>{$firwall_error}$tproxy_note<br><span style='font-size:14px;color:$color'>$xnote$noauthT</span>",
+						"$EditJs$port</a>&nbsp;<span style='font-size:18px;font-weight:bold;color:$color'>$PortName</span>$text_ssl{$firwall_error}$tproxy_note<br><span style='font-size:14px;color:$color'>$xnote$noauthT</span>",
 						"<center style='margin-top:3px'>$transparent</a></center>",
 						"<center style='margin-top:3px'>$icon_ssl</a></center>",
 						"<center style='margin-top:3px;font-size:30px;font-weight:normal;color:$color'><img src='img/$check'></center>",

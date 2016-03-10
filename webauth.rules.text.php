@@ -30,7 +30,7 @@ function Page(){
 		<td class=legend style='font-size:22px'>{title2}:</td>
 		<td style='width:860px'><textarea 
 			style='width:100%;height:40px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
-			Courier,monospace;background-color:white;color:black' id='MainTitle-$t'>". utf8_encode($sock->MainTitle)."</textarea>
+			Courier,monospace;background-color:white;color:black' id='MainTitle-$t'>". $sock->MainTitle."</textarea>
 		</td>
 	</tr>
 	<tr>
@@ -49,6 +49,14 @@ function Page(){
 	</tr>	
 	
 	<tr>
+		<td class=legend style='font-size:22px'>{header_form}:</td>
+		<td style='width:860px'><textarea 
+			style='width:100%;height:40px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
+			Courier,monospace;background-color:white;color:black' id='FORM_HEAD-$t'>".utf8_encode($sock->FORM_HEAD)."</textarea>
+		</td>
+	</tr>	
+	
+	<tr>
 		<td class=legend style='font-size:22px'>{welcome_message}:</td>
 		<td style='width:860px'><textarea 
 			style='width:100%;height:70px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
@@ -59,7 +67,7 @@ function Page(){
 		<td class=legend style='font-size:22px'>{footer_text}:</td>
 		<td style='width:860px'><textarea 
 			style='width:100%;height:70px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
-			Courier,monospace;background-color:white;color:black' id='FooterText-$t'>".utf8_encode($sock->FooterText)."</textarea>
+			Courier,monospace;background-color:white;color:black' id='FooterText-$t'>".$sock->FooterText."</textarea>
 		</td>
 	</tr>	
 	
@@ -78,7 +86,7 @@ function Page(){
 		<td class=legend style='font-size:22px'>{Terms_Conditions_explain}:</td>
 		<td style='width:860px'><textarea 
 			style='width:100%;height:150px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
-			Courier,monospace;background-color:white;color:black' id='TERMS_EXPLAIN-$t'>".utf8_encode($sock->TERMS_EXPLAIN)."</textarea>
+			Courier,monospace;background-color:white;color:black' id='TERMS_EXPLAIN-$t'>".$sock->TERMS_EXPLAIN."</textarea>
 		</td>
 	</tr>	
 	
@@ -102,14 +110,14 @@ function Page(){
 		<td class=legend style='font-size:22px'>{register_explain}:</td>
 		<td style='width:860px'><textarea 
 			style='width:100%;height:150px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
-			Courier,monospace;background-color:white;color:black' id='REGISTER_MESSAGE_EXPLAIN-$t'>".utf8_encode($sock->REGISTER_MESSAGE_EXPLAIN)."</textarea>
+			Courier,monospace;background-color:white;color:black' id='REGISTER_MESSAGE_EXPLAIN-$t'>".$sock->REGISTER_MESSAGE_EXPLAIN."</textarea>
 		</td>
 	</tr>		
 	<tr>
 		<td class=legend style='font-size:22px'>{smtp_register_message_success}:</td>
 		<td style='width:860px'><textarea 
 			style='width:100%;height:150px;font-size:18px !important;border:4px solid #CCCCCC;font-family:\"Courier New\",
-			Courier,monospace;background-color:white;color:black' id='REGISTER_MESSAGE_SUCCESS-$t'>".utf8_encode($sock->REGISTER_MESSAGE_SUCCESS)."</textarea>
+			Courier,monospace;background-color:white;color:black' id='REGISTER_MESSAGE_SUCCESS-$t'>".$sock->REGISTER_MESSAGE_SUCCESS."</textarea>
 		</td>
 	</tr>	
 	<tr>
@@ -152,6 +160,7 @@ function Page(){
 		XHR.appendData('FooterText',encodeURIComponent(document.getElementById('FooterText-$t').value));
 		XHR.appendData('LabelUsername',encodeURIComponent(document.getElementById('LabelUsername-$t').value));
 		XHR.appendData('LabelPassword',encodeURIComponent(document.getElementById('LabelPassword-$t').value));
+		XHR.appendData('FORM_HEAD',encodeURIComponent(document.getElementById('FORM_HEAD-$t').value));
 		
 		
 		
@@ -173,5 +182,6 @@ function Save(){
 		$sock->SET_INFO($key, $value);
 		
 	}
-	
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
 }

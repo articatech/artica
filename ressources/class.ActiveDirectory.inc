@@ -503,7 +503,7 @@ class ActiveDirectory{
 				return array();
 			}
 			$MEMBERS=$adldap->group()->members($name);
-		
+		if($GLOBALS["VERBOSE"]){echo "$name: FOUND ".count($MEMBERS)."\n";}
 			
 		if(count($MEMBERS)==0){return array();}
 		

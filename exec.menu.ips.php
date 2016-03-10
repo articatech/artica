@@ -22,28 +22,72 @@ if($argv[1]=="--savedns"){savedns();exit;}
 if($argv[1]=="--reconfigure"){reconfigure();exit;}
 if($argv[1]=="--uuid"){new_uuid();exit;}
 if($argv[1]=="--stopfw"){stopfw();exit;}
+if($argv[1]=="--EnableInterface"){interface_enable($argv[2]);exit;}
+if($argv[1]=="--DisableInterface"){interface_disable($argv[2]);exit;}
+if($argv[1]=="--removerrules"){routing_rules_delete($argv[2]);exit;}
+
+display_menu();
 
 
-$unix=new unix();
-
-
-$NETWORK_ALL_INTERFACES=$unix->NETWORK_ALL_INTERFACES();
-
-
-echo "Open you web browser and type:\\n";
-
-while (list ($interface, $line) = each ($NETWORK_ALL_INTERFACES) ){
-	if($interface=="lo"){continue;}
-	if(trim($line["IPADDR"])==null){continue;}
-	echo "https://{$line["IPADDR"]}:9000\\n";
+function display_menu(){
 	
+	$unix=new unix();
+	$results=$unix->NETWORK_ALL_INTERFACES();
+	$f=array();
+	while (list ($Interface, $ligne) = each ($results) ){
+		if($Interface=="lo"){continue;}
+		$f[]="On $Interface: https://{$ligne["IPADDR"]}:9000";
+		
+	}
+	if(count($f)==0){
+		system("dhclient -v eth0 >/dev/null 2>&1 &");
+		return;
+		
+	}
+	
+	echo "Web interface URIs:\\n".@implode("\\n", $f);
 	
 }
 
-echo "\n";
+function interface_enable($eth){
+	
+	
+	$nicClass=new system_nic($eth);
+	$nicClass->enabled=1;
+	$nicClass->SaveNic();
+	network_menu();
+	
+}
+function interface_disable($eth){
+
+
+	$nicClass=new system_nic($eth);
+	$nicClass->enabled=0;
+	$nicClass->SaveNic();
+	network_menu();
+
+}
+
+function routing_rules_delete($eth){
+	
+	
+	$q=new mysql();
+	$results=$q->QUERY_SQL("SELECT ID FROM routing_rules WHERE nic='$eth'","artica_backup");
+	while ($ligne = mysql_fetch_assoc($results)) {
+		$ID=$ligne["ID"];
+		$q->QUERY_SQL("DELETE FROM routing_rules WHERE ID='$ID'","artica_backup");
+		$q->QUERY_SQL("DELETE FROM routing_rules_dest WHERE ruleid='$ID'","artica_backup");
+		$q->QUERY_SQL("DELETE FROM routing_rules_src WHERE ruleid='$ID'","artica_backup");
+		
+	}
+	network_menu();
+}
+
 
 function reconfigure(){
-	
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	system("$php /usr/share/artica-postfix/exec.virtuals-ip.php --build");	
 	system("/etc/init.d/artica-ifup stop");
 	system("/etc/init.d/artica-ifup start");
 	
@@ -105,14 +149,14 @@ while (list ($gpid, $val) = each ($f) ){
 
 $diag[]="$DIALOG --clear  --nocancel --backtitle \"Software version $ARTICAVERSION on $HOSTNAME\"";
 $diag[]="--title \"[ N E T W O R K - M E N U ]\"";
-$diag[]="--menu \"You can use the UP/DOWN arrow keys\nChoose the TASK\" 20 100 10";
+$diag[]="--menu \"You can use the UP/DOWN arrow keys\nChoose the TASK\" 20 100 50";
 $NETWORK_ALL_INTERFACES=$unix->NETWORK_ALL_INTERFACES();
 
 
 $tt=explode("\n", @file_get_contents("/proc/net/dev"));
 
 
-$diag[]="RECONF \"Reconfigure Network\"";
+$diag[]="RECONF \"Reconfigure/Rebuild Network\"";
 $diag[]="DNS \"DNS setup\"";
 
 while (list ($index, $line) = each ($tt) ){
@@ -125,13 +169,58 @@ while (list ($index, $line) = each ($tt) ){
 	$NETMASK=$NETWORK_ALL_INTERFACES[$re[1]]["NETMASK"];
 	$GATEWAY=$NETWORK_ALL_INTERFACES[$re[1]]["GATEWAY"];
 	
+	$nicClass=new system_nic($re[1]);
+	$q=new mysql();
+	$conf="$DEFAULT/$NETMASK";
+	if($nicClass->enabled==0){$conf=" * disabled *";}
 	
-	$diag[]="{$re[1]} \"Modify {$re[1]} interface ($DEFAULT/$NETMASK)\"";
-	$case[]="{$re[1]}) modify$index;;";
-	$funct[]="function modify$index(){";
-	$funct[]="\t$php ".__FILE__." --interface {$re[1]}";
-	$funct[]="\t/tmp/bash_network_menu_interface.sh";
-	$funct[]="}";
+	
+	if($nicClass->enabled==1){
+		
+		$diag[]="{$re[1]} \"Modify {$re[1]} interface ($conf)\"";
+		$case[]="{$re[1]}) modify$index;;";
+		
+		
+		$funct[]="function modify$index(){";
+		$funct[]="\t$php ".__FILE__." --interface {$re[1]}";
+		$funct[]="\t/tmp/bash_network_menu_interface.sh";
+		$funct[]="}";
+		
+		
+		$diag[]="{$re[1]}D \"Disable {$re[1]} interface\"";
+		$case[]="{$re[1]}D) Disable$index;;";
+		
+		$RoutesRules=mysql_fetch_array($q->QUERY_SQL("SELECT count(*) as tcount FROM routing_rules WHERE nic='{$re[1]}'","artica_backup"));
+		if($RoutesRules["tcount"]>0){
+			$diag[]="{$re[1]}R \"Remove {$re[1]} routing rules\"";
+			$case[]="{$re[1]}R) RemoveRRules$index;;";
+		}
+		
+		$funct[]="function RemoveRRules$index(){";
+		$funct[]="\t$php ".__FILE__." --removerrules {$re[1]}";
+		$funct[]="\t/tmp/bash_network_menu.sh";
+		$funct[]="\texit";
+		$funct[]="}";
+		
+		$funct[]="function Disable$index(){";
+		$funct[]="\t$php ".__FILE__." --DisableInterface {$re[1]}";
+		$funct[]="\t/tmp/bash_network_menu.sh";
+		$funct[]="\texit";
+		$funct[]="}";
+		
+		
+	}else{
+		$diag[]="{$re[1]}E \"Activate {$re[1]} interface * disabled *\"";
+		$case[]="{$re[1]}E) Enable$index;;";
+		$funct[]="function Enable$index(){";
+		$funct[]="\t$php ".__FILE__." --EnableInterface {$re[1]}";
+		$funct[]="\t/tmp/bash_network_menu.sh";
+		$funct[]="\texit";
+		$funct[]="}";
+	}
+	
+	
+
 	
 	
 }

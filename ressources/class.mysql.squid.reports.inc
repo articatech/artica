@@ -822,6 +822,7 @@ class mysql_squid_reports{
 
 	public function TABLES_STATUS_CORRUPTED(){
 		$sql="show TABLE STATUS";
+		$ARRAY=array();
 		if(!$this->BD_CONNECT()){return false;}
 		$ok=@mysql_select_db($this->database,$this->mysql_connection);
 		
@@ -849,7 +850,7 @@ class mysql_squid_reports{
 		}
 		
 		
-		$ARRAY=array();
+		
 		if($GLOBALS["VERBOSE"]){echo "mysql_query -> ". mysql_num_rows($results)." items\n";}
 		while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
 			

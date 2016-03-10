@@ -66,11 +66,11 @@ function tabs(){
 	$array["watchdog"]="{watchdog}";
 	
 	$array["backup"]='{backup_restore}';
-	
+	$array["options"]='{options}';
 	
 
 
-	$fontsize=26;
+	$fontsize=22;
 	while (list ($num, $ligne) = each ($array) ){
 		
 		if($num=="status"){
@@ -114,6 +114,11 @@ function tabs(){
 			$tab[]= $tpl->_ENGINE_parse_body("<li><a href=\"nginx.backup.php\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
 			continue;
 		}
+		
+		if($num=="options"){
+			$tab[]= $tpl->_ENGINE_parse_body("<li><a href=\"nginx.options.php\" style='font-size:{$fontsize}px'><span>$ligne</span></a></li>\n");
+			continue;
+		}		
 
 		$tab[]="<li style='font-size:{$fontsize}px'><a href=\"$page?$num=yes\"><span >$ligne</span></a></li>\n";
 			

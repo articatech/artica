@@ -622,6 +622,7 @@ class dansguardian_rules{
 									
 									"webradio"=>"{webradio}",
 									"audio-video"=>"{audio-video}",
+									"youtube"=>"Youtube",
 									"webtv"=>"{webtv}",
 									"music"=>"{music}",
 									"movies"=>"{movies}",
@@ -833,6 +834,7 @@ class dansguardian_rules{
 		  	"dating"=>"20-dating.png",
 		  	"webplugins"=>"20-webplugins.png",
 		  	"audio-video"=>"20-audio-video.png",
+		  	 "youtube"=>"20-audio-video.png",
 		  	"blog"=>"20-blog.png",
 		  	"models"=>"20-model-agency.png",
 		  	"liste_bu"=>"flags/fr.png",

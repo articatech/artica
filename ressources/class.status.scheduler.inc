@@ -5,7 +5,7 @@ class status_scheduler{
 	
 	
 	function status_scheduler(){
-	
+		if(!function_exists("system_is_overloaded")){include_once("/usr/share/artica-postfix/class.os.system.inc");}
 	if(!isset($GLOBALS["CLASS_UNIX"])){
 		$GLOBALS["CLASS_SOCKETS"]=new sockets();
 		$GLOBALS["CLASS_USERS"]=new settings_inc();
@@ -22,8 +22,8 @@ class status_scheduler{
 	$WebCommunityUpdatePool=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/WebCommunityUpdatePool"));
 	$GLOBALS["LMSensorsEnable"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/LMSensorsEnable"));
 	$LMSensorsEnable_cachefile="/usr/share/artica-postfix/ressources/logs/web/sensors.array";
-	$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
-	
+	$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+	$system_is_overloaded=system_is_overloaded();
 	if($WebCommunityUpdatePool==0){$WebCommunityUpdatePool=360;}
 	
 	$this->events("LMSensorsEnable = {$GLOBALS["LMSensorsEnable"]}",__FUNCTION__,__LINE__);
@@ -91,10 +91,11 @@ class status_scheduler{
 		shell_exec2("$prefixcmd {$GLOBALS["BASE_ROOT"]}/exec.mysql.clean.php --clean-tmd >/dev/null 2>&1 &");
 	}	
 	
-	
-	$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("/etc/artica-postfix/pids/exec.web-community-filter.php.MAIN.time");
-	if($time_file>$WebCommunityUpdatePool){
-		shell_exec2("$prefixcmd {$GLOBALS["BASE_ROOT"]}/exec.web-community-filter.php >/dev/null 2>&1 &");
+	if(!$system_is_overloaded){
+		$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("/etc/artica-postfix/pids/exec.clean.logs.php.sessions_clean.time");
+		if($time_file>180){
+			shell_exec2("$prefixcmd {$GLOBALS["BASE_ROOT"]}/exec.clean.logs.php --clean-sessions >/dev/null 2>&1 &");
+		}
 	}
 	
 	$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("/etc/artica-postfix/pids/exec.web-community-filter.php.MAIN.time");
@@ -122,9 +123,10 @@ class status_scheduler{
 	
 	$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("/etc/artica-postfix/pids/exec.checkfolder-permissions.php.MAIN.time");
 	writelogs_framework("exec.checkfolder-permissions.php {$time_file}Mn/240Mn");
-	
 	if($time_file>240){
-		shell_exec2("$prefixcmd {$GLOBALS["BASE_ROOT"]}/exec.checkfolder-permissions.php >/dev/null 2>&1 &");
+		if(!$system_is_overloaded){
+			shell_exec2("$prefixcmd {$GLOBALS["BASE_ROOT"]}/exec.checkfolder-permissions.php >/dev/null 2>&1 &");
+		}
 	}
 	
 	if($EnableIntelCeleron==0){
@@ -132,8 +134,18 @@ class status_scheduler{
 		if($time_file>15){
 			shell_exec2("$prefixcmd {$GLOBALS["BASE_ROOT"]}/exec.containers.php --cheks >/dev/null 2>&1 &");
 		}
-	}
 	
+		$DisksBenchs=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/DisksBenchs"));
+		if($DisksBenchs>0){
+			$DisksBenchs=$DisksBenchs*60;
+			$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("/etc/artica-postfix/pids/exec.seeker.php.xtart.time");
+			$GLOBALS["CLASS_UNIX"]->events("seeker: {$time_file}mn/{$DisksBenchs}mn (/etc/artica-postfix/pids/exec.seeker.php.xtart.time)","/var/log/seeker.log",false,__FUNCTION__,__LINE__,basename(__FILE__));
+			if($time_file>$DisksBenchs){
+				shell_exec2("$prefixcmd {$GLOBALS["BASE_ROOT"]}/exec.seeker.php >/dev/null 2>&1 &");
+			}
+		}
+	
+	}
 
 	
 	
@@ -143,10 +155,7 @@ class status_scheduler{
 	}
 	
 	
-	$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("/etc/artica-postfix/pids/exec.artica.ccurl.php.hourly.time");
-	if($time_file>60){
-		shell_exec2("$prefixcmd {$GLOBALS["BASE_ROOT"]}/exec.artica.ccurl.php >/dev/null 2>&1 &");
-	}
+
 	
 	$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("{$GLOBALS["BASE_ROOT"]}/ressources/logs/web/myIP.conf");
 	if($time_file>60){
@@ -175,56 +184,32 @@ class status_scheduler{
 	}
 	
 	
-	$EnableArticaMetaClient=intval($GLOBALS["CLASS_SOCKETS"]->GET_INFO("EnableArticaMetaClient"));
-	$EnableArticaMetaServer=intval($GLOBALS["CLASS_SOCKETS"]->GET_INFO("EnableArticaMetaServer"));
-	if($EnableArticaMetaClient==1){
-		$ArticaMetaPooling=intval($GLOBALS["CLASS_SOCKETS"]->GET_INFO("ArticaMetaPooling"));
-		if($ArticaMetaPooling==0){$ArticaMetaPooling=15;}
-		$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("/var/run/artica-meta-client.run");
-		if($time_file>$ArticaMetaPooling){
-			$cmdline="$prefixcmd {$GLOBALS["BASE_ROOT"]}/exec.artica-meta-client.php --ping >/dev/null 2>&1 &";
-			writelogs_meta("Launch Meta PING {$time_file}Mn \"$cmdline\"", __FUNCTION__, __FILE__, __LINE__);
-			shell_exec2($cmdline);
-		}
-	}
+
 	
+
 	
-	if($EnableArticaMetaServer==1){
-		$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("/etc/artica-postfix/pids/exec.artica-meta-server.php.execute.time");
-		if($time_file>20){
-			$cmdline="$prefixcmd {$GLOBALS["BASE_ROOT"]}/exec.artica-meta-server.php >/dev/null 2>&1 &";
-			shell_exec2($cmdline);
-		}
-	}
+	// *******************************************************************************************************************************************************
 	
-	if($GLOBALS["SquidPerformance"]<3){
-		$squid=$GLOBALS["CLASS_UNIX"]->LOCATE_SQUID_BIN();
-		if(is_file($squid)){
-			$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("/etc/artica-postfix/pids/exec.squid.stats.hours.php.clean_empty_tables.time");
-			if($time_file>240){
-				shell_exec2("$prefixcmd {$GLOBALS["BASE_ROOT"]}/exec.squid.stats.hours.php --clean-empty 2>&1 &");
+	if(!$system_is_overloaded){
+		$lshw=$GLOBALS["CLASS_UNIX"]->find_program("lshw");
+		if(is_file($lshw)){
+			
+			$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("{$GLOBALS["BASE_ROOT"]}/ressources/logs/LSHW.NET.HTML");
+			if($time_file>6000){
+				@unlink("{$GLOBALS["BASE_ROOT"]}/ressources/logs/LSHW.NET.HTML");
+				shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} $lshw -html -C network >{$GLOBALS["BASE_ROOT"]}/ressources/logs/LSHW.NET.HTML 2>&1 &");
+			}
+		
+			$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("{$GLOBALS["BASE_ROOT"]}/ressources/logs/LSHW.PROC.HTML");
+		
+			if($time_file>6000){
+				if(!$system_is_overloaded){
+					@unlink("{$GLOBALS["BASE_ROOT"]}/ressources/logs/LSHW.PROC.HTML");
+					shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} $lshw -html -C processor >{$GLOBALS["BASE_ROOT"]}/ressources/logs/LSHW.PROC.HTML 2>&1 &");
+				}
 			}
 		
 		}
-	}
-	
-	
-	// *******************************************************************************************************************************************************
-	$lshw=$GLOBALS["CLASS_UNIX"]->find_program("lshw");
-	if(is_file($lshw)){
-		$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("{$GLOBALS["BASE_ROOT"]}/ressources/logs/LSHW.NET.HTML");
-		if($time_file>6000){
-			@unlink("{$GLOBALS["BASE_ROOT"]}/ressources/logs/LSHW.NET.HTML");
-			shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} $lshw -html -C network >{$GLOBALS["BASE_ROOT"]}/ressources/logs/LSHW.NET.HTML 2>&1 &");
-		}
-	
-		$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("{$GLOBALS["BASE_ROOT"]}/ressources/logs/LSHW.PROC.HTML");
-	
-		if($time_file>6000){
-			@unlink("{$GLOBALS["BASE_ROOT"]}/ressources/logs/LSHW.PROC.HTML");
-			shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} $lshw -html -C processor >{$GLOBALS["BASE_ROOT"]}/ressources/logs/LSHW.PROC.HTML 2>&1 &");
-		}
-	
 	}
 	// *******************************************************************************************************************************************************
 	XMail();exim4();

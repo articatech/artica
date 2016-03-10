@@ -104,7 +104,7 @@ function page(){
 	$ipaddr=$tpl->javascript_parse_text("{ipaddr}");
 	$error=$tpl->javascript_parse_text("{error}");
 	$sitename=$tpl->javascript_parse_text("{sitename}");
-	$button3="{name: '<strong id=container-log-$t>$rotate_logs</stong>', bclass: 'Reload', onpress : SquidRotate$t},";
+	$button3="{name: '<strong style=font-size:18px>$refresh</strong>', bclass: 'Reload', onpress : SquidRotate$t},";
 
 	$html="
 	<div id='SQUID_INFLUDB_TABLE_DIV'>
@@ -125,7 +125,9 @@ function page(){
 	{display: '<span style=font-size:18px>$hits</span>', name : 'RQS', width : 110, sortable : true, align: 'right'},
 	
 	],
-		
+	buttons : [
+	$button3
+	],		
 
 	searchitems : [
 	{display: '$sitename', name : 'FAMILYSITE'},
@@ -151,13 +153,12 @@ function page(){
 if(document.getElementById('SQUID_ACCESS_LOGS_DIV')){
 	document.getElementById('SQUID_ACCESS_LOGS_DIV').innerHTML='';
 }
-
-
-
-
-
 }
 setTimeout('StartLogsSquidTable$t()',800);
+
+function SquidRotate$t(){
+	Loadjs('squid.influx.log.progress.php');
+}
 
 </script>
 ";

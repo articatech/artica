@@ -42,7 +42,7 @@ class familysite{
 	
 	private function getRegisteredDomain($signingDomain) {
 		if(!isset($GLOBALS["tldTree"])){
-			$GLOBALS["tldTree"]=unserialize(file_get_contents(dirname(__FILE__)."/tldree.db"));
+			$GLOBALS["tldTree"]=unserialize(@file_get_contents(dirname(__FILE__)."/tldree.db"));
 		}
 	
 		$signingDomainParts = explode('.', $signingDomain);

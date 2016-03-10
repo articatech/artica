@@ -11,7 +11,7 @@ if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;ini_set('html_errors',0);in
 	include_once('ressources/class.groups.inc');
 	include_once('ressources/class.dansguardian.inc');
 	include_once('ressources/class.squid.inc');
-	include_once('ressources/class.artica.graphs.inc');
+	
 	
 $usersmenus=new usersMenus();
 if(!$usersmenus->AsDansGuardianAdministrator){

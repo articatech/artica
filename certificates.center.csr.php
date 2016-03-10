@@ -19,7 +19,7 @@
 	if(isset($_GET["js"])){js();exit;}
 	if(isset($_GET["certificate-edit-csr"])){certificate_edit_csr();exit;}
 	if(isset($_GET["verify-csr"])){certificate_edit_csr_verify();exit;}
-	
+	if(isset($_POST["SaveCSR"])){SaveCSR();exit;}
 	
 	certificate_edit_csr();
 	
@@ -60,29 +60,58 @@ function certificate_edit_csr(){
 	
 	$CommonNameURL=urlencode("$commonName");
 	$button_upload=button("$upload_text", "Loadjs('certificates.center.upload.php?certificate-upload-js=yes&CommonName=$CommonNameURL&type=csr&t={$_GET["t"]}&textid=text$t&RunAfter=VerifyCertificate$tt',true)");
-	
+	$button_save=$tpl->_ENGINE_parse_body(button("{apply}","SaveCRT$tt()",40));
 	if($ligne["UsePrivKeyCrt"]==0){$button_upload=null;}
 	
 	$csr_ssl_explain=$tpl->_ENGINE_parse_body("{csr_ssl_explain}");
 	$html="
 <div class=explain style='font-size:18px'>$csr_ssl_explain</div>
-	<div id='verify-$tt'></div>
+		<div id='verify-$tt'></div>
 		<center>$button_upload</center>
 		<center style='margin:10px'>
 		<textarea id='text$t' style='font-family:Courier New;
 		font-weight:bold;width:100%;height:520px;border:5px solid #8E8E8E;
 		overflow:auto;font-size:16px !important;width:99%;height:390px'>{$ligne["csr"]}</textarea>
 		</center>
+		<center style='margin:10px'>$button_save</center>
 	</div>
 <script>
-	function VerifyCertificate$tt(){
+function VerifyCertificate$tt(){
 	LoadAjax('verify-$tt','$page?verify-csr=yes&CommonName=$CommonNameURL',true);
 }
+var x_SaveCRT$tt=function (obj) {
+	var results=obj.responseText;
+	if (results.length>3){alert(results);return;}
+	VerifyCertificate$tt();
+}
+function SaveCRT$tt(){
+	var XHR = new XHRConnection();
+	var pp=encodeURIComponent(document.getElementById('text$t').value);
+	XHR.appendData('SaveCSR',pp);
+	XHR.appendData('CommonName','$commonName');
+	XHR.sendAndLoad('$page', 'POST',x_SaveCRT$tt);
+}
+
+
+
 VerifyCertificate$tt();
 </script>
 	";
 	echo $tpl->_ENGINE_parse_body($html);
 	}
+	
+function SaveCSR(){
+	$CommonName=$_POST["CommonName"];
+	$csr=url_decode_special_tool($_POST["SaveCSR"]);
+	$dataSQL=mysql_escape_string2($csr);
+	$q=new mysql();
+	$sql="UPDATE sslcertificates SET `csr`='$dataSQL' WHERE `CommonName`='$CommonName'";
+	$q=new mysql();
+	$q->QUERY_SQL($sql,"artica_backup");
+	if(!$q->ok){echo $q->mysql_error;return;}
+}	
+	
+	
 function certificate_edit_csr_verify(){
 	
 	$CommonName=$_GET["CommonName"];

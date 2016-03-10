@@ -1,5 +1,5 @@
 <?php
-if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;$GLOBALS["DEBUG_MEM"]=true;ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);}
+if(isset($_GET["verbose"])){$GLOBALS["VERBOSE"]=true;$GLOBALS["DEBUG_PRIVS"]=true;$GLOBALS["DEBUG_MEM"]=true;ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);ini_set('error_prepend_string',null);ini_set('error_append_string',null);}
 $GLOBALS["BASEDIR"]="/usr/share/artica-postfix/ressources/interface-cache";
 include_once(dirname(__FILE__).'/ressources/class.html.pages.inc');
 include_once(dirname(__FILE__).'/ressources/class.cyrus.inc');
@@ -22,6 +22,7 @@ if(isset($_GET["ldap"])){
 	ini_set('error_append_string',null);
 	TestLDAPAD();
 }
+if(isset($_GET["proxy_dashboard_counters"])){echo proxy_dashboard_counters();exit;}
 if(isset($_GET["button-refresh"])){button_refresh();exit;}
 if(isset($_GET["sequence-proxy"])){echo proxy_status();exit;}
 if(isset($_GET["sequence-server"])){echo server_status();exit;}
@@ -36,6 +37,7 @@ if(isset($_GET["active-directory-dash-infos"])){active_directory_infos();exit;}
 if(isset($_GET["graph1-js"])){proxy_graph_js();exit;}
 if(isset($_GET["graph2-js"])){proxy_graph2_js();exit;}
 if(isset($_GET["graph3-js"])){proxy_graph3_js();exit;}
+if(isset($_GET["graph2-haproxy-js"])){haproxy_graph2_js();exit;}
 
 
 
@@ -174,11 +176,11 @@ echo "
   <li><div style='background-color:white;width:1500px;height:1800px;' id='system-dash-backup'></div></li>
   <li><div style='background-color:white;width:1500px;height:1800px;' idnum=117 id='system-artica-settings'></div></li>
   
-  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=118 id='stats-members'></div></li>
-  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=119 id='stats-flow'></div></li>
-  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=120 id='stats-websites'></div></li>
+  <li><div style='background-color:white;width:1500px;height:6000px;' idnum=118 id='stats-members'></div></li>
+  <li><div style='background-color:white;width:1500px;height:6000px;' idnum=119 id='stats-flow'></div></li>
+  <li><div style='background-color:white;width:1500px;height:6000px;' idnum=120 id='stats-websites'></div></li>
   <li><div style='background-color:white;width:1500px;height:1800px;' idnum=121 id='stats-options'></div></li>
-  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=122 id='stats-requests'></div></li>
+  <li><div style='background-color:white;width:1500px;height:6000px;' idnum=122 id='stats-requests'></div></li>
   <li><div style='background-color:white;width:1500px;height:1800px;' idnum=123 id='categories-service2'></div></li>
   <li><div style='background-color:white;width:1500px;height:1800px;' idnum=124 id='stats-caches'></div></li>
   <li><div style='background-color:white;width:1500px;height:10000px;' idnum=125 id='webfiltering-db-status'></div></li>
@@ -234,7 +236,7 @@ echo "
   <li><div style='background-color:white;width:1500px;height:1800px;' idnum=174 id='postfix-milter-greylist-main'></div>
   <li><div style='background-color:white;width:1500px;height:1800px;' idnum=175 id='postfix-milter-greylist-acls'></div>
   <li><div style='background-color:white;width:1500px;height:1800px;' idnum=176 id='postfix-milter-greylist-update'></div>
-  <li><div style='background-color:white;width:1500px;height:2570px;' idnum=177 id='postfix-smtp-rfc'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=177 id='postfix-smtp-rfc'></div>
   <li><div style='background-color:white;width:1500px;height:1800px;' idnum=178 id='postfix-smtp-logs'></div>
  
   <li><div style='background-color:white;width:1500px;height:1800px;' idnum=179 id='pdns-dash-status'></div>
@@ -271,7 +273,76 @@ echo "
   <li><div style='background-color:white;width:1500px;height:1800px;' idnum=210 id='health-monit'></div>
   <li><div style='background-color:white;width:1500px;height:1800px;' idnum=211 id='health-perfs'></div>
   <li><div style='background-color:white;width:1500px;height:1800px;' idnum=212 id='gateway-secure-page'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=213 id='kaspersky-update-utility'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=214 id='postfix-watchdog-events'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=215 id='postfix-search-events'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=216 id='ss5-main-interface'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=217 id='squid-syslog-interface'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=218 id='system-network-bridges'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=219 id='squid-windows-update'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=220 id='main-nginx-watchdog-table'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=221 id='system-nic-vde'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=222 id='squid-web-copy'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=223 id='apache-watchdoglogs'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=224 id='squid-smtp'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=225 id='quotas-bandwidth'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=226 id='postfix-postmaster'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=227 id='postfix-notifications'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=228 id='suricata-main'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=229 id='ipblocks-div'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=230 id='squid-ftp-template'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=231 id='squid-youtube-locker'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=232 id='firehol-rules'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=233 id='bandwidthd-stats'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=234 id='suricata-events'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=235 id='groups-search'></div>  
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=236 id='postfix-mysql-distributions'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=237 id='routing-rules'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=238 id='msftncsi-div'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=239 id='Suricata-Updates'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=240 id='Haproxy-Updates'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=241 id='StatsIDS'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=242 id='phpmyadmin-div'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=243 id='wordpress-div'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=244 id='proftpd-update'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=245 id='qos-div'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=246 id='not-categorized-div'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=247 id='squid-acls-delegate'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=248 id='messaging-dashboard-ou'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=249 id='messaging-domains-ou'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=250 id='messaging-stats-members'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=251 id='messaging-clamav-milter'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=252 id='messaging-security-update'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=253 id='privoxy-div'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=254 id='postfix-valvulad'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=255 id='postfix-ssl'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=256 id='postfix-whitelist'></div>
+  <li><div style='background-color:white;width:1500px;height:1800px;' idnum=257 id='as-by-dom'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=258 id='postfix-smtp-rfc-domain'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=259 id='mimedefang-domain'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=260 id='mimedefang-backuplist'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=261 id='mimedefang-autowhite'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=262 id='mimedefang-extensions'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=263 id='smtp-refused-table'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=264 id='mimedefang-disclaimers'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=265 id='mimedefang-transactions'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=266 id='mimedefang-quarantine'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=267 id='stats-smtp-refused'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=268 id='stats-smtp-flow'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=269 id='mimedefang-autocompress'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=270 id='mimedefang-attachments'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=271 id='stats-smtp-attachs'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=272 id='spamassassin-analyze'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=273 id='spamassassin-urls-rules'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=274 id='spamassassin-escrap-rules'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=275 id='spamassassin-subjects-rules'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=276 id='mimedefang-antivirus-rules'></div>
+  <li><div style='background-color:white;width:1500px;height:3000px;' idnum=277 id='sealion-agent'></div>
+  
+  
+  
   <li><div style='background-color:white;width:1500px;height:1800px;' id='none'></div></li>
+  
   
   
 </ul>
@@ -282,6 +353,9 @@ echo "
 var STATS_ZMD5='';
 var DASHBOARD_MEMORY_NIC='';
 var VAR_CURRENT_POS=0;
+var SystemSchedulesAddon='';
+var ApacheWatchdogFileName='';
+var FIREHOLE_RULES_ETH='';
 
 if(!IsFunctionExists('LoadAjaxRound')){
 	alert('$missing_javascript_function_refresh');
@@ -381,7 +455,7 @@ if(!IsFunctionExists('LoadAjaxRound')){
     if(newIndex==79){ LoadAjaxRound('system-sshd','sshd.php?in-front-ajax=yes&tabsize=22');}
     if(newIndex==80){ LoadAjaxRound('system-optimize','system.optimize.php');}
     if(newIndex==81){ LoadAjaxRound('system-PowerDNS','pdns.php?tabs=yes&expand=yes');}
-    if(newIndex==82){ LoadAjaxRound('system-schedules','schedules.php');}
+    if(newIndex==82){ LoadAjaxRound('system-schedules','schedules.php'+SystemSchedulesAddon);}
     if(newIndex==83){ LoadAjaxRound('system-events','logrotate.php?tabs=yes');}
     if(newIndex==84){ LoadAjaxRound('system-syncthing','syncthing.php');}
     if(newIndex==85){ LoadAjaxRound('system-meta-server','artica-meta.php');}
@@ -463,14 +537,14 @@ if(!IsFunctionExists('LoadAjaxRound')){
 	if(newIndex==159){ LoadAjaxRound('messaging-dashboard','admin.dashboard.postfix.php');}
 	if(newIndex==160){ LoadAjaxRound('postfix-networks-dashboard','postfix.network.php?ajax-popup=yes&hostname=master');}
 	if(newIndex==161){ LoadAjaxRound('postfix-transport-dashboard','postfix.transport.table.php?hostname=master');}
-	if(newIndex==162){ LoadAjaxRound('postfix-backupemail-dashboard','postfix.backup.fly.php?hostname=master');}
+	if(newIndex==162){ LoadAjaxRound('postfix-backupemail-dashboard','mimedefang.backup.php');}
 	if(newIndex==163){ LoadAjaxRound('postfix-opendkim-dashboard','opendkim.php?popup=yes&mail=master');}
 	if(newIndex==164){ Loadjs('postfix.queue.monitoring.php?inline-js=yes&font-size=18');}
 	if(newIndex==165){ LoadAjaxRound('postfix-fetchmail-dashboard','fetchmail.index.php?quicklinks=yes');}
 	if(newIndex==166){ Loadjs('whitelists.admin.php?js=yes&js-in-line=yes&font-size=18');}
 	if(newIndex==167){ LoadAjaxRound('postfix-auth-dashboard','postfix.index.php?popup-auth=yes&hostname=master&ou=master');}
 	if(newIndex==168){ LoadAjaxRound('postfix-bodychecks-dashboard','postfix.headers-body-checks.php?tabs=yes&ou=master&hostname=master');}
-	if(newIndex==169){ LoadAjaxRound('postfix-postfwd2-dashboard','postfwd2.php?instance=master&newinterface=yes');}
+	if(newIndex==169){ LoadAjaxRound('postfix-postfwd2-dashboard','postfwd2.php?tabs=yes&instance=master&newinterface=yes');}
 	if(newIndex==170){ LoadAjaxRound('system-graphs','admin.dashboard.system.graphs.php');}
 	if(newIndex==171){ LoadAjaxRound('squid-paranoid','dansguardian2.paranoid.php');}
 	if(newIndex==172){ LoadAjaxRound('system-speedtests','admin.dashboard.speedtests.php');}
@@ -505,7 +579,7 @@ if(!IsFunctionExists('LoadAjaxRound')){
 	if(newIndex==199){ LoadAjaxRound('squid-calamaris','squid.calamaris.php');}
 	if(newIndex==200){ LoadAjaxRound('postfix-queues','postfix.queue.monitoring.php?popup=yes');}
 	if(newIndex==201){ LoadAjaxRound('vmware-client','VMWareTools.php');}
-	if(newIndex==202){ LoadAjaxRound('squid-top-members2','squid.statistics.top.members.php ');}
+	if(newIndex==202){ LoadAjaxRound('squid-top-members2','squid.statistics.top.members.php');}
 	if(newIndex==203){ LoadAjaxRound('squid-top-members-table','squid.statistics.top.members.table.php');}
 	if(newIndex==204){ LoadAjaxRound('cyrus-main-div','cyrus.index.php?popup-index=yes');}
 	if(newIndex==205){ LoadAjaxRound('postfix-domains-table','postfix.transport.table.php?organizations=yes&hostname=master');}
@@ -516,6 +590,71 @@ if(!IsFunctionExists('LoadAjaxRound')){
 	if(newIndex==210){ LoadAjaxRound('health-monit','system.monit.health.php');}
 	if(newIndex==211){ LoadAjaxRound('health-perfs','system.monit.health.reports.php');}
 	if(newIndex==212){ LoadAjaxRound('gateway-secure-page','system.gateway.secure.php');}
+	if(newIndex==213){ LoadAjaxRound('kaspersky-update-utility','UpdateUtility.php');}
+	if(newIndex==214){ LoadAjaxRound('postfix-watchdog-events','postfix.watchdog-events.php');}
+	if(newIndex==215){ LoadAjaxRound('postfix-search-events','postfix.events.search.php');}
+	if(newIndex==216){ LoadAjaxRound('ss5-main-interface','ss5.index.php');}
+	if(newIndex==217){ LoadAjaxRound('squid-syslog-interface','squid.syslog.php');}
+	if(newIndex==218){ LoadAjaxRound('system-network-bridges','system.network.bridges.interfaces.php');}
+	if(newIndex==219){ LoadAjaxRound('squid-windows-update','squid.windowsupdate.php');}
+	if(newIndex==220){ LoadAjaxRound('main-nginx-watchdog-table','nginx.watchdog-events.php?important-only=yes');}
+    if(newIndex==221){ LoadAjaxRound('system-nic-vde','virtualswitch.php');}
+    if(newIndex==222){ LoadAjaxRound('squid-web-copy','freewebs.HTTrack.php');}
+    if(newIndex==223){ LoadAjaxRound('apache-watchdoglogs','apache.watchdog-events.php'+ApacheWatchdogFileName);}
+	if(newIndex==224){ LoadAjaxRound('squid-smtp','squid.proxy.watchdog.php?smtp=yes');}
+	if(newIndex==225){ LoadAjaxRound('quotas-bandwidth','squid.quotasband.php');}
+	if(newIndex==226){ LoadAjaxRound('postfix-postmaster','postfix.postmaster.php');}
+	if(newIndex==227){ LoadAjaxRound('postfix-notifications','postfix.notifs.php');}
+	if(newIndex==228){ LoadAjaxRound('suricata-main','suricata.main.php');}
+	if(newIndex==229){ LoadAjaxRound('ipblocks-div','system.ipblock.php');}
+	if(newIndex==230){ LoadAjaxRound('squid-ftp-template','squid.ftp.template.php');}
+	if(newIndex==231){ LoadAjaxRound('squid-youtube-locker','squid.youtube.locker.php');}
+	if(newIndex==232){ LoadAjaxRound('firehol-rules','firehol.nic.rules.php?eth='+FIREHOLE_RULES_ETH);}
+	if(newIndex==233){ LoadAjaxRound('bandwidthd-stats','bandwidthd.stats.php');}
+	if(newIndex==234){ LoadAjaxRound('suricata-events','suricata.detected.php');}
+	if(newIndex==235){ LoadAjaxRound('groups-search','system.groups.search.php');}
+	if(newIndex==236){ LoadAjaxRound('postfix-mysql-distributions','postfix.routing.diffusion.php?hostname=master');}
+	if(newIndex==237){ LoadAjaxRound('routing-rules','system.routing.rules.php');}
+	if(newIndex==238){ LoadAjaxRound('msftncsi-div','system.msftncsi.php');}
+	if(newIndex==239){ LoadAjaxRound('Suricata-Updates','suricata.update.php');}
+	if(newIndex==240){ LoadAjaxRound('Haproxy-Updates','haproxy.update.php');}
+	if(newIndex==241){ LoadAjaxRound('StatsIDS','suricata.stats.php');}
+	if(newIndex==242){ LoadAjaxRound('phpmyadmin-div','system.mysql.phpmyadmin.php');}
+	if(newIndex==243){ LoadAjaxRound('wordpress-div','wordpress.php');}
+	if(newIndex==244){ LoadAjaxRound('proftpd-update','proftpd.update.php');}
+	if(newIndex==245){ LoadAjaxRound('qos-div','system.qos.containers.php');}
+	if(newIndex==246){ LoadAjaxRound('not-categorized-div','squid.statistics.not-categorized.php');}
+	if(newIndex==247){ LoadAjaxRound('squid-acls-delegate','squid.acls.dynamics.php?gpid='+STATS_ZMD5);}
+	if(newIndex==248){ LoadAjaxRound('messaging-dashboard-ou','admin.dashboard.postfix-byou.php?ou='+STATS_ZMD5);}
+	if(newIndex==249){ LoadAjaxRound('messaging-domains-ou','domains.ou.domains.php?ou='+STATS_ZMD5);}
+	if(newIndex==250){ LoadAjaxRound('messaging-stats-members','postfix.statistics.members.php?zmd5='+STATS_ZMD5);}
+	if(newIndex==251){ LoadAjaxRound('messaging-clamav-milter','clamd.php?tabs=yes');}
+	if(newIndex==252){ LoadAjaxRound('messaging-security-update','mailsecurity.update.php');}
+	if(newIndex==253){ LoadAjaxRound('privoxy-div','privoxy.php');}
+	if(newIndex==254){ LoadAjaxRound('postfix-valvulad','postfix.valvulad.php?tabs=yes');}
+	if(newIndex==255){ LoadAjaxRound('postfix-ssl','postfix.ssl.php');}
+	if(newIndex==256){ LoadAjaxRound('postfix-whitelist','fw.whitehosts.php');}
+	if(newIndex==257){ LoadAjaxRound('as-by-dom','spamassassin.domains.php?domain='+STATS_ZMD5);}
+	if(newIndex==258){ LoadAjaxRound('postfix-smtp-rfc-domain','postfix.domains.smtpd_client_restrictions.php?domain='+STATS_ZMD5);}
+	if(newIndex==259){ LoadAjaxRound('mimedefang-domain','mimedefang.php?tabs=yes');}
+	if(newIndex==260){ LoadAjaxRound('mimedefang-backuplist','mimedefang.backup.query.php');}
+	if(newIndex==261){ LoadAjaxRound('mimedefang-autowhite','mimedefang.autowhite.query.php');}
+	if(newIndex==262){ LoadAjaxRound('mimedefang-extensions','mimedefang.extensions.php');}
+	if(newIndex==263){ LoadAjaxRound('smtp-refused-table','postfix.refused.table.php');}
+	if(newIndex==264){ LoadAjaxRound('mimedefang-disclaimers','mimedefang.disclaimers.php');}
+	if(newIndex==265){ LoadAjaxRound('mimedefang-transactions','mimedefang.transactions.php');}
+	if(newIndex==266){ LoadAjaxRound('mimedefang-quarantine','mimedefang.quarantine.php');}
+	if(newIndex==267){ LoadAjaxRound('stats-smtp-refused','postfix.stats-refused.php?zmd5='+STATS_ZMD5);}
+	if(newIndex==268){ LoadAjaxRound('stats-smtp-flow','postfix.stats-flow.php?zmd5='+STATS_ZMD5);}
+	if(newIndex==269){ LoadAjaxRound('mimedefang-autocompress','mimedefang.autocompress.php');}
+	if(newIndex==270){ LoadAjaxRound('mimedefang-attachments','mimedefang.attachments.php');}
+	if(newIndex==271){ LoadAjaxRound('stats-smtp-attachs','postfix.stats-attachs.php?zmd5='+STATS_ZMD5);}
+	if(newIndex==272){ LoadAjaxRound('spamassassin-analyze','spamassassin.analyze.php');}
+	if(newIndex==273){ LoadAjaxRound('spamassassin-urls-rules','spamassassin.urls.php');}
+	if(newIndex==274){ LoadAjaxRound('spamassassin-escrap-rules','spamassassin.escrap.php');}
+	if(newIndex==275){ LoadAjaxRound('spamassassin-subjects-rules','spamassassin.subjects.php');}
+	if(newIndex==276){ LoadAjaxRound('mimedefang-antivirus-rules','mimedefang.antivirus.php');}
+	if(newIndex==277){ LoadAjaxRound('sealion-agent','sealion.agent.php');}
 	
 	
 	
@@ -610,7 +749,7 @@ function GotoSNMPD(){if(VAR_CURRENT_POS==78){return;} DASHBOARD_MEMORY_NIC='';cl
 function GotoSSHD(){if(VAR_CURRENT_POS==79){return;} DASHBOARD_MEMORY_NIC='';cleandivsDash();VAR_CURRENT_POS=79; MainSlider.goToSlide(VAR_CURRENT_POS);}
 function GotoOptimizeSystem(){if(VAR_CURRENT_POS==80){return;} DASHBOARD_MEMORY_NIC='';cleandivsDash();VAR_CURRENT_POS=80; MainSlider.goToSlide(VAR_CURRENT_POS);}
 function GotoPowerDNS(){if(VAR_CURRENT_POS==81){return;} DASHBOARD_MEMORY_NIC='';cleandivsDash();VAR_CURRENT_POS=81; MainSlider.goToSlide(VAR_CURRENT_POS);}
-function GotoSystemSchedules(){if(VAR_CURRENT_POS==82){return;} DASHBOARD_MEMORY_NIC='';cleandivsDash();VAR_CURRENT_POS=82; MainSlider.goToSlide(VAR_CURRENT_POS);}
+function GotoSystemSchedules(ForceTask){if(ForceTask){SystemSchedulesAddon='?ForceTaskType='+ForceTask;}else{SystemSchedulesAddon='';}LoadDivDash(82);}
 function GotoSystemEvents(){if(VAR_CURRENT_POS==83){return;} DASHBOARD_MEMORY_NIC='';cleandivsDash();VAR_CURRENT_POS=83; MainSlider.goToSlide(VAR_CURRENT_POS);}
 function GotoSyncThing(){if(VAR_CURRENT_POS==84){return;} DASHBOARD_MEMORY_NIC='';cleandivsDash();VAR_CURRENT_POS=84; MainSlider.goToSlide(VAR_CURRENT_POS);}
 function GotoArticaMeta(){if(VAR_CURRENT_POS==85){return;} DASHBOARD_MEMORY_NIC='';cleandivsDash();VAR_CURRENT_POS=85; MainSlider.goToSlide(VAR_CURRENT_POS);}
@@ -646,7 +785,6 @@ function GotoNsswitch(){LoadDivDash(114);}
 function GotoProxyBooster(){LoadDivDash(115);}
 function GotoArticaBackup(){LoadDivDash(116);}
 function GotoArticaSettings(){LoadDivDash(117);}
-
 function GoToStatsMembers(zmd5){if(zmd5){STATS_ZMD5=zmd5;}LoadDivDash(118);}
 function GoToStatsFlow(zmd5){if(zmd5){STATS_ZMD5=zmd5;} LoadDivDash(119);}
 function GoToWebsitesStats(zmd5){if(zmd5){STATS_ZMD5=zmd5;} LoadDivDash(120);}
@@ -743,7 +881,71 @@ function GoToeCapGzip(){LoadDivDash(209);}
 function GotoSystemHealthMonit(){ LoadDivDash(210);}
 function GotoDashBoardPerfQueue(){ LoadDivDash(211);}
 function GotoGatewaySecure(){ LoadDivDash(212);}
-
+function GoToUpdateUtility(){ LoadDivDash(213);}
+function GoToPostfixWatchdog(){ LoadDivDash(214);}
+function GoToPostfixSearchEvents(){ LoadDivDash(215);}
+function GoToSS5(){ LoadDivDash(216);}
+function GotoSquidSyslog(){ LoadDivDash(217);} 
+function GotoBridges(){LoadDivDash(218);}
+function GotoWindowsUpdate(){LoadDivDash(219);}
+function GotoNginxImportEvents(){LoadDivDash(220);}
+function GotoVdeSwichs(){LoadDivDash(221);}
+function GotoWebCopy(){LoadDivDash(222);}
+function GotoApacheWatchdog(filename){ApacheWatchdogFileName='';if(filename){ApacheWatchdogFileName='?filename='+filename;}LoadDivDash(223);}
+function GotoSquidSMTP(){LoadDivDash(224);}
+function GotoQuotasBand(){LoadDivDash(225);}
+function GotoPostfixPostmaster(){LoadDivDash(226);}
+function GotoPostfixNotifications(){LoadDivDash(227);}
+function GotoSuricata(){LoadDivDash(228);}
+function GotoIpBlocks(){LoadDivDash(229);}
+function GotoSquidTemplateFTP(){LoadDivDash(230);}
+function GotoYoutubeLocker(){LoadDivDash(231);}
+function GotoFireholeRules(eth){FIREHOLE_RULES_ETH='';if(eth){FIREHOLE_RULES_ETH=eth;}LoadDivDash(232);}
+function GotoBandwidthdStats(){LoadDivDash(233);}
+function GotoSuricataEvents(){LoadDivDash(234);}   
+function GotoGroupsSearch(){LoadDivDash(235);}   
+function GotoPostfixDitribs(){LoadDivDash(236);}
+function GotoRoutingRules(){LoadDivDash(237);}
+function GotoMsftncsi(){LoadDivDash(238);}
+function GotoSuricataUpdates(){LoadDivDash(239);}
+function GotoHaProxyUpdates(){LoadDivDash(240);}
+function GoToStatsIDS(zmd5){if(zmd5){STATS_ZMD5=zmd5;} LoadDivDash(241);}
+function GotoPHPMyAdmin(){LoadDivDash(242);}
+function GotoWordPress(){LoadDivDash(243);}
+function GotoProftpdUpdate(){LoadDivDash(244);}
+function GotoQOS(){LoadDivDash(245);}
+function GotoNotCategorized(){LoadDivDash(246);}
+function GotoAclsDeletegate(gid){if(gid){STATS_ZMD5=gid;} LoadDivDash(247);}	 
+function GoToMessagingOU(ou){if(ou){STATS_ZMD5=ou;} LoadDivDash(248);}
+function GoToDomainsOU(ou){if(ou){STATS_ZMD5=ou;} LoadDivDash(249);}	 
+function GoToStatsSMTPMembers(zmd5){if(zmd5){STATS_ZMD5=zmd5;}LoadDivDash(250);}
+function GotoMilterClamav(){LoadDivDash(251);}
+function GotoMessagingSecurityUpdate(){LoadDivDash(252);}
+function GotoPrivoxy(){LoadDivDash(253);}
+function GotoValvuad(){LoadDivDash(254);}
+function GotoPostfixSSL(){LoadDivDash(255);}
+function GotoPostfixWhiteListG(){LoadDivDash(256);}
+function GoToAntiSpamsDomain(domain){STATS_ZMD5=domain;LoadDivDash(257);}
+function GoToRFCDomain(domain){STATS_ZMD5=domain;LoadDivDash(258);}
+function GotoMimeDefang(){LoadDivDash(259);}
+function GotoBackupMails(){LoadDivDash(260);}
+function GotoAutoWhite(){LoadDivDash(261);}
+function GotoMimeDefangExtensions(){LoadDivDash(262);}
+function GotoSMTPRefused(){LoadDivDash(263);}
+function GotoMimeDefangDisclaimers(){LoadDivDash(264);}
+function GotoSMTPTransactions(){LoadDivDash(265);}
+function GotoQuarantineMails(){LoadDivDash(266);}
+function GoToStatsSMTPRefused(zmd5){if(zmd5){STATS_ZMD5=zmd5;}LoadDivDash(267);}
+function GoToStatsSMTPFlow(zmd5){if(zmd5){STATS_ZMD5=zmd5;}LoadDivDash(268);}
+function GotoMimeDefangAutocompress(){LoadDivDash(269);}
+function GotoSMTPAttachments(){LoadDivDash(270);}
+function GoToStatsAttachs(zmd5){if(zmd5){STATS_ZMD5=zmd5;}LoadDivDash(271);}
+function GoToSpamAssassinAnalyze(){LoadDivDash(272);}
+function GotoSpamAssRulesDomains(){LoadDivDash(273);}
+function GotoSpamAssRulesEscrap(){LoadDivDash(274);}
+function GotoSpamAssRulesSubjects(){LoadDivDash(275);}
+function GotoMimeDefangAntivirus(){LoadDivDash(276);}
+function GoToSealionAgent(){LoadDivDash(277);}
 
 function LoadDivDash(Number){
 	
@@ -756,17 +958,76 @@ function LoadDivDash(Number){
 
 
 function RemoveDiv(id){
-
-	if(document.getElementById(id)){
-		document.getElementById(id).innerHTML='';
-	}
+	if(!document.getElementById(id)){return;}
+	document.getElementById(id).innerHTML='';
 }
 
 
 function cleandivsDash(){
 	$('html, body').animate({ scrollTop: 0 }, 'fast');
 	DASHBOARD_MEMORY_NIC='';
-	$('#GLOBAL_ACCESS_CENTER').remove();
+	RemoveDiv('sealion-agent');
+	RemoveDiv('mimedefang-antivirus-rules');
+	RemoveDiv('spamassassin-subjects-rules');
+	RemoveDiv('spamassassin-escrap-rules');
+	RemoveDiv('spamassassin-urls-rules');
+	RemoveDiv('spamassassin-analyze');
+	RemoveDiv('stats-smtp-attachs');
+	RemoveDiv('mimedefang-attachments');
+	RemoveDiv('mimedefang-autocompress');
+	RemoveDiv('stats-smtp-flow');
+	RemoveDiv('stats-smtp-refused');
+	RemoveDiv('mimedefang-quarantine');
+	RemoveDiv('mimedefang-transactions');
+	RemoveDiv('mimedefang-disclaimers');
+	RemoveDiv('smtp-refused-table');
+	RemoveDiv('mimedefang-extensions');
+	RemoveDiv('mimedefang-autowhite');
+	RemoveDiv('mimedefang-backuplist');
+	RemoveDiv('mimedefang-domain');
+	RemoveDiv('postfix-whitelist');
+	RemoveDiv('postfix-ssl');
+	RemoveDiv('postfix-valvulad');
+	RemoveDiv('privoxy-div');
+	RemoveDiv('messaging-security-update');
+	RemoveDiv('messaging-clamav-milter');
+	RemoveDiv('messaging-stats-members');
+	RemoveDiv('messaging-dashboard-ou');
+	RemoveDiv('squid-acls-delegate');
+	RemoveDiv('not-categorized-div');
+	RemoveDiv('qos-div');
+	RemoveDiv('proftpd-update');
+	RemoveDiv('phpmyadmin-div');
+	RemoveDiv('wordpress-div');
+	RemoveDiv('StatsIDS');
+	RemoveDiv('Suricata-Updates');
+	RemoveDiv('Haproxy-Updates');
+	RemoveDiv('msftncsi-div');
+	RemoveDiv('routing-rules');
+	RemoveDiv('postfix-mysql-distributions');
+	RemoveDiv('groups-search');
+	RemoveDiv('suricata-events');
+	RemoveDiv('bandwidthd-stats');
+	RemoveDiv('squid-youtube-locker');
+	RemoveDiv('squid-ftp-template');
+	RemoveDiv('ipblocks-div');
+	RemoveDiv('suricata-main');
+	RemoveDiv('postfix-notifications');
+	RemoveDiv('postfix-postmaster');
+	RemoveDiv('quotas-bandwidth');
+	RemoveDiv('squid-smtp');
+	RemoveDiv('apache-watchdoglogs');
+	RemoveDiv('system-schedules');
+	RemoveDiv('squid-web-copy');
+	RemoveDiv('system-nic-vde');
+	RemoveDiv('main-nginx-watchdog-table');
+	RemoveDiv('squid-windows-update');
+	RemoveDiv('system-network-bridges');
+	RemoveDiv('squid-syslog-interface');
+	RemoveDiv('ss5-main-interface');
+	RemoveDiv('postfix-search-events');
+	RemoveDiv('postfix-watchdog-events');
+	RemoveDiv('kaspersky-update-utility');
 	RemoveDiv('gateway-secure-page');
 	RemoveDiv('health-perfs');
 	RemoveDiv('health-monit');
@@ -913,6 +1174,7 @@ function cleandivsDash(){
   RemoveDiv('squid-global-blacklist');
   RemoveDiv('squid-icap-center');
   RemoveDiv('kav4proxy-dashboard');
+  $('#GLOBAL_ACCESS_CENTER').remove();
   
 }
 
@@ -962,17 +1224,27 @@ function Dashboard_title(){
 
 function influxdb_tests(){
 	$sock=new sockets();
+	$users=new usersMenus();
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
 	$EnableInfluxDB=intval($sock->GET_INFO("EnableInfluxDB"));
 	$InfluxUseRemote=intval($sock->GET_INFO("InfluxUseRemote"));
-	$js="Loadjs('influxdb.restart.progress.php')";
+	$js="Loadjs('postgres.progress.php')";
 	
 	if($EnableInfluxDB==0){return null;}
 	if($SquidPerformance>2){return;}
 	
 	$InfluxApiIP=$sock->GET_INFO("InfluxApiIP");
-	$remote_port=8086;
+	$remote_port=5432;
 	if($InfluxApiIP==null){$InfluxApiIP="127.0.0.1";}
+	
+	
+	
+	if($users->STATS_APPLIANCE){
+		$InfluxApiIP="127.0.0.1";
+		
+	}
+	
+	if(!function_exists("pg_connect")){return;}
 	
 	
 	$InfluxUseRemote=intval($sock->GET_INFO("InfluxUseRemote"));
@@ -985,22 +1257,24 @@ function influxdb_tests(){
 		$js=null;
 	}
 	
-	$fp = @stream_socket_client("tcp://$InfluxApiIP:$remote_port",$errno, $errstr,3, STREAM_CLIENT_CONNECT);
-	if($fp){@socket_close($fp);return null;}
 	
+	if($InfluxApiIP=="127.0.0.1"){$InfluxApiIP="/var/run/ArticaStats";}
 	
-	if(is_resource($fp)){@socket_close($fp);}
-	$fp = @stream_socket_client("tcp://$InfluxApiIP:$remote_port",
-	$errno, $errstr,3, STREAM_CLIENT_CONNECT);
+	if($remote_port==8086){$remote_port=5432;}
+	$connection = @pg_connect("host='$InfluxApiIP' port='$remote_port' dbname='proxydb' user='ArticaStats' connect_timeout='5'");
 	
-	
-	
-	if(!$fp){
-		if(is_resource($fp)){@socket_close($fp);}
-		return proxy_status_warning("{bigdata_listen_port_issue} ($InfluxApiIP:$remote_port)", 
-				"{bigdata_listen_port_issue_explain}", $js);
+	if(!$connection){
+		$errstr="Could not Connect to database service";
+		$errstr = $errstr." see (".@pg_last_error($connection).")";
+		@pg_close($connection);
+		return proxy_status_warning("{bigdata_listen_port_issue} ($InfluxApiIP:$remote_port)",
+				"{bigdata_listen_port_issue_explain}<hr>$InfluxApiIP:$remote_port $errstr", $js);
+		
 	}
-	if(is_resource($fp)){@socket_close($fp);}
+	@pg_close($connection);
+	
+	
+	
 }
 
 function bxSliderTopRight(){
@@ -1008,15 +1282,33 @@ function bxSliderTopRight(){
 	$md5CacheF=md5("bxSliderTopRight{$_SESSION["uid"]}{$tpl->language}");
 	$cachefile="/usr/share/artica-postfix/ressources/interface-cache/$md5CacheF";
 	$sock=new sockets();
-	$realsquidversion=$sock->getFrameWork("squid.php?full-version=yes");
+	$realsquidversion=@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidVersion");
 	$tpl=new templates();
 	$users=new usersMenus();
 	$f=array();
 	$ProductName="Artica";
 	$ahref_stats=null;
+	$SHOW_WEBFILTERING=false;
 	if($users->WEBSECURIZE){$ProductName="Web Securize";}
 	if($users->LANWANSAT){$ProductName="LanWanSAT Proxy";}
 	if($users->BAMSIGHT){$ProductName="BamSight";}
+	
+	$LoadProxyUpdate="LoadProxyUpdate();";
+	$LOadUfdbUpdate="GoToWebfilteringDBstatus();";
+	$underline="underline";
+	
+	if(!$users->AsSquidAdministrator){
+		$LoadProxyUpdate="blur()";
+		$LOadUfdbUpdate="blur()";
+		$underline="none";
+	}
+	
+	if($users->SQUID_INSTALLED){
+		$SHOW_WEBFILTERING=true;
+	}
+	if($users->STATS_APPLIANCE){
+		$SHOW_WEBFILTERING=true;
+	}
 	
 	
 	
@@ -1030,7 +1322,9 @@ function bxSliderTopRight(){
 	}
 	$FRDB=array();
 	
-	if($users->SQUID_INSTALLED){
+	if($SHOW_WEBFILTERING){
+		
+		
 		$CurrentTLSEDbCloud=unserialize($sock->GET_INFO("CurrentTLSEDbCloud"));
 		$CURRENT_TIME=0;
 		while (list ($table,$MAIN) = each ($CurrentTLSEDbCloud) ){
@@ -1077,12 +1371,12 @@ function bxSliderTopRight(){
 		}
 		
 		$f[]="<a href=\"javascript:blur();\"
-		OnClick=\"javascript:$GoToArticaLicense;\" style='text-decoration:underline'>
+		OnClick=\"javascript:$GoToArticaLicense;\" style='text-decoration:$underline'>
 		Entreprise Edition$Eval</a>";
 	}else{
 		$f[]="<a href=\"javascript:blur();\"
 		OnClick=\"javascript:$GoToArticaLicense;\" 
-		style='text-decoration:underline'>Community Edition</a>";
+		style='text-decoration:$underline'>Community Edition</a>";
 	}
 	
 	
@@ -1092,26 +1386,22 @@ function bxSliderTopRight(){
 	
 	$f[]="$ProductName {$ahref1}v.".@file_get_contents("VERSION")."</a>";
 	
-	$LoadProxyUpdate="LoadProxyUpdate();";
-	$LOadUfdbUpdate="GoToWebfilteringDBstatus();";
-	
-	
-	if(!$users->AsSquidAdministrator){
-		$LoadProxyUpdate="blur()";
-		$LOadUfdbUpdate="blur()";
-	}
+
 	
 	if($users->SQUID_INSTALLED){
-		$f[]="<a href=\"javascript:blur();\"
-		OnClick=\"javascript:$LoadProxyUpdate\"
-		style='text-decoration:underline'>Proxy v$realsquidversion</a>";
+		$SQUIDEnable=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SQUIDEnable"));
+		if($SQUIDEnable==1){
+			$f[]="<a href=\"javascript:blur();\"
+			OnClick=\"javascript:$LoadProxyUpdate\"
+			style='text-decoration:$underline'>Proxy v$realsquidversion</a>";
+		}
 	}
 	
 	
 	if(count($FRDB)>0){
 		$f[]="{webfiltering_databases}: <a href=\"javascript:blur();\"
 		OnClick=\"javascript:$LOadUfdbUpdate\"
-		style='text-decoration:underline'>".@implode("&nbsp;/&nbsp;", $FRDB)."</a>";
+		style='text-decoration:$underline'>".@implode("&nbsp;/&nbsp;", $FRDB)."</a>";
 		
 	}
 	
@@ -1157,7 +1447,86 @@ function proxy_snmp(){
  	return $SNMP_WALK;
 }
 
-
+function proxy_dashboard_counters(){
+	$tpl=new templates();
+	$page=CurrentPageName();
+	$users=new usersMenus();
+	$base="/home/squid/rttsize";
+	$YEAR=date("Y");
+	$MONTH=date("m");
+	$DAY=date("d");
+	$HOUR=date("H");
+	$WEEK=date("W");
+	$baseHour="/home/squid/rttsize/$YEAR/$MONTH/$WEEK/$DAY/$HOUR";
+	$baseDay="/home/squid/rttsize/$YEAR/$MONTH/$WEEK/$DAY";
+	$baseWeek="/home/squid/rttsize/$YEAR/$MONTH/$WEEK";
+	$baseMonth="/home/squid/rttsize/$YEAR/$MONTH";
+	
+	$js_hour="Loadjs('squid.RTTSIZES.php?timeslot=hour');";
+	$js_day="Loadjs('squid.RTTSIZES.php?timeslot=day');";
+	$js_week="Loadjs('squid.RTTSIZES.php?timeslot=week');";
+	$js_month="Loadjs('squid.RTTSIZES.php?timeslot=month');";
+	$underline="underline";
+	
+	if(!$users->AllowViewStatistics){
+		$js_hour="blur()";
+		$js_day="blur();";
+		$js_week="blur()";
+		$js_month="blur();";
+		$underline="none";
+	}
+	
+	$html[]="<table style='width:1495px;margin-bottom:20px;margin-top:10px'><tr>";
+	
+	$TMPINT=intval(@file_get_contents("$baseHour/TOT"));
+	if($TMPINT>0){
+		$html[]="<td style='font-size:26px;text-align:center;width:20%' nowrap>{this_hour}: <a href=\"javascript:blur();\" 
+				OnClick=\"javascript:$js_hour\"
+				style='text-decoration:$underline'
+				>".FormatBytes($TMPINT/1024)."</a></td>";
+		$html[]="<td style='font-size:26px;text-align:center'>&nbsp;|&nbsp;</td>";
+		
+	}
+	$TMPINT=intval(@file_get_contents("$baseDay/TOT"));
+	if($TMPINT>0){
+		$html[]="<td style='font-size:26px;text-align:center;width:20%' nowrap>{this_day}: <a href=\"javascript:blur();\" 
+				OnClick=\"javascript:$js_day\"
+				style='text-decoration:$underline'
+				>".FormatBytes($TMPINT/1024)."</td>";
+		$html[]="<td style='font-size:26px;text-align:center'>&nbsp;|&nbsp;</td>";
+	
+	}	
+	$TMPINT=intval(@file_get_contents("$baseWeek/TOT"));
+	if($TMPINT>0){
+		$html[]="<td style='font-size:26px;text-align:center;width:20%' nowrap>{this_week}: <a href=\"javascript:blur();\" 
+				OnClick=\"javascript:$js_week\"
+				style='text-decoration:$underline'
+				>".FormatBytes($TMPINT/1024)."</td>";
+		$html[]="<td style='font-size:26px;text-align:center'>&nbsp;|&nbsp;</td>";
+	
+	}		
+	$TMPINT=intval(@file_get_contents("$baseMonth/TOT"));
+	if($TMPINT>0){
+		$html[]="<td style='font-size:26px;text-align:center;width:20%' nowrap>{this_month}: <a href=\"javascript:blur();\" 
+				OnClick=\"javascript:$js_month\"
+				style='text-decoration:$underline'
+				>".FormatBytes($TMPINT/1024)."</td>";
+		$html[]="<td style='font-size:26px;text-align:center'>&nbsp;|&nbsp;</td>";
+	
+	}		
+			
+	$html[]="<td style='font-size:26px;text-align:center;width:150px'><center id='id-dashboard-button-refresh'></center></td>";		
+	$html[]="</tr></table>";
+	
+	if(isset($_GET[__FUNCTION__])){
+		$html[]="<script>LoadAjaxTiny('id-dashboard-button-refresh','$page?button-refresh=yes');</script>";
+	}
+	
+	return $tpl->_ENGINE_parse_body(@implode("\n", $html));
+	
+	
+	
+}
 
 function proxy_dashboard(){
 	$page=CurrentPageName();
@@ -1165,10 +1534,12 @@ function proxy_dashboard(){
 	$users=new usersMenus();
 	$sock=new sockets();
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
-	$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+	$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+	$SQUIDEnable=intval($sock->GET_INFO("SQUIDEnable"));
 	
 	
 	$jsload="Loadjs('$page?graph1-js=yes');";
+	if(!$users->SQUID_INSTALLED){$SQUIDEnable=0;}
 	if($users->POSTFIX_INSTALLED){$jsload="Loadjs('admin.dashboard.smtpgraphs.php');";}
 	
 	
@@ -1187,28 +1558,34 @@ function proxy_dashboard(){
 		$jsBxtop=$jsload;
 	}
 	
-	if($SquidPerformance>1){
-		$explain="{performance_level_nostats}";
-		$error_stats=$tpl->_ENGINE_parse_body("
-		<center style='margin:20px;font-size:18px'>
-				<p class=text-info style=';font-size:18px'>". texttooltip("{artica_statistics_disabled}<br>$explain","{SQUID_LOCAL_STATS_DISABLED}","GotoSquidPerformances()")."
-				</p>
-				</center>");
-	}
+	if($SQUIDEnable==1){
+		if($SquidPerformance>1){
+			$explain="{performance_level_nostats}";
+			$error_stats=$tpl->_ENGINE_parse_body("
+			<center style='margin:20px;font-size:18px'>
+					<p class=text-info style=';font-size:18px'>". texttooltip("{artica_statistics_disabled}<br>$explain","{SQUID_LOCAL_STATS_DISABLED}","GotoSquidPerformances()")."
+					</p>
+					</center>");
+		}
 	
-	if($EnableIntelCeleron==1){
-		$explain="{CELERON_METHOD_EXPLAIN}";
-		$error_stats=$tpl->_ENGINE_parse_body("
-		<center style='margin:20px;font-size:18px'>
-				<p class=text-info style=';font-size:18px'>". texttooltip("{artica_statistics_disabled}<br>$explain","{SQUID_LOCAL_STATS_DISABLED}","GotoOptimizeSystem()")."
-				</p>
-				</center>");
-	}	
+	
+		if($EnableIntelCeleron==1){
+			$explain="{CELERON_METHOD_EXPLAIN}";
+			$error_stats=$tpl->_ENGINE_parse_body("
+			<center style='margin:20px;font-size:18px'>
+					<p class=text-info style=';font-size:18px'>". texttooltip("{artica_statistics_disabled}<br>$explain","{SQUID_LOCAL_STATS_DISABLED}","GotoOptimizeSystem()")."
+					</p>
+					</center>");
+		}	
+		
+	
+	}
 	
 	
 	$html="
 	<center>
-	<table style='width:1335px'>
+			
+	<table style='width:1545px'>
 		<tr>
 			<td style='width:410px;padding:15px;vertical-align:top'><div id='sequence-proxy'><center>".proxy_status()."</center></div></td>
 			<td style='width:410px;padding:15px;vertical-align:top'><div id='sequence-server'><center>".server_status()."</center></div></td>
@@ -1219,7 +1596,9 @@ function proxy_dashboard(){
 	<center>
 	<div id='bxslider-top' class='bx-slider-top'>$content</div>
 	</center>
-	<div style='width:100%;text-align:right;margin-top:5px' id='id-dashboard-button-refresh'></div>
+	<center id='proxy_dashboard_counters' style='height:57px'>
+	". proxy_dashboard_counters()."
+	</center>
 	$error_stats
 	<div id='graph1-dashboard' style='width:1500px;heigth:300px'></div>
 	<div id='graph2-dashboard' style='width:1500px;heigth:300px'></div>
@@ -1234,7 +1613,11 @@ function proxy_dashboard(){
 
 function button_refresh(){
 	$tpl=new templates();
-	echo $tpl->_ENGINE_parse_body(button("{refresh}","Loadjs('admin.dashboard.refresh.php')"));
+	$page=CurrentPageName();
+	echo $tpl->_ENGINE_parse_body(button("{refresh}","Loadjs('admin.dashboard.refresh.php')"))."
+	<script>LoadAjaxSilent('sequence-firewall','$page?sequence-firewall=yes');</script>";		
+			
+	
 }
 
 
@@ -1249,10 +1632,10 @@ function wifidog_status(){
 	$ini=new Bs_IniHandler();
 	$q=new mysql_squid_builder();
 	$data=base64_decode($sock->getFrameWork("hotspot.php?services-status=yes"));
-	$ARRAY=unserialize(file_get_contents("/usr/share/artica/postfix/ressources/logs/web/wifidog.status"));
+	$ARRAY=unserialize(@file_get_contents("/usr/share/artica/postfix/ressources/logs/web/wifidog.status"));
 	$genrate=$q->time_to_date($ARRAY["TIME"],true) ;
 	$uptime=$ARRAY["UPTIME"];
-	
+	$ArticaHotSpotEmergency=intval($sock->GET_INFO("ArticaHotSpotEmergency"));
 	$ini->loadString($data);
 	
 	
@@ -1275,6 +1658,14 @@ function wifidog_status(){
 		}
 	}
 	
+	if($ArticaHotSpotEmergency==1){
+		$icon="wifidog-critic-128.png";
+		$err[]=proxy_status_warning("{global_urgency_mode}", "{hotspot_in_emergency_mode_explain}", 
+				"Loadjs('squid.webauth.maintenance.php')");
+	}
+	
+	
+	
 	if(count($err)>0){
 		$errT[]="<tr><td style='font-size:32px;color:#d32d2d;vertical-align:middle'>".count($err)." {issues}</td></tr>
 		<tr><td colspan=2>&nbsp;</td></tr>
@@ -1285,6 +1676,10 @@ function wifidog_status(){
 	OnMouseOut=\"this.style.cursor='auto'\"";
 	
 	$hotSpotSession=$q->COUNT_ROWS("hotspot_sessions");
+	
+	
+	
+
 	
 	
 	$icon=imgtootltip($icon,"{dashboard_hotspot}",$js_hostpot);
@@ -1317,23 +1712,143 @@ function wifidog_status(){
 	
 }
 
+function VerifyRights_ou(){
+	$usersmenus=new usersMenus();
+	if($usersmenus->AsOrgAdmin){return true;}
+	if(!$usersmenus->AsSystemAdministrator){return true;}
+	if($usersmenus->AsOrgPostfixAdministrator){return true;}
+	if($usersmenus->AsMessagingOrg){return true;}
+	if(!$usersmenus->AllowChangeDomains){return true;}
+}
+
+
+function notadmin_status(){
+	$curs="OnMouseOver=\"this.style.cursor='pointer';\"
+	OnMouseOut=\"this.style.cursor='auto'\"";
+	include_once(dirname(__FILE__)."/ressources/class.user.inc");
+	$users=new usersMenus();
+	if(!$users->SQUID_INSTALLED){$_SESSION["ACLS_PRIVILEGES"]=null;}
+	$icon="member-128.png";
+	$ct=new user($_SESSION["uid"]);
+	$squid_acls=null;
+	if($ct->AsActiveDirectoryMember){
+		include_once(dirname(__FILE__)."/ressources/class.external.ad.inc");
+		$ad=new external_ad_search();
+		$DN=$ad->GetDNFromUserid($_SESSION["uid"]);
+		$groupsArray=$ad->GroupsOfMember($DN);
+		
+		$MyGroups="
+			<tr>
+			<td style='font-size:30px;text-decoration:underline'
+				OnClick=\"javascript:$js\" $curs>$ct->mail
+			</td>
+		</tr>
+		<tr>
+			<td style='font-size:18px;vertical-align:top'>{gidNumber} ".count($groupsArray)." {groups2}</td>
+		</tr>
+		<tr>
+		<td style='font-size:18px;vertical-align:top'>{organization} <strong>$ct->ou</strong></td>
+		</tr>
+		";
+		
+	}else{
+		$MEMBER_JS="javascript:blur();";
+		$OU_js="javascript:blur();";
+		$OU_decoration="none";
+		$OU_curs=null;
+		if($users->AllowChangeUserPassword){
+			$MEMBER_JS=MEMBER_JS($_SESSION["uid"]);
+		}
+		
+		if(VerifyRights_ou()){
+			$OU_js="javascript:Loadjs('domains.manage.org.index.php?js=yes&ou=$ct->ou');";
+			$OU_decoration="underline";
+			$OU_curs=$curs;
+		}
+		$MyGroups="
+		<tr>
+		<td style='font-size:16px;text-decoration:underline'
+		OnClick=\"$MEMBER_JS\" $curs>{myaccount}: $ct->mail
+		</td>
+		</tr>
+		<tr>
+		<td style='font-size:18px;vertical-align:top'>{my_organization} <strong OnClick=\"$OU_js\" $curs style='text-decoration:$OU_decoration'>$ct->ou</strong></td>
+		</tr>
+		";
+
+			
+		
+		
+		
+	}
+		
+	if($users->SQUID_INSTALLED){	
+		if(!isset($_SESSION["ACLS_PRIVILEGES"])){
+			include_once(dirname(__FILE__)."/ressources/class.squid.acls.privileges.inc");
+			$f=new squid_acls_privileges();$_SESSION["ACLS_PRIVILEGES"]=$f->build();
+		}
+		$squid_acls=$_SESSION["ACLS_PRIVILEGES"];
+		if($squid_acls<>null){$squid_acls="<tr><td>$squid_acls</td></tr>";}
+	}
+	
+
+	
+	$html="
+	<table style='width:100%'>
+	<tr>
+	<td valign='top' style='width:128px'>
+	<img src='img/$icon'>
+	</td>
+	<td style='width:99%'>
+	<table style='width:100%'>
+	<tr>
+	<td style='font-size:30px;vertical-align:top'>$ct->DisplayName</td>
+	</tr>
+	$MyGroups
+	$squid_acls
+
+	</table>
+	</td>
+	</tr>
+	</table>
+	";
+	$tpl=new templates();
+	return $tpl->_ENGINE_parse_body($html);	
+	
+}
+
+
+
 function firewall_status(){
 	$icon="firewall-128-grey.png";
 	$sock=new sockets();
 	$users=new usersMenus();
-	$EnableArticaHotSpot=intval($sock->GET_INFO("EnableArticaHotSpot"));
-	if($EnableArticaHotSpot==1){return wifidog_status();}
+	if(!$users->AsSystemAdministrator){return notadmin_status();}
+	$q=new mysql();
 	
+	$EnableArticaHotSpot=intval($sock->GET_INFO("EnableArticaHotSpot"));
+	$EnableSuricata=intval($sock->GET_INFO("EnableSuricata"));
+	$SuricataInstalled=intval($sock->GET_INFO("SuricataInstalled"));
+	$STATS_APPLIANCE=false;
+	if(is_file("/etc/artica-postfix/STATS_APPLIANCE")){$STATS_APPLIANCE=true;}
+	
+	if($SuricataInstalled==0){$EnableSuricata=0;}
+	
+	if($EnableArticaHotSpot==1){return wifidog_status();}
+	$curs="OnMouseOver=\"this.style.cursor='pointer';\"
+	OnMouseOut=\"this.style.cursor='auto'\"";
 	
 	
 	$js="GotoFirewall()";
 	
 	$OK=true;
+	$INSTALLED=true;
 	if(intval($sock->getFrameWork("firehol.php?is-installed=yes"))==0){
 		$js="Loadjs('system.firewall.php?FireHolInstall-js=yes');";
 		$icon="firewall-128-grey-install.png";
 		$text="{not_installed}";
 		$OK=false;
+		$INSTALLED=false;
 	}else{
 		$FireHolConfigured=intval($sock->GET_INFO("FireHolConfigured"));
 		if($FireHolConfigured==0){
@@ -1358,16 +1873,144 @@ function firewall_status(){
 	
 	
 	if(!$users->AsSystemAdministrator){$js="blur()";}
-	
+	$rules=null;
 	if($OK){
 		$icon="firewall-128.png";
+		$q=new mysql();
+		$ligne2=mysql_fetch_array($q->QUERY_SQL("SELECT COUNT(*) as tcount FROM iptables_main","artica_backup"));
+		$items=$ligne2["tcount"];
+		if($users->AsSystemAdministrator){
+			$rules="
+			<tr>
+			<td style='font-size:30px;text-decoration:underline' 		
+			OnClick=\"javascript:GotoFireholeRules()\" $curs><strong>$items</strong> {rules}</td>		
+			</tr>";
+		}
 	}
 	
-	$curs="OnMouseOver=\"this.style.cursor='pointer';\"
-	OnMouseOut=\"this.style.cursor='auto'\"";
+	
+	
+	if($INSTALLED){
+		$q=new mysql();
+		$ligne2=mysql_fetch_array($q->QUERY_SQL("SELECT COUNT(Interface) as tcount FROM `nics` WHERE `FireQOS`=1","artica_backup"));
+		if($ligne2["tcount"]>0){
+		$QOS_ROW="
+		<tr>
+		<td style='font-size:16px;text-decoration:underline;padding-top:20px'
+		OnClick=\"javascript:GotoQOS()\" $curs>
+			<table style='width:100%'>
+			<tr>
+				<td valign='middle' style='width:25px'><img src='img/24-green.png'></td>
+				<td style='font-size:16px;text-decoration:underline'><strong>{Q.O.S}</strong> {enabled}</td>
+			</tr>
+			</table>
+		</td>
+		</tr>";
+		}else{
+			$QOS_ROW="
+			<tr>
+			<td style='font-size:16px;text-decoration:none;padding-top:20px'
+			>
+			<table style='width:100%'>
+			<tr>
+			<td valign='middle' style='width:25px;color:#898989'><img src='img/ok24-grey.png'></td>
+			<td style='font-size:16px;text-decoration:none;color:#898989'><strong>{Q.O.S}</strong> {disabled}</td>
+			</tr>
+			</table>
+			</td>
+			</tr>";
+		}
+	}else{
+		$QOS_ROW="
+		<tr>
+		<td style='font-size:16px;text-decoration:none;padding-top:20px'
+		>
+		<table style='width:100%'>
+		<tr>
+		<td valign='middle' style='width:25px;color:#898989'><img src='img/ok24-none.png'></td>
+		<td style='font-size:16px;text-decoration:none;color:#898989'><strong>{Q.O.S}</strong> {not_installed}</td>
+		</tr>
+		</table>
+		</td>
+		</tr>";
+	}
+	
+	
+	$IDS_ROW=null;
+	
+	$GLOBALS["BASEDIR"]="/usr/share/artica-postfix/ressources/interface-cache";
+	
+	if($STATS_APPLIANCE){$EnableSuricata=1;}
+	if($EnableSuricata==1){
+		if(is_file("{$GLOBALS["BASEDIR"]}/suricata.dashboard")){
+			$IDS_SEVERITIES=unserialize(@file_get_contents("{$GLOBALS["BASEDIR"]}/suricata.dashboard"));
+			
+			if(isset($IDS_SEVERITIES["SEVERITIES"][1])){
+				IF($IDS_SEVERITIES["SEVERITIES"][1]>0){
+				$IDS_ROW="
+				<tr>
+				<td style='font-size:16px;text-decoration:underline'
+						OnClick=\"javascript:GotoSuricataEvents()\" $curs>
+						<table style='width:100%'>
+						<tr><td valign='middle' style='width:25px'><img src='img/warn-red-24.png'></td>
+						<td style='font-size:16px;text-decoration:underline'><strong>{$IDS_SEVERITIES["SEVERITIES"][1]}</strong> IDS {detected_rules}</td>
+						</tr>
+						</table>
+				</td>
+				</tr>";
+				
+			}
+			
+			}
+			
+		}
+		
+	}
+	
+	
 	
 	
 	$icon=imgtootltip($icon,"{administrate_your_firewall}",$js);
+	$text_suricata="<span style='font-size:14px'>( {not_installed} )</span>";
+	$js_suricata="GotoSuricataUpdates()";
+	$icon_suricata="ok24-none.png";
+	$color_suricata="#898989";
+	
+	if($SuricataInstalled==1){
+		$icon_suricata="ok24.png";
+		$js_suricata="GotoSuricata()";
+		$SuricataVersion=$sock->GET_INFO("SuricataVersion");
+		
+		if($EnableSuricata==0){
+			$icon_suricata="ok24-grey.png";
+			$text_suricata="<span style='font-size:14px'>( {disabled} )</span>";
+		}else{
+			$text_suricata=null;
+			$color_suricata="black";
+		}
+		if($SuricataVersion<>null){$SuricataVersion="{version} $SuricataVersion";}
+		
+		
+
+		
+		
+	}
+	
+		$SURICATA="
+		<tr>
+		<td style='font-size:18px;text-decoration:underline;padding-top:20px;color:$color_suricata'
+				OnClick=\"javascript:$js_suricata\" $curs><strong>{IDS}</strong>
+					<table style='width:100%'>
+						<tr>
+						<td valign='middle' style='width:25px'><img src='img/$icon_suricata'></td>
+						<td style='font-size:16px;text-decoration:underline'><strong style='color:$color_suricata'>$SuricataVersion $text_suricata</td>
+						</tr>
+					</table>
+				</td>
+				</tr>$IDS_ROW";
+		
+		
+	
 	
 	
 	$html="
@@ -1385,6 +2028,9 @@ function firewall_status(){
 			<td style='font-size:30px;text-decoration:underline' 
 			OnClick=\"javascript:$js\" $curs>$text</td>
 		</tr>
+		$rules
+		$QOS_ROW
+		$SURICATA
 		</table>
 	</td>
 	</tr>
@@ -1396,6 +2042,20 @@ function firewall_status(){
 }
 
 function proxy_graph_js(){
+	
+	$sock=new sockets();
+	$SQUIDEnable=$sock->GET_INFO("SQUIDEnable");
+	if(!is_numeric($SQUIDEnable)){$SQUIDEnable=1;}
+	$EnableNginx=intval($sock->GET_INFO("EnableNginx"));
+	$HaProxyInstalled=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/HaProxyInstalled"));
+	$EnableHaProxy=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableHaProxy"));
+	if($HaProxyInstalled==0){$EnableHaProxy=0;}
+	if($SQUIDEnable==0){
+		if($EnableNginx==1){return nginx_graph_js(); }
+		if($EnableHaProxy==1){return haproxy_graph_js();exit;}
+	}
+	
+	
 	$MAIN=unserialize(@file_get_contents("{$GLOBALS["BASEDIR"]}/FLUX_HOUR"));
 	
 	$sock=new sockets();
@@ -1437,6 +2097,104 @@ function proxy_graph_js(){
 	
 	
 }
+
+
+function haproxy_graph_js(){
+	
+	$MAIN=unserialize(@file_get_contents("{$GLOBALS["BASEDIR"]}/HAPROXY_DAY"));
+	if(count($MAIN["xdata"])<2){
+		header("content-type: application/x-javascript");
+		die();
+	}
+	$tpl=new templates();
+	
+	$title="{downloaded_flow} (MB) {today}";
+	$timetext="{hours}";
+	$highcharts=new highcharts();
+	$highcharts->container="graph1-dashboard";
+	$highcharts->xAxis=$MAIN["xdata"];
+	$highcharts->Title=$title;
+	$highcharts->TitleFontSize="22px";
+	$highcharts->AxisFontsize="12px";
+	$highcharts->yAxisTtitle="MB";
+	$highcharts->xAxis_labels=false;
+	$highcharts->LegendPrefix=$tpl->javascript_parse_text('{date}: ');
+	$highcharts->LegendSuffix="MB";
+	$highcharts->xAxisTtitle=$timetext;
+	
+	$highcharts->datas=array("{size}"=>$MAIN["ydata"]);
+	echo $highcharts->BuildChart();
+	if(is_file("{$GLOBALS["BASEDIR"]}/HAPROXY_RQS_DAY")){
+		$page=CurrentPageName();
+		echo "\nLoadjs('$page?graph2-haproxy-js=yes');\n";
+	
+	}
+	
+}
+
+function nginx_graph_js(){
+
+
+
+
+	$MAIN=unserialize(@file_get_contents("{$GLOBALS["BASEDIR"]}/NGINX_FLUX_HOUR"));
+	if(count($MAIN["xdata"])<2){
+		header("content-type: application/x-javascript");
+		die();
+	}
+
+	$tpl=new templates();
+
+	$title="{downloaded_flow} (MB) ".NGINX_DATE_START();
+	$timetext="{hours}";
+	$highcharts=new highcharts();
+	$highcharts->container="graph1-dashboard";
+	$highcharts->xAxis=$MAIN["xdata"];
+	$highcharts->Title=$title;
+	$highcharts->TitleFontSize="22px";
+	$highcharts->AxisFontsize="12px";
+	$highcharts->yAxisTtitle="MB";
+	$highcharts->xAxis_labels=false;
+	$highcharts->LegendPrefix=$tpl->javascript_parse_text('{date}: ');
+	$highcharts->LegendSuffix="MB";
+	$highcharts->xAxisTtitle=$timetext;
+
+	$highcharts->datas=array("{size}"=>$MAIN["ydata"]);
+	echo $highcharts->BuildChart();
+
+/*	if(is_file("{$GLOBALS["BASEDIR"]}/FLUX_RQS")){
+		$page=CurrentPageName();
+		echo "\nLoadjs('$page?graph2-js=yes');\n";
+
+	}
+*/
+
+}
+
+function NGINX_DATE_START(){
+
+	if(isset($_SESSION["NGINX_DATE_START"])){return $_SESSION["NGINX_DATE_START"];}
+
+
+	$tpl=new templates();
+	$q=new mysql_squid_builder();
+	$table="dashboard_apache_sizes";
+	
+
+
+	$sql="SELECT MIN(TIME) as xmin, MAX(TIME) as xmax FROM $table ";
+	$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
+
+
+	$q=new mysql_squid_builder();
+
+	$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
+	$time1=$tpl->time_to_date(strtotime($ligne["xmin"]),true);
+	$time2=$tpl->time_to_date(strtotime($ligne["xmax"]),true);
+	$_SESSION["NGINX_DATE_START"]= $tpl->javascript_parse_text("{date_start} $time1, {last_date} $time2");
+	return $_SESSION["NGINX_DATE_START"];
+}
+
 function DATE_START(){
 	
 	if(isset($_SESSION["SQUID_GRAPH_DATE_START"])){return $_SESSION["SQUID_GRAPH_DATE_START"];}
@@ -1454,10 +2212,15 @@ function DATE_START(){
 	$sql="SELECT MIN(TIME) as xmin, MAX(TIME) as xmax FROM $table ";
 	$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
 
-
+	
+	
 	$q=new mysql_squid_builder();
 
 	$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
+	
+	if($ligne["xmin"]==null){return;}
+	
+	
 	$time1=$tpl->time_to_date(strtotime($ligne["xmin"]),true);
 	$time2=$tpl->time_to_date(strtotime($ligne["xmax"]),true);
 	$_SESSION["SQUID_GRAPH_DATE_START"]= $tpl->javascript_parse_text("{date_start} $time1, {last_date} $time2");
@@ -1500,6 +2263,30 @@ function proxy_graph2_js(){
 	
 	}	
 }
+
+function haproxy_graph2_js(){
+	$MAIN=unserialize(@file_get_contents("{$GLOBALS["BASEDIR"]}/HAPROXY_RQS_DAY"));
+	$tpl=new templates();
+	
+	$title="{requests}";
+	$timetext="{hours}";
+	$highcharts=new highcharts();
+	$highcharts->container="graph2-dashboard";
+	$highcharts->xAxis=$MAIN["xdata"];
+	$highcharts->Title=$title;
+	$highcharts->TitleFontSize="22px";
+	$highcharts->AxisFontsize="12px";
+	$highcharts->yAxisTtitle="RQS";
+	$highcharts->xAxis_labels=false;
+	$highcharts->LegendPrefix=null;
+	$highcharts->LegendSuffix="{requests}";
+	$highcharts->xAxisTtitle=$timetext;
+	$highcharts->datas=array("{requests}"=>$MAIN["ydata"]);
+	echo $highcharts->BuildChart();
+	
+	
+}
+
 function proxy_graph3_js(){
 	
 	
@@ -1535,6 +2322,7 @@ function proxy_graph3_js(){
 
 
 function server_status(){
+	
 	$PHP5_CURRENT_MEMORY=null;
 	if(!$GLOBALS["VERBOSE"]){
 	if(!isset($_GET["without-cache"])){
@@ -1558,7 +2346,7 @@ function server_status(){
 	$Warn=false;
 	$HyperWarn=true;
 	$tpl=new templates();
-	
+	$EnableMsftncsi=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableMsftncsi"));
 	$EnableIntelCeleron=intval($sock->GET_INFO("EnableIntelCeleron"));
 	$ArticaAutoUpateOfficial=$sock->GET_INFO("ArticaAutoUpateOfficial");
 	$ArticaAutoUpateNightly=intval($sock->GET_INFO("ArticaAutoUpateNightly"));
@@ -1578,6 +2366,11 @@ function server_status(){
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
 	
 	$ArticaTechNetInfluxRepo=unserialize(base64_decode($sock->GET_INFO("ArticaTechNetInfluxRepo")));
+	$LicenseInfos=unserialize(base64_decode($sock->GET_INFO("LicenseInfos")));
+	
+	$EnableArticaMetaServer=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaServer"));
+	if($EnableArticaMetaServer==1){$EnableArticaMetaClient=0;}
+	
 	
 	
 	if($EnableArticaMetaClient==1){
@@ -1601,10 +2394,7 @@ function server_status(){
 	}
 	
 	
-	while (list ($num, $ArticaTechNetInfluxRepo2) = each ($ArticaTechNetInfluxRepo) ){
-		if($GLOBALS["VERBOSE"]){echo "<H2>".__LINE__.": influxdbversionCloud: -> $num</H2>";}
-		$ArticaTechNetInfluxRepo3[]=$num;
-	}
+
 	
 	if(!is_file("/usr/share/artica-postfix/ressources/interface-cache/CPU_NUMBER")){
 		$sock=new sockets();
@@ -1619,67 +2409,13 @@ function server_status(){
 		}
 	}
 	
-	if(preg_match("#^([0-9]+)\.([0-9]+)\.([0-9]+)#",$influxdbversionBin,$re)){
-		$INFLUX_MAJOR=$re[1];
-		$INFLUX_MINOR=$re[2];
-		$INFLUX_REV=$re[3];
-	}
-	
-	if($INFLUX_MAJOR==0){
-		if($INFLUX_MINOR==9){
-			if($INFLUX_REV==0){	
-				if(preg_match("#-rc#", $influxdbversionBin)){
-					$err[]=proxy_status_warning("{incompatible_bigdata_engine}", "{click_to_install}", 
-					"Loadjs('influx.incompatiblev1.php')");
-				}
-			}
+	if($EnableMsftncsi==1){
+		$msftncsiStatus=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/msftncsiStatus"));
+		if($msftncsiStatus==3){
+			$warn[]=status_important_event("{network_awareness} !!", "", "GotoWatchdog()");
 		}
 	}
 	
-	$BIGV3_WARN=false;
-	if($INFLUX_MAJOR==0){
-		if($INFLUX_MINOR==9){
-			if($INFLUX_REV<3){
-			if($BigDatav3Read==0){
-					$BIGV3_WARN=true;
-					$err[]=proxy_status_warning("{warning_bigdata_v3}", "{warning_bigdata_v3}",
-					"Loadjs('influx.incompatiblev3.php')");
-				}
-			}
-			
-		}
-		
-	}
-	
-	
-	
-	
-	if(preg_match("#^([0-9]+)\.([0-9]+)-nightly-#", $influxdbversionBin,$re)){$influxdbversionBin="{$re[1]}.{$re[2]}.0";}
-	if(preg_match("#^([0-9]+)\.([0-9]+)\.([0-9]+)-nightly-#", $influxdbversionBin,$re)){$influxdbversionBin="{$re[1]}.{$re[2]}.{$re[3]}";}
-		
-	
-	$influxdbversionCloud=intval($ArticaTechNetInfluxRepo3[0]);
-	$influxdbversionBin=str_replace("-rc", ".", $influxdbversionBin);
-	$influxdbversionBin=intval(str_replace(".", "",$influxdbversionBin));
-	
-	if($GLOBALS["VERBOSE"]){
-		echo "<H2>".__LINE__.": influxdbversionCloud: $influxdbversionCloud <> $influxdbversionBin/influxdbversionBin:$influxdbversionBin</H2>";
-		
-	}
-	
-	if($influxdbversionBin<100){$influxdbversionBin=$influxdbversionBin*10;}
-	
-	if(!$BIGV3_WARN){
-		if($influxdbversionCloud>0){
-			if($influxdbversionBin>0){
-				if($influxdbversionCloud>$influxdbversionBin){
-					$new_version=$tpl->_ENGINE_parse_body("{NEW_INFLUX_VERSION_NOT}");
-					$new_version=str_replace("%v", $ArticaTechNetInfluxRepo[$influxdbversionCloud]["VERSION"], $new_version);
-					$warn[]=status_important_event($new_version, "{click_to_install}", "GotoInfluxUpdate()");
-				}
-			}
-		}
-	}
 	
 	$results=array();
 	exec("/usr/bin/pgrep -l -f \"philesight --db\" 2>&1",$results);
@@ -1718,11 +2454,13 @@ function server_status(){
 	$DISKY=array();
 	$MAXOVER2=$CPU_NUMBER-1;
 	if($MAXOVER2==0){$MAXOVER2=1.5;}
-	
+	$EnableIntelCeleronText=null;
 
 	$CURVER=@file_get_contents("VERSION");
 	$CURVER_KEY=str_replace(".", "", $CURVER);
-	if($EnableIntelCeleron==1){$MAXOVER2=2;}
+	if($EnableIntelCeleron==1){
+		$EnableIntelCeleronText="{intel_celeron_support}";
+		$MAXOVER2=2;}
 
 	
 	$INFO_WORKING_TASK=INFO_WORKING_TASK();
@@ -1791,10 +2529,7 @@ function server_status(){
 		
 	}	
 	
-	if(preg_match("#0\.8#", $influxdb_version)){
-		$err[]=proxy_status_warning("{incompatible_bigdata_engine}", "{incompatible_bigdata_engine_explain1}", "GoToInfluxDBMigr8()");
-		
-	}
+
 	
 	
 	if($SWAP_POURC>20){
@@ -1836,12 +2571,13 @@ function server_status(){
 	}
 	
 	if($EnableIntelCeleron==0){
-		if(trim($sock->getFrameWork("influx.php?is-installed=yes"))<>"TRUE"){
-			if(!$users->INFLUXDB){	
-				$jsOn="Loadjs('influxdb.install.progress.php');";
-				if(!$users->AsArticaAdministrator){$jsOn="blur()";}
-				$err[]=proxy_status_warning("{influx_not_installed}", "{click_to_install}", $jsOn);
-			}
+		$sock->getFrameWork("postgres.php?is-installed=yes");
+		$PostgresInstalled=intval($sock->GET_INFO("PostgresInstalled"));
+		
+		if($PostgresInstalled==0){
+			$jsOn="Loadjs('influxdb.install.progress.php');";
+			if(!$users->AsArticaAdministrator){$jsOn="blur()";}
+			$err[]=proxy_status_warning("{influx_not_installed}", "{click_to_install}", $jsOn);
 			
 		}else{
 			$influxdb_tests=influxdb_tests();
@@ -1849,7 +2585,36 @@ function server_status(){
 		}
 	}
 	
-	
+	if(isset($LicenseInfos["FINAL_TIME"])){
+		if(is_numeric($LicenseInfos["FINAL_TIME"])){
+			$FINAL_TIME=intval($LicenseInfos["FINAL_TIME"]);
+			$ExpiresSoon=intval(time_between_day_Web($FINAL_TIME));
+			$jsOn="GoToArticaLicense()";
+			$distanceOfTimeInWords=distanceOfTimeInWords(time(),$FINAL_TIME);
+			if(!$users->AsSystemAdministrator){$jsOn=null;}
+			$corporate_licence_will_expire_explain=$tpl->_ENGINE_parse_body("{corporate_licence_will_expire_explain}");
+			$corporate_licence_will_expire_explain=str_replace("%d", $ExpiresSoon, $corporate_licence_will_expire_explain);
+			
+			if(time()>$FINAL_TIME){
+				$err[]=proxy_status_warning("{license2}:&nbsp;{license_expired} !!", "{license_expired_explain}", $jsOn);
+				
+			}
+			
+			if($FINAL_TIME>time()){
+				if($ExpiresSoon<10){
+					$err[]=proxy_status_warning("{corporate_licence_will_expire} ({$ExpiresSoon} {days})","$corporate_licence_will_expire_explain", $jsOn);
+				}
+				
+				if($ExpiresSoon<31){
+					$ExpiresSoon=$ExpiresSoon+1;
+					$warn[]=status_important_event("{license2}:&nbsp;{trial_period} - {$ExpiresSoon} {days} -","{expiredate}:".$tpl->time_to_date($FINAL_TIME) ." ($distanceOfTimeInWords)", $jsOn);
+				}
+				
+			}
+			
+			
+		}
+	}
 	
 	if(!$users->CGROUPS_INSTALLED){
 		$jsOn="Loadjs('cgroups.install.progress.php');";
@@ -1862,6 +2627,17 @@ function server_status(){
 		$warn[]=status_important_event("{incorrect_email_address}", "{incorrect_email_address_cloud}",
 				 "GoToArticaLicense()");
 		
+	}
+	
+	if(!extension_loaded('pgsql')){
+		$warn[]=status_important_event("{missing_postgres_library}", "{missing_postgres_library_explain}",
+		"Loadjs('admin.pgsql.php')");
+		
+	}else{
+		if(!function_exists("pg_connect")){
+			$warn[]=status_important_event("{missing_postgres_library}", "{missing_postgres_library_explain}",
+			"Loadjs('admin.pgsql.php')");
+		}
 	}
 	
 	
@@ -1901,7 +2677,7 @@ function server_status(){
 		}
 	}
 	
-
+if(is_array($MAIN["DISKS"])){
 	while (list ($disk, $array) = each ($MAIN["DISKS"]) ){	
 		$POURC=$array["POURC"];
 		$LABEL=$array["LABEL"];
@@ -1927,23 +2703,9 @@ function server_status(){
 		$DISKY[]=$diskZ;
 		
 	}
+}
 	
-	if($users->CORP_LICENSE){
-		$LicenseInfos=unserialize(base64_decode($sock->GET_INFO("LicenseInfos")));
-		$jsOn="GoToArticaLicense()";
-		if(isset($LicenseInfos["FINAL_TIME"])){$FINAL_TIME=intval($LicenseInfos["FINAL_TIME"]);}
-		if($FINAL_TIME>0){
-			$ExpiresSoon=intval(time_between_day_Web($FINAL_TIME));
-			if($ExpiresSoon<7){
-				if(!$users->AsSystemAdministrator){$jsOn=null;}
-				$corporate_licence_will_expire_explain=$tpl->_ENGINE_parse_body("{corporate_licence_will_expire_explain}");
-				$corporate_licence_will_expire_explain=str_replace("%d", $ExpiresSoon, $corporate_licence_will_expire_explain);
-				$err[]=status_important_event("{corporate_licence_will_expire}", 
-						$corporate_licence_will_expire_explain, $jsOn);
-			}
-			
-		}
-	}
+
 	
 	if($RootPasswordChanged==0){
 		$jsOn="Loadjs('system.root.pwd.php')";
@@ -1963,7 +2725,30 @@ function server_status(){
 		";
 	}	
 	
-
+	$GotoSpeedTests="GotoSpeedTests()";
+	$GotoBandwidthdStats="GotoBandwidthdStats()";
+	$GoToSystem="GoToSystem()";
+	$GotToArticaUpdate="GotToArticaUpdate()";
+	$GotoOptimizeSystem="GotoOptimizeSystem()";
+	$GotoDNSPerfs="GotoDNSPerfs()";
+	$GotoSystemMemory="GotoSystemMemory()";
+	$GotoStatsSystem="GotoStatsSystem()";
+	$GotoStatsSystem_underline="underline";
+	$HostTypejs_underline="underline";
+	if(!$users->AsSystemAdministrator){
+		$microerror_text=null;
+		$HostTypejs_underline="none";
+		$GotoStatsSystem_underline="none";
+		$HostTypejs="blur();";
+		$GoToSystem="blur()";
+		$GotoStatsSystem="blur()";
+		$GotoSystemMemory="blur()";
+		$GotoDNSPerfs="blur()";
+		$GotoOptimizeSystem="blur()";
+		$GotToArticaUpdate="blur()";
+		$GotoBandwidthdStats="blur()";
+		$GotoSpeedTests="blur()";
+	}
 	
 	
 	if($EnableBandwithCalculation==1){
@@ -1981,30 +2766,49 @@ function server_status(){
 				<tr>
 				<td>&nbsp;</td>
 				</tr>
-				
+				<tr>
 				<td style='font-size:16px;'>
 				<span style='color:black'><a href=\"javascript:blur();\"
-				OnClick=\"javascript:GotoSpeedTests();\" style='text-decoration:underline'>
+				OnClick=\"javascript:$GotoSpeedTests;\" style='text-decoration:$GotoStatsSystem_underline'>
 				{bandwidth}: <i style='font-size:16px'>{$download}Kbit/sec {download2}</i></td>
 				</tr><tr>
 				<td style='font-size:16px;'>
 				<span style='color:black'><a href=\"javascript:blur();\"
-				OnClick=\"javascript:GotoSpeedTests();\" style='text-decoration:underline'>
+				OnClick=\"javascript:$GotoSpeedTests;\" style='text-decoration:$GotoStatsSystem_underline'>
 				{bandwidth}: <i style='font-size:16px'>{$upload}Kbit/sec {upload}</a> ($ISP)</span></i></td>
 				</tr>";
 				
 			}
 	}
 	
-	
-	$GoToSystem="GoToSystem()";
-	$GotToArticaUpdate="GotToArticaUpdate()";
-	
-	if(!$users->AsArticaAdministrator){
-		$GoToSystem="blur()";
-		$GotToArticaUpdate="blur()";
-	}
 
+	
+	if($sock->Bandwidthd_enabled()==1){
+		$q=new mysql_squid_builder();
+		$bandwidthd_today=$q->COUNT_ROWS("bandwidthd_today");
+		if($bandwidthd_today>0){
+			$speedtests=$speedtests."
+			<tr>
+			<td style='font-size:18px;'>
+			<table style='width:100%'>
+			<tr>
+			<td valign='middle' style='width:25px'><img src='img/graph-24.png'></td>
+			<td valign='middle'>
+			<span style='color:black'><a href=\"javascript:blur();\"
+			OnClick=\"javascript:$GotoBandwidthdStats;\" style='text-decoration:$GotoStatsSystem_underline'>
+			<span style='font-size:18px;font-weight:bold'>$bandwidthd_today</span> <span style='font-size:18px;'>{nodes}</span></td>
+			</tr>
+			</table>
+			</td>
+			</tr>";
+		}
+	}
+	
+
+	
+	
+	
+if($users->AsSystemAdministrator){
 	if($EnableArticaMetaClient==0){
 		if($ArticaAutoUpateOfficial==1){
 			$ArticaUpdateRepos=unserialize($sock->GET_INFO("ArticaUpdateRepos"));
@@ -2028,37 +2832,49 @@ function server_status(){
 				</td></tr>";
 				}
 			}
-			}	
+	}
+}	
+
 			
 	if($EnableIntelCeleron==1){
 		$EnableIntelCeleron_explain="<tr><td style='font-size:16px;color:#000000;vertical-align:middle' nowrap>
-				<i>". texttooltip("{CELERON_METHOD}","{CELERON_METHOD_EXPLAIN}","GotoOptimizeSystem()")."</i>
+				<i>". texttooltip("{CELERON_METHOD}","{CELERON_METHOD_EXPLAIN}",$GotoOptimizeSystem)."</i>
 				</td></tr>";
 	}
-	if($EnableIntelCeleron==0){
-		$DNS_COLOR="black;";
-		if($DashBoardDNSPerfsStats<>null){
-			$DashBoardDNSPerfsStats=round($DashBoardDNSPerfsStats,2);
-			if($DashBoardDNSPerfsStats<30){
-				$DNS_COLOR="#D32D2D";
+	
+	$EnableDNSPerfs=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableDNSPerfs"));
+	
+
+	
+	if($EnableDNSPerfs==1){
+		if($EnableIntelCeleron==0){
+			$DNS_COLOR="black;";
+			if($DashBoardDNSPerfsStats<>null){
+				$DashBoardDNSPerfsStats=round($DashBoardDNSPerfsStats,2);
+				if($DashBoardDNSPerfsStats<30){
+					$DNS_COLOR="#D32D2D";
+				}
+				
+				$DashBoardDNSPerfsStats_text="
+					<tr>
+					<td style='font-size:20px;color:$DNS_COLOR'>". texttooltip("{dns_performance}","{dnsperf_explain}","$GotoDNSPerfs").": {$DashBoardDNSPerfsStats}%</td>
+					</tr>";
+						
+				}
+				
+				
 			}
-			
-			$DashBoardDNSPerfsStats_text="
-				<tr>
-				<td style='font-size:20px;color:$DNS_COLOR'>". texttooltip("{dns_performance}","{dnsperf_explain}","GotoDNSPerfs()").": {$DashBoardDNSPerfsStats}%</td>
-				</tr>";
-					
-			}
-			
-			
-		}
+	}
+	
+
+	
 	
 	
 	if($microerror_text<>null){
 		$microerror_text="<center style='margin-top:10px;font-weight:bold;font-size:14px'>$microerror_text</center>";
 	}
 	if($HostType<>null){$HostType="<center style='font-size:14px;margin-top:10px;'>
-	<a href=\"javascript:blur();\" OnClick=\"javascript:$HostTypejs\" style='text-decoration:underline'>
+	<a href=\"javascript:blur();\" OnClick=\"javascript:$HostTypejs\" style='text-decoration:$HostTypejs_underline'>
 		$HostType</a></center>";}
 		
 	$html[]="
@@ -2073,27 +2889,53 @@ function server_status(){
 		<td style='font-size:30px'  $curs OnClick=\"javascript:$GoToSystem\">{system}</td>
 	</tr>	
 	<tr>
-	<td style='font-size:30px;color:$LOAD_COLOR;text-decoration:underline' $curs OnClick=\"javascript:GotoStatsSystem();\">{$ORG_LOAD} {load2}</td>
+	<td style='font-size:30px;color:$LOAD_COLOR;text-decoration:$GotoStatsSystem_underline' $curs OnClick=\"javascript:$GotoStatsSystem;\">{$ORG_LOAD} {load2}</td>
 	</tr>
 	$EnableIntelCeleron_explain
 	<tr>
 		<td style='font-size:20px;'>
 		<span style='color:$MEM_USED_COLOR'><a href=\"javascript:blur();\"
-		OnClick=\"javascript:GotoSystemMemory();\" style='text-decoration:underline'>		
+		OnClick=\"javascript:$GotoSystemMemory;\" style='text-decoration:$GotoStatsSystem_underline'>		
 		{$MEM_USED_POURC}% {memory}</a></span>&nbsp;|&nbsp;
 		<span style='color:$SWAP_COLOR'>{$SWAP_POURC}% SWAP</span></td>
 	</tr>
 	";
 		
-	if($PHP5_CURRENT_MEMORY<>null){
-		$html[]="<tr>
-		<td style='font-size:18px;'>
-		<span style='color:$PHP5_CURRENT_MEMORY_COLOR'><a href=\"javascript:blur();\"
-		OnClick=\"javascript:GotoSystemMemory();\" style='text-decoration:underline'>
-		{session_memory}: {$PHP5_CURRENT_MEMORY}%/$PHP5_CURRENT_MEMORY_SIZE</a></span></td>
-		</tr>";	
 		
-	}		
+		
+	if($users->AsSystemAdministrator){	
+		if($PHP5_CURRENT_MEMORY<>null){
+			$html[]="<tr>
+			<td style='font-size:18px;'>
+			<span style='color:$PHP5_CURRENT_MEMORY_COLOR'><a href=\"javascript:blur();\"
+			OnClick=\"javascript:$GotoSystemMemory;\" style='text-decoration:$GotoStatsSystem_underline'>
+			{session_memory}: {$PHP5_CURRENT_MEMORY}%/$PHP5_CURRENT_MEMORY_SIZE</a></span></td>
+			</tr>";	
+			
+		}		
+	}
+	
+	
+	if($users->AsSystemAdministrator){
+		if(is_file("/usr/share/artica-postfix/ressources/logs/web/monit.status.all")){
+			
+			$dataMonit=unserialize(@file_get_contents("/usr/share/artica-postfix/ressources/logs/web/monit.status.all"));
+			$dataMonitCount=count($dataMonit);
+			$html[]="<tr>
+			<td style='font-size:18px;'>
+			<span style='color:black'><a href=\"javascript:blur();\"
+			OnClick=\"javascript:Loadjs('monit.php');\" style='text-decoration:underline'>
+			{monitored_processes}: $dataMonitCount</a></span></td>
+			</tr>";
+		}
+	}
+	
+	if(!$users->AsSystemAdministrator){
+		$INFOS=array();
+		$errT=array();
+		$err=array();
+		$warn=array();
+	}
 		
 	$html[]=$DashBoardDNSPerfsStats_text;
 	
@@ -2168,6 +3010,7 @@ function update_find_latest($array){
 
 
 	$MAIN=$array["OFF"];
+	if(!is_array($MAIN)){return false;}
 	$keyMain=0;
 	while (list ($key, $ligne) = each ($MAIN)){
 		$key=intval($key);
@@ -2306,29 +3149,591 @@ function ufdbguard_artica_cloud_version(){
 }
 
 function meta_server_status(){
-	$icon="disks-128-ok.png";
-	$GotoMeta="GoToMeta()";
-	
-	
-	
-}
-
-
-function postfix_status(){
+	include_once('ressources/class.mysql-meta.inc');
 	$page=CurrentPageName();
 	$ini=new Bs_IniHandler();
 	$users=new usersMenus();
 	$tpl=new templates();
 	$sock=new sockets();
+	$icon="disks-128-ok.png";
+	$GotoMeta="GoToMeta()";
+	if(!$users->AsArticaMetaAdmin){$GotoMeta="blur();";}
+	$c=0;
+	$q=new mysql_meta();
+
+	$results=$q->QUERY_SQL("SELECT * FROM metahosts");
+	if(!$q->ok){
+		$err[]=proxy_status_warning("MySQL Error !!!",
+				"$q->mysql_error",
+				"blur();");
+	}
+	$ArticaMetaPooling=intval($sock->GET_INFO("ArticaMetaPooling"));
+	$ArticaMetaUseSendClient=intval($sock->GET_INFO("ArticaMetaUseSendClient"));
+	$ArticaLinkAutoconnect=intval($sock->GET_INFO("ArticaLinkAutoconnect"));
+	$MetaUfdbArticaVer=intval($sock->GET_INFO("MetaUfdbArticaVer"));
+	if($ArticaMetaPooling==0){$ArticaMetaPooling=15;}
+	while ($ligne = mysql_fetch_assoc($results)) {
+		$load=$ligne["load"];
+		$uuid=$ligne["uuid"];
+		$PROXYEMERG=$ligne["PROXYEMERG"];
+		$hostname=$ligne["hostname"];
+		if(strpos($hostname, ".")>0){$xtr=explode(".",$hostname);$hostname=$xtr[0];}
+		$CPU_NUMBER_MAX=$ligne["CPU_NUMBER"]+1.5;
+		$updated=$ligne["updated"];
+		$mem_perc=$ligne["mem_perc"];
+		$WINDOWSAD=$ligne["WINDOWSAD"];
+		$ADEMERG=intval($ligne["ADEMERG"]);
+		if($load>$CPU_NUMBER_MAX){
+			
+			$err[]=proxy_status_warning("$hostname: {overloaded} $load",
+			"$hostname",
+			"Loadjs('artica-meta.cpustats.php?js=yes&uuid=$uuid');");
+		}
+		if($PROXYEMERG==1){
+			$err[]=proxy_status_warning("$hostname: {proxy_in_emergency_mode}",
+			"$hostname",
+			"Loadjs('artica-meta.urgency.php?uuid=$uuid');");
+		}
+		
+		if($WINDOWSAD==1){
+			if($ADEMERG==1){
+				$err[]=proxy_status_warning("$hostname: {activedirectory_emergency_mode}",
+				"$hostname",
+				"Loadjs('artica-meta.menus.php?activedirectory-emergency-disable-js=yes&uuid=$uuid&gpid=0');");
+					
+			}
+		}
+		
+		if($mem_perc>80){
+			$mem_total=FormatBytes($ligne["mem_total"]);
+			$alerts[]=status_important_event("$hostname: {memory_exceed_80} &laquo;{$mem_perc}%/$mem_total&raquo;",
+			"$hostname",
+			"Loadjs('artica-meta.cpustats.php?js=yes&uuid=$uuid');");
+	
+		}
+		
+		$xtime=strtotime($updated);
+		$diff=time_diff_min($xtime);
+		$Difftext=distanceOfTimeInWords($xtime,time(),true);
+		if($diff>$ArticaMetaPooling*4){
+			$err[]=proxy_status_warning("$hostname: {did_not_talk_with_meta}",
+			"{since} $Difftext",
+			"Loadjs('artica-meta.cpustats.php?js=yes&uuid=$uuid');");
+		}	
+		
+		$c++;
+		
+	}
+	
+	if(count($alerts)>0){
+		$icon="disks-128-warn.png";
+	}
+	
+	if(count($err)>0){
+		$icon="disks-128-red.png";
+
+	}
+	
+	$master_version=@file_get_contents("VERSION");
+	
+	$html="
+	<table style='width:100%'>
+	<tr>
+	<td valign='top' style='width:128px' >
+	<img src='img/$icon'>
+	</td>
+	<td>
+	<table style='width:100%'>
+	<tr>
+	<td style='font-size:30px'>
+	". $tpl->_ENGINE_parse_body(texttooltip("Artica Meta","Artica Meta","$GotoMeta"))."
+	<div style='width:100%;text-align:right'><span style='font-size:16px'>{version}:$master_version</div>
+	</td>
+	</tr>
+	<tr>
+	<td colspan=2>&nbsp;</td>
+	</tR>
+	<tr>
+		<td style='font-size:26px'>
+			<a href=\"javascript:blur();\"
+			OnClick=\"javascript:$GotoMeta\"
+			style='text-decoration:underline'>{servers}: ". FormatNumber($c)."</a>
+		</td>
+	</tr>
+	<tr>
+	".@implode("", $err)."
+	".@implode("", $alerts)."
+	</table>
+</td>
+</tr>
+</table>
+";
+$html= $tpl->_ENGINE_parse_body($html);
+return $html;
+	
+	
+	
+}
+
+function time_diff_min($xtime){
+	$data1 = $xtime;
+	$data2 = time();
+	$difference = ($data2 - $data1);
+	$results=intval(round($difference/60));
+	if($results<0){$results=1;}
+	return $results;
+}
+function haproxy_server_status(){
+	$page=CurrentPageName();
+	$ini=new Bs_IniHandler();
+	$users=new usersMenus();
+	$tpl=new templates();
+	$sock=new sockets();
+	$icon="disks-128-ok.png";
+	$GotoHaProxy="GotToHAPROXY()";
+	if(!$users->AsSystemAdministrator){$GotoHaProxy="blur();";}
+	$datas=base64_decode($sock->getFrameWork("haproxy.php?main-status=yes"));
+	$ini->loadString($datas);	
+	
+	$master_version=$ini->_params["APP_HAPROXY"]["master_version"];
+	$running=$ini->_params["APP_HAPROXY"]["running"];
+	$uptime=$ini->_params["APP_HAPROXY"]["uptime"];
+	$master_memory=$ini->_params["APP_HAPROXY"]["master_memory"];
+	$processes_number=$ini->_params["APP_HAPROXY"]["processes_number"];
+	
+	$WATCHDOG_COUNT_EVENTS=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/APACHE_WATCHDOG_COUNT_EVENTS"));
+	
+	if(intval($WATCHDOG_COUNT_EVENTS)>0){
+		$important_events[]=status_important_event("$WATCHDOG_COUNT_EVENTS {important_events_48h}", null, "GotoNginxImportEvents()");
+	
+	}
+	
+	if($running==0){
+		$icon="disks-128-red.png";
+		$err=proxy_status_warning("{stopped}","{load_balancing} {stopped}","$GotoHaProxy");
+		$uptime="{stopped}";
+		$master_memory=0;
+		$processes_number=0;
+	}
+	
+	$icon=imgtootltip($icon,"position:right:{load_balancing}","$GotoHaProxy");
+	
+	if(count($important_events)>0){
+		$important_events_text="<tr><td colspan=2>&nbsp;</td></tr>".@implode("\n", $important_events);
+	}
+	
+	$table=unserialize(base64_decode($sock->getFrameWork("haproxy.php?global-stats=yes")));
+	while (list ($num, $ligne) = each ($table) ){
+		$ligne=trim($ligne);
+		if($ligne==null){continue;}
+		if(preg_match("#\##", $ligne)){continue;}
+		$f=explode(",", $ligne);
+		$pxname=$f[0];
+		$svname=$f[1];
+		if($f[32]<>2){continue;}
+		$status=$f[17];
+		$req_tot=$f[48];
+		$bin=FormatBytes($f[8]/1024);
+		$bout=FormatBytes($f[9]/1024);
+		$color_haproxy="black";
+		$arrow="arrow-right-16.png";
+		if(!preg_match("#UP#", $status)){
+			$arrow="arrow-right-16-grey.png";
+			$color_haproxy="#898989";
+		}
+		
+		$stats[]="
+		<tr>
+		<td style='font-size:20px'>
+		<table style='width:100%'>
+		<tr>
+			<td style='width:18px'><img src='img/$arrow'></td>
+			<td style='font-size:16px'>
+				<a href=\"javascript:blur();\"
+					OnClick=\"javascript:$GotoHaProxy\"
+					style='text-decoration:underline;color:$color_haproxy'>&laquo;$svname&raquo; ($status): $bin/$bout</a>
+			</td>
+		</tr>
+		</table>
+		</td>
+		</tr>
+		";
+		
+		
+		
+		
+	}
+	
+	
+	$html="
+	<table style='width:100%'>
+	<tr>
+	<td valign='top' style='width:128px' >
+	$icon
+	</td>
+	<td>
+	<table style='width:100%'>
+	<tr>
+	<td style='font-size:30px'>
+	". $tpl->_ENGINE_parse_body(texttooltip("{load_balancing}","{APP_HAPROXY}","$GotoHaProxy"))."
+	<div style='width:100%;text-align:right'><span style='font-size:16px'>{version}:$master_version</div>
+	</td>
+	</tr>
+	<tr>
+	<td colspan=2>&nbsp;</td>
+	</tR>
+	<tr>
+	<td style='font-size:18px'>
+	<a href=\"javascript:blur();\"
+	OnClick=\"javascript:$GotoHaProxy\"
+	style='text-decoration:underline'>{memory}: ". FormatBytes($master_memory)."</a></td>
+	</tr>
+	<tr>
+	<td style='font-size:18px'>
+	<a href=\"javascript:blur();\"
+	OnClick=\"javascript:$GotoHaProxy\"
+	style='text-decoration:underline'>{processes}: ". FormatNumber($processes_number)."</a></td>
+			</tr>
+				
+			<tr>
+			<td style='font-size:18px'>
+			<a href=\"javascript:blur();\"
+			OnClick=\"javascript:$GotoHaProxy\"
+			style='text-decoration:underline'>{uptime}: $uptime</a></td>
+			</tr>
+			".@implode("\n", $stats)."
+	
+			".@implode("", $errT)."
+			".@implode("", $err)."
+			$important_events_text
+			</table>
+			</td>
+			</tr>
+			</table>
+			";
+			$html= $tpl->_ENGINE_parse_body($html);
+			return $html;
+	
+}
+
+function nginx_server_status(){
+	$page=CurrentPageName();
+	$ini=new Bs_IniHandler();
+	$users=new usersMenus();
+	$tpl=new templates();
+	$sock=new sockets();
+	$icon="disks-128-ok.png";
+	$GotoReverseProxy="GotoReverseProxy()";
+	$datas=$sock->getFrameWork("cmd.php?apachesrc-ini-status=yes");
+	
+	$ini->loadString(base64_decode($datas));
+	
+	
+	$master_version=$ini->_params["APP_NGINX"]["master_version"];
+	$running=$ini->_params["APP_NGINX"]["running"];
+	$uptime=$ini->_params["APP_NGINX"]["uptime"];
+	$master_memory=$ini->_params["APP_NGINX"]["master_memory"];
+	$processes_number=$ini->_params["APP_NGINX"]["processes_number"];
+	
+	$APACHEDSIZE=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/APACHEDSIZE"));
+	$APACHEDRQS=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/APACHEDRQS"));
+	$REVERSE_COUNT=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/REVERSE_COUNT"));
+	$WATCHDOG_COUNT_EVENTS=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/APACHE_WATCHDOG_COUNT_EVENTS"));
+	
+	if(intval($WATCHDOG_COUNT_EVENTS)>0){
+		$important_events[]=status_important_event("$WATCHDOG_COUNT_EVENTS {important_events_48h}", null, "GotoNginxImportEvents()");
+	
+	}
+	
+	
+	if($APACHEDSIZE>0){
+		$stats[]="
+		<tr>
+		<td style='font-size:20px'>
+		<a href=\"javascript:blur();\"
+		OnClick=\"javascript:GotoApacheStats()\"
+		style='text-decoration:underline'>{uploaded}: ". FormatBytes($APACHEDSIZE/1024)."</a></td>
+		</tr>";
+	
+	
+	}
+	if($REVERSE_COUNT>0){
+		$stats[]="
+		<tr>
+		<td style='font-size:20px'>
+		<a href=\"javascript:blur();\"
+		OnClick=\"javascript:$GotoReverseProxy\"
+		style='text-decoration:underline'>{websites}: ". FormatNumber($REVERSE_COUNT)."</a></td>
+		</tr>";
+	
+	
+	}
+	
+	$err=array();
+	$errT=array();
+	$c=0;
+	
+	
+	
+	if($running==0){
+		$icon="disks-128-red.png";
+		$err=proxy_status_warning("{stopped}","Reverse Proxy {stopped}","$GotoReverseProxy");
+		$uptime="{stopped}";
+		$master_memory=0;
+		$processes_number=0;
+	}
+	
+	
+	$icon=imgtootltip($icon,"position:right:{APP_NGINX}","$GotoReverseProxy");
+
+	if(count($important_events)>0){
+		$important_events_text="<tr><td colspan=2>&nbsp;</td></tr>".@implode("\n", $important_events);
+	}
+		
+		
+	$html="
+		<table style='width:100%'>
+			<tr>
+			<td valign='top' style='width:128px' >
+			$icon
+			</td>
+			<td>
+			<table style='width:100%'>
+			<tr>
+			<td style='font-size:30px'>
+			". $tpl->_ENGINE_parse_body(texttooltip("Reverse Proxy","{APP_NGINX}","$GotoReverseProxy"))."
+		<div style='width:100%;text-align:right'><span style='font-size:16px'>{version}:$master_version</div>
+			</td>
+			</tr>
+			<tr>
+			<td colspan=2>&nbsp;</td>
+			</tR>
+			<tr>
+			<td style='font-size:18px'>
+			<a href=\"javascript:blur();\"
+			OnClick=\"javascript:$GotoReverseProxy\"
+			style='text-decoration:underline'>{memory}: ". FormatBytes($master_memory)."</a></td>
+			</tr>	
+			<tr>
+			<td style='font-size:18px'>
+			<a href=\"javascript:blur();\"
+			OnClick=\"javascript:$GotoReverseProxy\"
+			style='text-decoration:underline'>{processes}: ". FormatNumber($processes_number)."</a></td>
+			</tr>				
+			
+			<tr>
+			<td style='font-size:18px'>
+			<a href=\"javascript:blur();\"
+			OnClick=\"javascript:$GotoReverseProxy\"
+			style='text-decoration:underline'>{uptime}: $uptime</a></td>
+			</tr>
+			".@implode("\n", $stats)."
+	
+			".@implode("", $errT)."
+			".@implode("", $err)."
+			$important_events_text
+			</table>
+		</td>
+	</tr>
+</table>
+";
+$html= $tpl->_ENGINE_parse_body($html);
+return $html;	
+	
+	
+}
+
+
+function postfix_notadmin(){
+	$page=CurrentPageName();
+	$ini=new Bs_IniHandler();
+	$users=new usersMenus();
+	$tpl=new templates();
+	$sock=new sockets();
+	$icon="disks-128-ok.png";
+	$GoToMessaging="blur()";
+	
+	$MimeDefangEnabled=intval($sock->GET_INFO('MimeDefangEnabled'));
+	$MimeDefangArchiver=intval($sock->GET_INFO("MimeDefangArchiver",true));
+	$MimeDefangSpamAssassin=intval($sock->GET_INFO("MimeDefangSpamAssassin"));
+	if(!$users->MIMEDEFANG_INSTALLED){$MimeDefangEnabled=0;$MimeDefangSpamAssassin=0;}
+	if($MimeDefangEnabled==0){$MimeDefangArchiver=0;$MimeDefangSpamAssassin=0;}
+	
+	
+	if(VerifyRights_ou()){
+		$GoToMessaging="GoToMessagingOU('{$_SESSION["ou"]}')";
+		
+		if($MimeDefangArchiver==1){
+			$features[]="
+			<tr>
+			<td style='font-size:18px'>{backupemail_behavior}: <span id='BACKUP_EMAIL_BEHAVIOR_DASHBOARD'></span></td>
+			</tr>";
+			$scripts[]="LoadAjaxSilent('BACKUP_EMAIL_BEHAVIOR_DASHBOARD','admin.dashboard.users.php?BACKUP_EMAIL_BEHAVIOR_DASHBOARD=yes');";
+			
+		}
+		
+		if($MimeDefangSpamAssassin==1){
+			$features[]="
+			<tr>
+			<td style='font-size:18px'>{quarantine}: <span id='QUARANTINE_EMAIL_BEHAVIOR_DASHBOARD'></span></td>
+			</tr>";
+			$scripts[]="LoadAjaxSilent('QUARANTINE_EMAIL_BEHAVIOR_DASHBOARD','admin.dashboard.users.php?QUARANTINE_EMAIL_BEHAVIOR_DASHBOARD=yes');";
+			
+			
+		}
+		
+	}
+	
+	
+	
+	$icon=imgtootltip($icon,"position:right:{messaging}","$GoToMessaging");
+	$html="
+	<table style='width:100%'>
+	<tr>
+	<td valign='top' style='width:128px' >
+	$icon
+	</td>
+	<td>
+	<table style='width:100%'>
+	<tr>
+	<td style='font-size:30px'>
+	". $tpl->_ENGINE_parse_body(texttooltip("{messaging} {$_SESSION["ou"]}","{messaging}","$GoToMessaging"))."
+	
+	</td>
+	</tr>
+	<tr>
+	<td colspan=2>&nbsp;</td>
+	</tR>
+	
+	".@implode("\n", $features)."
+	
+	$perc_cache
+	$SUM_FAMILYSITES_TEXT
+	".@implode("", $errT)."
+	".@implode("", $err)."
+	$important_events_text
+	</table>
+</td>
+</tr>
+</table>
+<script>". @implode("\n", $scripts)."</script>";
+
+$html= $tpl->_ENGINE_parse_body($html);
+return $html;
+	
+}
+
+
+function postfix_status(){
+	if($GLOBALS['VERBOSE']){echo "<h1>postfix_status()</H1>\n";}
+	$page=CurrentPageName();
+	$ini=new Bs_IniHandler();
+	$users=new usersMenus();
+	$tpl=new templates();
+	$sock=new sockets();
+	$stats=array();
+	$createamailbox=null;
+	
+	if($GLOBALS['VERBOSE']){echo "<span style='color:red'>AsPostfixAdministrator: $users->AsPostfixAdministrator</span>\n";}
+	
+	
+	if(!$users->AsPostfixAdministrator){
+		if($GLOBALS['VERBOSE']){echo "<h1>postfix_notadmin()</H1>\n";}
+		return postfix_notadmin();
+	}
+	
 	$version=$sock->getFrameWork("influx.php?version=yes");
 	$GoToMessaging="GoToMessaging()";
-	$stats=array();
+	
 	$stat=unserialize(base64_decode($sock->getFrameWork("cmd.php?postfix-stat=yes")));
 	$queues=unserialize($sock->getFrameWork("cmd.php?postfixQueues=yes"));
 	$total=base64_decode($sock->getFrameWork("cmd.php?postfix-multi-postqueue=MASTER"));
-	$SMTP_SUM_DOMAINS=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/SMTP_SUM_DOMAINS"));
-	$SMTP_SUM_CDIR=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/SMTP_SUM_CDIR"));
+	$SMTP_SUM_DOMAINS=intval(@file_get_contents("/usr/share/artica-postfix/ressources/smtp-cache/SMTP_SUM_DOMAINS"));
+	$SMTP_SUM_CDIR=intval(@file_get_contents("/usr/share/artica-postfix/ressources/smtp-cache/SMTP_SUM_CDIR"));
+	$SMTP_REFUSED=intval(@file_get_contents("/usr/share/artica-postfix/ressources/smtp-cache/SMTP_REFUSED"));
+	$EnableStopPostfix=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableStopPostfix"));
 	
+	$SUM_BACK=intval(@file_get_contents("/usr/share/artica-postfix/ressources/smtp-cache/SMTP_SUM_BACK"));
+	$SUM_BACKSIZE=intval(@file_get_contents("/usr/share/artica-postfix/ressources/smtp-cache/SMTP_SUM_BACKSIZE"));
+	
+	$SMTP_SUM_QUAR=intval(@file_get_contents("/usr/share/artica-postfix/ressources/smtp-cache/SMTP_SUM_QUAR"));
+	$SMTP_SUM_QUARSIZE=intval(@file_get_contents("/usr/share/artica-postfix/ressources/smtp-cache/SMTP_SUM_QUARSIZE"));
+	
+	
+	if($GLOBALS['VERBOSE']){echo "<h1>/usr/share/artica-postfix/ressources/smtp-cache/SMTP_SUM_BACKSIZE = $SUM_BACKSIZE</H1>\n";}
+	$MimeDefangAutoWhiteList=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/MimeDefangAutoWhiteList"));
+	$MimeDefangEnabled=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/MimeDefangEnabled"));
+	$MimeDefangSpamAssassin=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/MimeDefangSpamAssassin"));
+	if($MimeDefangEnabled==0){$MimeDefangAutoWhiteList=0;$MimeDefangSpamAssassin=0;}
+	$SUM_TRANSCATS=intval(@file_get_contents("/usr/share/artica-postfix/ressources/smtp-cache/SUM_TRANSCATS"));
+	$SUM_TRANSCATS_SIZE=intval(@file_get_contents("/usr/share/artica-postfix/ressources/smtp-cache/SUM_TRANSCATS_SIZE"));
+	
+	$SMTP_SUM_ATTACH=intval(@file_get_contents("/usr/share/artica-postfix/ressources/smtp-cache/SMTP_SUM_ATTACH"));
+	$SMTP_SUM_ATTACHSIZE=intval(@file_get_contents("/usr/share/artica-postfix/ressources/smtp-cache/SMTP_SUM_ATTACHSIZE"));
+	
+	
+	
+	if($users->cyrus_imapd_installed){
+		
+		$createamailbox="
+		<tr>
+		<td style='font-size:20px'>
+		<a href=\"javascript:blur();\"
+		OnClick=\"javascript:Loadjs('create-user.php')\"
+		style='text-decoration:underline'>
+		<table style='width:100%'>
+		<td width=32px><img src='img/mailbox-add-32.png'>
+		<td style='font-size:18px;text-decoration:underline'>{new_mailbox}</td>
+				</tr></table>
+		</td>
+		</tr>";
+		
+	}
+	
+	if($GLOBALS['VERBOSE']){echo "<h1>MimeDefangEnabled=$MimeDefangEnabled; SUM_TRANSCATS = $SUM_TRANSCATS</H1>\n";}
+	if($MimeDefangEnabled==1){
+		if($SUM_TRANSCATS>0){
+			if($GLOBALS['VERBOSE']){echo "<h1> SUM_TRANSCATS - BUILD !</H1>\n";}
+			$stats[]="
+			<tr>
+			<td style='font-size:20px'>
+			<a href=\"javascript:blur();\"
+			OnClick=\"javascript:GotoSMTPTransactions()\"
+			style='text-decoration:underline'>{transactions}: ". FormatNumber($SUM_TRANSCATS)."&nbsp;<span  style='font-size:16px'>".FormatBytes($SUM_TRANSCATS_SIZE/1024)."</span></a></td>
+			</tr>";
+		}
+		
+		if($SMTP_SUM_ATTACH>0){
+			$stats[]="
+			<tr>
+			<td style='font-size:20px'>
+			<a href=\"javascript:blur();\"
+			OnClick=\"javascript:GotoSMTPAttachments()\"
+			style='text-decoration:underline'>{attachments}: ". FormatNumber($SMTP_SUM_ATTACH)."&nbsp;<span  style='font-size:16px'>".FormatBytes($SMTP_SUM_ATTACHSIZE/1024)."</span></a></td>
+			</tr>";			
+			
+			
+		}
+		
+		
+		
+	}
+	
+	
+	if($GLOBALS['VERBOSE']){echo "<h1>SMTP_REFUSED = $SMTP_REFUSED</H1>\n";}
+	if($SMTP_REFUSED>0){
+		$stats[]="
+		<tr>
+		<td style='font-size:20px'>
+		<a href=\"javascript:blur();\"
+		OnClick=\"javascript:GotoSMTPRefused()\"
+		style='text-decoration:underline'>{refused}: ". FormatNumber($SMTP_REFUSED)."</a></td>
+		</tr>";
+	}
+	
+	
+	
+	if($GLOBALS['VERBOSE']){echo "<h1>SMTP_SUM_DOMAINS = $SMTP_SUM_DOMAINS</H1>\n";}
 	if($SMTP_SUM_DOMAINS>0){
 		$stats[]="
 		<tr>
@@ -2337,9 +3742,8 @@ function postfix_status(){
 		OnClick=\"javascript:GotoSMTPTableDomains()\"
 		style='text-decoration:underline'>{domains}: ". FormatNumber($SMTP_SUM_DOMAINS)."</a></td>
 		</tr>";
-		
-		
 	}
+	if($GLOBALS['VERBOSE']){echo "<h1>SMTP_SUM_CDIR = $SMTP_SUM_CDIR</H1>\n";}
 	if($SMTP_SUM_CDIR>0){
 		$stats[]="
 		<tr>
@@ -2351,6 +3755,46 @@ function postfix_status(){
 	
 	
 	}	
+	
+	if($GLOBALS['VERBOSE']){echo "<h1>SUM_BACK = $SUM_BACK</H1>\n";}
+	if($SUM_BACK>0){
+		$stats[]="
+		<tr>
+		<td style='font-size:20px'>
+		<a href=\"javascript:blur();\"
+		OnClick=\"javascript:GotoBackupMails()\"
+		style='text-decoration:underline'>{backuped_mails}: ". FormatNumber($SUM_BACK)."&nbsp;(".FormatBytes($SUM_BACKSIZE/1024).")</a></td>
+		</tr>";
+		
+	}
+	
+
+	if($MimeDefangSpamAssassin==1){
+		if($SMTP_SUM_QUAR>0){
+			$stats[]="
+			<tr>
+			<td style='font-size:20px'>
+			<a href=\"javascript:blur();\"
+			OnClick=\"javascript:GotoQuarantineMails()\"
+			style='text-decoration:underline'>{quarantine}: ". FormatNumber($SMTP_SUM_QUAR)."&nbsp;<span  style='font-size:16px'>".FormatBytes($SMTP_SUM_QUARSIZE/1024)."</span></a></td>
+			</tr>";
+		}
+	}	
+	
+	
+	$q=new mysql();
+	if($MimeDefangAutoWhiteList==1){
+		$whitelisted=$q->COUNT_ROWS("autowhite", "artica_backup");
+		$stats[]="
+		<tr>
+		<td style='font-size:20px'>
+		<a href=\"javascript:blur();\"
+		OnClick=\"javascript:GotoAutoWhite()\"
+		style='text-decoration:underline'>{smtp_AutoWhiteList}: ". FormatNumber($whitelisted)." </a></td>
+		</tr>";
+		
+	}
+	
 	
 	if(is_file("{$GLOBALS["BASEDIR"]}/SMTP_TOTALS")){
 		$SMTP_TOTALS=unserialize(@file_get_contents("{$GLOBALS["BASEDIR"]}/SMTP_TOTALS"));
@@ -2445,6 +3889,14 @@ function postfix_status(){
 	}
 	
 	
+	if($EnableStopPostfix==1){
+		$icon="disks-128-red.png";
+		$err[]=proxy_status_warning("{messaging_stopped}",
+				"{messaging_stopped_explain}",
+				"Loadjs('postfix.stop.php')");
+		$icon="disks-128-red.png";
+	}	
+	
 	
 		$link_corrupt="Loadjs('postfix.corrupt.queue.php')";
 		$link_incoming=CellRollOver("Loadjs('postfix.queue.monitoring.php?show-queue=incoming&count={$queues["incoming"]}');");
@@ -2456,14 +3908,31 @@ function postfix_status(){
 		if(function_exists("mysql_fetch_array")){
 			$ligne=@mysql_fetch_array($q->QUERY_SQL($sql,'artica_events'));
 		}
+		
+		
+		
+		$postfix_admin_mysql=$q->COUNT_ROWS("postfix_admin_mysql", "artica_events");
+		
+		
+		if($postfix_admin_mysql>0){
+			$postfix_admin_mysql_text="		
+		<td style='font-size:18px'>
+		<a href=\"javascript:blur();\"
+		OnClick=\"javascript:GoToPostfixWatchdog()\"
+		style='text-decoration:underline'>{watchdog}: $postfix_admin_mysql {events}</a></td>
+		</tr>
+		<tr><td>&nbsp;</td></tr>";
+			
+		}
+		
 		$tot=$ligne["tcount"];
 		$tot_size=$ligne["tsize"]/1024;
 		$tot_size=FormatBytes($tot_size);		
 		
-		
+		if($GLOBALS['VERBOSE']){echo "<h1>stats arrayof ". count($stats)." elements</H1>\n";}
 		
 		$icon=imgtootltip($icon,"position:right:{messaging}","$GoToMessaging");
-		$html="
+$html="
 		<table style='width:100%'>
 		<tr>
 		<td valign='top' style='width:128px' >
@@ -2477,6 +3946,7 @@ function postfix_status(){
 		<div style='width:100%;text-align:right'><span style='font-size:16px'>{version}:$postfix_version</div>
 		</td>
 		</tr>
+		$createamailbox
 		<tr>
 			<td colspan=2>&nbsp;</td>
 		</tR>
@@ -2486,7 +3956,7 @@ function postfix_status(){
 		<a href=\"javascript:blur();\"
 		OnClick=\"javascript:PostfixQueueMonitoring()\"
 		style='text-decoration:underline'>{smtp_queues}: $tot_size</a></td>
-		</tr>
+		</tr>$postfix_admin_mysql_text
 		".@implode("\n", $stats)."
 
 		$perc_cache
@@ -2497,7 +3967,7 @@ function postfix_status(){
 		</table>
 		</td>
 	</tr>
-			</table>
+</table>
 			";
 	$html= $tpl->_ENGINE_parse_body($html);
 	return $html;	
@@ -2512,8 +3982,12 @@ function influxdb_status(){
 	$users=new usersMenus();
 	$tpl=new templates();
 	$sock=new sockets();
-	$version=$sock->getFrameWork("influx.php?version=yes");
+	$version=$sock->getFrameWork("postgres.php?version=yes");
+	$version=$tpl->_ENGINE_parse_body("PostgreSQL $version");
 	$GoToStatsOptions="GoToStatsOptions()";
+	$NOT_CATEGORIZED=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/NOT_CATEGORIZED"));
+
+	
 	$icon="disks-128-ok.png";
 	$err=array();
 	$errT=array();
@@ -2535,9 +4009,18 @@ function influxdb_status(){
 		<a href=\"javascript:blur();\" OnClick=\"javascript:GotoMysQLAllWebsites();\"
 		style='text-decoration:underline'>$SUM_FAMILYSITES</a></td>
 		</tr>";
-	
-			
 	}
+	
+	if($NOT_CATEGORIZED>0){
+		$NOT_CATEGORIZED=FormatNumber($NOT_CATEGORIZED);
+		$NOT_CATEGORIZED_ROW="<tr>
+		<td style='font-size:20px'>
+		<a href=\"javascript:blur();\"
+		OnClick=\"GotoNotCategorized()\"
+		style='text-decoration:underline'>{websites}: $NOT_CATEGORIZED {not_categorized}</a></td>
+		</tr>";
+	
+	}	
 	
 	
 	$InfluxListenInterface=$sock->GET_INFO("InfluxListenInterface");
@@ -2559,7 +4042,7 @@ function influxdb_status(){
 				<tr>
 				<td style='font-size:30px'>
 				". $tpl->_ENGINE_parse_body(texttooltip("{your_database}","{configure_your_database}","$GoToStatsOptions"))."
-						<div style='width:100%;text-align:right'><span style='font-size:16px'>{version}:$version</div>
+						<div style='width:100%;text-align:right'><span style='font-size:16px'>$version</div>
 						</td>
 				</tr>
 				$CountDeServices
@@ -2568,7 +4051,7 @@ function influxdb_status(){
 			<td style='font-size:20px'>
 			<a href=\"javascript:blur();\"
 			OnClick=\"javascript:$GoToStatsOptions\"
-			style='text-decoration:underline'>{listen}: $InfluxListenInterface:8086</a></td>
+			style='text-decoration:underline'>{listen}: $InfluxListenInterface:5432</a></td>
 		</tr>
 					
 		<tr>
@@ -2579,6 +4062,7 @@ function influxdb_status(){
 		</tr>
 		$perc_cache
 		$SUM_FAMILYSITES_TEXT
+		$NOT_CATEGORIZED_ROW
 		". TOP_GRAPHS()."					
 				".@implode("", $errT)."
 				".@implode("", $err)."
@@ -2587,6 +4071,9 @@ function influxdb_status(){
 		</td>
 	</tr>
 	</table>
+	<script>
+		LoadAjaxSilent('proxy_dashboard_counters','$page?proxy_dashboard_counters=yes');
+	</script>
 	";
 		$html= $tpl->_ENGINE_parse_body($html);	
 	return $html;
@@ -2596,29 +4083,34 @@ function influxdb_status(){
 
 
 function TOP_GRAPHS(){
-	
+	$sock=new sockets();
+	$users=new usersMenus();
+	if(!$users->AllowViewStatistics){return;}
 	if($GLOBALS["VERBOSE"]){echo "<strong style='color:red'>{$GLOBALS["BASEDIR"]}/TOP_BLOCKED<br>BLOCKED DATA:". @file_get_contents("{$GLOBALS["BASEDIR"]}/TOP_BLOCKED")."</strong><br>";}
 	if($GLOBALS["VERBOSE"]){echo "<strong style='color:red'>{$GLOBALS["BASEDIR"]}/TOP_USER<br>TOP_USER:". @file_get_contents("{$GLOBALS["BASEDIR"]}/TOP_BLOCKED")."</strong><br>";}
 	$TOP_WEBSITE=unserialize(@file_get_contents("{$GLOBALS["BASEDIR"]}/TOP_WEBSITE"));
 	$TOP_USER=unserialize(@file_get_contents("{$GLOBALS["BASEDIR"]}/TOP_USER"));
 	$TOP_BLOCKED=unserialize(@file_get_contents("{$GLOBALS["BASEDIR"]}/TOP_BLOCKED"));
 	$COUNT_DE_MEMBERS=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/MEMBERS_COUNT"));
+	$CalamarisSchedules=intval($sock->GET_INFO("CalamarisSchedules"));
 	
-	if(is_file("{$GLOBALS["BASEDIR"]}/CALAMARIS")){
-		$tr[]="
-		<tr>
-		<td style='font-size:20px;font-weight:bold'>
-			<table style='width:100%'>
+	if($CalamarisSchedules>0){
+		if(is_file("{$GLOBALS["BASEDIR"]}/CALAMARIS")){
+			$tr[]="
 			<tr>
-				<td style='width:24px'><img src='img/statistics-24.png'></td>
-				<td style='width:99%;font-size:20px;font-weight:bold''>
-				". texttooltip("{traffic_report}","{traffic_report}",
-								"GotoSquidCalamaris()")."</td>
-			</tr>
-			</table>
-		</td>
-		</tr>";
-		
+			<td style='font-size:20px;font-weight:bold'>
+				<table style='width:100%'>
+				<tr>
+					<td style='width:24px'><img src='img/statistics-24.png'></td>
+					<td style='width:99%;font-size:20px;font-weight:bold''>
+					". texttooltip("{traffic_report}","{traffic_report}",
+									"GotoSquidCalamaris()")."</td>
+				</tr>
+				</table>
+			</td>
+			</tr>";
+			
+		}
 	}
 	
 
@@ -2733,28 +4225,56 @@ function TOP_GRAPHS(){
 }
 
 
+function _ntmlauthenticators(){
+	include_once(dirname(__FILE__)."/ressources/class.squid.manager.inc");
+	$cache_manager=new cache_manager();
+	$datas=explode("\n",$cache_manager->makeQuery("ntlmauthenticator"));
+	if(!$cache_manager->ok){return;}
+	
+	$CPU_NUMBER=0;
+	while (list ($num, $ligne) = each ($datas) ){
+		if(preg_match("#by kid([0-9]+)#", $ligne,$re)){
+			$CPU_NUMBER=$re[1];
+			continue;
+		}
+	
+		if(preg_match("#number active: ([0-9]+) of ([0-9]+)#",$ligne,$re)){
+			$Active=intval($re[1]);
+			$Max=intval($re[2]);
+			$prc=round(($Active/$Max)*100);
+			$ARRAY[$CPU_NUMBER]=$prc;
+		}
+	
+	}
+	
+	return $ARRAY;
+
+}
+
+
 function proxy_status(){
+	
+	
+	$ntmlauthenticators_array=array();
 	$COUNT_DE_CACHES_TEXT=null;
+	$webfilters_paranoid_text=null;
 	$users=new usersMenus();
-	if($users->STATS_APPLIANCE){
-		return influxdb_status();
-		return;
-	}
-	if($users->POSTFIX_INSTALLED){
-		return postfix_status();
-		return;
-	}
+	if($users->STATS_APPLIANCE){   return influxdb_status(); }
+	if($users->POSTFIX_INSTALLED){ return postfix_status(); }
 	$sock=new sockets();
 	$SQUIDEnable=$sock->GET_INFO("SQUIDEnable");
 	if(!is_numeric($SQUIDEnable)){$SQUIDEnable=1;}
 	$EnableArticaMetaServer=intval($sock->GET_INFO("EnableArticaMetaServer"));
+	$EnableNginx=intval($sock->GET_INFO("EnableNginx"));
+	$EnableHaProxy=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableHaProxy"));
+	
 	if($SQUIDEnable==0){
-		if($EnableArticaMetaServer==1){
-			meta_server_status();
-			return;
-		}
+		if($EnableArticaMetaServer==1){return meta_server_status();}
+		if($EnableNginx==1){return nginx_server_status(); }
+		if($EnableHaProxy==1){return haproxy_server_status(); }
 	}
 	$SquidCacheLevel=$sock->GET_INFO("SquidCacheLevel");
+	$HTTrackInSquid=intval($sock->GET_INFO("HTTrackInSquid"));
 	if(!is_numeric($SquidCacheLevel)){$SquidCacheLevel=4;}
 	
 	
@@ -2783,18 +4303,23 @@ function proxy_status(){
 	
 	$rqs=null;
 
-	
+	$NOT_CATEGORIZED_ROW=null;
 	$mgr_client_list=$q->COUNT_ROWS("mgr_client_list");
 	$SNMP_WALK=proxy_snmp();
 	$EnableUfdbGuard=intval($sock->EnableUfdbGuard());
 	$SquidUrgency=intval($sock->GET_INFO("SquidUrgency"));
-	
+	$MacToUidUrgency=intval($sock->GET_INFO("MacToUidUrgency"));
 	$SquidSSLUrgency=intval($sock->GET_INFO("SquidSSLUrgency"));
 	$EnableKerbAuth=intval($sock->GET_INFO("EnableKerbAuth"));
 	$LogsWarninStop=intval($sock->GET_INFO("LogsWarninStop"));
 	$SquidUFDBUrgency=intval($sock->GET_INFO("SquidUFDBUrgency"));
 	$IsPortsConverted=intval($sock->GET_INFO("IsPortsConverted"));
+	$SquidCacheFullHideWarn=intval($sock->GET_INFO("SquidCacheFullHideWarn"));
 	$ActiveDirectoryEmergency=intval($sock->GET_INFO("ActiveDirectoryEmergency"));
+	$BasicAuthenticatorEmergency=intval($sock->GET_INFO("BasicAuthenticatorEmergency"));
+	$eCAPClamavEmergency=intval($sock->GET_INFO("eCAPClamavEmergency"));
+	$ParanoidBlockerEmergency=intval($sock->GET_INFO("ParanoidBlockerEmergency"));
+	$EnableeCapClamav=intval($sock->GET_INFO("EnableeCapClamav"));
 	$curs="OnMouseOver=\"this.style.cursor='pointer';\"
 	OnMouseOut=\"this.style.cursor='auto'\"";
 	$WebFiltering_blocked=null;
@@ -2804,13 +4329,39 @@ function proxy_status(){
 	
 	$AsTransparent=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/COUNT_DE_TRANSPARENT"));
 	$WATCHDOG_COUNT_EVENTS=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/WATCHDOG_COUNT_EVENTS"));
-	$COUNT_DE_SNI_CERTS=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/COUNT_DE_SNI_CERTS"));
+	
 	$COUNT_DE_CACHES=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/COUNT_DE_CACHES"));
 	$SUM_FAMILYSITES=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/SUM_FAMILYSITES"));
-	
+	$WindowsUpdateCaching=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/WindowsUpdateCaching"));
 	
 	
 	$TOP_WEBSITE=unserialize(@file_get_contents("{$GLOBALS["BASEDIR"]}/TOP_WEBSITE"));
+	$NOT_CATEGORIZED=intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/NOT_CATEGORIZED"));
+	$CACHES_RATES=unserialize(@file_get_contents("{$GLOBALS["BASEDIR"]}/TOTAL_CACHED_ARRAY"));
+	$TOTALS_NOT_CACHED=intval($CACHES_RATES["TOTALS_NOT_CACHED"]);
+	$TOTALS_CACHED=intval($CACHES_RATES["TOTALS_CACHED"]);
+	
+
+	
+	
+	if($users->AsProxyMonitor){
+		if($EnableKerbAuth==1){
+				$ntmlauthenticators=_ntmlauthenticators();
+				while (list ($cpu, $purc) = each ($ntmlauthenticators) ){
+					$color="black";
+					if($purc>95){$color="#d32d2d";}
+					$ntmlauthenticators_array[]="
+					<tr>
+					<td style='font-size:18px'>
+					<a href=\"javascript:blur();\"
+					OnClick=\"javscript:Loadjs('squid.ntmlauthenticators.php?cpu=$cpu')\"
+					style='text-decoration:underline;color:$color'>{ntlm_processes}: CPU#$cpu {$purc}%</a></td>
+					</tr>";
+					
+				}
+				
+		}
+	}
 	
 	
 	
@@ -2824,7 +4375,7 @@ function proxy_status(){
 	
 	$scriptEnd="LoadAjaxTiny('active-directory-dash-infos','$page?active-directory-dash-infos=yes');";
 	$EnableUfdbGuard=$sock->EnableUfdbGuard();
-	$realsquidversion=$sock->getFrameWork("squid.php?full-version=yes");
+	$realsquidversion=@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidRealVersion");
 
 	
 	$sql="SELECT COUNT(*) as tcount FROM proxy_ports WHERE enabled=1";
@@ -2837,6 +4388,35 @@ function proxy_status(){
 	$COUNTDePorts=$ligne["tcount"];
 	$js_icon_stats=null;
 	$icon_stats="<div style='float:left;margin-right:10px;margin-top:5px'><img src='img/statistics-24-grey.png'></div>";
+	
+	$GotoNotCategorized="GotoNotCategorized()";
+	$ActiveRequests_js="Loadjs('squid.active.requests.php')";
+	$GotoNotCategorized_underline="underline";
+	$ActiveRequests_underline="underline";
+	$GotoMysQLAllWebsites_underline="underline";
+	$GoToCachedStatistics="GoToCachedStatistics()";
+	$GotoMysQLAllWebsites="GotoMysQLAllWebsites()";
+	
+	$LoadProxyUpdate="LoadProxyUpdate();";
+	$LOadUfdbUpdate="GoToWebfilteringDBstatus();";
+	
+	
+
+	
+	if(!$users->AllowViewStatistics){
+		$GotoNotCategorized="blur();";
+		$ActiveRequests_js="blur()";
+		$GotoNotCategorized_underline="none";
+		$ActiveRequests_underline="none";
+		$GoToCachedStatistics="blur()";
+		$GotoMysQLAllWebsites="blur()";
+		$GotoMysQLAllWebsites_underline="none";
+	}
+	
+	if(!$users->AsSquidAdministrator){
+		$LoadProxyUpdate="blur()";
+		$LOadUfdbUpdate="blur()";
+	}
 	
 	
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
@@ -2856,24 +4436,16 @@ function proxy_status(){
 		
 		$js_icon_stats="OnMouseOver=\"this.style.cursor='pointer';\"
 		OnMouseOut=\"this.style.cursor='auto'\"
-		OnClick=\"javascript:GoToCachedStatistics();\"";
+		OnClick=\"javascript:$GoToCachedStatistics;\"";
 		
 		
 		if(is_file("{$GLOBALS["BASEDIR"]}/CACHED_ROW_DAY")){
-			$icon_stats="<div style='float:left;margin-right:10px;margin-top:5px'><img src='img/statistics-24.png'></div>";
+			$icon_stats="<div style='float:left;margin-right:10px;margin-top:5px'>
+					<img src='img/statistics-24.png'></div>";
 		}
 		
 		
-		
-		if($COUNT_DE_SNI_CERTS>0){
-			$SNI_CERTS="
-			<tr>
-				<td style='font-size:20px'>{certificates}: 
-				<a href=\"javascript:blur();\" OnClick=\"javascript:GoToSniCerts();\" 
-				style='text-decoration:underline'>$COUNT_DE_SNI_CERTS</a></td>
-			</tr>";
-			
-		}
+
 		
 		
 		if($SUM_FAMILYSITES>0){
@@ -2881,8 +4453,8 @@ function proxy_status(){
 			$SUM_FAMILYSITES_TEXT="
 			<tr>
 			<td style='font-size:20px'>{websites}:
-			<a href=\"javascript:blur();\" OnClick=\"javascript:GotoMysQLAllWebsites();\"
-			style='text-decoration:underline'>$SUM_FAMILYSITES</a></td>
+			<a href=\"javascript:blur();\" OnClick=\"javascript:$GotoMysQLAllWebsites;\"
+			style='text-decoration:$GotoMysQLAllWebsites_underline'>$SUM_FAMILYSITES</a></td>
 			</tr>";
 				
 			
@@ -2896,13 +4468,27 @@ function proxy_status(){
 	$ActiveRequestsIpaddr=count($ActiveRequestsR["IPS"]);
 	$ActiveRequestsMembers=count($ActiveRequestsR["USERS"]);
 	
+
+	
+	
+	if($NOT_CATEGORIZED>0){
+		$NOT_CATEGORIZED=FormatNumber($NOT_CATEGORIZED);
+		$NOT_CATEGORIZED_ROW="<tr>
+			<td style='font-size:20px'>
+		<a href=\"javascript:blur();\"
+		OnClick=\"$GotoNotCategorized\"
+		style='text-decoration:$GotoNotCategorized_underline'>{websites}: $NOT_CATEGORIZED {not_categorized}</a></td>
+		</tr>";
+		
+	}
+	
 	
 		$TITLE_REQUESTS="
 		<tr>
 			<td style='font-size:20px'>
 		<a href=\"javascript:blur();\"
-		OnClick=\"Loadjs('squid.active.requests.php')\"
-		style='text-decoration:underline'>$ActiveRequestsNumber {active_requests}</a></td>
+		OnClick=\"$ActiveRequests_js\"
+		style='text-decoration:$ActiveRequests_underline'>$ActiveRequestsNumber {active_requests}</a></td>
 		</tr>";
 	
 	
@@ -2940,6 +4526,7 @@ function proxy_status(){
 	$BUILD=0;
 	if($MAJOR>2){if($MINOR>4){$INCOMPATIBLE=false;}}
 	if($MAJOR==0){$INCOMPATIBLE=false;}
+	if($MAJOR==4){$INCOMPATIBLE=false;}
 	if(preg_match("#^([0-9]+)\.([0-9]+)\.([0-9]+)#", $realsquidversion,$re)){
 		$REV=intval($re[3]);
 	}
@@ -2951,7 +4538,7 @@ function proxy_status(){
 			if($INCOMPATIBLE){
 				$incompatible_proxy_version=$tpl->_ENGINE_parse_body("{incompatible_proxy_version}");
 				$incompatible_proxy_version=str_replace("%s", $realsquidversion, $incompatible_proxy_version);
-				$err[]=proxy_status_warning($incompatible_proxy_version,$incompatible_proxy_version,"LoadProxyUpdate()");
+				$err[]=proxy_status_warning($incompatible_proxy_version,$incompatible_proxy_version,$LoadProxyUpdate);
 				
 			}	
 		
@@ -2990,9 +4577,11 @@ function proxy_status(){
 			
 		}
 		
-		if($NEWVER<>null){
-			$INFOS[]=status_info_event("{SQUID_NEWVERSION} $NEWVER","{SQUID_NEWVERSION_TEXT}","LoadProxyUpdate()");
-			
+		if($users->AsSquidAdministrator){
+			if($NEWVER<>null){
+				$INFOS[]=status_info_event("{SQUID_NEWVERSION} $NEWVER","{SQUID_NEWVERSION_TEXT}",$LoadProxyUpdate);
+				
+			}
 		}
 	
 	}
@@ -3001,36 +4590,39 @@ function proxy_status(){
 		$jsOn="Loadjs('squid.urgency.php?justbutton=yes')";
 		if(!$users->AsSquidAdministrator){$jsOn="blur()";}
 		$err[]=proxy_status_warning("{proxy_in_emergency_mode}","{proxy_in_emergency_mode_explain}",$jsOn);		
-		$icon="disks-128-warn.png";
+		$icon="disks-128-red.png";
 		//proxy_in_emergency_mode
 		//proxy_in_emergency_mode_explain
 	}
 	if($SquidSSLUrgency==1){
-		//Loadjs('squid.urgency.php?ssl=yes')
-		//proxy_in_ssl_emergency_mode
-		//proxy_in_ssl_emergency_mode_explain
-		
 		$jsOn="Loadjs('squid.urgency.php?ssl=yes');";
 		if(!$users->AsSquidAdministrator){$jsOn="blur()";}
-		$icon="disks-128-warn.png";
+		$icon="disks-128-red.png";
 		$err[]=proxy_status_warning("{proxy_in_ssl_emergency_mode}","{proxy_in_ssl_emergency_mode_explain}",$jsOn);
-
 	}
+	if($MacToUidUrgency==1){
+		$jsOn="Loadjs('squid.urgency.php?justbutton=yes');";
+		if(!$users->AsSquidAdministrator){$jsOn="blur()";}
+		$icon="disks-128-red.png";
+		$err[]=proxy_status_warning("{proxy_in_MacToUid_emergency_mode}","{proxy_in_MacToUid_emergency_mode_explain}",$jsOn);
+	}	
+	
+	
 
 	if($SQUIDEnable==1){
-		if($EnableUfdbGuard==1){
+		
 			if($SquidUFDBUrgency==1){
 				$jsOn="Loadjs('squid.urgency.php?ufdb=yes');";
 				if(!$users->AsSquidAdministrator){$jsOn="blur()";}
-				$icon="disks-128-warn.png";
+				$icon="disks-128-red.png";
 				
 				$err[]=proxy_status_warning("{proxy_in_webfiltering_emergency_mode}",
 						"{proxy_in_webfiltering_emergency_mode_explain}",$jsOn);
 	
 			}
 			
-			
-			if($users->CORP_LICENSE){
+			if($EnableUfdbGuard==1){
+				if($users->CORP_LICENSE){
 			
 				$ufdbguard_artica_cloud_version=ufdbguard_artica_cloud_version();
 				if($ufdbguard_artica_cloud_version==0){
@@ -3077,16 +4669,13 @@ function proxy_status(){
 			$jsOn="Loadjs('system.log.emergency.php');";
 			if(!$users->AsSquidAdministrator){$jsOn="blur()";}
 			$help=help_icon("{squid_logs_urgency}");
-			
 			$text=texttooltip("{squid_logs_urgency_section}","{squid_logs_urgency}",$jsOn);
-			
-			$icon="disks-128-warn.png";
-			$err[]=proxy_status_warning("{squid_logs_urgency_section}",
-					"{squid_logs_urgency}",$jsOn);
-	
-			
+			$icon="disks-128-red.png";
+			$err[]=proxy_status_warning("{squid_logs_urgency_section}","{squid_logs_urgency}",$jsOn);
 		}
 	}
+	
+	
 	if($SQUIDEnable==1){
 		if($IsPortsConverted==0){
 			$jsOn="Loadjs('squid.compile.progress.php');";
@@ -3118,12 +4707,16 @@ function proxy_status(){
 	$GoToServices="GoToServices()";
 	$GoToUfdb="GoToUfdb()";
 	$GoToCaches="GoToCaches()";
+	$GoToCaches_underline="underline";
+	
+	
 	if(!$users->AsDansGuardianAdministrator){$GoToCategoriesServiceA="blur()";$GoToUfdb="blur()";}
 	if(!$users->AsSquidAdministrator){
 			$GotoAdConnection="blur()";
 			$LoadMainDashProxy="blur()";
 			$GoToServices="blur()";
 			$GoToCaches="blur()";
+			$GoToCaches_underline="none";
 	}
 	if($SQUIDEnable==1){
 		$catz=new mysql_catz();
@@ -3148,6 +4741,17 @@ function proxy_status(){
 	   		}
 	   }
 	}
+	
+if($BasicAuthenticatorEmergency==1){
+	$jsOn="Loadjs('squid.urgency.php?justbutton=yes');";
+	if(!$users->AsSquidAdministrator){$jsOn="blur()";}
+	$icon="disks-128-warn.png";
+		
+	$err[]=proxy_status_warning("{authentication_emergency_mode}",
+			"{authentication_emergency_mode_explain}",$jsOn);
+
+	
+}
 	
 if($SQUIDEnable==1){	
 	if($EnableKerbAuth==1){
@@ -3197,7 +4801,28 @@ if($SQUIDEnable==1){
 	
 	}	
 }
+
+if($EnableeCapClamav==1){
+	if($eCAPClamavEmergency==1){
+		$jsOn="Loadjs('squid.urgency.php?eCAPClamavEmergency=yes');";
+		if(!$users->AsSquidAdministrator){$jsOn="blur()";}
+		$icon="disks-128-warn.png";
+		$err[]=proxy_status_warning("{eCAPClamav_emergency_mode}",
+				"{activedirectory_emergency_mode_explain}",$jsOn);
+		
+	}
+}
+
+if($ParanoidBlockerEmergency==1){
+	$jsOn="Loadjs('squid.urgency.php?ParanoidBlockerEmergency=yes');";
+	if(!$users->AsSquidAdministrator){$jsOn="blur()";}
+	$icon="disks-128-warn.png";
+	$err[]=proxy_status_warning("{paranoid_emergency_mode}",
+			"{paranoid_emergency_mode_explain}",$jsOn);
 	
+}
+
+if($SquidCacheFullHideWarn==0){
 	if($COUNT_DE_CACHES>0){
 		if($CACHES_AVG>85){
 			$err[]=proxy_status_warning("{caches_are_full}",
@@ -3205,6 +4830,7 @@ if($SQUIDEnable==1){
 		}
 		
 	}
+}
 	
 	
 	if($COUNT_DE_CACHES>0){
@@ -3225,6 +4851,7 @@ if($SQUIDEnable==1){
 	}
 	
 	
+	if(!$users->AsSquidAdministrator){$err=array();}
 	
 	
 	if(count($err)>0){
@@ -3239,17 +4866,30 @@ if($SQUIDEnable==1){
 	$ActiveRequestsIpaddr=count($ActiveRequestsR["IPS"]);
 	$ActiveRequestsMembers=count($ActiveRequestsR["USERS"]);
 	
+	$GotoParanoidMode="GotoParanoidMode()";
+	$GotoParanoidMode_underline="underline";
+	$GoToUfdb_underline="underline";
+	
+	if(!$users->AsDansGuardianAdministrator){
+		$GotoParanoidMode="blur()";
+		$GoToUfdb="blur()";
+		$GotoParanoidMode_underline="none";
+		$GoToUfdb_underline="none";
+	}
+	
+	
+	
 	$UfdbEnableParanoidMode=intval($sock->GET_INFO("UfdbEnableParanoidMode"));
 	if($UfdbEnableParanoidMode==1){
 		$q=new mysql_squid_builder();
 		$webfilters_paranoid=$q->COUNT_ROWS("webfilters_paranoid");
 		if($webfilters_paranoid>0){
-			$webfilters_paranoid="
+			$webfilters_paranoid_text="
 		<tr>
 		<td style='font-size:20px'>
 		<a href=\"javascript:blur();\"
-		OnClick=\"javascript:GotoParanoidMode()\"
-		style='text-decoration:underline'>{paranoid_mode}: ".FormatNumber($webfilters_paranoid)." {rules}</a></td>
+		OnClick=\"javascript:$GotoParanoidMode\"
+		style='text-decoration:$GotoParanoidMode_underline'>{paranoid_mode}: ".FormatNumber($webfilters_paranoid)." {rules}</a></td>
 		</tr>";
 			
 		}
@@ -3259,6 +4899,7 @@ if($SQUIDEnable==1){
 	
 	
 	
+
 	
 	if($EnableUfdbGuard==1){
 		
@@ -3268,7 +4909,7 @@ if($SQUIDEnable==1){
 		<td style='font-size:20px'>
 		<a href=\"javascript:blur();\"
 		OnClick=\"javascript:$GoToUfdb\"
-		style='text-decoration:underline'>{blocked_events}: ".FormatNumber($COUNT_DE_BLOCKED)."</a></td>
+		style='text-decoration:$GoToUfdb_underline'>{blocked_events}: ".FormatNumber($COUNT_DE_BLOCKED)."</a></td>
 		</tr>";
 		}
 		
@@ -3293,6 +4934,14 @@ if($SQUIDEnable==1){
 		</tr>";
 	
 	
+	$active_resquests_js="Loadjs('squid.active.requests.php')";
+	$active_resquests_underline="underline";
+	
+	if(!$users->AsSquidAdministrator){
+		$active_resquests_js="blur()";
+		$active_resquests_underline="none";
+	}
+	
 	
 	if($ActiveRequestsNumber>1){
 		
@@ -3300,7 +4949,7 @@ if($SQUIDEnable==1){
 		<tr>
 			<td style='font-size:20px'>
 			<a href=\"javascript:blur();\"
-			OnClick=\"javascript:Loadjs('squid.active.requests.php')\"
+			OnClick=\"javascript:$active_resquests_js\"
 			style='text-decoration:underline'>{active_requests}: $ActiveRequestsNumber</a></td>
 		</tr>";
 		
@@ -3315,7 +4964,10 @@ if($SQUIDEnable==1){
 	}
 	
 	$CACHES_AVG_COLOR="black";
-	if($CACHES_AVG>85){$CACHES_AVG_COLOR="#d32d2d";}
+	if($CACHES_AVG>85){
+		if($SquidCacheFullHideWarn==0){$CACHES_AVG_COLOR="#d32d2d";}
+	
+	}
 	
 	
 	if(count($important_events)>0){
@@ -3342,7 +4994,7 @@ if($SQUIDEnable==1){
 	if($prec>0){
 		$perc_cache="
 		<tr>
-			<td style='font-size:18px;vertical-align:middle'>{$prec}% {cache}</td>
+			<td style='font-size:18px;vertical-align:middle'>{$prec}% {cache} ({currently})</td>
 		</tr>";
 	}
 	
@@ -3361,7 +5013,38 @@ if($SQUIDEnable==1){
 	
 	}
 	
+	$windowsUpdate=null;
+	if($WindowsUpdateCaching==1){
+		$cacheFile="/usr/share/artica-postfix/ressources/logs/web/WindowsUpdate.state";
+		$ARRAY=unserialize(@file_get_contents($cacheFile));
+		if(intval($ARRAY["SIZEKB"])>4){
+			$windowsUpdate="
+			<tr>
+			<td style='font-size:18px;vertical-align:middle'> 
+			<a href=\"javascript:blur();\"
+			OnClick=\"javascript:GotoWindowsUpdate()\"
+			style='text-decoration:underline'>Windows Update:</a> ".FormatBytes($ARRAY["SIZEKB"])."</td>
+			</tr>";
+			
+		}
+		
+	}
 	
+	$HTTrack=null;
+	if($HTTrackInSquid==1){
+		$HTTRackSize=$sock->GET_INFO("HTTRackSize");
+		if($HTTRackSize>0){
+			$HTTrack="
+			<tr>
+			<td style='font-size:18px;vertical-align:middle'>
+			<a href=\"javascript:blur();\"
+			OnClick=\"javascript:GotoWebCopy()\"
+			style='text-decoration:underline'>WebCopy:</a> ".FormatBytes($HTTRackSize/1024)."</td>
+			</tr>";
+			
+		}
+		
+	}
 	
 	
 	
@@ -3382,13 +5065,52 @@ if($SQUIDEnable==1){
 			<td style='font-size:20px'>
 					<a href=\"javascript:blur();\"
 					OnClick=\"$GoToCaches\"
-					style='text-decoration:underline;color:$CACHES_AVG_COLOR'>
+					style='text-decoration:$GoToCaches_underline;color:$CACHES_AVG_COLOR'>
 						{storage}: {$CACHES_AVG}%&nbsp;/&nbsp;{$COUNT_DE_CACHES_TEXT}</a>
 					</td>
 				</tr>";
 		}
 	}
 	
+	$CACHED_DETAILS_TOTAL=null;
+	$NOT_CACHED_DETAILS_TOTAL=null;
+	
+	if($TOTALS_CACHED>0){
+		$CACHED_DETAILS_TOTAL="
+		<tr>
+			<td style='font-size:18px'>
+					<a href=\"javascript:blur();\"
+					OnClick=\"$GoToCaches\"
+					style='text-decoration:$GoToCaches_underline;color:black'>
+						{cached}: ".FormatBytes($TOTALS_CACHED/1024)."</a>
+			</td>
+		</tr>
+	";
+	}
+	
+	
+	if($TOTALS_NOT_CACHED>0){
+		
+		$NOT_CACHED_DETAILS_TOTAL="
+		<tr>
+			<td style='font-size:18px'>
+					<a href=\"javascript:blur();\"
+					OnClick=\"$GoToCaches\"
+					style='text-decoration:$GoToCaches_underline;color:black'>
+						{not_cached}: ".FormatBytes($TOTALS_NOT_CACHED/1024)."</a>
+					</td>
+				</tr>
+		";
+		
+		
+	}
+	
+	if(!$users->AsSquidAdministrator){
+		$important_events_text=null;
+		$errT=array();
+		$windowsUpdate=null;
+		$mgr_client_list_TR=null;
+	}
 	
 	$icon=imgtootltip($icon,"position:right:{configure_your_proxy}","$LoadMainDashProxy");
 	$html="
@@ -3402,26 +5124,48 @@ if($SQUIDEnable==1){
 			<table style='width:100%'>
 			<tr>
 				<td style='font-size:30px'>
-				". texttooltip("{your_proxy}","{configure_your_proxy}","$LoadMainDashProxy")."</td>
-			</tr>	
+				". texttooltip("{your_proxy}","{configure_your_proxy}","$LoadMainDashProxy")."
+				&nbsp;<span style='font-size:22px'>[&nbsp;<a href=\"javascript:blur();\" 
+				OnClick=\"javascript:Loadjs('squid.infos.php');\"
+				style='text-decoration:underline'>Infos.</a>&nbsp;]</span>		
+						
+				</td>
+			</tr>
+			<!-- perc_cache -->
 			$perc_cache
+			<!-- TOTALS_CACHED:$TOTALS_CACHED -->
+			$CACHED_DETAILS_TOTAL
+			<!-- TOTALS NOT CACHED:$TOTALS_NOT_CACHED -->
+			$NOT_CACHED_DETAILS_TOTAL
+			<!-- windowsUpdate -->
+			$windowsUpdate
+			<!-- HTTrack -->
+			$HTTrack
+			<!-- current_req -->
 			$current_req
+			<!-- SUM_FAMILYSITES_TEXT -->
 			$SUM_FAMILYSITES_TEXT
-			$SNI_CERTS	
+		
 			$active_resquests
 			$mgr_client_list_TR
 			$rqs
+				".@implode("", $ntmlauthenticators_array)."
 			
 			
-		
+		<!-- WebFiltering_blocked -->
 		$WebFiltering_blocked
-		$webfilters_paranoid	
+		<!-- webfilters_paranoid -->
+		$webfilters_paranoid_text	
+		<!-- INFO_STORAGE_CACHE -->
 		$INFO_STORAGE_CACHE
 		
 		
-	
+		
+	<!-- current_stored_objects -->
 			$current_stored_objects
+	<!-- TITLE_REQUESTS -->
 			$TITLE_REQUESTS
+	<!-- TOP_GRAPHS -->
 			". TOP_GRAPHS()."
 			$CountDeServices
 			".@implode("", $INFOS)."
@@ -3433,6 +5177,9 @@ if($SQUIDEnable==1){
 		</td>
 	</tr>
 	</table>
+	<script>
+		LoadAjaxSilent('proxy_dashboard_counters','$page?proxy_dashboard_counters=yes');
+	</script>
 	";
 	$html= $tpl->_ENGINE_parse_body($html);
 	
@@ -3482,6 +5229,46 @@ function CHECK_SQUID_EXTERNAL_LDAP(){
 }
 
 
+function TestLDAPAD_bind($server,$port,$user,$password){
+	$ldap_connection=@ldap_connect($server,$port);
+	
+	if(!$ldap_connection){
+		$error="[CONNECT] ldap://$server:$port";
+		if (@ldap_get_option($ldap_connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $extended_error)) {
+			$error=$error."<br>$extended_error";
+			if($GLOBALS["VERBOSE"]){echo "<strong style='color:red'>$error</strong><br>\n";}
+		}
+		@ldap_close($ldap_connection);
+		return $error;
+	
+	}
+	
+	@ldap_set_option($ldap_connection, LDAP_OPT_REFERRALS, 0);
+	@ldap_set_option($ldap_connection, LDAP_OPT_REFERRALS, 0);
+	@ldap_set_option($ldap_connection, LDAP_OPT_PROTOCOL_VERSION, 3);
+	@ldap_set_option($ldap_connection, LDAP_OPT_NETWORK_TIMEOUT, 1);
+	
+	
+	$bind=ldap_bind($ldap_connection, "$user", $password);
+	
+	if(!$bind){
+		$error="[BIND] ldap://$server:$port";
+		if (@ldap_get_option($ldap_connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $extended_error)) {
+			$error=$error."<br>$extended_error";
+			if($GLOBALS["VERBOSE"]){echo "<strong style='color:red'>$error</strong><br>\n";}
+		}
+		@ldap_close($ldap_connection);
+		return $error;
+	
+	}
+	
+	if($GLOBALS["VERBOSE"]){echo "<strong style='color:red'>ldap://$server:$port [OK]</strong><br>\n";}
+	return null;
+	
+}
+
+
+
 function TestLDAPAD(){
 	$sock=new sockets();
 	$error=null;
@@ -3504,35 +5291,11 @@ function TestLDAPAD(){
 	
 	if(!is_numeric($array["LDAP_PORT"])){$array["LDAP_PORT"]=389;}
 	if($GLOBALS["VERBOSE"]){echo "{$array["LDAP_SERVER"]} Port: {$array["LDAP_PORT"]}<br>\n";}
-	$ldap_connection=@ldap_connect($array["LDAP_SERVER"],$array["LDAP_PORT"]);
 	$GotoAdConnection="GotoActiveDirectoryLDAPParams()";
 	
-	if(!$ldap_connection){
-		$error="ldap://{$array["LDAP_SERVER"]}:{$array["LDAP_PORT"]}";
-		if (@ldap_get_option($ldap_connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $extended_error)) {
-			$error=$error."<br>$extended_error";
-		}
-		@ldap_close();
-		return proxy_status_warning("{error_ad_ldap}",$error,$GotoAdConnection);
-		
-	}
 	
 	if(preg_match("#^(.+?)\/(.+?)$#", $array["WINDOWS_SERVER_ADMIN"],$re)){$array["WINDOWS_SERVER_ADMIN"]=$re[1];}
 	if(preg_match("#^(.+?)\\\\(.+?)$#", $array["WINDOWS_SERVER_ADMIN"],$re)){$array["WINDOWS_SERVER_ADMIN"]=$re[1];}
-	
-		
-	if(!ldap_set_option($ldap_connection, LDAP_OPT_PROTOCOL_VERSION, 3)){
-		$error=ldap_err2str(ldap_errno($ldap_connection));
-		if (@ldap_get_option($ldap_connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $extended_error)) {
-			$error=$error."<br>$extended_error";
-			return;
-		}
-		
-	}
-	ldap_set_option($ldap_connection, LDAP_OPT_REFERRALS, 0);
-	@ldap_set_option($ldap_connection, LDAP_OPT_REFERRALS, 0);
-	@ldap_set_option($ldap_connection, LDAP_OPT_PROTOCOL_VERSION, 3); // on passe le LDAP en version 3, necessaire pour travailler avec le AD
-	
 	$LDAP_DN=$array["LDAP_DN"];
 	$LDAP_PASSWORD=$array["LDAP_PASSWORD"];
 	if($LDAP_DN==null){
@@ -3540,21 +5303,36 @@ function TestLDAPAD(){
 		$LDAP_PASSWORD=$array["WINDOWS_SERVER_PASS"];
 	}
 	
+	if($GLOBALS["VERBOSE"]){echo "<p>TestLDAPAD_bind ->{$array["LDAP_SERVER"]}</p>\n";}
+	$TestLDAPAD_bind=TestLDAPAD_bind($array["LDAP_SERVER"],$array["LDAP_PORT"],$LDAP_DN,$LDAP_PASSWORD);
+	if($TestLDAPAD_bind<>null){return proxy_status_warning("{error_ad_ldap}",$TestLDAPAD_bind,$GotoAdConnection);}
 	
-	if($GLOBALS["VERBOSE"]){echo "Username: $LDAP_DN / $LDAP_PASSWORD<br>\n";}
-	
-	$bind=ldap_bind($ldap_connection, "$LDAP_DN", $LDAP_PASSWORD);
-	
-	
-	if(!$bind){
-	
-		$error=ldap_err2str(ldap_errno($ldap_connection));
-		if (@ldap_get_option($ldap_connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $extended_error)) {
-			$error=$error."<br>$extended_error";
+	$SquidAddkerAlernates=unserialize(@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidAddkerAlernates"));
+	if($GLOBALS["VERBOSE"]){echo "SquidAddkerAlernates: ".count($SquidAddkerAlernates)."<br>\n";}
+	if(count($SquidAddkerAlernates)>0){
+		
+		while (list ($workgroup, $MainConfig) = each ($SquidAddkerAlernates)){
+			$LDAP_DN2=$LDAP_DN;
+			$LDAP_PASSWORD2=$LDAP_PASSWORD;
+			if(isset($MainConfig["LDAP_SERVER"])){$LDAP_SERVER=$MainConfig["LDAP_SERVER"];}
+			if(isset($MainConfig["LDAP_PORT"])){$LDAP_PORT=intval($MainConfig["LDAP_PORT"]);}
+			if($LDAP_PORT==0){$LDAP_PORT=389;}
+		
+			if(isset($MainConfig["LDAP_DN"])){
+				if($MainConfig["LDAP_DN"]<>null){$LDAP_DN2=$MainConfig["LDAP_DN"];}
+			}
+			
+			if(isset($MainConfig["LDAP_PASSWORD"])){
+				if($MainConfig["LDAP_PASSWORD"]<>null){$LDAP_PASSWORD2=$MainConfig["LDAP_PASSWORD"];}
+					
+			}
+			if($GLOBALS["VERBOSE"]){echo "{$LDAP_SERVER} Port: {$LDAP_PORT} $LDAP_DN/$LDAP_PASSWORD<br>\n";}
+			$TestLDAPAD_bind=TestLDAPAD_bind($LDAP_SERVER,$LDAP_PORT,$LDAP_DN,$LDAP_PASSWORD);
+			if($TestLDAPAD_bind<>null){return proxy_status_warning("{error_ad_ldap}",$TestLDAPAD_bind,$GotoAdConnection);}
 		}
-		@ldap_close();
-		return proxy_status_warning("{error_ad_ldap}",$error,$GotoAdConnection);
+		
 	}
+	
 	
 }
 
@@ -3567,7 +5345,8 @@ $sock=new sockets();
 
 
 function active_directory_infos(){
-	
+	$users=new usersMenus();
+	if(!$users->AsSquidAdministrator){return;}
 	$sock=new sockets();
 	$curs="OnMouseOver=\"this.style.cursor='pointer';\"
 	OnMouseOut=\"this.style.cursor='auto'\"
@@ -3604,11 +5383,10 @@ function stats_appliance_count_clients(){
 
 
 function SERVICES_STATUS(){
+	$users=new usersMenus();
+	if(!$users->AsSystemAdministrator){return;}
 	
-	if(isset($_GET["SERVICES_STATUS"])){
-		
-		
-	}
+
 	
 	$ini=new Bs_IniHandler();
 	$ini->loadFile("/usr/share/artica-postfix/ressources/logs/global.status.ini");
@@ -3625,7 +5403,8 @@ function SERVICES_STATUS(){
 		$c++;
 		if($running==0){
 			if($key=="APP_INFLUXDB"){if(recheck_service("APP_INFLUXDB")){continue;}}
-			$js="GoToServices()";
+		
+			
 			
 			$service_cmd=$array["service_cmd"];
 			if($service_cmd<>null){
@@ -3643,10 +5422,12 @@ function SERVICES_STATUS(){
 	}
 	
 	if($c>0){
-	
+		$GoToServices="GoToServices()";
+		$GoToServices_underline="underline";
+
 		$CountDeServices="<tr>
 		<td style='font-size:20px'><a href=\"javascript:blur();\"
-		OnClick=\"javascript:GoToServices();\" style='text-decoration:underline'>{services}: $c</a></td>
+		OnClick=\"javascript:$GoToServices;\" style='text-decoration:$GoToServices_underline'>{services}: $c</a></td>
 		</tr>";
 		
 		return $CountDeServices;

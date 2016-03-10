@@ -115,13 +115,19 @@ if($argv[1]=="--transport"){
 	system("{$GLOBALS["PHP5_BIN"]} /usr/share/artica-postfix/exec.postfix.transport.php");
 	die();
 }
+
+
 	
 if($argv[1]=="--aliases"){
 	internal_pid($argv);
+	build_progress_aliases("Building aliases...",10);
 	cmdline_alias();
+	build_progress_aliases("Building perso_settings...",70);
 	perso_settings();
+	build_progress_aliases("{reloading}",80);
 	echo "Starting......: ".date("H:i:s")." Postfix reloading\n";
 	shell_exec("{$GLOBALS["postfix"]} reload >/dev/null 2>&1");
+	build_progress_aliases("{done}",100);
 	die();}
 		
 if($argv[1]=="--smtp-passwords"){
@@ -261,6 +267,17 @@ function build_progress_sender_routing($text,$pourc){
 	@file_put_contents($cachefile, serialize($array));
 	@chmod($cachefile,0755);
 }	
+function build_progress_aliases($text,$pourc){
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/postfix.aliases.progress";
+	echo "{$pourc}% $text\n";
+	$cachefile=$GLOBALS["CACHEFILE"];
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	@file_put_contents($cachefile, serialize($array));
+	@chmod($cachefile,0755);
+}
+
+
 
 function SEND_PROGRESS($POURC,$text,$error=null){
 	$cache="/usr/share/artica-postfix/ressources/logs/web/POSTFIX_COMPILES";
@@ -306,16 +323,27 @@ function cmdline_virtuals(){
 
 
 function cmdline_alias(){
+	build_progress_aliases("Building LoadLDAPDBs...",15);
 	LoadLDAPDBs();
+	build_progress_aliases("Building maillings_table...",20);
 	maillings_table();
+	build_progress_aliases("Building aliases_users...",25);
 	aliases_users();
+	build_progress_aliases("Building aliases...",30);
 	aliases();
+	build_progress_aliases("Building catch_all...",35);
 	catch_all();
+	build_progress_aliases("Building build_aliases_maps...",40);
 	build_aliases_maps();
+	build_progress_aliases("Building build_virtual_alias_maps...",45);
 	build_virtual_alias_maps();
+	build_progress_aliases("Building postmaster...",50);
 	postmaster();
+	build_progress_aliases("Building recipient_canonical_maps_build...",55);
 	recipient_canonical_maps_build();
+	build_progress_aliases("Building recipient_canonical_maps...",60);
 	recipient_canonical_maps();	
+	build_progress_aliases("Building aliases {done}...",65);
 }
 
 
@@ -343,7 +371,8 @@ $ldap=new clladp();
 	echo "Starting......: ".date("H:i:s")." Postfix ". count($GLOBALS["bcc_maps"])." recipient(s) BCC\n"; 	
 }
 function sender_bcc_maps(){
-$ldap=new clladp();
+	$ldap=new clladp();
+	if(!isset($GLOBALS["sender_bcc_maps"])){$GLOBALS["sender_bcc_maps"]=array();}
 	$filter="(&(objectClass=UserArticaClass)(SenderBccMaps=*))";
 	$attrs=array("SenderBccMaps","mail");
 	$dn="dc=organizations,$ldap->suffix";
@@ -355,7 +384,10 @@ $ldap=new clladp();
 		$GLOBALS["sender_bcc_maps"][]="$mail\t$senderbccmaps";
 		
 	}	
-	echo "Starting......: ".date("H:i:s")." Postfix ". count($GLOBALS["sender_bcc_maps"])." Sender(s) BCC\n"; 	
+	
+	if(isset($GLOBALS["sender_bcc_maps"])){
+		echo "Starting......: ".date("H:i:s")." Postfix ". count($GLOBALS["sender_bcc_maps"])." Sender(s) BCC\n";
+	} 	
 }
 function sender_bcc_maps_build(){
 	
@@ -378,6 +410,7 @@ function recipient_bcc_domain_maps(){
 	$q=new mysql();
 	$results=$q->QUERY_SQL($sql,"artica_backup");
 	$c=0;
+	$f=array();
 	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
 		if($ligne["pattern"]==null){continue;}	
 		
@@ -437,12 +470,14 @@ if(!is_array($GLOBALS["bcc_maps"])){
 function repair_addr($email){
 	$old_email=$email;
 	$email=trim(strtolower($email));
+	$email=str_replace("\n", "", $email);
+	$email=str_replace("\r", "", $email);
 	if(strlen($email)<3){return null;}
 	$email=str_replace(" ", "", $email);
 	$email=str_replace(";", ".", $email);
 	if(!preg_match("#^(.+?)@(.+)#", $email)){return null;}
 	if(preg_match("#^(.+?)\s+(.+)#", $email,$re)){$email="{$re[1]}{$re[2]}";}
-	if($GLOBALS["VERBOSE"]){echo "[".__LINE__."]: $old_email [$email]\n";}
+	if($GLOBALS["VERBOSE"]){echo "[".__LINE__."]: `$old_email` [$email]\n";}
 	return $email;
 }
 
@@ -460,7 +495,7 @@ function maillings_table(){
 	$hash=$ldap->Ldap_search($dn,$filter,$attrs);
 	
 	for($i=0;$i<$hash["count"];$i++){
-		$cn=$hash[$i]["cn"][0];
+		$cn=trim($hash[$i]["cn"][0]);
 		$MailingListAddressGroup=0;
 		if(isset($hash[$i]["mailinglistaddressgroup"])){
 			$MailingListAddressGroup=$hash[$i]["mailinglistaddressgroup"][0];
@@ -488,11 +523,17 @@ function maillings_table(){
 		$final=array();
 		if(is_array($mailinglistaddress)){
 				while (list ($num, $ligne) = each ($mailinglistaddress) ){
-					$final[]=repair_addr($num);
+					$num=repair_addr($num);
+					if($num==null){continue;}
+					$final[]=$num;
 				}
 				
 				if($GLOBALS["DEBUG"]){echo "[".__LINE__."]: maillings_table(): $cn = ". implode(",",$final)."\n";}
 				if(count($final)>0){
+					$cn=trim($cn);
+					$cn=str_replace("\n", "",$cn);
+					$cn=str_replace("\r", "",$cn);
+					if($cn==null){continue;}
 					$GLOBALS["virtual_alias_maps_emailing"][$cn]="$cn\t". implode(",",$final);
 				}
 			}	
@@ -609,7 +650,11 @@ function aliases_users(){
 		
 		if(isset($hash[$i]["mail"])){
 			for($t=0;$t<$hash[$i]["mail"]["count"];$t++){
+				$mail=$hash[$i]["mail"][$t];
 				$mail=repair_addr($mail);
+				$mail=trim($mail);
+				$mail=str_replace("\r", "", $mail);
+				$mail=str_replace("\n", "", $mail);
 				if($mail==null){continue;}
 				
 				if(!isset($GLOBALS["virtual_alias_maps_mem"][$mail])){
@@ -620,6 +665,10 @@ function aliases_users(){
 				$GLOBALS["virtual_alias_maps_mem"][$mail]=true;
 				
 				if(!isset($GLOBALS["alias_maps_mem"][$uid])){
+					$uid=trim($uid);
+					$uid=str_replace("\r", "", $uid);
+					$uid=str_replace("\n", "", $uid);
+					if($uid==null){continue;}
 					if(!preg_match("#.+?@#",$uid)){$GLOBALS["alias_maps"][]="$uid:$mail";}
 					$GLOBALS["alias_maps_mem"][$uid]=true;	
 				}
@@ -659,9 +708,9 @@ function aliases_users(){
 	$myhostname=trim($sock->GET_INFO("myhostname"));
 	if($myhostname==null){$myhostname=$users->hostname;}
 	preg_match("#(.+?)@#",$PostfixPostmaster,$re);
-	$PostfixPostmaster_prefix=$re[1];	
+	$PostfixPostmaster_prefix=trim($re[1]);	
 	
-	
+	$myhostname=trim($myhostname);
 	$GLOBALS["virtual_alias_maps"]["$PostfixPostmaster_prefix@$myhostname"]="$PostfixPostmaster_prefix@$myhostname\t$PostfixPostmaster";
 	$GLOBALS["virtual_alias_maps"][$PostfixPostmaster]="$PostfixPostmaster\t$PostfixPostmaster";
 	$GLOBALS["virtual_alias_maps"]["root@$myhostname"]="root@$myhostname\t$PostfixPostmaster";
@@ -737,6 +786,9 @@ function build_virtual_alias_maps(){
 	if(is_array($GLOBALS["virtual_alias_maps_emailing"])){	
 			echo "Starting......: ".date("H:i:s")." Postfix [".__LINE__."] ". count($GLOBALS["virtual_alias_maps_emailing"])." distribution listes\n";	
 			while (list ($num, $ligne) = each ($GLOBALS["virtual_alias_maps_emailing"]) ){
+				$num=trim($num);
+				$num=str_replace("\r", "", $num);
+				$num=str_replace("\n", "", $num);
 				if($GLOBALS["VERBOSE"]){echo "FINAL -> $num/\"$ligne\"\n";}
 				if($ligne==null){continue;}
 				$final[]=$ligne;
@@ -746,6 +798,10 @@ function build_virtual_alias_maps(){
 	if(is_array($GLOBALS["virtual_alias_maps"])){
 			echo "Starting......: ".date("H:i:s")." Cleaning virtual aliase(s)\n"; 
 			while (list ($num, $ligne) = each ($GLOBALS["virtual_alias_maps"]) ){
+			$ligne=trim($ligne);
+			$ligne=str_replace("\r", "", $ligne);
+			$ligne=str_replace("\n", "", $ligne);
+			if($ligne==null){continue;}
 			if(preg_match("#x500:#",$ligne)){continue;}
 			if(preg_match("#x400:#",$ligne)){continue;}
 			$final[]=$ligne;
@@ -753,16 +809,21 @@ function build_virtual_alias_maps(){
 	}
 //-----------------------------------------------------------------------------------	
   	$dn="cn=artica_smtp_sync,cn=artica,$ldap->suffix";
-  	$filter="(&(objectClass=InternalRecipients)(cn=*))";	
-  	$attrs=array("cn");	
-	$hash=$ldap->Ldap_search($dn,$filter,$attrs);	
-	if($hash["count"]>0){
-		for($i=0;$i<$hash["count"];$i++){
-			$email=$hash[$i]["cn"][0];
-			if(trim($email)==null){continue;}
-			$final[]="$email\t$email";
-		} 	
-	}
+  	$filter="(&(objectClass=InternalRecipients)(cn=*))";
+  	if($ldap->ExistsDN($dn)){
+	  	$attrs=array("cn");	
+		$hash=$ldap->Ldap_search($dn,$filter,$attrs);	
+		if($hash["count"]>0){
+			for($i=0;$i<$hash["count"];$i++){
+				$email=$hash[$i]["cn"][0];
+				$email=trim($email);
+				$email=str_replace("\r", "", $email);
+				$email=str_replace("\n", "", $email);
+				if(trim($email)==null){continue;}
+				$final[]="$email\t$email";
+			} 	
+		}
+  	}
 //-----------------------------------------------------------------------------------	
 	
 		
@@ -788,6 +849,7 @@ function build_virtual_alias_maps(){
 		$li=array();
 		$results=$q->QUERY_SQL($sql,"artica_backup");	
 		while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){	
+			$ligne["alias"]=trim($ligne["alias"]);
 			$ligne["alias"]=strtolower($ligne["alias"]);
 			$aliases=str_replace(".","\.",$ligne["alias"]);
 			$domain=$ligne["domain"];
@@ -798,30 +860,9 @@ function build_virtual_alias_maps(){
 		$main=new maincf_multi("master","master");
 		$virtual_mailing_addr=$main->mailling_list_mysql("master");
 		if(is_array($virtual_mailing_addr)){
-			$virtual_mailing_addr_final=array();
-			
-			
 			while (list ($num, $ligne) = each ($virtual_mailing_addr) ){
-				$ligne=strtolower(trim($ligne));
-				if($ligne==null){continue;}
-				echo "Virtual: analyze \"$ligne\"\n";
-				if(preg_match("#(.*?)\s+(.+)#", $ligne,$re)){
-					echo "Virtual: analyze \"$ligne\" -> {$re[1]}\n";
-					echo "Virtual: analyze \"$ligne\" -> {$re[2]}\n";
-					$virtual_mailing_addr_final[$re[1]]=$re[1];
-					$virtual_mailing_addr_final[$re[2]]=$re[2];
-				}
-				$ligne=str_replace(" ", "", $ligne);
-				echo "Virtual: analyze \"$ligne\" OK\n";
-				$virtual_mailing_addr_final[$ligne]=$ligne;
-			}
-			while (list ($num, $ligne) = each ($virtual_mailing_addr_final) ){
-				$ligne=strtolower(trim($ligne));
-				if($ligne==null){continue;}
-				echo "Virtual: analyze \"$ligne\" FINAL\n";
 				$final[]=$ligne;
 			}
-			
 		}
 	
 	
@@ -1155,6 +1196,7 @@ function relayhost(){$main=new maincf_multi("master");$main->relayhost();return;
 function sender_dependent_relayhost_maps_build(){
 	$ldap=new clladp();
 	$main=new maincf_multi();
+	$sender_dependent_relayhost_maps=array();
 	$filter="(&(objectClass=SenderDependentRelayhostMaps)(cn=*))";
 	$attrs=array("cn","SenderRelayHost");
 	$dn="cn=Sender_Dependent_Relay_host_Maps,cn=artica,$ldap->suffix";
@@ -1256,11 +1298,21 @@ function sender_dependent_relayhost_maps(){
 
 function sender_dependent_default_transport_maps(){
 	sender_dependent_default_transport_maps_build();
+	
+	
+	if(!isset($GLOBALS["sender_dependent_default_transport_maps"])){
+		echo "Starting......: ".date("H:i:s")." 0 sender dependent default transport rule(s)\n";
+		shell_exec("{$GLOBALS["postconf"]} -X \"sender_dependent_default_transport_maps\" >/dev/null 2>&1");
+		@file_put_contents("/etc/postfix/sender_dependent_default_transport_maps","#");
+		return;
+		
+	}
+	
 	if(!is_array($GLOBALS["sender_dependent_default_transport_maps"])){
 		echo "Starting......: ".date("H:i:s")." 0 sender dependent default transport rule(s)\n";
 		shell_exec("{$GLOBALS["postconf"]} -X \"sender_dependent_default_transport_maps\" >/dev/null 2>&1");
 		@file_put_contents("/etc/postfix/sender_dependent_default_transport_maps","#");
-		
+		return;
 	}
 
 	echo "Starting......: ".date("H:i:s")." Postfix ". count($GLOBALS["sender_dependent_default_transport_maps"])." sender dependent default transport rule(s)\n";
@@ -1288,6 +1340,13 @@ function sender_canonical_maps_build(){
 	}
 	
 	$q=new mysql();
+	
+	if(!$q->FIELD_EXISTS("smtp_generic_maps","sender_canonical_maps","artica_backup")){
+		$sql="ALTER TABLE `smtp_generic_maps` ADD `sender_canonical_maps` smallint(1)  NOT NULL DEFAULT '0',ADD INDEX ( `sender_canonical_maps` )";
+		$q->QUERY_SQL($sql,'artica_backup');
+	}
+	
+	
 	$sql="SELECT * FROM smtp_generic_maps WHERE ou='POSTFIX_MAIN' AND sender_canonical_maps=1 ORDER BY generic_from";
 	$results=$q->QUERY_SQL($sql,"artica_backup");
 	while($ligne=@mysql_fetch_array($results,MYSQL_ASSOC)){
@@ -1315,9 +1374,18 @@ function smtp_generic_maps_build_global(){
 
 function sender_canonical_maps(){
 	sender_canonical_maps_build();
+	
+	if(!isset($GLOBALS["sender_canonical_maps"])){
+		echo "Starting......: ".date("H:i:s")." 0 sender retranslation rule(s)\n";
+		shell_exec("{$GLOBALS["postconf"]} -X \"sender_canonical_maps\" >/dev/null 2>&1");
+		return;
+	}
+	
+	
 	if(!is_array($GLOBALS["sender_canonical_maps"])){
 		echo "Starting......: ".date("H:i:s")." 0 sender retranslation rule(s)\n"; 
 		shell_exec("{$GLOBALS["postconf"]} -X \"sender_canonical_maps\" >/dev/null 2>&1");
+		return;
 	}
 
 	echo "Starting......: ".date("H:i:s")." Postfix ". count($GLOBALS["sender_canonical_maps"])." sender retranslation rule(s)\n"; 

@@ -29,7 +29,7 @@ on a system whose primary function is to run MySQL using the MyISAM storage engi
 <max_connections_text>The number of simultaneous client connections allowed. By default, this is 151</max_connections_text>
 <myisam_sort_buffer_size>MyISAM SORT buffer size</myisam_sort_buffer_size>
 <myisam_sort_buffer_size_text>The size of the buffer that is allocated when sorting MyISAM indexes during a REPAIR TABLE or when creating indexes with CREATE INDEX or ALTER TABLE.</myisam_sort_buffer_size_text>
-<mysql_settings>Mysql parameters</mysql_settings>
+<mysql_settings>MySQL parameters</mysql_settings>
 <net_buffer_length>NET buffer length</net_buffer_length>
 <net_buffer_length_text>The initial size of the buffer for client/server communication.</net_buffer_length_text>
 <query_cache_limit>QUERY cache limit</query_cache_limit>

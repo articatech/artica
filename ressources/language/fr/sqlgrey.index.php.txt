@@ -1,4 +1,4 @@
-<about>SQLgrey postfix est un service de mise en %u0153uvre d'une politique de gestion de la liste grise. [Br]
+<about>SQLgrey postfix est un service de mise en ?uvre d'une politique de gestion de la liste grise. [Br]
 SQLgrey est &eacute;crit en Perl et utilise DBI pour acc&eacute;der &agrave; une base de donn&eacute;es SQL. [Br]
 Son objectif est de r&eacute;duire le SPAM  qui tente d'atteindre les bo&icirc;tes aux lettres des utilisateurs</about>
 <add_white_list>Ajouter une liste blanche de serveurs</add_white_list>

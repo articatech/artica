@@ -43,11 +43,14 @@
 	if(isset($_GET["tabs"])){tabs();exit;}
 	if(isset($_GET["popup"])){popup();exit;}
 	if(isset($_GET["settings"])){settings();exit;}
+	
 	if(isset($_POST["SAVE_RECURSIVE_GROUPS"])){SAVE_RECURSIVE_GROUPS();exit;}
 	if(isset($_POST["EnableKerbAuth"])){settingsSave();exit;}
 	if(isset($_POST["SambeReconnectAD"])){SambeReconnectAD();exit;}
 	
 	if(isset($_GET["kerbchkconf"])){kerbchkconf();exit;}
+	
+	if(isset($_GET["test-js"])){test_js();exit;}
 	if(isset($_GET["test-popup"])){test_popup();exit;}
 	if(isset($_GET["test-nettestjoin"])){test_testjoin();exit;}
 	if(isset($_GET["test-netadsinfo"])){test_netadsinfo();exit;}
@@ -90,6 +93,13 @@ function diconnect_js(){
 	$title=$tpl->_ENGINE_parse_body("{disconnect}");
 	echo "YahooWin6('905','$page?disconnect-popup=yes','$title')";
 	
+}
+function test_js(){
+	header("content-type: application/x-javascript");
+	$page=CurrentPageName();
+	$tpl=new templates();
+	$title=$tpl->_ENGINE_parse_body("{analyze}");
+	echo "YahooWin6('905','$page?test-popup=yes','$title')";	
 }
 
 function kerberos_hostname_div(){
@@ -948,7 +958,7 @@ function settings_ad(){
 		<table style='width:100%'>
 		<tr>
 			<td style='width:50%'><center>
-				". button("{disconnect}","squid.ad.disconnect.progress.php",28)."</center></td>
+				". button("{disconnect}","Loadjs('squid.ad.disconnect.progress.php')",28)."</center></td>
 			<td style='font-size:28px'><center>&nbsp;|&nbsp;</center></td>
 			<td><center>". button("{emergency2}",$mergencyjs,28)."</center></td>
 		</tr>
@@ -973,7 +983,7 @@ function settings_ad(){
 		</tr>				
 	<tr>
 		<td class=legend style='font-size:22px'>". texttooltip("{EnableRecursiveGroups}","{EnableRecursiveGroups_text}").":</td>
-		<td>". Field_checkbox_design("RECURSIVE_GROUPS",1,$array["RECURSIVE_GROUPS"])."</td>
+		<td>". Field_checkbox_design("RECURSIVE_GROUPS",1,$array["RECURSIVE_GROUPS"],"SaveRecursiveGroups()")."</td>
 		<td>&nbsp;</td>
 	</tr>
 	<tr>
@@ -1128,6 +1138,21 @@ function CheckHostname$t_tmp(){
 		return false;
 	}
 	return true;
+}
+var xSaveRecursiveGroups= function (obj) {
+	var results=obj.responseText;
+	if(results.length>3){alert(results);return;}
+	
+}
+
+function SaveRecursiveGroups(){
+	var XHR = new XHRConnection();
+	var RecursiveGroups=0;
+	if(document.getElementById('RECURSIVE_GROUPS').checked){
+		RecursiveGroups=1;
+	}
+	XHR.appendData('SAVE_RECURSIVE_GROUPS',RecursiveGroups);
+	XHR.sendAndLoad('$page', 'POST',xSaveRecursiveGroups);
 }
 		
 		
@@ -1444,7 +1469,14 @@ function ldap_params(){
 	TestLDAPAD();
 	$html="
 	<div style='font-size:42px;margin-bottom:20px'>{ldap_parameters2}</div>
-	<div class=explain style='font-size:20px' nowrap>{ldap_ntlm_parameters_explain}</div>
+	<table style='width:100%'>
+	<tr>
+		<td valign='top'>
+		<div class=explain style='font-size:20px' nowrap>{ldap_ntlm_parameters_explain}</div>
+		</td>
+		<td valign='middle'>". button("{alternate_servers}","Loadjs('squid.adker.ldaps.php')",26)."</td>
+	</tr>
+	</table>
 	<div id='serverkerb-$t' style='width:98%' class=form>
 	
 	<table style='width:100%'>
@@ -2471,6 +2503,12 @@ function ntlmauthenticators(){
 	if(!is_numeric($SquidClientParams["auth_param_ntlm_startup"])){$SquidClientParams["auth_param_ntlm_startup"]=0;}
 	if(!is_numeric($SquidClientParams["auth_param_ntlm_idle"])){$SquidClientParams["auth_param_ntlm_idle"]=1;}
 	
+	if(!is_numeric($SquidClientParams["auth_param_ntlmgroup_children"])){$SquidClientParams["auth_param_ntlmgroup_children"]=15;}
+	if(!is_numeric($SquidClientParams["auth_param_ntlmgroup_startup"])){$SquidClientParams["auth_param_ntlmgroup_startup"]=1;}
+	if(!is_numeric($SquidClientParams["auth_param_ntlmgroup_idle"])){$SquidClientParams["auth_param_ntlmgroup_idle"]=1;}
+	
+	
+	
 	if(!is_numeric($SquidClientParams["auth_param_basic_children"])){$SquidClientParams["auth_param_basic_children"]=3;}
 	if(!is_numeric($SquidClientParams["auth_param_basic_startup"])){$SquidClientParams["auth_param_basic_startup"]=2;}
 	if(!is_numeric($SquidClientParams["auth_param_basic_idle"])){$SquidClientParams["auth_param_basic_idle"]=1;}
@@ -2508,7 +2546,10 @@ function ntlmauthenticators(){
 	$ttl_interval[432000]="5 {days}";
 	$ttl_interval[604800]="1 {week}";
 	
-	
+	$start_up[1]=1;
+	$start_up[2]=2;
+	$start_up[3]=3;
+	$start_up[4]=4;
 	$start_up[5]=5;
 	$start_up[10]=10;
 	$start_up[15]=15;
@@ -2559,6 +2600,33 @@ function ntlmauthenticators(){
 		<td width=99%>". Field_array_Hash($start_up,"auth_param_ntlm_idle-$t",$SquidClientParams["auth_param_ntlm_idle"],null,null,0,"font-size:22px")."</td>
 		<td>&nbsp;</td>
 	</tr>
+				
+	<tr style='height:70px'>
+		<td colspan=3 style='font-size:32px'>{groups_checking}</td>
+	</tr>		
+	<tr>
+		<td class=legend style='font-size:22px' widht=1% nowrap>{max_processes}:</td>
+		<td width=99%>". Field_array_Hash($start_up,"auth_param_ntlmgroup_children-$t",$SquidClientParams["auth_param_ntlmgroup_children"],null,null,0,"font-size:22px")."</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td class=legend style='font-size:22px' widht=1% nowrap>{preload_processes}:</td>
+		<td width=99%>". Field_array_Hash($start_up,"auth_param_ntlmgroup_startup-$t",$SquidClientParams["auth_param_ntlmgroup_startup"],null,null,0,"font-size:22px")."</td>
+		
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td class=legend style='font-size:22px' widht=1% nowrap>{prepare_processes}:</td>
+		<td width=99%>". Field_array_Hash($start_up,"auth_param_ntlmgroup_idle-$t",$SquidClientParams["auth_param_ntlmgroup_idle"],null,null,0,"font-size:22px")."</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td class=legend style='font-size:22px' nowrap>{QUERY_GROUP_TTL_CACHE}:</td>
+		<td width=99%>". Field_array_Hash($ttl_interval,"DynamicGroupsAclsTTL-$t",$DynamicGroupsAclsTTL,null,null,0,"font-size:22px")."</td>
+		<td>&nbsp;</td>
+	</tr>				
+				
+				
 	<tr style='height:70px'>
 		<td colspan=3 style='font-size:32px'>{sessions_cache}</td>
 	</tr>
@@ -2582,11 +2650,7 @@ function ntlmauthenticators(){
 		<td width=99%>". Field_array_Hash($ttl_interval,"credentialsttl-$t",$SquidClientParams["credentialsttl"],null,null,0,"font-size:22px")."</td>
 		<td>&nbsp;</td>
 	</tr>				
-	<tr>
-		<td class=legend style='font-size:22px'>{QUERY_GROUP_TTL_CACHE}:</td>
-		<td width=99%>". Field_array_Hash($ttl_interval,"DynamicGroupsAclsTTL-$t",$DynamicGroupsAclsTTL,null,null,0,"font-size:22px")."</td>
-		<td>&nbsp;</td>
-	</tr>				
+				
 			
 	<tr style='height:70px'>
 		<td colspan=3 style='font-size:32px'>{basic_authentication}</td>
@@ -2630,6 +2694,13 @@ function Save$t(){
 	XHR.appendData('auth_param_ntlm_children',document.getElementById('auth_param_ntlm_children-$t').value);
 	XHR.appendData('auth_param_ntlm_startup',document.getElementById('auth_param_ntlm_startup-$t').value);
 	XHR.appendData('auth_param_ntlm_idle',document.getElementById('auth_param_ntlm_idle-$t').value);
+	
+	XHR.appendData('auth_param_ntlmgroup_children',document.getElementById('auth_param_ntlmgroup_children-$t').value);
+	XHR.appendData('auth_param_ntlmgroup_startup',document.getElementById('auth_param_ntlmgroup_startup-$t').value);
+	XHR.appendData('auth_param_ntlmgroup_idle',document.getElementById('auth_param_ntlmgroup_idle-$t').value);
+	
+	
+	
 	XHR.appendData('auth_param_basic_children',document.getElementById('auth_param_basic_children-$t').value);
 	XHR.appendData('auth_param_basic_startup',document.getElementById('auth_param_basic_startup-$t').value);
 	XHR.appendData('auth_param_basic_idle',document.getElementById('auth_param_basic_idle-$t').value);

@@ -245,7 +245,7 @@ function save(){
 	if($MikrotikLAN==null){$MikrotikLAN="192.168.1.0/24";}
 	$NOT=array();
 	$f[]="<textarea style='margin-top:5px;font-family:Courier New;
-	font-weight:bold;width:99%;height:446px;border:5px solid #8E8E8E;
+	font-weight:bold;width:98%;height:446px;border:5px solid #8E8E8E;
 	overflow:auto;font-size:16px !important' id='procedure3-text'>";
 	$f[]="MikroTik client config:"; 
 	$MikrotikLANs=explode("\n",$MikrotikLAN);

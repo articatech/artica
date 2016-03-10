@@ -47,7 +47,7 @@ function main(){
 	
 	$RoundCubeDebugLevel=intval($sock->GET_INFO("RoundCubeDebugLevel"));
 	
-	$debug_level=Field_array_Hash($debug_levela,'RoundCubeDebugLevel',$RoundCubeDebugLevel,"style:font-size:18px");
+	$debug_level=Field_array_Hash($debug_levela,'RoundCubeDebugLevel',$RoundCubeDebugLevel,"style:font-size:22px");
 	$RoundCubeEnableCaching=intval($sock->GET_INFO("RoundCubeEnableCaching"));
 	$RoundCubeAutoCreateuser=intval($sock->GET_INFO("RoundCubeAutoCreateuser"));
 	$RoundCubeDefaultHost=$sock->GET_INFO("RoundCubeDefaultHost");
@@ -72,88 +72,81 @@ function main(){
 	<div style='width:99%' class=form>
 	<table style='width:99%'>
 	<tr>
-	<td valign='top' nowrap align='right' class=legend style='font-size:18px'>{RoundCubePath}:</strong></td>
-	<td valign='top' nowrap align='left'><strong style='font-size:18px'>$user->roundcube_folder</td>
+	<td valign='top' nowrap align='right' class=legend style='font-size:22px'>{RoundCubePath}:</strong></td>
+	<td valign='top' nowrap align='left'><strong style='font-size:22px'>$user->roundcube_folder</td>
 	</tr>
 	<tr>
-	<td valign='top' nowrap align='right' class=legend style='font-size:18px'>{roundcube_web_folder}:</strong></td>
-	<td valign='top' nowrap align='left'><strong style='font-size:18px'>$user->roundcube_web_folder</td>
-	</tr>
-	
-		
-		
-	<tr>
-	<td colspan=2>".Paragraphe_switch_img("{enable_roundcubehttp}","{enable_enable_roundcubehttp_text}",
-			"RoundCubeHTTPEngineEnabled-$t",$RoundCubeHTTPEngineEnabled,null,810)."</td>
+	<td valign='top' nowrap align='right' class=legend style='font-size:22px'>{roundcube_web_folder}:</strong></td>
+	<td valign='top' nowrap align='left'><strong style='font-size:22px'>$user->roundcube_web_folder</td>
 	</tr>
 	<tr>
-	<td valign='top' nowrap align='right' class=legend style='font-size:18px'>{listen_port} SSL:</strong></td>
-	<td valign='top' nowrap align='left'>" . Field_text('RoundCubeHTTPSPort',$RoundCubeHTTPSPort,'width:110px;font-size:18px')."</td>
+	<td valign='top' nowrap align='right' class=legend style='font-size:22px'>{listen_port} SSL:</strong></td>
+	<td valign='top' nowrap align='left'>" . Field_text('RoundCubeHTTPSPort',$RoundCubeHTTPSPort,'width:110px;font-size:22px')."</td>
 	</tr>
 	<tr>
-	<td valign='top' nowrap align='right' class=legend style='font-size:18px'>{listen_port} HTPP:</strong></td>
-	<td valign='top' nowrap align='left'>" . Field_text('RoundCubeHTTPPort',$RoundCubeHTTPPort,'width:110px;font-size:18px')."</td>
+	<td valign='top' nowrap align='right' class=legend style='font-size:22px'>{listen_port} HTPP:</strong></td>
+	<td valign='top' nowrap align='left'>" . Field_text('RoundCubeHTTPPort',$RoundCubeHTTPPort,'width:110px;font-size:22px')."</td>
 	</tr>			
 	<tr>
-	<td valign='top' nowrap align='right' class=legend style='font-size:18px'>{UseSSL}:</strong></td>
-	<td valign='top' nowrap align='left'>" . Field_checkbox('RoundCubeUseSSL',1,$RoundCubeUseSSL)."</td>
+	<td valign='top' nowrap align='right' class=legend style='font-size:22px'>{UseSSL}:</strong></td>
+	<td valign='top' nowrap align='left'>" . Field_checkbox_design('RoundCubeUseSSL',1,$RoundCubeUseSSL)."</td>
 	</tr>
 <tr>
-	<td valign='top' nowrap align='right' class=legend style='font-size:18px'>{user_link}:</strong></td>
-	<td valign='top' nowrap align='left'>" . Field_text('RoundCubeUserLink',$RoundCubeUserLink,'width:295px;font-size:18px')."</td>
+	<td valign='top' nowrap align='right' class=legend style='font-size:22px'>{user_link}:</strong></td>
+	<td valign='top' nowrap align='left'>" . Field_text('RoundCubeUserLink',$RoundCubeUserLink,'width:595px;font-size:22px')."</td>
 </tr>
 <tr>
-	<td valign='top' nowrap align='right' class=legend style='font-size:18px'>{roundcube_ldap_directory}:</strong></td>
-	<td valign='top' nowrap align='left'>" . Field_checkbox('RoundCubeEnableLDAP',1,$RoundCubeEnableLDAP)."</td>
+	<td valign='top' nowrap align='right' class=legend style='font-size:22px'>{roundcube_ldap_directory}:</strong></td>
+	<td valign='top' nowrap align='left'>" . Field_checkbox_design('RoundCubeEnableLDAP',1,$RoundCubeEnableLDAP)."</td>
 </tr>	
 <tr>
-	<td valign='top' nowrap align='right' class=legend style='font-size:18px'>{debug_level}:</strong></td>
+	<td valign='top' nowrap align='right' class=legend style='font-size:22px'>{debug_level}:</strong></td>
 	<td valign='top' nowrap align='left'><strong>$debug_level</td>
 </tr>
 <tr>
-	<td valign='top' nowrap align='right' class=legend style='font-size:18px'>{enable_caching}:</strong></td>
-	<td valign='top' nowrap align='left'>" . Field_checkbox('RoundCubeEnableCaching',1,$RoundCubeEnableCaching)."</td>
+	<td valign='top' nowrap align='right' class=legend style='font-size:22px'>{enable_caching}:</strong></td>
+	<td valign='top' nowrap align='left'>" . Field_checkbox_design('RoundCubeEnableCaching',1,$RoundCubeEnableCaching)."</td>
 </tr>
 <tr>
-	<td valign='top' nowrap align='right' class=legend style='font-size:18px'>{upload_max_filesize}:</strong></td>
-	<td valign='top' nowrap align='left' style='font-size:18px'>" . Field_text('RoundCubeUploadMaxFilesize',$RoundCubeUploadMaxFilesize,'width:90px;font-size:18px')."M</td>
+	<td valign='top' nowrap align='right' class=legend style='font-size:22px'>{upload_max_filesize}:</strong></td>
+	<td valign='top' nowrap align='left' style='font-size:22px'>" . Field_text('RoundCubeUploadMaxFilesize',$RoundCubeUploadMaxFilesize,'width:90px;font-size:22px')."M</td>
 </tr>
 
 		
 <tr>
-	<td valign='top' nowrap align='right' class=legend style='font-size:18px'>{auto_create_user}:</strong></td>
-	<td valign='top' nowrap align='left'>" . Field_checkbox('RoundCubeAutoCreateuser',1,$RoundCubeAutoCreateuser)."</td>
+	<td valign='top' nowrap align='right' class=legend style='font-size:22px'>{auto_create_user}:</strong></td>
+	<td valign='top' nowrap align='left'>" . Field_checkbox_design('RoundCubeAutoCreateuser',1,$RoundCubeAutoCreateuser)."</td>
 </tr>
 <tr>
-	<td align='right' class=legend style='font-size:18px'>{default_host}:</strong></td>
-	<td>" . Field_text('RoundCubeDefaultHost',$RoundCubeDefaultHost,'width:230px;font-size:18px')."</td>
-</tr>
-
-<tr>
-	<td valign='top' nowrap align='right' class=legend style='font-size:18px'>Sieve:</strong></td>
-	<td valign='top' nowrap align='left' style='font-size:18px'>" . Field_text('RoundCubeSievePort',$RoundCubeSievePort,'width:190px;font-size:18px')."</td>
+	<td align='right' class=legend style='font-size:22px'>{default_host}:</strong></td>
+	<td>" . Field_text('RoundCubeDefaultHost',$RoundCubeDefaultHost,'width:230px;font-size:22px')."</td>
 </tr>
 
 <tr>
-	<td align='right' class=legend style='font-size:18px'>{locale_string}:</strong></td>
-	<td>" . Field_text('RoundeCubeLocalString',trim($RoundeCubeLocalString),'width:60px;font-size:18px')."</td>
+	<td valign='top' nowrap align='right' class=legend style='font-size:22px'>Sieve:</strong></td>
+	<td valign='top' nowrap align='left' style='font-size:22px'>" . Field_text('RoundCubeSievePort',$RoundCubeSievePort,'width:190px;font-size:22px')."</td>
+</tr>
+
+<tr>
+	<td align='right' class=legend style='font-size:22px'>{locale_string}:</strong></td>
+	<td>" . Field_text('RoundeCubeLocalString',trim($RoundeCubeLocalString),'width:60px;font-size:22px')."</td>
 </tr>		
 		
 <tr>
-	<td align='right' class=legend style='font-size:18px'>{product_name}:</strong></td>
-	<td>" . Field_text('RoundCubeProductName',trim($RoundCubeProductName),'width:250px;font-size:18px')."</td>
+	<td align='right' class=legend style='font-size:22px'>{product_name}:</strong></td>
+	<td>" . Field_text('RoundCubeProductName',trim($RoundCubeProductName),'width:550px;font-size:22px')."</td>
 </tr>	
 <tr>
-	<td align='right' class=legend style='font-size:18px'>{skip_deleted}:</strong></td>
-	<td>" . Field_checkbox('RoundCubeSkipDeleted',1,$RoundCubeSkipDeleted )."</td>
+	<td align='right' class=legend style='font-size:22px'>{skip_deleted}:</strong></td>
+	<td>" . Field_checkbox_design('RoundCubeSkipDeleted',1,$RoundCubeSkipDeleted )."</td>
 </tr>
 <tr>
-	<td align='right' class=legend style='font-size:18px'>{flag_for_deletion}:</strong></td>
+	<td align='right' class=legend style='font-size:22px'>{flag_for_deletion}:</strong></td>
 	<td style='padding-left:-3px'>
 	<table style='width:100%;margin-left:-4px;padding:0px'>
 	<tr>
 	<td width=1%  valign='top' style='padding-left:-3px'>
-	" . Field_checkbox('RoundCubeFlagForDeletion',1,$RoundCubeFlagForDeletion)."</td>
+	" . Field_checkbox_design('RoundCubeFlagForDeletion',1,$RoundCubeFlagForDeletion)."</td>
 	<td valign='center' >".help_icon('{flag_for_deletion_text}',true)."</td>
 	</tr>
 	</table>
@@ -163,7 +156,7 @@ function main(){
 			
 	<tr>
 		<td colspan=2 align='right'>
-			".button('{apply}',"SaveRoundCubeForm$t()",26)."
+			".button('{apply}',"SaveRoundCubeForm$t()",40)."
 	</tr>
 			</table>
 	</form>
@@ -183,7 +176,7 @@ function SaveRoundCubeForm$t(){
 	if(document.getElementById('RoundCubeFlagForDeletion').checked){XHR.appendData('RoundCubeFlagForDeletion','1');}else{XHR.appendData('RoundCubeFlagForDeletion','0');}
 	
 	
-	XHR.appendData('RoundCubeHTTPEngineEnabled',document.getElementById('RoundCubeHTTPEngineEnabled-$t').value);
+	
 	XHR.appendData('RoundCubeProductName',document.getElementById('RoundCubeProductName').value);
 	XHR.appendData('RoundCubeUploadMaxFilesize',document.getElementById('RoundCubeUploadMaxFilesize').value);
 	XHR.appendData('RoundCubeSievePort',document.getElementById('RoundCubeSievePort').value);

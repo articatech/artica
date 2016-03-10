@@ -26,6 +26,7 @@ $GLOBALS["ARGVS"]=implode(" ",$argv);
 if($argv[1]=="--stop"){$GLOBALS["OUTPUT"]=true;stop();die();}
 if($argv[1]=="--start"){$GLOBALS["OUTPUT"]=true;start();die();}
 if($argv[1]=="--restart"){$GLOBALS["OUTPUT"]=true;restart();die();}
+if($argv[1]=="--restart-progress"){$GLOBALS["OUTPUT"]=true;restart_progress();die();}
 if($argv[1]=="--build"){$GLOBALS["OUTPUT"]=true;build();die();}
 
 
@@ -50,6 +51,36 @@ function restart() {
 	start(true);
 	
 }
+
+function build_progress($pourc,$text){
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	echo "[$pourc]: $text\n";
+	@file_put_contents("/usr/share/artica-postfix/ressources/logs/web/squid.rdpproxy.progress", serialize($array));
+	@chmod("/usr/share/artica-postfix/ressources/logs/web/squid.rdpproxy.progress",0755);
+	
+
+}
+
+function restart_progress(){
+	
+	build_progress(15, "{stopping_service}");
+	AUTHHOOK_STOP(true);
+	build_progress(20, "{stopping_service}");
+	stop(true);
+	build_progress(30, "{building_configuration}");
+	build();
+	build_progress(50, "{starting_service}");
+	AUTHHOOK_START(true);
+	build_progress(80, "{starting_service}");
+	if(!start(true)){
+		build_progress(110, "{starting_service} {failed}");
+		return;
+	}
+	build_progress(100, "{starting_service} {success}");
+}
+
+
 function AUTHHOOK_RESTART(){
 	$unix=new unix();
 	$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
@@ -74,7 +105,7 @@ function start($aspid=false){
 
 	if(!is_file($Masterbin)){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}, rdpproxy not installed\n";}
-		return;
+		return false;
 	}
 
 	if(!$aspid){
@@ -83,7 +114,7 @@ function start($aspid=false){
 		if($unix->process_exists($pid,basename(__FILE__))){
 			$time=$unix->PROCCESS_TIME_MIN($pid);
 			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Already Artica task running PID $pid since {$time}mn\n";}
-			return;
+			return true;
 		}
 		@file_put_contents($pidfile, getmypid());
 	}
@@ -93,7 +124,7 @@ function start($aspid=false){
 	if($unix->process_exists($pid)){
 		$timepid=$unix->PROCCESS_TIME_MIN($pid);
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Service already started $pid since {$timepid}Mn...\n";}
-		return;
+		return true;
 	}
 	$EnableRDPProxy=$sock->GET_INFO("EnableRDPProxy");
 	if(!is_numeric($EnableRDPProxy)){$EnableRDPProxy=0;}
@@ -101,7 +132,7 @@ function start($aspid=false){
 
 	if($EnableRDPProxy==0){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} service disabled (see EnableRDPProxy)\n";}
-		return;
+		return false;
 	}
 
 	$nohup=$unix->find_program("nohup");
@@ -160,6 +191,7 @@ function start($aspid=false){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Success PID $pid\n";}
 		if(!is_file("/var/run/redemption/rdpproxy.pid")){@file_put_contents("/var/run/redemption/rdpproxy.pid", $pid);}
 		AUTHHOOK_START(true);
+		return true;
 		
 	}else{
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Failed\n";}

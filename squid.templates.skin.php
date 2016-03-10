@@ -107,7 +107,7 @@ function TEMPLATE_LOGO(){
 	$users=new usersMenus();
 	$error=null;
 	$t=time();
-	$button="<hr>".button("{apply}","Loadjs('squid.templates.single.progress.php')",32)."&nbsp;&nbsp;|&nbsp;&nbsp;".button("{save}", "Save$t()",34);
+	$button="<hr>".button("{build_templates}","Loadjs('squid.templates.single.progress.php')",32)."&nbsp;&nbsp;|&nbsp;&nbsp;".button("{save}", "Save$t()",34);
 	$SquidHTTPTemplateLogoPath=$sock->GET_INFO("SquidHTTPTemplateLogoPath");
 	$SquidHTTPTemplateLogoEnable=intval($sock->GET_INFO("SquidHTTPTemplateLogoEnable"));
 	$SquidHTTPTemplateLogoPositionH=$sock->GET_INFO("SquidHTTPTemplateLogoPositionH");
@@ -122,6 +122,7 @@ function TEMPLATE_LOGO(){
 	if(!is_numeric($SquidHTTPTemplateSmiley)){$SquidHTTPTemplateSmiley=2639;}
 	
 	if(!$users->CORP_LICENSE){
+		$SquidHTTPTemplateLogoEnable=0;
 		$error="<p class=text-error>{MOD_TEMPLATE_ERROR_LICENSE}</p>";
 		$button=null;
 	}
@@ -138,7 +139,9 @@ function TEMPLATE_LOGO(){
 	
 	if($SquidHTTPTemplateLogoPath<>null){$logoPic="<center style='margin:20px'><img src='img/upload/".basename($SquidHTTPTemplateLogoPath)."'></center>";}
 	
-	$html="<div style='width:98%' class=form>
+	$html="
+		$error	
+		<div style='width:98%' class=form>
 	$logoPic
 	<center style='margin:10px'>". button("{upload_a_picture}","Loadjs('squid.templates.skin.uploadlogo.php?zmd5={$_GET["zmd5"]}')",32)."</center>
 	<table style='width:100%'>
@@ -148,7 +151,7 @@ function TEMPLATE_LOGO(){
 	</tr>			
 	<tr>
 		<td class=legend style='font-size:26px'>{display_logo}:</td>
-		<td>". Field_checkbox_design("SquidHTTPTemplateLogoEnable-$t",1,$SquidHTTPTemplateLogoEnable)."</td>
+		<td>". Field_checkbox_design("SquidHTTPTemplateLogoEnable-$t",1,$SquidHTTPTemplateLogoEnable,"Check$t()")."</td>
 	</tr>			
 	<tr>
 		<td class=legend style='font-size:26px'>{position} TOP:</td>
@@ -170,8 +173,9 @@ function TEMPLATE_LOGO(){
 		<td colspan=2 align='right' style='font-size:40px'>$button</td>
 	</tr>
 	</table>
+</div>
 <script>
-	var xSave$t=function(obj){
+var xSave$t=function(obj){
 	var tempvalue=obj.responseText;
 	if(tempvalue.length>3){alert(tempvalue)};
 	RefreshTab('main_squid_templates-tabs');
@@ -187,11 +191,30 @@ function Save$t(){
 	XHR.appendData('SquidHTTPTemplateLogoPositionL',document.getElementById('SquidHTTPTemplateLogoPositionL-$t').value);
 	XHR.appendData('SquidHTTPTemplateLogoPicturemode',document.getElementById('picturemode-$t').value);
 	XHR.appendData('SquidHTTPTemplateLogoPictureAlign',document.getElementById('picturealign-$t').value);
-	
 	XHR.sendAndLoad('$page', 'POST',xSave$t);
+}
+	
+function Check$t(){
+	document.getElementById('SquidHTTPTemplateSmiley-$t').disabled=true;
+	document.getElementById('SquidHTTPTemplateLogoPositionH-$t').disabled=true;
+	document.getElementById('SquidHTTPTemplateLogoPositionL-$t').disabled=true;
+	document.getElementById('picturemode-$t').disabled=true;
+	document.getElementById('picturealign-$t').disabled=true;
+	
+	if(document.getElementById('SquidHTTPTemplateLogoEnable-$t').checked){
+		document.getElementById('SquidHTTPTemplateSmiley-$t').disabled=false;
+		document.getElementById('SquidHTTPTemplateLogoPositionH-$t').disabled=false;
+		document.getElementById('SquidHTTPTemplateLogoPositionL-$t').disabled=false;
+		document.getElementById('picturemode-$t').disabled=false;
+		document.getElementById('picturealign-$t').disabled=false;	
 	}
-	</script>
-	</div>";
+}
+
+Check$t();
+
+
+</script>
+";
 	
 	echo $tpl->_ENGINE_parse_body($html);
 
@@ -431,6 +454,7 @@ function general_settings(){
 	$SquidHTTPTemplateDisableHostname=intval($sock->GET_INFO("SquidHTTPTemplateDisableHostname"));
 	$SquidHTTPTemplateEnablePostmaster=$sock->GET_INFO("SquidHTTPTemplateEnablePostmaster");
 	$SquidHTTPTemplateLanguage=$sock->GET_INFO("SquidHTTPTemplateLanguage");
+	$SquidHTTPTemplateNoProxyVersion=intval($sock->GET_INFO("SquidHTTPTemplateNoProxyVersion"));
 	if($SquidHTTPTemplateLanguage==null){$SquidHTTPTemplateLanguage="en-us";}
 	$SquidHTTPTemplateFontColor=$sock->GET_INFO("SquidHTTPTemplateFontColor");
 	$SquidHTTPTemplateFamily=$sock->GET_INFO("SquidHTTPTemplateFamily");
@@ -444,7 +468,7 @@ function general_settings(){
 	$cache_mgr_user=$sock->GET_INFO("cache_mgr_user");
 	
 	$t=time();
-	$button="<hr>".button("{apply}","Loadjs('squid.templates.single.progress.php')",32)."&nbsp;&nbsp;|&nbsp;&nbsp;".button("{save}", "Save$t()",32);
+	$button="<hr>".button("{apply}", "Save$t()",32);
 	
 	$LICENSE=1;
 	
@@ -495,6 +519,10 @@ $html="$error
 	<td width=99%>". Field_checkbox_design("SquidHTTPTemplateNoVersion-$t",1,$SquidHTTPTemplateNoVersion)."</td>
 </tr>
 <tr>
+	<td class=legend style='font-size:22px' width=1% nowrap>{remove_proxy_version}:</td>
+	<td width=99%>". Field_checkbox_design("SquidHTTPTemplateNoProxyVersion-$t",1,$SquidHTTPTemplateNoProxyVersion)."</td>
+</tr>			
+<tr>
 	<td class=legend style='font-size:22px'>{background_color}:</td>
 	<td>".Field_ColorPicker("SquidHTTPTemplateBackgroundColor-$t",$SquidHTTPTemplateBackgroundColor,"font-size:22px;width:150px")."</td>
 </tr>
@@ -520,6 +548,7 @@ $html="$error
 		var tempvalue=obj.responseText;
 		if(tempvalue.length>3){alert(tempvalue)};
 		RefreshTab('main_squidguardweb_error_pages');
+		Loadjs('squid.templates.single.progress.php');
 	}
 	
 function Save$t(){
@@ -531,6 +560,7 @@ function Save$t(){
 	XHR.appendData('SquidHTTPTemplateBackgroundColor',document.getElementById('SquidHTTPTemplateBackgroundColor-$t').value);
 	XHR.appendData('SquidHTTPTemplateFontColor',document.getElementById('SquidHTTPTemplateFontColor-$t').value);
 	if(document.getElementById('SquidHTTPTemplateNoVersion-$t').checked){XHR.appendData('SquidHTTPTemplateNoVersion',1);}else{XHR.appendData('SquidHTTPTemplateNoVersion',0);}
+	if(document.getElementById('SquidHTTPTemplateNoProxyVersion-$t').checked){XHR.appendData('SquidHTTPTemplateNoProxyVersion',1);}else{XHR.appendData('SquidHTTPTemplateNoProxyVersion',0);}
 	XHR.sendAndLoad('$page', 'POST',xSave$t);
 }
 

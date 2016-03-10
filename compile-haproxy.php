@@ -9,7 +9,7 @@ include_once(dirname(__FILE__) . '/ressources/class.mysql.inc');
 include_once(dirname(__FILE__) . '/ressources/class.ldap.inc');
 include_once(dirname(__FILE__) . '/ressources/class.ccurl.inc');
 $GLOBALS["WORKDIR"]="/root/haproxy-builder";
-$GLOBALS["MAINURI"]="http://haproxy.1wt.eu/download/1.5/src/devel/";
+$GLOBALS["MAINURI"]="http://www.haproxy.org/download/1.6/src/";
 $GLOBALS["SHOW_COMPILE_ONLY"]=false;
 $GLOBALS["NO_COMPILE"]=false;
 
@@ -41,15 +41,17 @@ $tar=$unix->find_program("tar");
 $rm=$unix->find_program("rm");
 $cp=$unix->find_program("cp");
 
-//http://www.squid-cache.org/Versions/v3/3.2/squid-3.2.0.13.tar.gz
+//http://www.haproxy.org/download/1.5/src/haproxy-1.5.15.tar.gz
 
 
 $dirsrc="haproxy-1.5";
 
 $Architecture=Architecture();
 
-if(!$GLOBALS["NO_COMPILE"]){$v=latests();
-	if(preg_match("#squid-(.+?)-#", $v,$re)){$dirsrc=$re[1];}
+if(!$GLOBALS["NO_COMPILE"]){
+	$v=latests();
+	echo "Latest: $v\n";
+	if(preg_match("#haproxy-(.+?)-#", $v,$re)){$dirsrc=$re[1];}
 	system_admin_events("Downloading lastest file $v, working directory $dirsrc ...",__FUNCTION__,__FILE__,__LINE__);
 }
 
@@ -70,14 +72,17 @@ if(!$GLOBALS["NO_COMPILE"]){
 		if(!is_file("/root/$v")){
 			system_admin_events("Downloading failed", __FUNCTION__, __FILE__, __LINE__, "software");
 			echo "Downloading failed...\n";die();}
+	}else{
+		echo "/root/$v OK already downloaded...\n";
 	}
 	
+	echo "$tar -xf /root/$v -C /root/$dirsrc/\n";
 	shell_exec("$tar -xf /root/$v -C /root/$dirsrc/");
 	chdir("/root/$dirsrc");
-	if(!is_file("/root/$dirsrc/configure")){
-		echo "/root/$dirsrc/configure no such file\n";
+	if(!is_file("/root/$dirsrc/Makefile")){
+		echo "/root/$dirsrc/Makefile no such file\n";
 		$dirs=$unix->dirdir("/root/$dirsrc");
-		while (list ($num, $ligne) = each ($dirs) ){if(!is_file("$ligne/configure")){echo "$ligne/configure no such file\n";}else{
+		while (list ($num, $ligne) = each ($dirs) ){if(!is_file("$ligne/Makefile")){echo "$ligne/Makefile no such file\n";}else{
 			chdir("$ligne");
 			echo "[OK]: Change to dir $ligne\n";
 			$SOURCE_DIRECTORY=$ligne;
@@ -90,21 +95,16 @@ if(!$GLOBALS["NO_COMPILE"]){
 
 if(!$GLOBALS["NO_COMPILE"]){
 	
-	$make_params="make PREFIX=/usr IGNOREGIT=true MANDIR=/usr/share/man ARCH=x86_64 DOCDIR=/usr/share/doc/haproxy USE_STATIC_PCRE=1 TARGET=linux2628 CPU=native USE_LINUX_SPLICE=1 USE_LINUX_TPROXY=1 USE_OPENSSL=1 USE_ZLIB=1 USE_REGPARM=1";
+	$make_params="TARGET=linux2628 PREFIX=/usr IGNOREGIT=true MANDIR=/usr/share/man ARCH=x86_64 DOCDIR=/usr/share/doc/haproxy USE_STATIC_PCRE=1 TARGET=linux2628 CPU=generic USE_LINUX_SPLICE=1 USE_LINUX_TPROXY=1 USE_OPENSSL=1 USE_ZLIB=1 USE_REGPARM=1";
 	
-	echo "make...\n";
-	if($GLOBALS["VERBOSE"]){system("make $make_params");}
-	if(!$GLOBALS["VERBOSE"]){shell_exec("make $make_params");}
+	echo "make $make_params\n";
+	system("make $make_params");
 	echo "make install...\n";
 	
 	$unix=new unix();
-	$squid3=$unix->find_program("squid3");
-	if(is_file($squid3)){@unlink($squid3);}
-	echo "Removing squid last install\n";
-	remove_squid();
 	echo "Make install\n";
-	if($GLOBALS["VERBOSE"]){system("make install");}
-	if(!$GLOBALS["VERBOSE"]){shell_exec("make install");}	
+	system("make install");
+		
 	
 }
 if(!is_file("/usr/local/sbin/haproxy")){

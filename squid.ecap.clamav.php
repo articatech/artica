@@ -79,10 +79,17 @@ function status(){
 	$sock=new sockets();
 	$EnableeCapClamav=intval($sock->GET_INFO("EnableeCapClamav"));
 	$eCAPClamavMaxSize=intval($sock->GET_INFO("eCAPClamavMaxSize"));
+	$eCAPClamavEmergency=intval($sock->GET_INFO("eCAPClamavEmergency"));
+	
+	if($EnableeCapClamav==1){
+		if($eCAPClamavEmergency==1){
+			$perror="<p class=text-error style='font-size:18px'>{eCAPClamav_emergency_mode}<br>{eCAPClamav_emergency_mode_explain}</p>";
+		}
+	}
 	
 	$p=Paragraphe_switch_img("{integrated_antivirus}", "{integrated_antivirus_explain}","EnableeCapClamav",$EnableeCapClamav,null,1400);
 	
-	$html="<div style='width:98%' class=form>
+	$html="<div style='width:98%' class=form>$perror
 	$p
 	<table style='width:100%'>
 	<tr>

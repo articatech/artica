@@ -70,11 +70,11 @@ $('#events-table-$t').flexigrid({
 	url: '$page?search=yes&prepend={$_GET["prepend"]}&force-prefix={$_GET["force-prefix"]}',
 	dataType: 'json',
 	colModel : [
-		{display: '$date', name : 'a1', width :93, sortable : true, align: 'left'},
-		{display: '$hostname', name : 'a3', width :122, sortable : false, align: 'left'},
-		{display: '$client', name : 'a2', width :122, sortable : false, align: 'left'},
-		{display: '$status', name : 'a3', width :200, sortable : false, align: 'left'},
-		{display: '$uri', name : 'events', width : 448, sortable : false, align: 'left'},
+		{display: '<span style=font-size:18px>$date</span>', name : 'a1', width :93, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$hostname</span>', name : 'a3', width :256, sortable : false, align: 'left'},
+		{display: '<span style=font-size:18px>$client</span>', name : 'a2', width :155, sortable : false, align: 'left'},
+		{display: '<span style=font-size:18px>$status</span>', name : 'a3', width :238, sortable : false, align: 'left'},
+		{display: '<span style=font-size:18px>$uri</span>', name : 'events', width : 632, sortable : false, align: 'left'},
 	],
 	$buttons
 
@@ -85,12 +85,12 @@ $('#events-table-$t').flexigrid({
 	sortname: 'zDate',
 	sortorder: 'desc',
 	usepager: true,
-	title: '<strong style=font-size:16px>$MasterTitle</strong>',
+	title: '<strong style=font-size:30px>$MasterTitle - Reverse Proxy</strong>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
 	width: '99%',
-	height:$TB_HEIGHT ,
+	height:550 ,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200,500]
 	
@@ -139,22 +139,28 @@ function search(){
 	if($GLOBALS["VERBOSE"]){echo "<H1>Array of ".count($array)." Lines</H1>\n";}
 	
 	
-	$style="<span style='font-size:12px'>";
+	$style="<span style='font-size:16px'>";
 	$styleoff="</span>";
 	
 	while (list ($key, $line) = each ($array) ){
 			$lines=array();
 			$line=trim($line);
+			$style="<span style='font-size:16px;color:black'>";
 			if($line==null){continue;}
-			if(!preg_match('#\[(.+?)\]\s+([0-9\.]+)\s+.*?\[(.+?)\]\s+([A-Z]+)\s+(.+?)\s+"([0-9]+)"\s+([0-9]+)\s+#' ,$line,$re)){continue;}
+			if(!preg_match('#ngx\[(.*?)\]\s+(.+?)\s+(.+?)\s+(.*?)\s+\[(.+?)\]\s+([A-Z]+)\s+(.+?)\s+[A-Z]+\/[0-9\.]+\s+"([0-9]+)"\s+([0-9]+)#', $line,$re)){
+				if($GLOBALS["VERBOSE"]){echo "$line NO MATCHS<br>";}
+			}
+			
+
 			
 			$sitename=$re[1];
 			$clientip=$re[2];
-			$time=strtotime($re[3]);
-			$PROTO=$re[4];
-			$uri=$re[5];
-			$HTTP_CODE=$re[6];
-			$size=$re[7];
+			$X_FORWARDED=$re[3];
+			$time=strtotime($re[5]);
+			$PROTO=$re[6];
+			$uri=$re[7];
+			$HTTP_CODE=$re[8];
+			$size=$re[9];
 			if(date("Y-m-d",$time)==date("Y-m-d")){
 				$zdate=date("H:i:s");
 			}else{
@@ -165,6 +171,13 @@ function search(){
 			$uri=str_replace("HTTP/1.0","",$uri);
 				
 			$size=FormatBytes($size/1024);
+			
+			
+			
+			
+			if($HTTP_CODE>399){
+				$style="<span style='font-size:16px;color:d32d2d'>";
+			}
 			
 			$lines[]="$style$zdate$styleoff";
 			$lines[]="$style$sitename$styleoff";

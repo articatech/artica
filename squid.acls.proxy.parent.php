@@ -29,7 +29,7 @@ function js(){
 	$page=CurrentPageName();
 	
 echo "function Start$t(){
-	YahooWin2('750','squid.parent.proxy.php?popup=yes&browser=yes&callback=choose$t','$title');
+	YahooWin3('1000','squid.parent.proxy.php?popup=yes&browser=yes&callback=choose$t','$title');
 }
 
 var xchoose$t= function (obj) {
@@ -38,7 +38,7 @@ var xchoose$t= function (obj) {
 	if(document.getElementById('ACL_ID_MAIN_TABLE')){
 		$('#'+document.getElementById('ACL_ID_MAIN_TABLE').value).flexReload();
 	}
-	YahooWin2Hide();
+	YahooWin3Hide();
 	ExecuteByClassName('SearchFunction');
 }	
 

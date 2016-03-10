@@ -1,4 +1,5 @@
 <?php
+ini_set('memory_limit','1000M');
 header("Pragma: no-cache");
 header("Expires: 0");
 header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
@@ -24,7 +25,7 @@ include(dirname(__FILE__)."/ressources/class.influx.inc");
 	if(isset($_GET["requeteur-js"])){requeteur_js();exit;}	
 	if(isset($_GET["query-js"])){build_query_js();exit;}
 	if(isset($_GET["table1"])){table1();exit;}
-	
+	if(isset($_GET["build-table"])){build_table();exit;}
 	
 	
 
@@ -58,13 +59,8 @@ function requeteur_popup(){
 	$members["MAC"]="{MAC}";
 	$members["USERID"]="{uid}";
 	$members["IPADDR"]="{ipaddr}";
-	$date_start=date("Y-m-d",intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/DATE_START")));
-	$date_end=date("Y-m-d",intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/DATE_END")));
-	
-	$q=new influx();
-
-	$Selectore="mindate:$date_start;maxdate:$date_end";
-	
+	$q=new postgres_sql();
+	$Selectore=$q->fieldSelectore();
 	
 	$html="<div style='width:98%;margin-bottom:20px' class=form>
 	<table style='width:100%'>
@@ -103,6 +99,9 @@ function Run$t(){
 	var user=document.getElementById('members-$t').value;
 	var search=encodeURIComponent(document.getElementById('search-$t').value);
 	var interval=0;
+	
+
+	
 	Loadjs('$page?query-js=yes&t=$t&container=graph-$t&date1='+date1+'&time1='+time1+'&date2='+date2+'&time2='+time2+'&interval='+interval+'&user='+user+'&search='+search);
 	
 }
@@ -155,7 +154,12 @@ function build_query_js(){
 
 	if(intval($ligne["builded"]==0)){
 	echo "
-		function Start$t(){
+	function Start$t(){
+		if(document.getElementById('SQUID_STATISTICS_MEMBERS_MD5')){
+			document.getElementById('SQUID_STATISTICS_MEMBERS_MD5').md5='$md5';
+		}
+	
+	
 		Loadjs('squid.statistics.progress.php?zmd5=$md5&NextFunction=$nextFunction_encoded&t=$t');
 	}
 
@@ -183,41 +187,21 @@ function page(){
 	$tpl=new templates();
 	$t=time();
 	$title=null;
-	
-	
-	echo "<div style='float:right;margin:5px;margin-top:5px'>".button($tpl->_ENGINE_parse_body("{build_the_query}"), "Loadjs('$page?requeteur-js=yes&t=$t')",16)."</div>";
-	
-	
-	$content="<center style='margin:50px'>". button("{build_the_query}","Loadjs('$page?requeteur-js=yes&t=$t')",42)."</center>";
-	
-	
-	
 	$q=new mysql_squid_builder();
 	$q->CheckReportTable();
 	if($_GET["zmd5"]==null){
 		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT title,zmd5 FROM reports_cache WHERE report_type='MEMBERS' ORDER BY zDate DESC LIMIT 0,1"));
 		if(!$q->ok){echo $q->mysql_error_html();}
-	}else{
-		
-		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT title,zmd5 FROM reports_cache WHERE zmd5='{$_GET["zmd5"]}'"));
-	
+		$_GET["zmd5"]=$ligne["zmd5"];
 	}
 	
-	
-	
-	if($ligne["zmd5"]<>null){
-		$nextFunction="LoadAjax('table-$t','$page?table1=yes&zmd5={$ligne["zmd5"]}');";
-		$title="<div style='font-size:30px;margin-bottom:20px'>".$tpl->javascript_parse_text($ligne["title"])."</div>";
-		$content="<center><img src=img/loader-big.gif></center>";
-	}
-	
-	
+	$nextFunction="LoadAjax('table-$t','$page?table1=yes&zmd5={$_GET["zmd5"]}');";
+	$content="<center><img src=img/loader-big.gif></center>";
 	$html="$title<div style='width:99%;margin-bottom:10px' id='table-$t'>$content</div>	
 
 	
 	
 <script>
-	LoadAjaxTiny('stats-requeteur','$page?stats-requeteur=yes&t=$t');
 	$nextFunction
 </script>";
 	
@@ -233,40 +217,204 @@ function table1(){
 	
 	$q=new mysql_squid_builder();
 	$zmd5=$_GET["zmd5"];
-	if($zmd5==null){echo "alert('no key sended');UnlockPage();";die();}
-	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT `params`,`values` FROM reports_cache WHERE `zmd5`='$zmd5'"));
-	$values=$ligne["values"];
-	if(strlen($values)==0){echo "alert('NO data...{$ligne["values"]}');";$q->QUERY_SQL("DELETE FROM reports_cache WHERE `zmd5`='$zmd5'");return;}
-	$MAIN=unserialize(base64_decode($values));
+	
+	
+	$q=new mysql_squid_builder();
+	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT * FROM reports_cache WHERE `zmd5`='$zmd5'"));
 	$params=unserialize($ligne["params"]);
-	$influx=new influx();
+	
 	$from=$params["FROM"];
 	$to=$params["TO"];
 	$interval=$params["INTERVAL"];
-	$USER_FIELD=$params["USER"];
+	$USER_FIELD=strtolower($params["USER"]);
 	$search=$params["SEARCH"];
 	
-	$html[]="<div style='width:98%' class=form>";
-	$html[]="<table style='width:100%'>";
-	$color=null;				
-	while (list ($USER, $size) = each ($MAIN) ){
-		if(!is_numeric($size)){continue;}
-		if($color==null){$color="#F2F0F1";}else{$color=null;}
-		$size=FormatBytes($size/1024);
+	$t=time();
+	$page=CurrentPageName();
+	$tpl=new templates();
+	$q=new mysql_squid_builder();
+	$ComputerMacAddress=$tpl->_ENGINE_parse_body("{ComputerMacAddress}");
+	$time=$tpl->_ENGINE_parse_body("{time}");
+	$website=$tpl->_ENGINE_parse_body("{website}");
+	$member=$tpl->_ENGINE_parse_body("{member}");
+	$delete=$tpl->_ENGINE_parse_body("{delete}");
+	$ipaddr=$tpl->_ENGINE_parse_body("{ipaddr}");
+	$requests=$tpl->_ENGINE_parse_body("{requests}");
+	$category=$tpl->_ENGINE_parse_body("{category}");
+	$size=$tpl->_ENGINE_parse_body("{size}");
+	$build_the_query=$tpl->_ENGINE_parse_body("{build_the_query}");
+	$edit_report=$tpl->_ENGINE_parse_body("{edit_report}");
+	$delete_report=$tpl->_ENGINE_parse_body("{delete_report}");
+	$TB_WIDTH=570;
+	
+	$delete_reportbt="{name: '<strong style=font-size:18px>$delete_report</strong>', bclass: 'Delz', onpress : Delete$t},";
+	
+	if($zmd5<>null){
+		$edit="{name: '<strong style=font-size:18px>$edit_report</strong>', bclass: 'Apply', onpress : edit$t},";
 		
-		$js="Loadjs('squid.statistics.report.member.php?from-zmd5=$zmd5&USER_DATA=".urlencode($USER)."');";
-		$href="<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='font-size:26px;text-decoration:underline'>";
-		
-		$html[]="<tr style='background-color:$color'>";
-		$html[]="<td style='font-size:26px;width:600px;padding:10px;font-weight:bold'>$href{$USER}</a></td>";
-		$html[]="<td style='font-size:26px;width:5%;text-align:right;padding:10px' nowrap>{$size}</td>";
-		$html[]="</tr>";
+	
 	}
-	$html[]="</table>";
-	$html[]="</div>
+	
+	$buttons="
+	buttons : [
+	$edit
+	{name: '<strong style=font-size:18px>$build_the_query</strong>', bclass: 'Apply', onpress : build_the_query},
+	$delete_reportbt
+	],";
+	
+	$title=$tpl->javascript_parse_text($ligne["title"]);
+	
+	
+	$t=time();
+	
+	$html="
+	<input type='hidden' id='SQUID_STATISTICS_MEMBERS_MD5' value='$zmd5'>
+	<table class='SQUID_STATISTICS_MEMBERS' style='display: none' id='SQUID_STATISTICS_MEMBERS' style='width:99%'></table>
 	<script>
-	UnlockPage();
-	</script>";
+	$(document).ready(function(){
+	$('#SQUID_STATISTICS_MEMBERS').flexigrid({
+	url: '$page?build-table=yes&zmd5=$zmd5&userfield=$USER_FIELD',
+	dataType: 'json',
+	colModel : [
+	{display: '<span style=font-size:22px>$member</span>', name : '$USER_FIELD', width : 930, sortable : true, align: 'left'},
+	{display: '<span style=font-size:22px>$size</span>', name : 'size', width : 417, sortable : true, align: 'right'},
+	],
+	
+	$buttons
+	
+	searchitems : [
+	{display: '$member', name : '$USER_FIELD'},
+	
+	],
+	sortname: 'size',
+	sortorder: 'desc',
+	usepager: true,
+	title: '<span style=font-size:26px>$title</span>',
+	useRp: true,
+	rp: 100,
+	showTableToggleBtn: false,
+	width: '99%',
+	height: 600,
+	singleSelect: true,
+	rpOptions: [100,200,300,500]
+	
+	});
+	});
+	
+	function edit$t(){
+		Loadjs('squid.statistics.edit.report.php?zmd5=$zmd5&t=$t');
+		}
+	
+	
+	function build_the_query(){
+		Loadjs('$page?requeteur-js=yes&t=$t');
+	}
+	
+	function Delete$t(){
+		Loadjs('squid.statistics.flow.php?remove-cache-js=yes&zmd5=$zmd5');
+		
+		
+	}
+	
+	</script>	
+";	
+	
 
-	echo $tpl->_ENGINE_parse_body(@implode("\n", $html));
+	echo $html;
+}
+
+function build_table(){
+	$q=new mysql_squid_builder();
+	$md5=$_GET["zmd5"];
+	if($md5==null){json_error_show('no key sended');}
+	
+	$q=new mysql_squid_builder();
+	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT * FROM reports_cache WHERE `zmd5`='$md5'"));
+	$params=unserialize($ligne["params"]);
+	
+	$from=$params["FROM"];
+	$to=$params["TO"];
+	$interval=$params["INTERVAL"];
+	$userfield=strtolower($params["USER"]);
+	$search=$params["SEARCH"];
+	$page=1;
+	
+	
+	$q=new postgres_sql();
+	$tpl=new templates();
+	$searchstring=string_to_flexPostGresquery();
+	
+	$table="(SELECT SUM(size) AS size,$userfield FROM \"{$md5}report\" GROUP BY $userfield) as t";
+	
+	
+	if (isset($_POST['page'])) {$page = $_POST['page'];}
+	
+	if(isset($_POST["sortname"])){
+			if($_POST["sortname"]<>null){
+				$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";
+			}
+		}
+	
+	
+		if($searchstring<>null){
+			$sql="SELECT COUNT(*) AS tcount FROM $table WHERE $searchstring";
+			$ligne=pg_fetch_assoc($q->QUERY_SQL($sql,"artica_backup"));
+			$total = $ligne["tcount"];
+	
+		}else{
+			$sql="SELECT COUNT(*) AS tcount FROM $table";
+			$ligne=pg_fetch_assoc($q->QUERY_SQL($sql,"artica_backup"));
+			$total = $ligne["tcount"];
+		}
+	
+		if (isset($_POST['rp'])) {$rp = $_POST['rp'];}else{$rp=50;}
+	
+	
+	
+		$pageStart = ($page-1)*$rp;
+		$limitSql = "LIMIT $rp OFFSET $pageStart";
+	
+	
+	
+		$sql="SELECT * FROM $table WHERE $searchstring $ORDER $limitSql";
+		if($GLOBALS["VERBOSE"]){echo "$sql<br>\n";}
+	
+		$results = $q->QUERY_SQL($sql);
+		if(!$q->ok){json_error_show("$q->mysql_error $sql",0);}
+		
+	
+	
+		$data = array();
+		$data['page'] = $page;
+		$data['total'] = $total;
+		$data['rows'] = array();
+		if(pg_num_rows($results)==0){json_error_show("No data",1);}
+		$fontsize="22px";
+	
+		$c=1;
+		while ($ligne = pg_fetch_assoc($results)) {
+			$USER=trim($ligne[$userfield]);
+			
+			if(preg_match("#([0-9\.]+)\/[0-9]+#", $USER,$re)){$USER=$re[1];}
+			$c++;
+			$size=FormatBytes($ligne["size"]/1024);
+		$js="Loadjs('squid.statistics.report.member.php?from-zmd5=$md5&USER_DATA=".urlencode($USER)."');";
+		
+		if($USER==null){$USER="Unknown";$js="blur();";}
+		
+		$href="<a href=\"javascript:blur();\" OnClick=\"javascript:$js\" style='font-size:26px;text-decoration:underline'>";
+		$data['rows'][] = array(
+				'id' => $c,
+				'cell' => array(
+						"<span style='font-size:$fontsize'>$href{$USER}</a></span>",
+						"<span style='font-size:$fontsize'>$size</a></span>",
+		
+				)
+		);
+		
+	}
+	
+	$data['total'] = $c;
+	echo json_encode($data);
+	
 }

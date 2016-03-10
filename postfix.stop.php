@@ -22,8 +22,8 @@ js();
 function js(){
 	$page=CurrentPageName();
 	$tpl=new templates();	
-	$title="{stop_messaging}";
-	$html="YahooWin2(550,'$page?popup=yes','$title')";
+	$title=$tpl->javascript_parse_text("{stop_messaging}");
+	$html="YahooWin2(890,'$page?popup=yes','$title')";
 	echo $html;
 }
 
@@ -34,7 +34,8 @@ function popup(){
 	$EnableStopPostfix=$sock->GET_INFO("EnableStopPostfix");
 	if(!is_numeric($EnableStopPostfix)){$EnableStopPostfix=0;}
 	$t=time();
-	$p=Paragraphe_switch_img("{stop_messaging}", "{stop_messaging_explain}","EnableStopPostfix",$EnableStopPostfix,null,390);
+	$p=Paragraphe_switch_img("{stop_messaging}", "{stop_messaging_explain}",
+			"EnableStopPostfix",$EnableStopPostfix,null,860);
 	
 	
 	$html="
@@ -42,12 +43,12 @@ function popup(){
 	$p
 	<hr>
 	</div>
-	<div style='text-align:right;width:100%'>". button("{apply}","EnableStopPostfixSave()")."</div>
+	<div style='text-align:right;width:100%'>". button("{apply}","EnableStopPostfixSave()",30)."</div>
 	<script>
 	var x_EnableStopPostfixSave= function (obj) {
 		var res=obj.responseText;
-		CacheOff();
 		YahooWin2Hide();
+		Loadjs('postfix.stop.progress.php');
 	}
 	
 	function EnableStopPostfixSave(){
@@ -66,6 +67,6 @@ function popup(){
 function EnableStopPostfixSave(){
 	$sock=new sockets();
 	$sock->SET_INFO("EnableStopPostfix", $_POST["EnableStopPostfix"]);
-	$sock->getFrameWork("postfix.php?EnableStopPostfix=yes&value={$_POST["EnableStopPostfix"]}");
+	
 	
 }

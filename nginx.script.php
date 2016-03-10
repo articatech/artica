@@ -52,7 +52,7 @@ function websites_script_tab(){
 
 	
 	$array["conf"]="{configuration}";
-	$array["events"]='{access_events}';
+	
 
 
 	$fontsize=18;
@@ -110,8 +110,8 @@ function websites_script(){
 	<td colspan=2 style='font-size:26px;padding-bottom:10px'>$servername</td>
 	</tr>
 	<tr>
-	<td class=legend style='font-size:14px'>". $tpl->_ENGINE_parse_body("{deny_artica_to_write_config}")."</td>
-	<td>". Field_checkbox("DenyConf$t", 1,$ligne["DenyConf"],"DenyConfSave$t()")."</td>
+	<td class=legend style='font-size:18px'>". $tpl->_ENGINE_parse_body("{deny_artica_to_write_config}")."</td>
+	<td>". Field_checkbox_design("DenyConf$t", 1,$ligne["DenyConf"],"DenyConfSave$t()")."</td>
 	</tr>
 	</table>
 	<textarea

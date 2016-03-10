@@ -85,9 +85,16 @@ function install(){
 
 	build_progress("{restart_services}: Artica Status...",50);
 	
-	system("/etc/init.d/artica-status reload --force");
+	$php=$unix->LOCATE_PHP5_BIN();
 	
-	build_progress("{restart_services}: Artica Web interface...",50);
+	build_progress("{restart_services}: Artica Web interface...",80);
+	system("$php /usr/share/artica-postfix/exec.phpmyadmin.php --build");
+	system("$php /usr/share/artica-postfix/exec.lighttpd.php --apache-build");
+	$apache2ctl=$unix->LOCATE_APACHE_CTL();
+	system("$apache2ctl -f /etc/artica-postfix/httpd.conf -k restart");
+
+	
+	
 
 	
 	build_progress("{success}...",100);

@@ -86,7 +86,7 @@ function add_domain_white_save(){
 	if(count($mxhosts)==0){
 		echo $tpl->javascript_parse_text("$domain : {no_mx}");
 	}
-	
+
 	
 	$q=new mysql();
 	while (list ($index, $hostname) = each ($mxhosts) ){

@@ -435,7 +435,7 @@ $sock=new sockets();
 		$sock->getFrameWork("squid.php?compil-params=yes");
 	}
 	
-	$COMPILATION_PARAMS=unserialize(base64_decode(file_get_contents($compilefile)));
+	$COMPILATION_PARAMS=unserialize(base64_decode(@file_get_contents($compilefile)));
 	
 	$users=new usersMenus();
 	$your_network=Paragraphe('folder-realyrules-64.png','{your_network}','{your_network_text}',"javascript:Loadjs('squid.popups.php?script=network')");

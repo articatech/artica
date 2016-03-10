@@ -37,7 +37,7 @@ $t=time();
 
 $buttons="
 buttons : [
-	{name: '$empty', bclass: 'Delz', onpress : EmptyEvents$t},
+	{name: '<strong style=font-size:18px>$empty</strong>', bclass: 'Delz', onpress : EmptyEvents$t},
 
 ],";
 
@@ -49,10 +49,8 @@ $html="
 			url: '$page?events-table=yes',
 			dataType: 'json',
 			colModel : [
-			{display: '&nbsp;', name : 'isSuccess', width :31, sortable : true, align: 'center'},
-			{display: '$date', name : 'zDate', width :426, sortable : true, align: 'left'},
-			{display: '$size', name : 'filesize', width :134, sortable : true, align: 'left'},
-			{display: '$filenum', name : 'filenum', width : 163, sortable : false, align: 'left'},
+			{display: '&nbsp;', name : 'isSuccess', width :50, sortable : true, align: 'center'},
+			{display: '$date', name : 'zDate', width :626, sortable : true, align: 'left'},
 			],
 			$buttons
 			
@@ -67,8 +65,8 @@ $html="
 			useRp: true,
 			rp: 50,
 			showTableToggleBtn: false,
-			width: 857,
-			height: 450,
+			width: '99%',
+			height: 550,
 			singleSelect: true,
 			rpOptions: [10, 20, 30, 50,100,200,500]
 			
@@ -169,10 +167,9 @@ function events_table(){
 		$ligne["filesnum"]=ABSFormatNumber($ligne["filesnum"],0);
 		$data['rows'][] = array(
 				'id' => $md5,
-				'cell' => array("<img src='img/$isSuccess'>",
-				"<a href=\"javascript:UpdateUtilityZoom('$time')\" style='font-size:16px;text-decoration:underline'>{$ligne["zDate"]}</a>",
-				"<span style='font-size:16px'>{$ligne["filesize"]}</span>",
-				"<span style='font-size:16px'>{$ligne["filesnum"]}</span>" )
+				'cell' => array("<center><img src='img/$isSuccess'></center>",
+				"<a href=\"javascript:UpdateUtilityZoom('$time')\" style='font-size:22px;text-decoration:underline'>{$ligne["zDate"]}</a>"
+				)
 		);
 	}
 

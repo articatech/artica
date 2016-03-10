@@ -1,4 +1,5 @@
 <?php
+include_once(dirname(__FILE__)."/class.wifidog.sql.inc");
 include_once(dirname(__FILE__)."/class.wifidog.tools.inc");
 include_once(dirname(__FILE__)."/class.wifidog.templates.inc");
 include_once(dirname(__FILE__)."/class.wifidog.rules.inc");
@@ -19,18 +20,24 @@ class wifidog_settings{
 		
 	}
 	
+	
 	public function GET_INFO($key){
-		$q=new mysql_squid_builder();
+		$cachefile="{$GLOBALS["CACHEDIR"]}/rule.$this->ruleid.$key";
+		if(is_file($cachefile)){return @file_get_contents($cachefile);}
+		$q=new mysql_hotspot();
 		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT ID,MasterValue FROM webauth_settings WHERE ruleid='$this->ruleid' AND `MasterKey`='$key'"));
 		if(intval($ligne["ID"])==0){return null;}
+		@file_put_contents($cachefile, $ligne["MasterValue"]);
 		return $ligne["MasterValue"];
 		
 	}
 	
 	
 	public function SET_INFO($key,$value){
+		$cachefile="{$GLOBALS["CACHEDIR"]}/rule.$this->ruleid.$key";
+		if(is_file($cachefile)){@unlink($cachefile);}
 		$value=mysql_escape_string2($value);
-		$q=new mysql_squid_builder();
+		$q=new mysql_hotspot();
 		
 		$sql="CREATE TABLE IF NOT EXISTS `webauth_settings` (
 			`ID` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

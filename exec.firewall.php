@@ -760,6 +760,24 @@ function GroupInArray($ID=0,$IsArray=false){
 		return $f;
 	}
 	
+	if($GroupType=="office365"){
+		include_once(dirname(__FILE__)."/ressources/class.products-ip-ranges.inc");
+		$products_ip_ranges=new products_ip_ranges();
+		$array=$products_ip_ranges->office365_networks();
+		if($GLOBALS["VERBOSE"]){echo "office365 ->".count($array)." items [".__LINE__."]\n";}
+		while (list ($a, $b) = each ($array) ){
+			if(preg_match("#([0-9]+)-([0-9]+)#", $b)){
+				$f["-m iprange --dst-range $b"]=true;
+				continue;
+			}
+			$f["--dst $b"]=true;
+				
+		}
+	
+		if($GLOBALS["VERBOSE"]){echo "[".__LINE__."]: teamviewer::$ID -> ".count($f)." item(s).\n";}
+		return $f;
+	}	
+	
 	if($GroupType=="skype"){
 		include_once(dirname(__FILE__)."/ressources/class.products-ip-ranges.inc");
 		$products_ip_ranges=new products_ip_ranges();
@@ -814,7 +832,23 @@ function GroupInArray($ID=0,$IsArray=false){
 		if($GLOBALS["VERBOSE"]){echo "[".__LINE__."]: teamviewer::$ID -> ".count($f)." item(s).\n";}
 		return $f;
 	}
+	if($GroupType=="dropbox"){
+		include_once(dirname(__FILE__)."/ressources/class.products-ip-ranges.inc");
+		$products_ip_ranges=new products_ip_ranges();
+		$array=$products_ip_ranges->dropbox_networks();
+		if($GLOBALS["VERBOSE"]){echo "google_networks ->".count($array)." items [".__LINE__."]\n";}
+		while (list ($a, $b) = each ($array) ){
+			if(preg_match("#([0-9]+)-([0-9]+)#", $b)){
+				$f["-m iprange --dst-range $b"]=true;
+				continue;
+			}
+			$f["--dst $b"]=true;
 	
+		}
+	
+		if($GLOBALS["VERBOSE"]){echo "[".__LINE__."]: dropbox::$ID -> ".count($f)." item(s).\n";}
+		return $f;
+	}	
 	
 	$IpClass=new IP();
 	$sql="SELECT pattern FROM webfilters_sqitems WHERE gpid=$ID AND enabled=1";

@@ -447,7 +447,12 @@ function tabs(){
 		
 		if($users->UPDATE_UTILITYV2_INSTALLED){
 			$array["updateutility"]='UpdateUtility';
-		}		
+		}else{
+			$array["KeepUp2date"]='{update_tasks}';
+			
+		}	
+
+		
 
 		
 		if($SQUIDEnable==0){	
@@ -460,7 +465,13 @@ function tabs(){
 		if($num=="blacklist_databases"){
 			$tab[]="<li><a href=\"squid.blacklist.php\"><span style='font-size:$font_size'>$ligne</span></a></li>\n";
 			continue;
-		}		
+		}	
+
+		if($num=="KeepUp2date"){
+			$tab[]="<li><a href=\"squid.databases.schedules.php?TaskType=12\"><span style='font-size:$font_size'>$ligne</span></a></li>\n";
+			continue;
+		}
+		
 		
 		if($num=="tasks"){
 			$tab[]="<li><a href=\"Kav4Proxy.Tasks.php\"><span style='font-size:$font_size'>$ligne</span></a></li>\n";

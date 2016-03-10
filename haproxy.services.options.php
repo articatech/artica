@@ -46,23 +46,23 @@ function popup(){
 	
 	$html="
 	
-	<div id='$t-defaults'>
-	<table style='width:99%' class=form>
+	<div id='$t-defaults' style='width:98%' class=form>
+	<table style='width:100%'>
 	<tr>
-		<td class=legend style='font-size:16px'>{http_use_proxy_header}:</td>
-		<td>". Field_checkbox("http-use-proxy-header-$t", 1,$hap->MainConfig["http-use-proxy-header"])."</td>
+		<td class=legend style='font-size:20px'>{http_use_proxy_header}:</td>
+		<td>". Field_checkbox_design("http-use-proxy-header-$t", 1,$hap->MainConfig["http-use-proxy-header"])."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:16px'>{xforwardfor}:</td>
-		<td>". Field_checkbox("forwardfor-$t", 1,$hap->MainConfig["forwardfor"])."</td>
+		<td class=legend style='font-size:20px'>{xforwardfor}:</td>
+		<td>". Field_checkbox_design("forwardfor-$t", 1,$hap->MainConfig["forwardfor"])."</td>
 	</tr>	
 	<tr>
-		<td class=legend style='font-size:16px'>{xoriginalto}:</td>
-		<td>". Field_checkbox("originalto-$t", 1,$hap->MainConfig["originalto"])."</td>
+		<td class=legend style='font-size:20px'>{xoriginalto}:</td>
+		<td>". Field_checkbox_design("originalto-$t", 1,$hap->MainConfig["originalto"])."</td>
 	</tr>		
 	
 	<tr>
-		<td colspan=2 align='right'><hr>". button("{apply}","SaveHTTPOptions$t()",'16px')."</td>
+		<td colspan=2 align='right'><hr>". button("{apply}","SaveHTTPOptions$t()",'30px')."</td>
 	</tr>
 	
 	</table>

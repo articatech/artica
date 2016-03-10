@@ -523,12 +523,12 @@
 		while (list ($num, $line) = each ($tables)){
 			$mysql=new mysql();
 			if(!$this->ClassSQL->TABLE_EXISTS($num,$this->database)){
-				$img="icon_mini_off.gif";
-			}else{$img="ok13.png";}
+				$img="mailbox_hd_D32D2D.png";
+			}else{$img="mailbox_hd.png";}
 			
 			$html=$html .  "<tr>
 			<td width=1%><img src='img/$img'></td>
-			<td width=99%><strong>$line</strong>
+			<td width=99%><strong style='font-size:20px'>$line</strong>
 			</tr>";
 			
 		}

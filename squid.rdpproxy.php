@@ -90,17 +90,26 @@ function tabs(){
 	$tpl=new templates();
 	$page=CurrentPageName();
 	$array["parameters"]='{parameters}';
-	$array["members"]='{members}';
+	$array["members"]='{connections}';
 	$array["events"]="{events}";
+	$array["about"]="{about2}";
 	$t=$_GET["t"];
 	$ID=$_GET["ID"];
 	while (list ($num, $ligne) = each ($array) ){
 		if($num=="events"){
-			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"squid.rdpproxy-events.php\" style='font-size:18px'><span>$ligne</span></a></li>\n");
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"squid.rdpproxy-events.php\" 
+					style='font-size:24px'><span>$ligne</span></a></li>\n");
+			continue;
+		}
+		
+		if($num=="about"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"squid.rdpproxy-about.php\" 
+					style='font-size:24px'><span>$ligne</span></a></li>\n");
 			continue;
 		}
 	
-		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&t=$t&ID=$ID\" style='font-size:18px'><span>$ligne</span></a></li>\n");
+		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&t=$t&ID=$ID\" 
+				style='font-size:24px'><span>$ligne</span></a></li>\n");
 	}
 	echo build_artica_tabs($html, "main_rdpproxy_tabs")."<script>LeftDesign('remote-desktop-256-white-opac20.png');</script>";
 
@@ -187,23 +196,24 @@ function parameters(){
 	<div id='test-$t'></div>
 	<p>&nbsp;</p>
 	<div style='width:98%' class=form>
-		<table>
+		<table style='width:100%'>
 		<tr>
-		<td colspan=3>". Paragraphe_switch_img("{activate_RDP_service}", "{APP_RDPPROXY_EXPLAIN}","EnableRDPProxy","$EnableRDPProxy",null,750)."
+		<td colspan=3>". Paragraphe_switch_img("{activate_RDP_service}", 
+				"{APP_RDPPROXY_EXPLAIN}","EnableRDPProxy","$EnableRDPProxy",null,1050)."
 		</tr>
 			<tr>
-				<td class=legend style='font-size:18px !important;vertical-align:top''>{listen_ip}:</td>
-				<td>". Field_array_Hash($ips, "RDPProxyListen",$RDPProxyListen,null,null,0,"font-size:18px")."</td>
+				<td class=legend style='font-size:22px !important;vertical-align:top''>{listen_ip}:</td>
+				<td>". Field_array_Hash($ips, "RDPProxyListen",$RDPProxyListen,null,null,0,"font-size:22px")."</td>
 				<td width=1%></td>
 			</tr>		
 			<tr>
-				<td class=legend style='font-size:18px !important;vertical-align:top''>{listen_port}:</td>
-				<td>". Field_text("RDPProxyPort", $RDPProxyPort,"font-size:18px;width:90px")."</td>
+				<td class=legend style='font-size:22px !important;vertical-align:top''>{listen_port}:</td>
+				<td>". Field_text("RDPProxyPort", $RDPProxyPort,"font-size:22px;width:90px")."</td>
 				<td width=1%></td>
 			</tr>
 			<tr>
-				<td class=legend style='font-size:18px !important;vertical-align:top''>{disable_groups}:</td>
-				<td>". Field_checkbox("RDPDisableGroups", 1,$RDPDisableGroups)."</td>
+				<td class=legend style='font-size:22px !important;vertical-align:top''>{disable_groups}:</td>
+				<td>". Field_checkbox_design("RDPDisableGroups", 1,$RDPDisableGroups)."</td>
 				<td width=1%></td>
 			</tr>						
 
@@ -219,7 +229,8 @@ function parameters(){
 var xSave$t= function (obj) {
 	var results=obj.responseText;
 	if(results.length>3){alert(results);}
-	RefreshTab('main_rdpproxy_tabs');
+	Loadjs('squid.rdpproxy.progress.php');
+	
 }
 function Save$t(){
 	var XHR = new XHRConnection();
@@ -274,6 +285,9 @@ function members(){
 	$groups=$tpl->javascript_parse_text("{groups2}");
 	$freeradius_users_explain=$tpl->_ENGINE_parse_body("{freeradius_users_explain}");
 	$tablewidht=883;
+	
+	$title=$tpl->javascript_parse_text("{connections}");
+	
 	$t=time();
 
 	$buttons="buttons : [
@@ -293,8 +307,8 @@ $(document).ready(function(){
 	dataType: 'json',
 	colModel : [
 	{display: '&nbsp;', name : 'none2', width : 40, sortable : false, align: 'center'},
-	{display: '$shortname', name : 'username', width : 365, sortable : false, align: 'left'},
-	{display: 'CNX', name : 'none3', width : 80, sortable : false, align: 'center'},
+	{display: '<span style=font-size:22px>$shortname</span>', name : 'username', width : 365, sortable : false, align: 'left'},
+	{display: '<span style=font-size:22px>CNX</span>', name : 'none3', width : 80, sortable : false, align: 'center'},
 	{display: '&nbsp;', name : 'none3', width : 40, sortable : false, align: 'center'},
 	],
 	$buttons
@@ -306,12 +320,12 @@ $(document).ready(function(){
 	sortname: 'username',
 	sortorder: 'asc',
 	usepager: true,
-	title: '',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 450,
+	height: 550,
 	singleSelect: true
 	});
 });
@@ -535,13 +549,13 @@ function accounts(){
 	$service=$tpl->javascript_parse_text("{connection}");
 	$add=$tpl->javascript_parse_text("{new_connection}");
 	$servicetype=$tpl->_ENGINE_parse_body("{type}");
-	
+	$title=$tpl->javascript_parse_text("{connections}");
 	$tablewidht=883;
 	$t=$_GET["t"];
 	$tt=time();
 
 	$buttons="buttons : [
-	{name: '$add', bclass: 'Add', onpress : AddAccount$tt},
+	{name: '<strong style=font-size:18px>$add</strong>', bclass: 'Add', onpress : AddAccount$tt},
 	],	";
 
 	echo "
@@ -554,13 +568,13 @@ function accounts(){
 	url: '$page?accounts-search=yes&t=$t&tt=$tt&ID={$_GET["ID"]}',
 	dataType: 'json',
 	colModel : [
-	{display: '&nbsp;', name : 'none2', width : 55, sortable : false, align: 'center'},
-	{display: '$service', name : 'service', width : 209, sortable : false, align: 'left'},
-	{display: '$shortname', name : 'username', width : 300, sortable : false, align: 'left'},
-	{display: '$hostname', name : 'rhost', width : 300, sortable : false, align: 'left'},
-	{display: '$servicetype', name : 'servicetype', width : 70, sortable : false, align: 'left'},
-	{display: 'download', name : 'download', width : 55, sortable : false, align: 'left'},
-	{display: '&nbsp;', name : 'none2', width : 55, sortable : false, align: 'center'},
+	{display: '&nbsp;', name : 'none2', width : 90, sortable : false, align: 'center'},
+	{display: '<span style=font-size:22px>$service</span>', name : 'service', width : 209, sortable : false, align: 'left'},
+	{display: '<span style=font-size:22px>$shortname</span>', name : 'username', width : 300, sortable : false, align: 'left'},
+	{display: '<span style=font-size:22px>$hostname</span>', name : 'rhost', width : 300, sortable : false, align: 'left'},
+	{display: '<span style=font-size:22px>$servicetype</span>', name : 'servicetype', width : 70, sortable : false, align: 'left'},
+	{display: '<span style=font-size:22px>download</span>', name : 'download', width : 127, sortable : false, align: 'left'},
+	{display: '&nbsp;', name : 'none2', width : 90, sortable : false, align: 'center'},
 	
 	],
 	$buttons
@@ -576,12 +590,12 @@ function accounts(){
 	sortname: 'username',
 	sortorder: 'asc',
 	usepager: true,
-	title: '',
+	title: '<span style=font-size:30px>$title</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: 450,
+	height: 550,
 	singleSelect: true
 });
 });
@@ -643,44 +657,44 @@ function accounts_popup(){
 	<div style='width:98%' class=form>
 	<table style='width:99%'>
 	<tr>
-		<td class=legend style='font-size:16px'>{hostname}:</td>
-		<td>". Field_text("service-$t",$ligne["service"],"font-size:16px;width:220px")."</td>
+		<td class=legend style='font-size:22px'>{hostname}:</td>
+		<td>". Field_text("service-$t",$ligne["service"],"font-size:22px;width:430px")."</td>
 	</tr>	
 	<tr>
-		<td class=legend style='font-size:16px'>{type}:</td>
-		<td>". Field_array_Hash($services,"servicetype-$t",$ligne["servicetype"],"style:font-size:16px")."</td>
+		<td class=legend style='font-size:22px'>{type}:</td>
+		<td>". Field_array_Hash($services,"servicetype-$t",$ligne["servicetype"],"style:font-size:22px")."</td>
 	</tr>		
 	<tr>
-		<td class=legend style='font-size:16px'>{ipaddr}:</td>
-		<td>". Field_text("rhost-$t",$ligne["rhost"],"font-size:16px;width:220px")."</td>
+		<td class=legend style='font-size:22px'>{ipaddr}:</td>
+		<td>". Field_text("rhost-$t",$ligne["rhost"],"font-size:22px;width:430px")."</td>
 	</tr>	
 	<tr>
-		<td class=legend style='font-size:16px'>{listen_port}:</td>
-		<td>". Field_text("serviceport-$t",$ligne["serviceport"],"font-size:16px;width:220px")."</td>
+		<td class=legend style='font-size:22px'>{listen_port}:</td>
+		<td>". Field_text("serviceport-$t",$ligne["serviceport"],"font-size:22px;width:430px")."</td>
 	</tr>				
 	<tr>
-		<td class=legend style='font-size:16px'>{username}:</td>
-		<td>". Field_text("username-$t",$ligne["username"],"font-size:16px;width:220px")."</td>
+		<td class=legend style='font-size:22px'>{username}:</td>
+		<td>". Field_text("username-$t",$ligne["username"],"font-size:22px;width:430px")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:16px'>{domain}:</td>
-		<td>". Field_text("domain-$t",$ligne["domain"],"font-size:16px;width:220px")."</td>
+		<td class=legend style='font-size:22px'>{domain}:</td>
+		<td>". Field_text("domain-$t",$ligne["domain"],"font-size:22px;width:430px")."</td>
 	</tr>				
 	<tr>
-		<td class=legend style='font-size:16px'>{password}:</td>
-		<td>". Field_password("password-$t",$ligne["password"],"font-size:16px;width:220px")."</td>
+		<td class=legend style='font-size:22px'>{password}:</td>
+		<td>". Field_password("password-$t",$ligne["password"],"font-size:22px;width:430px")."</td>
 	</tr>
 	<tr>
-		<td class=legend style='font-size:16px'>{alive}:</td>
-		<td style='font-size:16px'>". Field_text("alive-$t",$ligne["alive"],"font-size:16px;width:90px")."&nbsp;{seconds}</td>
+		<td class=legend style='font-size:22px'>{alive}:</td>
+		<td style='font-size:16px'>". Field_text("alive-$t",$ligne["alive"],"font-size:22px;width:160px")."&nbsp;{seconds}</td>
 	</tr>	
-	<tr><td colspan=2 align='right'><span style='font-size:13px'><i>$dis</i></span></td></tr>			
+	<tr><td colspan=2 align='right'><span style='font-size:16px'><i>$dis</i></span></td></tr>			
 	<tr>
-		<td class=legend style='font-size:16px'>{record_session}:</td>
-		<td style='font-size:16px'>". Field_checkbox("is_rec-$t",1,$ligne["is_rec"])."</td>
+		<td class=legend style='font-size:22px'>{record_session}:</td>
+		<td style='font-size:22px'>". Field_checkbox_design("is_rec-$t",1,$ligne["is_rec"])."</td>
 	</tr>				
 	<tr>
-		<td colspan=2 align=right><hr>".button("$btname","Save$t()",18)."</td>
+		<td colspan=2 align=right><hr>".button("$btname","Save$t()",30)."</td>
 	</tr>
 	</table>
 	</div>
@@ -874,7 +888,7 @@ function accounts_search(){
 
 		$href="<a href=\"javascript:blur();\"
 						OnClick=\"javascript:Loadjs('$MyPage?accounts-js=yes&userid={$_GET["ID"]}&ID={$ligne['ID']}&t=$t&tt=$tt');\"
-						style=\"font-size:18px;text-decoration:underline;color:$color\">";
+						style=\"font-size:22px;text-decoration:underline;color:$color\">";
 
 		$img="computer-windows-48.png";
 		if($ligne['servicetype']=="RDP"){
@@ -886,17 +900,17 @@ function accounts_search(){
 			}
 		}
 		
-		$divspac="<div style='margin-top:8px'>";
-		$divspac1="</div>";
-
+		
 		$data['rows'][] = array(
 				'id' => "ACC{$ligne['ID']}",
 				'cell' => array("
-						<img src='img/$img'>",
-						"$divspac$href{$ligne['service']}</a>$divspac1",
-						"$divspac$href{$ligne['username']}/{$ligne['service']}</a>$divspac1",
-						"$divspac$href{$ligne['rhost']}</a>$divspac1",
-						"$divspac$href{$ligne['servicetype']}</a>$divspac1",$download,$delete
+						<center><img src='img/$img'></center>",
+						"$href{$ligne['service']}</a>",
+						"$href{$ligne['username']}/{$ligne['service']}</a>",
+						"$href{$ligne['rhost']}</a>",
+						"<center$href{$ligne['servicetype']}</a></center>",
+						"<center>$download</center>",
+						"<center>$delete</center>"
 				)
 		);
 	}

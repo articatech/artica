@@ -18,6 +18,7 @@
 	if(isset($_GET["tabs"])){tabs();exit;}
 	if(isset($_GET["ports"])){ports();exit;}
 	if(isset($_GET["ssl"])){ssl();exit;}
+	if(isset($_GET["meta"])){meta();exit;}
 	if(isset($_GET["acls"])){acls();exit;}
 	if(isset($_GET["acls-extern"])){acls_extern();exit;}
 	if(isset($_GET["caches"])){caches();exit;}
@@ -76,8 +77,11 @@ function tabs(){
 	$tpl=new templates();
 	$array["popup"]='{configuration_file}';
 	$array["ports"]='{ports}';
-	$array["ssl"]='{ssl_conf}';
+
 	$array["acls"]='{ACLS}';
+	$array["meta"]='Meta';
+	
+	$array["ssl"]='{ssl_conf}';
 	$array["acls-extern"]='{plugins}';
 	$array["caches"]='{caches}';
 	
@@ -199,6 +203,50 @@ function caches(){
 		
 	
 }
+
+function meta(){
+	$sock=new sockets();
+	$sock->getFrameWork("squid2.php?squid-conf-meta=yes");
+	$datas=@file_get_contents("/usr/share/artica-postfix/ressources/logs/web/squid-meta.conf");
+	$page=CurrentPageName();
+	$tpl=new templates();
+	$t=time();
+	//<center><hr>". $tpl->_ENGINE_parse_body(button("{apply}", "SaveUserConfFile$t()",22))."</center>
+	$html="
+	<div id='$t'></div>
+	<div style='width:98%' class=form>
+	<textarea
+	style='width:99%;height:650px;overflow:auto;border:5px solid #CCCCCC;font-size:14px !important;
+	font-weight:normal;font-family:Courier New;color:black !important;padding:3px'
+	id='SQUID_CONTENT-$t'>$datas</textarea>
+	
+			</div>
+			<script>
+			var x_DenySquidWriteConfSave$t= function (obj) {
+			var results=obj.responseText;
+			if(results.length>3){alert(results);return;}
+	}
+	
+	
+			var x_SaveUserConfFile= function (obj) {
+			var results=obj.responseText;
+			document.getElementById('$t').innerHTML='';
+			if(results.length>3){alert(results);return;}
+	}
+	
+			function SaveUserConfFile$t(){
+			var XHR = new XHRConnection();
+			XHR.appendData('SQUID_SSL_CONTENT', encodeURIComponent(document.getElementById('SQUID_CONTENT-$t').value));
+			XHR.sendAndLoad('$page', 'POST',x_SaveUserConfFile);
+	}
+			</script>
+			";
+			echo $html;
+	
+	
+	
+	
+	}
 
 function ssl(){
 	$sock=new sockets();

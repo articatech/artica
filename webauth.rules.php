@@ -18,6 +18,8 @@
 		exit;
 		
 	}
+	if(isset($_GET["backup-download-js"])){backup_download_js();exit;}
+	if(isset($_GET["backup-download-popup"])){backup_download_popup();exit;}
 	if(isset($_GET["enable-js"])){skin_enable_js();exit;}
 	if(isset($_GET["delete-rule-js"])){rule_delete_js();exit;}
 	if(isset($_GET["picture"])){send_picture();exit;}
@@ -57,6 +59,34 @@ function rule_js(){
 	
 	echo "YahooWin3(1250,'$page?rule-tabs=yes&ID=$ID','$TEMPLATE_TITLE')";
 }
+
+function backup_download_js(){
+	header("content-type: application/x-javascript");
+	$page=CurrentPageName();
+	$tpl=new templates();
+	$TEMPLATE_TITLE=$tpl->javascript_parse_text("{backup}");
+	$filename="/usr/share/artica-postfix/ressources/logs/web/hotspot.rules.backup.gz";
+	if(!is_file("$filename")){
+		echo "alert('hotspot.rules.backup.gz no such file');";
+		return;
+	}
+	
+	echo "YahooWin3(800,'$page?backup-download-popup=yes','$TEMPLATE_TITLE')";
+	
+}
+
+function backup_download_popup(){
+	$filename="/usr/share/artica-postfix/ressources/logs/web/hotspot.rules.backup.gz";
+	$size=FormatBytes(@filesize($filename)/1024);
+	echo "<center style='margin:50px'>
+			<a href=\"ressources/logs/web/hotspot.rules.backup.gz\"><img src='img/gz-128.png'></a>
+			<hr>
+			<a href=\"ressources/logs/web/hotspot.rules.backup.gz\" style='font-size:30px;color:black;text-decoration:underline'>
+			hotspot.rules.backup.gz ($size)</a></center>
+			";
+	
+}
+
 function WifidogClientTimeout_js(){
 	$page=CurrentPageName();
 	$tpl=new templates();
@@ -127,6 +157,8 @@ function Save$t(){
 function WifidogClientTimeout_save(){
 	$sock=new sockets();
 	$sock->SET_INFO("WifidogClientTimeout", $_POST["WifidogClientTimeout"]);
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
 }
 
 function rule_delete(){
@@ -139,19 +171,21 @@ function rule_delete(){
 	$q->QUERY_SQL("DELETE FROM webauth_settings WHERE ruleid='{$_POST["delete-rule"]}'");
 	$q->QUERY_SQL("DELETE FROM hotspot_activedirectory WHERE ruleid='{$_POST["delete-rule"]}'");
 	
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
 	
 }
 
 function skin_enable(){
 	$q=new mysql_squid_builder();
-	$sql="SELECT enabled FROM webauth_rules WHERE zmd5='{$_POST["enable-rule"]}'";
+	$sql="SELECT enabled FROM webauth_rules WHERE ID='{$_POST["enable-rule"]}'";
 	$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
 	if($ligne["enabled"]==1){
-		$q->QUERY_SQL("UPDATE webauth_rules SET `enabled`=0 WHERE zmd5='{$_POST["enable-rule"]}'");
+		$q->QUERY_SQL("UPDATE webauth_rules SET `enabled`=0 WHERE ID='{$_POST["enable-rule"]}'");
 		if(!$q->ok){echo $q->mysql_error;}
 		return;
 	}
-	$q->QUERY_SQL("UPDATE webauth_rules SET `enabled`=1 WHERE zmd5='{$_POST["enable-rule"]}'");
+	$q->QUERY_SQL("UPDATE webauth_rules SET `enabled`=1 WHERE ID='{$_POST["enable-rule"]}'");
 	if(!$q->ok){echo $q->mysql_error;}
 	$sock=new sockets();
 	$sock->getFrameWork("squid.php?weberror-cache-remove=yes");
@@ -175,7 +209,7 @@ var xSave$t= function (obj) {
 	
 function Save$t(){
 	var XHR = new XHRConnection();
-	XHR.appendData('enable-rule','{$_GET["zmd5"]}');
+	XHR.appendData('enable-rule','{$_GET["ID"]}');
 	XHR.sendAndLoad('$page', 'POST',xSave$t);
 }
 Save$t();";
@@ -230,6 +264,7 @@ function rule_tabs(){
 		$array["BACKGROUND"]='{background_picture}';
 		$array["AD"]='Active Directory';
 		$array["SMTP"]='{smtp_parameters}';
+		$array["SMS"]='SMS';
 		
 	}
 	$fontsize=19;
@@ -281,7 +316,14 @@ function rule_tabs(){
 			<span style='font-size:{$fontsize}px'>$ligne</span></a>
 			</li>\n";
 			continue;
-		}		
+		}	
+
+		if($num=="SMS"){
+			$tab[]="<li><a href=\"webauth.rules.sms.php?ID={$_GET["ID"]}\">
+			<span style='font-size:{$fontsize}px'>$ligne</span></a>
+			</li>\n";
+			continue;
+		}
 		
 		$tab[]="<li><a href=\"$page?$num=yes&ID={$_GET["ID"]}\">
 		<span style='font-size:{$fontsize}px'>$ligne</span></a>
@@ -499,21 +541,31 @@ function skin_logo_save(){
 	if(!$q->ok){echo $q->mysql_error;}
 	$sock=new sockets();
 	$sock->getFrameWork("squid.php?weberror-cache-remove=yes");
-	
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
 }
 
 function SETTINGS_SAVE(){
 	$q=new mysql_squid_builder();
 	$ID=$_POST["ID"];
+	$rulename=mysql_escape_string2($_POST["rulename"]);
+	
+	if($rulename==null){
+		echo "Rule name cannot be empty...";
+		return;
+	}
+	
 	if($ID==0){
-		$rulename=mysql_escape_string2($_POST["rulename"]);
+		
 		$sql="INSERT IGNORE INTO webauth_rules (rulename,enabled) VALUES ('$rulename','{$_POST["enabled"]}')";
 		
 	}else{
 		$sql="UPDATE webauth_rules SET `rulename`='$rulename',`enabled`='{$_POST["enabled"]}' WHERE `ID`='{$_POST["ID"]}'";
 	}
 	$q->QUERY_SQL($sql);
-	if(!$q->ok){echo $q->mysql_error;}
+	if(!$q->ok){echo $q->mysql_error;return;}
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
 	
 }
 
@@ -740,7 +792,8 @@ function skin_design_save(){
 	if(!$q->ok){echo $q->mysql_error."\n".$sql."\n";}
 	$sock=new sockets();
 	$sock->getFrameWork("squid.php?weberror-cache-remove=yes");
-	
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
 	
 }
 
@@ -784,11 +837,15 @@ function page(){
 	$title=$tpl->javascript_parse_text("{hostpot_rules}:");
 	$enabled=$tpl->javascript_parse_text("{enabled}");
 	$skin=$tpl->javascript_parse_text("{skin}");
+	$backup=$tpl->javascript_parse_text("{backup}");
+	$restore=$tpl->javascript_parse_text("{restore}");
 	$t=time();
 	
 	$buttons="
 	buttons : [
 		{name: '<strong style=font-size:22px>$new_rule</strong>', bclass: 'add', onpress :  NewRule$t},
+		{name: '<strong style=font-size:22px>$backup</strong>', bclass: 'export', onpress :  Backup$t},
+		{name: '<strong style=font-size:22px>$restore</strong>', bclass: 'import', onpress :  Restore$t},
 	],";
 	
 	
@@ -828,6 +885,15 @@ $('#HOSTPOT_RULES').flexigrid({
 function NewRule$t(){
 	Loadjs('$page?rule-js=0')
 }
+
+function Restore$t(){
+	Loadjs('webauth.rules.restore.php');
+}
+
+function Backup$t(){
+	Loadjs('webauth.rules.bakckup.progress.php');
+}
+
 function purge_caches$t(){
 	Loadjs('system.services.cmd.php?APPNAME=APP_NGINX&action=purge&cmd=%2Fetc%2Finit.d%2Fnginx&appcode=APP_NGINX');
 }
@@ -916,7 +982,7 @@ function list_items(){
 		$rulename=utf8_encode($ligne["rulename"]);
 		$ID=$ligne["ID"];
 		$ColorTime="black";
-		$enabled=Field_checkbox_design($zmd5, 1,$ligne["enabled"],"Loadjs('$MyPage?enable-js=yes&ID=$ID')");
+		$enabled=Field_checkbox($ID, 1,$ligne["enabled"],"Loadjs('$MyPage?enable-js=yes&ID=$ID')");
 
 		$icon_warning_32="warning32.png";
 		$icon_red_32="32-red.png";
@@ -986,8 +1052,8 @@ function HOTSPOT_EXPLAIN_RULE($ID){
 	if(count($NETS)==0){$network="{no_network_defined}";}else{$network=@implode(" {or} ", $NETS);}
 	$f[]="{when_a_guest_computer_is_a_part_of_nets}:$network {then}";
 	
-	
-	
+
+	$ayDscp = array(0 => '{default}',8 => '0x20',10 => '0x28',12 => '0x30',14 => '0x38',16 => '0x40',18 => '0x48',20 => '0x50',22 => '0x58',24 => '0x60',26 => '0x68',28 => '0x70',30 => '0x78',32 => '0x80',34 => '0x88',36 => '0x90',38 => '0x98',40 => '0xA0',46 => '0xB8',48 => '0xC0',56 => '0xE0');
 	$sock=new wifidog_settings($ID);
 	$ArticaHotSpotNowPassword=intval($sock->GET_INFO("ArticaHotSpotNowPassword"));
 	$ENABLED_REDIRECT_LOGIN=intval($sock->GET_INFO("ENABLED_REDIRECT_LOGIN"));
@@ -1001,6 +1067,10 @@ function HOTSPOT_EXPLAIN_RULE($ID){
 	$DO_NOT_AUTENTICATE=intval($sock->GET_INFO("DO_NOT_AUTENTICATE"));
 	$LIMIT_BY_SIZE=intval($sock->GET_INFO("LIMIT_BY_SIZE"));
 	$LANDING_PAGE=trim($sock->GET_INFO("LANDING_PAGE"));;
+	$SMS_REGISTER=intval($sock->GET_INFO("SMS_REGISTER"));
+	$MACWHITE=intval($sock->GET_INFO("MACWHITE"));
+	$BOUNCE_AUTH=intval($sock->GET_INFO("BOUNCE_AUTH"));
+	$TOS_VALUE=intval($sock->GET_INFO("TOS_VALUE"));
 	
 	$andadd_text=null;
 	if($USE_TERMS==1){
@@ -1008,13 +1078,15 @@ function HOTSPOT_EXPLAIN_RULE($ID){
 		$f[]="{send_first_the_itcharter}";
 	}
 	
-	
+if($SMS_REGISTER==0){	
 	if($DO_NOT_AUTENTICATE==0){
 		if($ENABLED_AUTO_LOGIN==1){
 			$f[]="{$andadd_text}{allow_user_to_be_selfregistred}";
 			if($ArticaHotSpotNowPassword==1){$f[]="{without_need_to_set_password}";}
 			if($ENABLED_REDIRECT_LOGIN==1){
-				$f[]="{and} {force_user_to_register_again_after_expired_session}";
+				if($MACWHITE==0){
+					$f[]="{and} {force_user_to_register_again_after_expired_session}";
+				}
 			}
 		}
 		
@@ -1031,29 +1103,49 @@ function HOTSPOT_EXPLAIN_RULE($ID){
 		$f[]="{just_ask_an_username_hotspot}";
 		
 	}
+}else{
+	
+	$f[]="{$andadd_text}{authenticate_users_with_sms}";
+	
+}
 	
 	$CLOSE=false;
 	
 	if($ArticaSplashHotSpotCacheAuth>0){
-		$T[]="{close_session_each}: {$ArticaSplashHotSpotCacheAuth} {minutes}";
+		if($MACWHITE==0){
+			$T[]="{close_session_each}: {$ArticaSplashHotSpotCacheAuth} {minutes}";
+		}
 		$CLOSE=true;
 	}
 	
 	if($LIMIT_BY_SIZE>0){
 		$or=null;
-		if($CLOSE){$or="{or} ";}
-		$T[]="$or{close_session_each} {downloaded} {$LIMIT_BY_SIZE} MB";
-		$CLOSE=true;
+		if($MACWHITE==0){
+			if($CLOSE){$or="{or} ";}
+			$T[]="$or{close_session_each} {downloaded} {$LIMIT_BY_SIZE} MB";
+			$CLOSE=true;
+		}
 	}
 	
 	if(!$CLOSE){
+		if($MACWHITE==1){$T[]="{save_computer_in_whitelist} {and} ";$ArticaSplashHotSpotEndTime=0;}
 		$T[]="{never_close_session}";
 	}
 	if($ArticaSplashHotSpotEndTime>0){
+		
 		$T[]="{and} {delete_the_account_after}: {$ArticaSplashHotSpotEndTime} {minutes}";
 	}else{
 		$T[]="{and} {never_delete_the_account}";
 	}
+	
+	if($BOUNCE_AUTH==1){
+		$T[]="{and} <strong>{bounce_if_already_authenticated}</strong>";
+	}
+	
+	if($TOS_VALUE>0){
+		$T[]="{and} <strong>{tcp_outgoing_tos} {$ayDscp[$TOS_VALUE]}</strong>";
+	}
+	
 	$f[]=@implode(" ", $T);
 	
 	if($LANDING_PAGE<>null){
@@ -1062,7 +1154,7 @@ function HOTSPOT_EXPLAIN_RULE($ID){
 	}
 	
 	$WifidogClientTimeout_text=$Timez[$WifidogClientTimeout];
-	
+	if($MACWHITE==1){$WifidogClientTimeout_text=null;}
 	
 	$f[]="<strong>{service_will_globally_force_users_to_reauth_each} <a href=\"javascript:blur();\"
 	OnClick=\"javascript:Loadjs('$page?WifidogClientTimeout-js=yes');\"

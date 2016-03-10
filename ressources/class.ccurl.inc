@@ -1013,6 +1013,8 @@ class ccurl{
 		curl_setopt($this->ch, CURLOPT_FILE, $fp = fopen($targetpath,'w'));
 		curl_setopt($this->ch, CURLOPT_URL, "$this->uri");
 		curl_setopt($this->ch, CURLOPT_FRESH_CONNECT, TRUE);
+		curl_setopt($this->ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($this->ch, CURLOPT_USERAGENT, "Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:10.0) Gecko/20100101 Firefox/10.0");
 		curl_setopt($this->ch, CURLOPT_HTTPHEADER, array("Pragma: no-cache,must-revalidate", "Cache-Control: no-cache,must revalidate",'Expect:'));
 		if(!is_numeric($this->Timeout)){$this->Timeout=120;}
 		
@@ -1073,6 +1075,11 @@ class ccurl{
 		$this->OutPutlogs("CURL_ERROR_TEXT: $error");
 		curl_close($this->ch);
 		
+		
+		if($this->CURLINFO_HTTP_CODE==200){
+			return true;
+		}
+		
 		if($GLOBALS["VERBOSE"]){echo "Check \"$targetpath\" CURLINFO_HTTP_CODE: $this->CURLINFO_HTTP_CODE [".__LINE__."]\n";}
 		
 		if(!$this->ParseTextError()){
@@ -1102,6 +1109,19 @@ class ccurl{
 			writelogs("*** FAILED *** datas: $this->uri 404 not Found error: $error",__CLASS__.'/'.__FUNCTION__,__FILE__);
 			return $this->buildErrors();;
 		}
+		
+		if($this->CURLINFO_HTTP_CODE==407){
+			$this->OutPutlogs("* * * 407 Denied * * * ");
+			@unlink($targetpath);
+			$this->error_num=407;
+			if($GLOBALS["VERBOSE"]){echo "*** FAILED *** [".__LINE__."]\n";}
+			writelogs("*** FAILED *** datas: $this->uri 407 Denied error: $error",__CLASS__.'/'.__FUNCTION__,__FILE__);
+			return $this->buildErrors();;
+		}
+		
+		
+		
+		
 		$this->OutPutlogs("Check \"$targetpath\" CURLINFO_HTTP_CODE: $this->CURLINFO_HTTP_CODE [".__LINE__."]");
 		
 		if(!is_file($targetpath)){

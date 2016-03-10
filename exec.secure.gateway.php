@@ -46,6 +46,7 @@ $SH[]="#!/bin/sh";
 
 $SH[]="$iptables -I FORWARD -p tcp -m tcp $suffixTables -j REJECT";
 $SH[]="$iptables -I FORWARD -p udp -m udp $suffixTables -j REJECT";
+$SH[]="$iptables -I FORWARD -p icmp -m conntrack --ctstate RELATED -j ACCEPT";
 
 while ($ligne = mysql_fetch_assoc($results)) {
 	$dport=$ligne["dport"];

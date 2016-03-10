@@ -8,6 +8,7 @@ class cache_manager{
 	public $ok=false;
 	public $TimeOutsec=3;
 	public $errstr_plus=null;
+	public $URL_SENDED;
 	function cache_manager(){
 		
 		
@@ -62,7 +63,7 @@ class cache_manager{
 	public function makeQuery($query,$rawZ=false){
 		if(!$this->fp){if(!$this->connect()){return null;}}
 		$this->errno=0;
-		
+		$this->URL_SENDED="cache_object://localhost/$query";
 		$out = "GET cache_object://localhost/$query HTTP/1.0\r\n\r\n";
 		if($GLOBALS["VERBOSE"]){echo "Send $out\n";}
 	
@@ -100,6 +101,26 @@ class cache_manager{
 		 		@fclose($this->fp);
 		 		return false;
 		 	}
+		 	
+		 	if(preg_match("#INVALID_URL#", $lineZ)){
+		 		$this->errno=5;
+		 		$this->errstr="Invalid url";
+		 		$this->ok=false;
+		 		@socket_close($this->fp);
+		 		@fclose($this->fp);
+		 		return false;
+		 	}
+		 	
+		 	if(preg_match("#ERR_PARANOID#", $lineZ)){
+		 		$this->errno=6;
+		 		$this->errstr="Paranoid mode";
+		 		$this->ok=false;
+		 		@socket_close($this->fp);
+		 		@fclose($this->fp);
+		 		return false;
+		 	}
+		 	
+		 	
 		 	
 		 	if(preg_match("#X-Squid-Error:\s+ERR_([A-Z\_]+)#", $lineZ,$re)){
 		 		if($re[1]=="CACHE_ACCESS_DENIED"){

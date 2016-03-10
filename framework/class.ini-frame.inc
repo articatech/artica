@@ -248,6 +248,7 @@ class iniFrameWork {
     unset($this->_sections);
     unset($this->_params);
     unset($this->_fileFullPath);
+    $this->_params=array();
   }
   
   

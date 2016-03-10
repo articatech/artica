@@ -15,6 +15,7 @@ include_once(dirname(__FILE__).'/ressources/class.mysql.inc');
 include_once(dirname(__FILE__).'/ressources/class.ccurl.inc');
 include_once(dirname(__FILE__).'/framework/class.unix.inc');
 include_once(dirname(__FILE__).'/framework/frame.class.inc');
+include_once(dirname(__FILE__).'/ressources/class.os.system.inc');
 include_once(dirname(__FILE__).'/ressources/class.squidguard.inc');
 
 
@@ -280,7 +281,25 @@ function build_progress_influx($text,$pourc){
 function others_update(){
 	
 	$unix=new unix();
-	$sock=new sockets();
+	
+	$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
+	$cachetime="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".time";
+	$pid=@file_get_contents($pidfile);
+	if($unix->process_exists($pid)){
+			build_progress_influx("Already executed",110);
+			WriteMyLogs("Already executed PID:$pid, die()",__FUNCTION__,__FILE__,__LINE__);
+			return;
+	}
+	
+	if(!$GLOBALS["FORCE"]){
+		$TimeCache=$unix->file_time_min($cachetime);
+		if($TimeCache<30){
+			build_progress_influx("Need at least 30Mn ( current {$TimeCache}mn ) ",110);
+			return;
+		}
+	}
+	
+	
 	$TimeFile=$unix->file_time_min("/etc/artica-postfix/settings/Daemons/ArticaTechNetInfluxRepo");
 	$tmpfile=$unix->TEMP_DIR()."/squid.update.db";
 	if($GLOBALS["VERBOSE"]){$TimeFile=10000;}
@@ -289,18 +308,17 @@ function others_update(){
 	if(!$GLOBALS["FORCE"]){
 		if($TimeFile<480){whatsnew();return;}
 	}
+	$sock=new sockets();
 	
-	
-	build_progress_influx("{check_repository}",20);
+	build_progress_influx("{check_repository} (BigData Engine)",20);
 	
 	$curl=new ccurl("http://articatech.net/influx.php");
 
 		if(!$curl->GetFile($tmpfile)){
-			build_progress_influx("{check_repository} {failed}",110);
+			build_progress_influx("{check_repository} {failed}",20);
 			echo $curl->error."\n";
 			@unlink($tmpfile);
 			squid_admin_mysql(1, "Unable to retreive BigData Engine available versions", $curl->error,__FILE__,__LINE__);
-			return;
 		}
 	
 	
@@ -309,20 +327,134 @@ function others_update(){
 		if($GLOBALS["VERBOSE"]){print_r($ARRAY);}
 	
 		if(count($ARRAY)>0){
+			build_progress_influx("{check_repository} (BigData Engine) {success}",25);
 			@unlink("/etc/artica-postfix/settings/Daemons/ArticaTechNetInfluxRepo");
 			@copy("$tmpfile", "/etc/artica-postfix/settings/Daemons/ArticaTechNetInfluxRepo");
+			@chmod("/etc/artica-postfix/settings/Daemons/ArticaTechNetInfluxRepo",0755);
 			build_progress_influx("{check_repository} {success}",100);
 		}else{
 			echo "**** NOT AN ARRAY ****\n";
-			build_progress_influx("{check_repository} {failed}",110);
+			build_progress_influx("{check_repository} {failed}",20);
 		}
 	
 		@unlink($tmpfile);
 	
+		build_progress_influx("{check_repository} (Suricata)",30);
+		$curl=new ccurl("http://articatech.net/suricata.php");
+		if(!$curl->GetFile($tmpfile)){
+			build_progress_influx("{check_repository} (Suricata) {failed}",110);
+			echo $curl->error."\n";
+			@unlink($tmpfile);
+			system_admin_mysql(1, "Unable to retreive Suricata available versions", $curl->error,__FILE__,__LINE__);
+			squid_admin_mysql(1, "Unable to retreive Suricata available versions", $curl->error,__FILE__,__LINE__);
+			
+		}
+		
+		$DATA=@file_get_contents($tmpfile);
+		$ARRAY=unserialize(base64_decode($DATA));
+		if($GLOBALS["VERBOSE"]){print_r($ARRAY);}
 	
-	
+		if(count($ARRAY)>0){
+			build_progress_influx("{check_repository} (Suricata) {success}",35);
+			@unlink("/etc/artica-postfix/settings/Daemons/ArticaTechNetSuricataRepo");
+			@copy("$tmpfile", "/etc/artica-postfix/settings/Daemons/ArticaTechNetSuricataRepo");
+			@chmod("/etc/artica-postfix/settings/Daemons/ArticaTechNetSuricataRepo",0755);
+			build_progress_influx("{check_repository} (Suricata) {success}",40);
+		}else{
+			echo "**** NOT AN ARRAY ****\n";
+			build_progress_influx("{check_repository} (Suricata) {failed}",35);
+		}
+		
+		
+//-------------------------------------------------------------------------------------------------------		
+		@unlink($tmpfile);
+		
+		build_progress_influx("{check_repository} (HaProxy)",40);
+		$curl=new ccurl("http://articatech.net/haproxy.php");
+		if(!$curl->GetFile($tmpfile)){
+			build_progress_influx("{check_repository} (HaProxy) {failed}",40);
+			echo $curl->error."\n";
+			@unlink($tmpfile);
+			system_admin_mysql(1, "Unable to retreive HaProxy available versions", $curl->error,__FILE__,__LINE__);
+			squid_admin_mysql(1, "Unable to retreive HaProxy available versions", $curl->error,__FILE__,__LINE__);
+				
+		}
+		
+		$DATA=@file_get_contents($tmpfile);
+		$ARRAY=unserialize(base64_decode($DATA));
+		if($GLOBALS["VERBOSE"]){print_r($ARRAY);}
+		
+		if(count($ARRAY)>0){
+			build_progress_influx("{check_repository} (HaProxy) {success}",45);
+			@unlink("/etc/artica-postfix/settings/Daemons/ArticaTechNetHaProxyRepo");
+			@copy("$tmpfile", "/etc/artica-postfix/settings/Daemons/ArticaTechNetHaProxyRepo");
+			@chmod("/etc/artica-postfix/settings/Daemons/ArticaTechNetHaProxyRepo",0755);
+		}else{
+			echo "**** NOT AN ARRAY ****\n";
+			build_progress_influx("{check_repository} (HaProxy) {failed}",45);
+		}		
+//-------------------------------------------------------------------------------------------------------		
+		@unlink($tmpfile);
+		
+		build_progress_influx("{check_repository} (ProFTPD)",50);
+		$curl=new ccurl("http://articatech.net/proftpd.php");
+		if(!$curl->GetFile($tmpfile)){
+			build_progress_influx("{check_repository} (ProFTPD) {failed}",55);
+			echo $curl->error."\n";
+			@unlink($tmpfile);
+			system_admin_mysql(1, "Unable to retreive ProFTPD available versions", $curl->error,__FILE__,__LINE__);
+			squid_admin_mysql(1, "Unable to retreive ProFTPD available versions", $curl->error,__FILE__,__LINE__);
+		
+		}
+		
+		$DATA=@file_get_contents($tmpfile);
+		$ARRAY=unserialize(base64_decode($DATA));
+		if($GLOBALS["VERBOSE"]){print_r($ARRAY);}
+		
+		if(count($ARRAY)>0){
+			build_progress_influx("{check_repository} (ProFTPD) {success}",55);
+			@unlink("/etc/artica-postfix/settings/Daemons/ArticaTechNetProFTPDRepo");
+			@copy("$tmpfile", "/etc/artica-postfix/settings/Daemons/ArticaTechNetProFTPDRepo");
+			@chmod("/etc/artica-postfix/settings/Daemons/ArticaTechNetProFTPDRepo",0755);
+		}else{
+			echo "**** NOT AN ARRAY ****\n";
+			build_progress_influx("{check_repository} (ProFTPD) {failed}",55);
+		}
+		
+//-------------------------------------------------------------------------------------------------------		
+		build_progress_influx("{check_repository} (MailSecurity)",50);
+		$curl=new ccurl("http://articatech.net/mailsecurity.php");
+		if(!$curl->GetFile($tmpfile)){
+			build_progress_influx("{check_repository} (MailSecurity) {failed}",55);
+			echo $curl->error."\n";
+			@unlink($tmpfile);
+			system_admin_mysql(1, "Unable to retreive MailSecurity available versions", $curl->error,__FILE__,__LINE__);
+			squid_admin_mysql(1, "Unable to retreive MailSecurity available versions", $curl->error,__FILE__,__LINE__);
+		
+		}
+		
+		$DATA=@file_get_contents($tmpfile);
+		$ARRAY=unserialize(base64_decode($DATA));
+		if($GLOBALS["VERBOSE"]){print_r($ARRAY);}
+		
+		if(count($ARRAY)>0){
+			build_progress_influx("{check_repository} (MailSecurity) {success}",55);
+			@unlink("/etc/artica-postfix/settings/Daemons/ArticaTechNetMailSecurityRepo");
+			@copy("$tmpfile", "/etc/artica-postfix/settings/Daemons/ArticaTechNetMailSecurityRepo");
+			@chmod("/etc/artica-postfix/settings/Daemons/ArticaTechNetMailSecurityRepo",0755);
+		}else{
+			echo "**** NOT AN ARRAY ****\n";
+			build_progress_influx("{check_repository} (MailSecurity) {failed}",55);
+		}
+		
+		//-------------------------------------------------------------------------------------------------------
+		
+		
+		
+		
+	build_progress_influx("{check_repository} Whatsnew",80);
 	whatsnew();	
-	
+	build_progress_influx("{check_repository} {done}",100);
 }
 
 
@@ -332,6 +464,15 @@ function squid_updates_table(){
 	$squidbin=$unix->LOCATE_SQUID_BIN();
 	$users=new usersMenus();
 	if(!is_file($squidbin)){return;}
+	
+	
+	if(system_is_overloaded(basename(__FILE__))){
+		echo "Overloaded\n";
+		die();
+	}
+	
+	
+	
 	$tmpfile=$unix->TEMP_DIR()."/squid.update.db";
 	$VERSION=@file_get_contents(dirname(__FILE__)."/VERSION");
 	$UUID=$unix->GetUniqueID();
@@ -867,6 +1008,7 @@ function register_lic(){
 		}
 	}
 	
+	echo "Registered for {$LicenseInfos["COMPANY"]}\n";
 	build_progress("Check information {$LicenseInfos["COMPANY"]}",20);
 	
 	if($GLOBALS["VERBOSE"]){echo __FUNCTION__."::".__LINE__."\n";}
@@ -892,11 +1034,12 @@ function register_lic(){
 		echo "Please, restart again...";
 		die();
 	}	
+	
+	
 	$LicenseInfos["UUID"]=$uuid;
 	$LicenseInfos["ARTICAVERSION"]=@file_get_contents("/usr/share/artica-postfix/VERSION");
-	
 	if(is_file("/etc/artica-postfix/STATS_APPLIANCE")){$LicenseInfos["STATS_APPLIANCE"]=1;}
-	
+	echo "License information: Artica v{$LicenseInfos["ARTICAVERSION"]}\n";
 	
 
 	//if($GLOBALS["VERBOSE"]){$curl->parms["VERBOSE"]="yes";}
@@ -916,32 +1059,38 @@ function register_lic(){
 					$manulic=aef00vh567($uuid)."-".aef00vh567($LicenseInfos["license_number"]);
 					if($manulic==$LicenseInfos["UNLOCKLIC"]){
 						@file_put_contents($WORKPATH, "TRUE");
+						echo "License number: License is Active [OK] by the Unlock License\n";
 						$LicenseInfos["license_status"]="{license_active}";
 						$LicenseInfos["TIME"]=time();
 						$sock->SaveConfigFile(base64_encode(serialize($LicenseInfos)), "LicenseInfos");
 						if($cmdADD<>null){shell_exec($cmdADD);}
 						build_progress("{license_active}",80);
 						CheckLic($LicenseInfos,$WizardSavedSettings);
+						build_progress("{done}",100);
 						return;
+					}else{
+						echo "{$LicenseInfos["UNLOCKLIC"]} did not match license!\n";
 					}
+				}else{
+					echo "license_number token not set..\n";
 				}
 			}
 				
 		}
+	}else{
+		echo "License number: UNLOCKLIC not set...\n";
 	}	
 	$unix=new unix();
 	$URIBASE=$unix->MAIN_URI();
 	$URIBASE=str_replace("articatech.net", "artica.fr", $URIBASE);
 	
 	$verbosed="?VERBOSE=yes&time=".time();
+	echo "Checking license on the cloud server\n";
 	build_progress("Checking license on the cloud server...",40);
 	echo "Contacting $URIBASE\n";
 	$curl=new ccurl("$URIBASE/shalla-orders.php",false,null);
 	
-	if($ArticaProxyServerEnabled<>"yes"){
-		echo "* * * Set to not use Local proxy * * *\n";
-		$curl->NoLocalProxy();
-	}
+	
 	
 	
 	if($GLOBALS["VERBOSE"]){$curl->parms["VERBOSE"]=yes;}
@@ -949,9 +1098,18 @@ function register_lic(){
 	$curl->parms["REGISTER-OLD"]=base64_encode(serialize($WizardSavedSettings));
 	echo "Send request... please wait...\n";
 	if(!$curl->get()){
+		echo "**********************************\n";
+		echo "*\n";
+		echo "* Failed to contact cloud server..*\n";
+		echo "*\n";
+		echo "**********************************\n";
 		build_progress("Failed to contact cloud server",110);
-		echo "Error: ".$curl->error."\n";
+		echo "HTTP Error returned: ".$curl->error."\n";
+		echo "**********************************\n";
+		echo "*\n";
 		echo @implode("\n", $curl->errors);
+		echo "*\n";
+		echo "**********************************\n";
 		$LicenseInfos["TIME"]=time();
 		$LicenseInfos["license_status"]="{registration_failed} $curl->error";
 		$sock->SaveConfigFile(base64_encode(serialize($LicenseInfos)), "LicenseInfos");
@@ -963,6 +1121,7 @@ function register_lic(){
 		
 		$LastTime=intval(@file_get_contents("/etc/artica-postfix/REGISTRATION_FAILED_TIME"));
 		if($LastTime==0){
+			
 			@file_put_contents("/etc/artica-postfix/REGISTRATION_FAILED_TIME", time());
 			$sock->SaveConfigFile(base64_encode(serialize($LicenseInfos)), "LicenseInfos");
 			return;
@@ -970,6 +1129,7 @@ function register_lic(){
 		$TimeMin=$unix->time_min($LastTime);
 		if($TimeMin>10080){
 			if(is_file($WORKPATH)){
+				echo "Failed expired license ($error1)\n";
 				@unlink($WORKPATH);
 				squid_admin_mysql(0, base64_decode("Q2Fubm90IGNvbnRhY3QgY2xvdWQgc2VydmVyIHNpbmNlIDcgZGF5cywgdHVybiB0byBDb21tdW5pdHkgRWRpdGlvbg=="),$function_ghost,$line_ghost);
 				$LicenseInfos["license_status"]=$error1;
@@ -987,18 +1147,21 @@ function register_lic(){
 	
 	
 	@file_put_contents("/etc/artica-postfix/REGISTRATION_FAILED_TIME", 0);
-	echo "OK....\n";
+	echo "OK the server as been contacted....\n";
 	build_progress("{checkiccloud1}",50);
 	//if($GLOBALS["VERBOSE"]){echo "***** $curl->data ****\n";}
 	
 	$finaltime=0;
 	if(preg_match("#<FINALTIME>([0-9]+)</FINALTIME>#s", $curl->data,$re)){$finaltime=$re[1];}
 	
+	echo "OK the server as been contacted....[".__LINE__."]\n";
+	
 	if($finaltime>0){
 		if(time()>$finaltime){
 			if(is_file($WORKPATH)){
 				@unlink($WORKPATH);
 				build_progress($verifailed,110);
+				echo "license_status: $licexpir.... (Expired) [".__LINE__."]\n";
 				$array1["license_status"]=$licexpir;
 				$array1["license_number"]=null;
 				$array1["UNLOCKLIC"]=null;
@@ -1023,7 +1186,10 @@ function register_lic(){
 		$sock->SET_INFO("RegisterCloudBadEmail", $re[1]);		
 	}
 	
+	echo "OK Analyze answer from the cloud server....[".__LINE__."]\n";
+	
 	if(preg_match("#REGISTRATION_OK:\[(.+?)\]#s", $curl->data,$re)){
+			echo "OK Registration, waiting an active license....[".__LINE__."]\n";
 			build_progress("{waiting_approval} {success}",100);
 			$LicenseInfos["license_status"]="{waiting_approval}";
 			$LicenseInfos["license_number"]=$re[1];
@@ -1037,12 +1203,23 @@ function register_lic(){
 	}
 	
 	
-	
-
+	echo "Data Lenght: ".strlen($curl->data)." bytes\n";
+	if(strlen($curl->data)==0){
+		build_progress("{error} O Size byte",110);
+		return;
+	}
 	
 	
 	if(preg_match("#LICENSE_OK:\[(.+?)\]#s", $curl->data,$re)){
-			echo "***** LICENSE_OK ****\n";
+			echo "**********************************************\n";
+			echo "*\n";
+			echo "*\n";
+			echo "*              Congratulations\n";
+			echo "*        Your License is  - Active -\n";
+			echo "*\n";
+			echo "*\n";
+			echo "**********************************************\n";
+			echo "OK License is Active....[".__LINE__."]\n";
 			@file_put_contents($WORKPATH, "TRUE");
 			if($finaltime>0){$LicenseInfos["FINAL_TIME"]=$finaltime;}
 			$LicenseInfos["license_status"]="{license_active}";
@@ -1056,7 +1233,14 @@ function register_lic(){
 	}
 	if(preg_match("#REGISTRATION_INVALID#s", $curl->data,$re)){
 		@unlink($WORKPATH);
-		echo "***** REGISTRATION_INVALID ****\n";
+		echo "**********************************************\n";
+		echo "*\n";
+		echo "*\n";
+		echo "*       ****    REGISTRATION_INVALID      ****\n";
+		echo "*\n";
+		echo "*\n";
+		echo "**********************************************\n";
+		echo "Invalid License.......[".__LINE__."]\n";
 		$LicenseInfos["license_status"]="{community_license}";
 		$LicenseInfos["license_number"]=null;
 		$LicenseInfos["UNLOCKLIC"]=null;
@@ -1086,19 +1270,21 @@ function register_lic(){
 		
 	if($curl->error<>null){
 		system_admin_events("License registration failed with error $curl->error", "GetLicense", "license", 0, "license");
+		
 	}
 	
 	build_progress("Unknown registration?",110);
-	if(!is_file($WORKPATH)){
-		build_progress("{waiting_order}",110);
-		echo "***** Registration_failed ****\n";
-		$LicenseInfos["TIME"]=time();
-		if($LicenseInfos["license_number"]==null){
-			$LicenseInfos["license_status"]="{registration_failed} $curl->error";
-		}
-		
-		$sock->SaveConfigFile(base64_encode(serialize($LicenseInfos)), "LicenseInfos");
-	}
+	@unlink($WORKPATH);
+	$LicenseInfos["license_status"]="Community Edition - limited";
+	$LicenseInfos["license_number"]=null;
+	$LicenseInfos["UNLOCKLIC"]=null;
+	$LicenseInfos["TIME"]=time();
+	if($finaltime>0){$LicenseInfos["FINAL_TIME"]=$finaltime;}
+	echo "***** Registration_failed ****\n";
+	$LicenseInfos["TIME"]=time();
+	$unix->Process1(true);
+	$sock->SaveConfigFile(base64_encode(serialize($LicenseInfos)), "LicenseInfos");
+	shell_exec("/usr/share/artica-postfix/bin/process1 --force --verbose ".time()." >/dev/null 2>&1");
 	if($cmdADD<>null){shell_exec($cmdADD);}
 }
 	
@@ -1234,7 +1420,10 @@ function ExportNoCategorized($asPid=false){
 	$URIBASE=$unix->MAIN_URI();
 	$nochecksquid=false;
 	$f=base64_encode(serialize($array));
-	$EnableArticaMetaClient=intval($sock->GET_INFO("EnableArticaMetaClient"));
+	$EnableArticaMetaClient=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaClient"));
+	$EnableArticaMetaServer=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaServer"));
+	if($EnableArticaMetaServer==1){$EnableArticaMetaClient=0;}
+	
 	if($EnableArticaMetaClient==1){
 		$ArticaMetaPort=intval($sock->GET_INFO("ArticaMetaPort"));
 		$ArticaMetaHostname=$sock->GET_INFO("ArticaMetaHost");

@@ -15,6 +15,8 @@ $usersmenus=new usersMenus();
 if($usersmenus->AsArticaAdministrator==false){header('location:users.index.php');exit;}
 
 if(isset($_GET["tabs-js"])){tab_js();exit;}
+if(isset($_GET["remove-lock-lic-js"])){remove_lock_js();exit;}
+if(isset($_POST["remove-lock-lic"])){remove_lock_save();exit;}
 if(isset($_GET["tabs"])){tabs();exit;}
 if(isset($_GET["lic-status"])){license_status();exit;}
 if(isset($_GET["popup"])){popup();exit;}
@@ -31,6 +33,32 @@ function tab_js(){
 	echo $html;	
 	
 }
+
+function remove_lock_js(){
+	$page=CurrentPageName();
+	header("content-type: application/x-javascript");
+	$t=time();
+echo "
+	var xStart$t= function (obj) {
+		Loadjs('artica.license.progress.php');
+	}
+	
+	function Start$t(){
+		var XHR = new XHRConnection();
+		XHR.appendData('remove-lock-lic', 'yes');
+		XHR.setLockOff();
+		XHR.sendAndLoad('$page', 'POST',xStart$t,false);
+	}\nStart$t();\n";
+}
+
+function remove_lock_save(){
+	$sock=new sockets();
+	$LicenseInfos=unserialize(base64_decode($sock->GET_INFO("LicenseInfos")));
+	unset($LicenseInfos["UNLOCKLIC"]);
+	$sock->SaveConfigFile(base64_encode(serialize($LicenseInfos)), "LicenseInfos");
+}
+	
+
 
 function tabs(){
 	$page=CurrentPageName();
@@ -260,6 +288,7 @@ function license_status(){
 	$page=CurrentPageName();
 	$tpl=new templates();
 	$users=new usersMenus();
+	$license_number=null;
 	$uuid=base64_decode($sock->getFrameWork("cmd.php?system-unique-id=yes"));
 	$RegisterCloudBadEmail=intval($sock->GET_INFO("RegisterCloudBadEmail"));
 	$LicenseInfos=unserialize(base64_decode($sock->GET_INFO("LicenseInfos")));
@@ -297,17 +326,21 @@ function license_status(){
 	
 	$WhichLicense_field="<tr>
 				<td class=legend style='font-size:24px'>{license_request}:</td>
-				<td>". Field_array_Hash($WhichLicense,"LICENCE_REQUEST-$t",
-						$LicenseInfos["LICENCE_REQUEST"],"style:font-size:24px;")."</td>
+				<td style='font-size:24px;font-weight:bold'>
+				<input type='hidden' id='LICENCE_REQUEST-$t' value='evaluation'>
+			{request_an_evaluation_license}</td>
 			</tr>";
 	
 
 	$unlocklick="<td>". Field_text("UNLOCKLIC-$t",$LicenseInfos["UNLOCKLIC"],"font-size:24px;width:240px")."</td>";
+	
+	
+	
 	if($LicenseInfos["license_status"]==null){
 		$step=1;
 		$LicenseInfos["license_status"]="{waiting_registration}";
 		$star="{explain_license_free}";
-		$button_text="{request_a_quote}/{license2}";
+		$button_text="{request_an_evaluation_license}";
 	}else{
 		$step=2;
 		$step_text="{waiting_order}";
@@ -324,7 +357,16 @@ function license_status(){
 		$WhichLicense_field=null;
 		$titleprice=null;
 		$License_explain=null;
-		$unlocklick_hidden="<td style='font-size:24px;font-weight:bold'><input type='hidden' id='UNLOCKLIC-$t' value='{$LicenseInfos["UNLOCKLIC"]}'>{$LicenseInfos["UNLOCKLIC"]}</td>";
+		if($LicenseInfos["UNLOCKLIC"]<>null){
+		$unlocklick="
+		<td style='font-size:24px;font-weight:bold'>
+			<input type='hidden' id='UNLOCKLIC-$t' value='{$LicenseInfos["UNLOCKLIC"]}'>
+			<div style='float:right'>". imgtootltip("delete-32.png","{delete}:{unlock_license}","Loadjs('$page?remove-lock-lic-js=yes')")."</div>
+			<span style='font-size:24px'>{$LicenseInfos["UNLOCKLIC"]}</span>
+		</td>";
+		}else{
+			$unlocklick=null;
+		}
 	}
 	
 	if($users->CORP_LICENSE){
@@ -356,11 +398,12 @@ function license_status(){
 	$textcolor="black";
 	$bt="<hr>".button($button_text,"RegisterSave$t()",26);
 	
-	
-	$unlock_license="<tr>
-			<td class=legend style='font-size:24px'>{unlock_license}:</td>
-			$unlocklick
-		</tr>";
+	if($unlocklick<>null){
+		$unlock_license="<tr>
+				<td class=legend style='font-size:24px'>{unlock_license}:</td>
+				$unlocklick
+			</tr>";
+	}
 
 				
 	if($users->CORP_LICENSE){
@@ -368,7 +411,6 @@ function license_status(){
 		$textcolor="#23A83E";
 		$paypal=null;
 		$explain=null;
-		$unlock_license=null;
 		$LicenseInfos["license_status"]="{license_active}";
 	}
 	
@@ -384,22 +426,36 @@ function license_status(){
 	
 	if($FINAL_TIME>0){
 		$ExpiresSoon=intval(time_between_day_Web($FINAL_TIME));
+		$distanceOfTimeInWords=distanceOfTimeInWords(time(),$FINAL_TIME);
 		if($ExpiresSoon<7){
 			$ExpiresSoon_text="<strong style='color:red;font-size:16px'>&nbsp;{ExpiresSoon}</strong>";
 		}
+		
+		if($FINAL_TIME<time()){
+			$ExpiresSoon_text="<strong style='color:red;font-size:16px'>&nbsp;{expired} <i>{license_expired_explain}</i></strong>";
+			$distanceOfTimeInWords=null;
+		}
+		
 		$licenseTime="
 			<tr>
 				<td class=legend style='font-size:24px'>{expiredate}:</td>
-				<td style='font-size:24px'>". $tpl->time_to_date($FINAL_TIME)." (".distanceOfTimeInWords(time(),$FINAL_TIME)."$ExpiresSoon_text)</td>
+				<td style='font-size:24px'>". $tpl->time_to_date($FINAL_TIME)." ($distanceOfTimeInWords$ExpiresSoon_text)</td>
 			</tr>";
 		
 	}
 	
+	if($LicenseInfos["license_number"]<>null){
+	
+	$license_number="<tr>
+	<td class=legend style='font-size:24px'>{license_number}:</td>
+	<td style='font-size:24px'>{$LicenseInfos["license_number"]}</td>
+	</tr>";
+	}
 
 	
 	$html="
 $License_explain
-<div  style='width:98%' class=form>
+<div  style='width:98%;min-height:620px' class=form>
 $RegisterCloudBadEmail_text
 <table style='width:100%'>
 <tr>
@@ -437,10 +493,7 @@ $RegisterCloudBadEmail_text
 			</tr>
 			
 			$WhichLicense_field
-			<tr>
-				<td class=legend style='font-size:24px'>{license_number}:</td>
-				<td style='font-size:24px'>{$LicenseInfos["license_number"]}</td>
-			</tr>
+
 			$unlock_license
 			$unlocklick_hidden
 		<tr>
@@ -475,6 +528,7 @@ function RegisterSave$t(){
 	XHR.appendData('COMPANY',document.getElementById('COMPANY-$t').value);
 	XHR.appendData('EMAIL',document.getElementById('EMAIL-$t').value);
 	XHR.appendData('EMPLOYEES',document.getElementById('EMPLOYEES-$t').value);
+	
 	if( document.getElementById('UNLOCKLIC-$t') ){
 		XHR.appendData('UNLOCKLIC',document.getElementById('UNLOCKLIC-$t').value);
 	}

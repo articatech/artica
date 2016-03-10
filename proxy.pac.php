@@ -1,6 +1,6 @@
 <?php
 $GLOBALS["PROXY_PAC_DEBUG"]=0;
-session_start();
+
 if(isset($_GET["verbose"])){ini_set('display_errors', 1);	
 	ini_set('html_errors',0);ini_set('display_errors', 1);ini_set('error_reporting', E_ALL);
 	$GLOBALS["VERBOSE"]=true;
@@ -17,6 +17,7 @@ $GLOBALS["TITLENAME"]="Dynamic Proxy PAC";
 proxy_pac();
 
 function LoadIncludes(){
+	session_start();
 	include_once(dirname(__FILE__)."/ressources/class.user.inc");
 	include_once(dirname(__FILE__)."/ressources/class.groups.inc");
 	include_once(dirname(__FILE__)."/ressources/class.ldap.inc");
@@ -77,21 +78,9 @@ function proxy_pac(){
 	if(!$GLOBALS["VERBOSE"]){header("Content-Disposition: attachment; filename=\"proxy.pac\"");}
 	
 	if($GLOBALS["VERBOSE"]){unset($_SESSION["PROXY_PAC_CACHE"]);}
-	
-	
-	if(!isset($_SESSION["PROXY_PAC_CACHE"])){
-		if(!class_exists("sockets")){ LoadIncludes();}
-		$sock=new sockets();
-		$SessionCache=intval($sock->GET_INFO("ProxyPacCacheTime"));
-		$ProxyPacLockScript=intval($sock->GET_INFO("ProxyPacLockScript"));
-		if($SessionCache==0){$SessionCache=10;}
-		$_SESSION["PROXY_PAC_CACHE"]=$SessionCache;
-		$_SESSION["PROXY_PAC_LOCK"]=$ProxyPacLockScript;
-	}
-	else{
-		$SessionCache=intval($_SESSION["PROXY_PAC_CACHE"]);
-		$ProxyPacLockScript=intval($_SESSION["PROXY_PAC_LOCK"]);
-	}
+	$SessionCache=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/ProxyPacCacheTime"));
+	$ProxyPacLockScript=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/ProxyPacLockScript"));
+	if($SessionCache==0){$SessionCache=10;}
 	
 	
 	if($ProxyPacLockScript==1){
@@ -110,32 +99,32 @@ function proxy_pac(){
 
 	
 	
-	
 	$KEYMd5=md5($HTTP_USER_AGENT.$IPADDR);
 	$CACHE_FILE=dirname(__FILE__)."/ressources/logs/proxy.pacs/$KEYMd5";
 	
 	if(!$GLOBALS["VERBOSE"]){
 		if(is_file($CACHE_FILE)){
-			packsyslog("connection FROM $IPADDR [$HTTP_USER_AGENT] (cached)");
 			$time=pac_file_time_min($CACHE_FILE);
 			if($time<$SessionCache){
-				
 				header("Content-Length: ".filesize($CACHE_FILE) );
 				@readfile($CACHE_FILE);
-				return;}
+				return;
+			}
 			@unlink($CACHE_FILE);
-			
 		}
 	}
 	
-	if(!class_exists("sockets")){ LoadIncludes();}
-	$sock=new sockets();
-	$ClassiP=new IP();
+	
 	
 	if(!$GLOBALS["VERBOSE"]){
-		$GLOBALS["PROXY_PAC_DEBUG"]=$sock->GET_INFO("ProxyPacDynamicDebug");
+		$GLOBALS["PROXY_PAC_DEBUG"]=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/ProxyPacDynamicDebug"));
 	}
-	$q=new mysql_squid_builder();
+	
+	
+	if(!class_exists("sockets")){ LoadIncludes();}
+	
+	$ClassiP=new IP();
+	
 	
 	if(!$ClassiP->isIPAddress($IPADDR)){
 		$GLOBALS["HOSTNAME"]=$IPADDR;
@@ -149,8 +138,8 @@ function proxy_pac(){
 	
 	
 	pack_debug("Connection FROM: $IPADDR [ $HTTP_USER_AGENT ] ",__FUNCTION__,__LINE__);
-	
-	
+	$sock=new sockets();
+	$q=new mysql_squid_builder();
 	$sql="SELECT * FROM wpad_rules ORDER BY zorder";
 	$results = $q->QUERY_SQL($sql);
 	if(mysql_num_rows($results)==0){die();}
@@ -162,8 +151,9 @@ function proxy_pac(){
 
 	while ($ligne = mysql_fetch_assoc($results)) {
 		$rulename=$ligne["rulename"];
+		$FinishbyDirect=$ligne["FinishbyDirect"];
 		$ID=$ligne["ID"];
-		pack_debug("Parsing rule: \"$rulename\" ID:$ID",__FUNCTION__,__LINE__);
+		pack_debug("Parsing rule: \"$rulename\" ID:$ID FinishbyDirect:$FinishbyDirect",__FUNCTION__,__LINE__);
 		if(!client_matches($ID)){
 			pack_debug("client_matches() resturn false,No source match rule $rulename ID $ID, check other rule",__FUNCTION__,__LINE__);
 			continue;
@@ -193,7 +183,7 @@ function proxy_pac(){
 		pack_debug("$rulename/$ID building build_subrules($ID)",__FUNCTION__,__LINE__);
 		$f[]=build_subrules($ID);
 		pack_debug("$rulename/$ID building build_proxies($ID)",__FUNCTION__,__LINE__);
-		$f[]=build_proxies($ID);
+		$f[]=build_proxies($ID,$FinishbyDirect);
 		$f[]="}\r\n";
 		$f[]="function GetPort(TestURL){";
 		$f[]="\tTestURLRegex = /^[^:]*\:\/\/([^\/]*).*/;";
@@ -979,7 +969,7 @@ function cdirToNetmask($net){
 
 }
 
-function build_proxies($ID){
+function build_proxies($ID,$FinishbyDirect=0){
 	$sql="SELECT * FROM `wpad_destination` WHERE aclid=$ID ORDER BY zorder";
 	$q=new mysql_squid_builder();
 	$results = $q->QUERY_SQL($sql);
@@ -991,7 +981,11 @@ function build_proxies($ID){
 		}
 	
 	
+		
+		
 	if(count($g)==0){return "\n\treturn \"DIRECT\";";}
+	if($FinishbyDirect==1){$g[]="DIRECT";}
+	
 	return "\n\treturn \"".@implode(" ", $g)."\";";
 }
 

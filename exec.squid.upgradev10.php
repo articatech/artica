@@ -283,7 +283,7 @@ if($users->POSTFIX_INSTALLED){
 build_progress("{reconfigure_proxy_service}",70);
 system("$php /usr/share/artica-postfix/exec.squid.php --build --force");
 build_progress("{restarting} BigData Database",80);
-system("/etc/init.d/influx-db restart --force");
+system("/etc/init.d/artica-postgres restart --force");
 build_progress("{restarting} Watchdog",90);
 system("/etc/init.d/artica-status restart --force");
 build_progress("{restarting} Watchdog",95);

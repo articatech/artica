@@ -1,6 +1,7 @@
 <?php
 if(!isset($GLOBALS["AS_ROOT"])){if(posix_getuid()==0){$GLOBALS["AS_ROOT"]=true;}}
 if(function_exists("debug_mem")){debug_mem();}
+include_once(dirname(__FILE__)."/class.tcpip.inc");
 
 class mysql_catz{
 	var $ClassSQL;
@@ -26,7 +27,7 @@ class mysql_catz{
 	var $CacheDatabase="/usr/share/squid3/categories_caches.db";
 	public $UfdbCatEnabled=0;
 	public $FinalUsedServer;
-	
+	public $LocalUfdbCatEnabled=0;
 
 	
 	
@@ -38,7 +39,9 @@ class mysql_catz{
 		$this->LoadParams();
 		if($GLOBALS["EnableLocalUfdbCatService"]==1){
 			$this->UfdbCatEnabled=1;
+			$this->LocalUfdbCatEnabled=1;
 			if($this->isRemoteSockets()){
+				$this->LocalUfdbCatEnabled=0;
 				$GLOBALS["RemoteUfdbCat"]=1;
 				$GLOBALS["ufdbCatInterface"]=$this->GET_INFO("ufdbCatInterface");
 				$GLOBALS["ufdbCatPort"]=intval($this->GET_INFO("ufdbCatPort"));
@@ -52,6 +55,7 @@ class mysql_catz{
 		
 		if($GLOBALS["AsCategoriesAppliance"]==1){
 			$this->UfdbCatEnabled=1;
+			$this->LocalUfdbCatEnabled=1;
 			$GLOBALS["RemoteUfdbCat"]=1;
 			$GLOBALS["ufdbCatInterface"]="127.0.0.1";
 			$GLOBALS["ufdbCatPort"]=intval($this->GET_INFO("ufdbCatPort"));
@@ -64,6 +68,7 @@ class mysql_catz{
 			
 		if($GLOBALS["RemoteUfdbCat"]==1){
 			$this->UfdbCatEnabled=1;
+			$this->LocalUfdbCatEnabled=0;
 			if(!isset($GLOBALS["ufdbCatPort"])){$GLOBALS["ufdbCatPort"]=intval($this->GET_INFO("ufdbCatPort"));}
 			if(!isset($GLOBALS["ufdbCatInterface"])){$GLOBALS["ufdbCatInterface"]=$this->GET_INFO("ufdbCatInterface");}
 		}
@@ -88,8 +93,25 @@ class mysql_catz{
 		if($GLOBALS["UfdbgclientSockTimeOut"]==0){$GLOBALS["UfdbgclientSockTimeOut"]=2;}
 		if(!isset($GLOBALS["SquidPerformance"])){$GLOBALS["SquidPerformance"]=intval($this->GET_INFO("SquidPerformance"));}
 		
-		if($GLOBALS["AsCategoriesAppliance"]==1){$this->UfdbCatEnabled=1;return;}
-		if($GLOBALS["SquidPerformance"]==0){$this->UfdbCatEnabled=1;return;}
+		if(is_file("/etc/artica-postfix/STATS_APPLIANCE")){
+			$this->LocalUfdbCatEnabled=1;
+			$this->UfdbCatEnabled=1;
+			return;
+			
+		}
+		
+		
+		if($GLOBALS["AsCategoriesAppliance"]==1){
+			$this->LocalUfdbCatEnabled=1;
+			$this->UfdbCatEnabled=1;
+			return;
+		}
+		
+		if($GLOBALS["SquidPerformance"]==0){
+				$this->UfdbCatEnabled=1;
+				$this->LocalUfdbCatEnabled=1;
+				return;
+		}
 
 		
 		
@@ -161,7 +183,10 @@ class mysql_catz{
 			return null;
 		}
 				
-		
+		$ipClass=new IP();
+		if($ipClass->isValid($sitename)){
+			$sitename=ip2long($sitename).".addr";
+		}
 
 		$datatosend="http://$sitename 192.168.1.158/- - GET myip=192.168.1.238 myport=3128\n";
 		@socket_write($socket, $datatosend, strlen($datatosend));
@@ -178,8 +203,9 @@ class mysql_catz{
 		$this->TimeExec = round($time_end - $time_start,3);
 		if(is_resource($socket)){@socket_close($socket);}
 		if($GLOBALS["VERBOSE"]){echo " **** > **** $resp\n";}
-		if(preg_match("#\/none\/(.+?)$#", $resp,$re)){
+		if(preg_match("#\/none\/(.+?)$#", trim($resp),$re)){
 			$re[1]=urldecode($re[1]);
+			if(preg_match("#(.+?)\s+#", $re[1],$rz)){$re[1]=$rz[1];}
 			if(preg_match("#^category_(.+)#", $re[1])){$re[1]=$this->tablename_tocat($re[1]);}
 				
 			$this->SetMemoryCache($sitename, $re[1]);
@@ -194,11 +220,34 @@ class mysql_catz{
 	}
 	
 	public function ufdbcat($sitename,$forcecache=false){
-		if($GLOBALS["RemoteUfdbCat"]==1){ return $this->ufdbcat_remote($sitename,$forcecache=false);}
+		if(!isset($GLOBALS["UFDBCAT_SOCKET_PATH"])){$GLOBALS["UFDBCAT_SOCKET_PATH"]=null;}
+		
+		
+		if($GLOBALS["UFDBCAT_SOCKET_PATH"]==null){
+			if($this->is_socket("/var/run/ufdbcat-03978")){
+				$GLOBALS["UFDBCAT_SOCKET_PATH"]="/var/run/ufdbcat-03978";
+				$GLOBALS["RemoteUfdbCat"]=0;
+				$GLOBALS["AsCategoriesAppliance"]=0;
+				$GLOBALS["EnableLocalUfdbCatService"]=1;
+			}
+		}else{
+			$GLOBALS["RemoteUfdbCat"]=0;
+			
+		}
+		
+		
+		
+		if($GLOBALS["RemoteUfdbCat"]==1){ 
+			if($GLOBALS["VERBOSE"]){echo "this->ufdbcat_remote($sitename,$forcecache=false);<br>\n";}
+			return $this->ufdbcat_remote($sitename,$forcecache=false);}
 		
 		if($GLOBALS["VERBOSE"]){echo "ufdbcat($sitename) RemoteUfdbCat 			   = 0<br>\n";}
 		if($GLOBALS["VERBOSE"]){echo "ufdbcat($sitename) EnableLocalUfdbCatService = {$GLOBALS["EnableLocalUfdbCatService"]}<br>\n";}
 		if($GLOBALS["VERBOSE"]){echo "ufdbcat($sitename) AsCategoriesAppliance     = {$GLOBALS["AsCategoriesAppliance"]}<br>\n";}
+		
+		
+		
+		
 		
 		if($GLOBALS["AsCategoriesAppliance"]==1){
 			return $this->ufdbcat_remote($sitename,$forcecache=false);
@@ -212,7 +261,7 @@ class mysql_catz{
 			}
 		}
 		
-		if(!isset($GLOBALS["UFDBCAT_SOCKET_PATH"])){$GLOBALS["UFDBCAT_SOCKET_PATH"]=null;}
+		
 			
 		
 		if($GLOBALS["UFDBCAT_SOCKET_PATH"]==null){
@@ -241,6 +290,7 @@ class mysql_catz{
 		
 		$this->FinalUsedServer="unix:{$GLOBALS["UFDBCAT_SOCKET_PATH"]}";
 		$time_start = $this->microtime_float();
+		if($GLOBALS["VERBOSE"]){echo " ->  stream_socket_client unix://{$GLOBALS["UFDBCAT_SOCKET_PATH"]}<br>\n";}
 		$sock = @stream_socket_client("unix://{$GLOBALS["UFDBCAT_SOCKET_PATH"]}", $errno, $errst,$GLOBALS["UfdbgclientSockTimeOut"]);
 		if(!$sock){
 			if($GLOBALS["VERBOSE"]){echo "<li><strong> unix://{$GLOBALS["UFDBCAT_SOCKET_PATH"]} socket error</strong></li>\n";}
@@ -252,6 +302,15 @@ class mysql_catz{
 			return false;
 		}
 		$GLOBALS["ufdbcat"][date("i")]=true;
+		
+		$sitename_ask=$sitename;
+		$ipClass=new IP();
+		if($ipClass->isValid($sitename_ask)){
+			$sitename_ask=ip2long($sitename_ask).".addr";
+		}
+		
+		
+		if($GLOBALS["VERBOSE"]){echo " -> http://$sitename 192.168.1.158/- - GET myip=192.168.1.238 myport=3128<br>\n";}
 		fwrite($sock, "http://$sitename 192.168.1.158/- - GET myip=192.168.1.238 myport=3128\n");
 		$resp = trim(fread($sock, 4096));
 		fclose($sock);
@@ -446,6 +505,7 @@ class mysql_catz{
 		$orgsitename=$sitename;
 		$cat=$this->GetMemoryCache($orgsitename);
 		if($cat<>null){
+			if($GLOBALS["VERBOSE"]){echo "->GetMemoryCache($orgsitename) ->  $cat<br>\n";}
 			if($cat=="NULL"){$cat=null;}
 			return $cat;
 		}
@@ -479,7 +539,7 @@ class mysql_catz{
 				return $GLOBALS["CATZ"][$sitename];
 			}
 		}
-		
+		if($GLOBALS["VERBOSE"]){echo "GetMemoryCache() ->->ufdbcat($sitename,true)<br>\n";}
 		$catz=$this->ufdbcat($sitename,true);
 		if($catz==null){$catz="NULL";}
 		
@@ -636,6 +696,7 @@ function TransArray(){
 			$trans["category_associations"]="associations";
 			$trans["category_astrology"]="astrology";
 			$trans["category_audio_video"]="audio-video";
+			$trans["category_youtube"]="youtube";
 			$trans["category_automobile_bikes"]="automobile/bikes";
 			$trans["category_automobile_boats"]="automobile/boats";
 			$trans["category_automobile_carpool"]="automobile/carpool";
@@ -788,6 +849,7 @@ function TransArray(){
 	}	
 	
 	
+
 	
 	
 	function CreateCategoryTable($category,$fulltablename=null){

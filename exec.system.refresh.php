@@ -37,12 +37,34 @@ function build_progress($pourc,$text){
 }
 
 function startx(){
-	
+	$unix=new unix();
 	build_progress(50,"{refresh} CPUS");
 	@unlink("/etc/artica-postfix/CPU_NUMBER");
-	build_progress(60,"{refresh} CPUS");
+	build_progress(55,"{refresh} CPUS");
 	@unlink("/usr/share/artica-postfix/ressources/interface-cache/CPU_NUMBER");
-	build_progress(70,"{refresh} CPUS");
+	build_progress(60,"{rescan-disk-system}");
+	
+	$dirs=$unix->dirdir("/sys/class/scsi_host");
+	$echo=$unix->find_program("echo");
+	$udevadm=$unix->find_program("udevadm");
+	$php=$unix->LOCATE_PHP5_BIN();
+	
+	while (list ($dirpath, $line) = each ($dirs)){
+		$basename=basename($dirpath);
+		if(!preg_match("#host[0-9]+#", $basename)){continue;}
+		$cmd="$echo \"- - -\" >$dirpath/scan";
+		build_progress(65,"{rescan-disk-system}" .dirname($dirpath));
+		shell_exec($cmd);
+	}
+	
+	build_progress(70,"{rescan-disk-system}");
+	$cmdline="$php /usr/share/artica-postfix/exec.usb.scan.write.php --verbose";
+	system($cmd);
+	
+	build_progress(80,"{rescan-network-system}");
+	system("$udevadm control --reload-rules");
+	system("$udevadm trigger --attr-match=subsystem=net");
+	
 	sleep(3);
 	system("/usr/share/artica-postfix/bin/process1 --force --verbose --".time());
 	build_progress(100,"{refresh} {done}");

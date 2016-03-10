@@ -48,6 +48,7 @@ function popup(){
 	$DisableTCPEn=intval($sock->GET_INFO("DisableTCPEn"));
 	$DisableTCPWindowScaling=intval($sock->GET_INFO("DisableTCPWindowScaling"));
 	$SquidUploadTimeouts=intval($sock->GET_INFO("SquidUploadTimeouts"));
+	$SquidConnectRetries=intval($sock->GET_INFO("SquidConnectRetries"));
 	$SquidSimpleConfig=$sock->GET_INFO("SquidSimpleConfig");
 	if(!is_numeric($SquidSimpleConfig)){$SquidSimpleConfig=1;}
 
@@ -65,97 +66,108 @@ function popup(){
 	
 	
 	
+	for($i=0;$i<11;$i++){
+		$SquidConnectRetriesZ[$i]=$i;
+	}
+	
+	$SquidConnectRetriesZ[0]="{nottoretry}";
+	
 	$html="
 	<div id='$t'></div>
 	<table style='width:99%' class=form>
 	
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{DisableTCPEn}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . 
+			<td align='right' class=legend style='font-size:22px;vertical-align:top'>". texttooltip("{DisableTCPEn}","{DisableTCPEn_explain}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . 
 			Field_checkbox_design("DisableTCPEn-$t",1,$DisableTCPEn)."&nbsp;</td>
-			<td width=1%>" . help_icon('{DisableTCPEn_explain}',true)."</td>
 		</tr>	
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{DisableTCPWindowScaling}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . 
+			<td align='right' class=legend style='font-size:22px;vertical-align:top'>". texttooltip("{DisableTCPWindowScaling}","{DisableTCPWindowScaling_explain}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . 
 			Field_checkbox_design("DisableTCPWindowScaling-$t",1,$DisableTCPWindowScaling)."&nbsp;</td>
-			<td width=1%>" . help_icon('{DisableTCPWindowScaling_explain}',true)."</td>
+			
 		</tr>	
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{uploads_timeout}</strong>:</td>
-			<td align='left' style='font-size:22px' colspan=2>" . 
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>{uploads_timeout}</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . 
 			Field_array_Hash($Upload_timedout,"SquidUploadTimeouts-$t",$SquidUploadTimeouts,"SquidUploadTimeouts$t()",null,0,"font-size:22px",false)."&nbsp;</td>
 			
 		</tr>
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{forward_max_tries}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . 
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{forward_max_tries}","{forward_max_tries_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . 
 			Field_text("forward_max_tries-$t",$squid->forward_max_tries,'width:60%;font-size:22px')."&nbsp;</td>
-			<td width=1%>" . help_icon('{forward_max_tries_text}',true)."</td>
 		</tr>
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{forward_timeout}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . Field_text("forward_timeout-$t",$squid->forward_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
-			<td width=1%>" . help_icon('{forward_timeout_text}',true)."</td>
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{connect_retries}","{connect_retries_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . 
+			Field_array_Hash($SquidConnectRetriesZ,"SquidConnectRetries-$t",$SquidConnectRetries,"blur()",null,0,"font-size:22px",false)."&nbsp;</td>
+			
+		</tr>					
+					
+					
+		<tr>
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{forward_timeout}","{forward_timeout_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . Field_text("forward_timeout-$t",$squid->forward_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
+			
 		</tr>					
 					
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{client_lifetime}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . Field_text("client_lifetime-$t",$squid->client_lifetime,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
-			<td width=1%>" . help_icon('{client_lifetime_text}',true)."</td>
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{client_lifetime}","{client_lifetime_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . Field_text("client_lifetime-$t",$squid->client_lifetime,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
+			
 		</tr>
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{shutdown_lifetime}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . Field_text("shutdown_lifetime-$t",$squid->shutdown_lifetime,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
-			<td width=1%>" . help_icon('{shutdown_lifetime_text}',true)."</td>
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{shutdown_lifetime}","{shutdown_lifetime_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . Field_text("shutdown_lifetime-$t",$squid->shutdown_lifetime,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
+			
 		</tr>					
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{read_timeout}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . Field_text("read_timeout-$t",$squid->read_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
-			<td width=1%>" . help_icon('{read_timeout_text}',true)."</td>
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{read_timeout}","{read_timeout_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . Field_text("read_timeout-$t",$squid->read_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
+			
 		</tr>	
 					 	
 					
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{dead_peer_timeout}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . Field_text("dead_peer_timeout-$t",$squid->dead_peer_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
-			<td width=1%>" . help_icon('{dead_peer_timeout_text}',true)."</td>
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{dead_peer_timeout}","{dead_peer_timeout_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . Field_text("dead_peer_timeout-$t",$squid->dead_peer_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
+			
 		</tr>	
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{dns_timeout}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . Field_text("dns_timeout-$t",$squid->dns_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
-			<td width=1%>" . help_icon('{dns_timeout_text}',true)."</td>
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{dns_timeout}","{dns_timeout_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . Field_text("dns_timeout-$t",$squid->dns_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
+			
 		</tr>		
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{connect_timeout}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . Field_text("connect_timeout-$t",$squid->connect_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
-			<td width=1%>" . help_icon('{connect_timeout_text}',true)."</td>
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{connect_timeout}","{connect_timeout_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . Field_text("connect_timeout-$t",$squid->connect_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
+			
 		</tr>		
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{peer_connect_timeout}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . Field_text("peer_connect_timeout-$t",$squid->peer_connect_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
-			<td width=1%>" . help_icon('{peer_connect_timeout_text}',true)."</td>
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{peer_connect_timeout}","{peer_connect_timeout_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . Field_text("peer_connect_timeout-$t",$squid->peer_connect_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
+			
 		</tr>
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{persistent_request_timeout}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . Field_text("persistent_request_timeout-$t",$squid->persistent_request_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
-			<td width=1%>" . help_icon('{persistent_request_timeout_text}',true)."</td>
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{persistent_request_timeout}","{persistent_request_timeout_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . Field_text("persistent_request_timeout-$t",$squid->persistent_request_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
+			
 		</tr>
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{pconn_timeout}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . Field_text("pconn_timeout-$t",$squid->pconn_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
-			<td width=1%>" . help_icon('{pconn_timeout_text}',true)."</td>
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{pconn_timeout}","{pconn_timeout_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . Field_text("pconn_timeout-$t",$squid->pconn_timeout,'width:60%;font-size:22px')."&nbsp;{seconds}</td>
+			
 		</tr>	
 		<tr>
-			<td align='right' class=legend style='font-size:22px'>{incoming_rate}</strong>:</td>
-			<td align='left' style='font-size:22px'>" . Field_text("incoming_rate-$t",$squid->incoming_rate,'width:60%;font-size:22px')."&nbsp;</td>
-			<td width=1%>" . help_icon('{incoming_rate_text}',true)."</td>
+			<td align='right' class=legend style='font-size:22px;vertical-align:middle'>". texttooltip("{incoming_rate}","{incoming_rate_text}")."</strong>:</td>
+			<td align='left' style='font-size:22px;vertical-align:middle'>" . Field_text("incoming_rate-$t",$squid->incoming_rate,'width:60%;font-size:22px')."&nbsp;</td>
 		</tr>
 					 	
 					
 			
 		<tr>
-		<td align='right' colspan=3>
+		<td align='right' colspan=2>
 			<hr>". button("{apply}","SaveSNMP$t()",42)."
 		</td>
 		</tr>
@@ -193,6 +205,7 @@ function popup(){
 		XHR.appendData('forward_max_tries',document.getElementById('forward_max_tries-$t').value);
 		XHR.appendData('forward_timeout',document.getElementById('forward_timeout-$t').value);
 		XHR.appendData('SquidUploadTimeouts',document.getElementById('SquidUploadTimeouts-$t').value);
+		XHR.appendData('SquidConnectRetries',document.getElementById('SquidConnectRetries-$t').value);
 		XHR.sendAndLoad('$page', 'POST',x_SaveSNMP$t);	
 		
 	}	
@@ -210,7 +223,6 @@ function popup(){
 			document.getElementById('persistent_request_timeout-$t').disabled=true;
 			document.getElementById('incoming_rate-$t').disabled=true;
 			document.getElementById('pconn_timeout-$t').disabled=true;
-			document.getElementById('forward_max_tries-$t').disabled=true;
 			document.getElementById('forward_timeout-$t').disabled=true;
 			return;
 		}
@@ -242,7 +254,7 @@ function save(){
 	$sock->SET_INFO("DisableTCPEn", $_POST["DisableTCPEn"]);
 	$sock->SET_INFO("DisableTCPWindowScaling", $_POST["DisableTCPWindowScaling"]);
 	$sock->SET_INFO("SquidUploadTimeouts", $_POST["SquidUploadTimeouts"]);
-	
+	$sock->SET_INFO("SquidConnectRetries", $_POST["SquidConnectRetries"]);
 	
 	unset($_POST["SquidUploadTimeouts"]);
 	unset($_POST["DisableTCPEn"]);

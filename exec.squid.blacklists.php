@@ -39,6 +39,31 @@ if(preg_match("#--bycron#",implode(" ",$argv))){$GLOBALS["BYCRON"]=true;$GLOBALS
 if(preg_match("#schedule-id=([0-9]+)#",implode(" ",$argv),$re)){$GLOBALS["SCHEDULE_ID"]=$re[1];}
 
 
+$unix=new unix();
+$mypid=getmypid();
+$me_basename=basename(__FILE__);
+$pgrep=$unix->find_program("pgrep");
+exec("$pgrep -l -f \"$me_basename\" 2>&1",$results);
+while (list ($key, $value) = each ($results) ){
+	$value=trim($value);
+	if($value==null){continue;}
+	if(preg_match("#pgrep#", $value)){continue;}
+	if(!preg_match("#^([0-9]+)\s+#", $value,$re)){continue;}
+	$pid=$re[1];
+	$cmdline=$unix->PID_CMDLINE($pid);
+	$unix->events("[$mypid] Found PID $pid","/var/log/artica-ufdb.log",false,"main()",__LINE__,$me_basename);
+	$unix->events("[$mypid] $pid cmdline: [$cmdline]","/var/log/artica-ufdb.log",false,"main()",__LINE__,$me_basename);
+	if(preg_match("#\/sh\s+-c#",$cmdline)){continue;}
+	echo "[$mypid] Found PID $pid\n";
+	if($mypid==$pid){continue;}
+	updatev2_progress(110,"Already running PID $pid L.".__LINE__);
+	die();
+
+}
+$unix->events("[$mypid] OK, pass process barrier...","/var/log/artica-ufdb.log",false,"main()",__LINE__,$me_basename);
+
+
+
 if($argv[1]=="--tests-pub"){tests_pub($argv[2]);exit;}
 if($argv[1]=="--meta"){die();exit;}
 
@@ -81,6 +106,10 @@ if(is_file("/etc/artica-postfix/PROXYTINY_APPLIANCE")){
 	ufdbevents("PROXYTINY_APPLIANCE IS ACTIVE ,ABORTING TASK",__FUNCTION__,__FILE__,__LINE__);
 	die();
 }
+
+
+
+
 
 if($GLOBALS["FORCE"]){$GLOBALS["BYCRON"]=true;}
 
@@ -402,10 +431,13 @@ function ufdbtables_artica_meta(){
 		}
 		shell_exec("$rm $WORKDIR/*");
 		updatev2_progress(95,"Extracting databases");
-		shell_exec("$tar -xf $tmpdir/webfiltering.tgz -C /");
+		system("$tar -xvf $tmpdir/webfiltering.tgz -C /");
+		updatev2_progress(95,"Stamp file to $TIME");
 		$sock->SET_INFO("ArticaMetaWebFilteringTime",$TIME);
 		squid_admin_mysql(2, "Reloading Web filtering services after updates via Meta", null,__FILE__,__LINE__);
+		updatev2_progress(95,"Reloading Web filtering service");
 		shell_exec("/etc/init.d/ufdb reload");
+		updatev2_progress(95,"Reloading Categories database service");
 		shell_exec("/etc/init.d/ufdbcat reload");
 		
 	}
@@ -631,7 +663,10 @@ function tlsetables($nopid=false){
 		@file_put_contents($pidfile, getmypid());
 	}
 	
-	$EnableArticaMetaClient=intval($sock->GET_INFO("EnableArticaMetaClient"));
+	$EnableArticaMetaClient=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaClient"));
+	$EnableArticaMetaServer=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaServer"));
+	if($EnableArticaMetaServer==1){$EnableArticaMetaClient=0;}
+	
 	if($EnableArticaMetaClient==1){return false;}
 	$CACHE_FILE="/etc/artica-postfix/settings/Daemons/CurrentTLSEDbCloud";
 	$InterfaceFile="/etc/artica-postfix/settings/Daemons/TLSEDbCloud";
@@ -661,12 +696,13 @@ function tlsetables($nopid=false){
 		$MD5GZ=$MAIN["MD5GZ"];
 		$TIME=$MAIN["TIME"];
 		$SIZE=$MAIN["SIZE"];
-		
+		$increment_text=" [$c/$countDecategories]";
+		$c++;
 		$prc=$c/$countDecategories;
 		$prc=round($prc*100);
 		if($prc>10){
 			if($prc<80){
-				updatev2_progress($prc,"TLSE: {checking} $categoryname ($ROWS {items}");
+				updatev2_progress($prc,"TLSE: {checking} $categoryname ($ROWS {items}$increment_text");
 			}
 		}
 		if($prc==0){$prc=10;}
@@ -692,8 +728,8 @@ function tlsetables($nopid=false){
 		echo "$CURRENT_MD5 <> $MD5SRC\n";
 		
 		
-		if(!update_category_tlse("$URIBASE/$categoryname.gz",$categoryname,$MD5GZ,$MD5SRC,$prc)){
-				updatev2_progress($prc,"TLSE: {failed} $categoryname (skip)");
+		if(!update_category_tlse("$URIBASE/$categoryname.gz",$categoryname,$MD5GZ,$MD5SRC,$prc,$increment_text)){
+				updatev2_progress($prc,"TLSE: {failed} $categoryname (skip)$increment_text");
 				continue;
 		}
 		
@@ -808,7 +844,10 @@ function ufdbtables($nopid=false){
 		@file_put_contents($pidfile, getmypid());
 	}
 	
-	$EnableArticaMetaClient=intval($sock->GET_INFO("EnableArticaMetaClient"));
+	$EnableArticaMetaClient=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaClient"));
+	$EnableArticaMetaServer=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaServer"));
+	if($EnableArticaMetaServer==1){$EnableArticaMetaClient=0;}
+	
 	if($EnableArticaMetaClient==1){
 		updatev2_progress(10,"Using Meta console [".__LINE__."]");
 		return ufdbtables_artica_meta();
@@ -869,8 +908,10 @@ function ufdbtables($nopid=false){
 	$updated=0;
 	$GLOBALS["DOWNLOADED_SIZE"]=0;
 	@mkdir("/var/lib/ufdbartica",0755,true);
+	$CountOfPackages=count($MAIN_ARRAY);
 	while (list ($tablename, $MAIN) = each ($MAIN_ARRAY) ){
 		$c++;
+		$increment_text=" [$c/$CountOfPackages]";
 		$DOWNLOADED_SIZE=FormatBytes($GLOBALS["DOWNLOADED_SIZE"]/1024);
 		$ROWS=$MAIN["ROWS"];
 		$ROWS_TEXT=FormatNumber($ROWS);
@@ -883,11 +924,11 @@ function ufdbtables($nopid=false){
 		$prc=round($prc*100);
 		if($prc>10){
 			if($prc<95){
-				updatev2_progress($prc,"{checking} $tablename ($ROWS_TEXT {items})");
+				updatev2_progress($prc,"{checking} $tablename ($ROWS_TEXT {items})$increment_text");
 			}
 		}
 		if($CURRENT_MD5==$MD5SRC){
-			updatev2_progress($prc,"{skipping} $tablename ($ROWS_TEXT {items})");
+			updatev2_progress($prc,"{skipping} $tablename ($ROWS_TEXT {items})$increment_text");
 			$LOCAL_ARRAY[$tablename]["ROWS"]=$ROWS;
 			$LOCAL_ARRAY[$tablename]["TIME"]=$TIME;
 			$LOCAL_ARRAY[$tablename]["SUCCESS"]=true;
@@ -897,8 +938,8 @@ function ufdbtables($nopid=false){
 			continue;
 		}
 			
-		updatev2_progress($prc,"{updating} $tablename ($DOWNLOADED_SIZE) ($ROWS_TEXT {items})");
-		if(!update_category("$URIBASE/$tablename.gz",$tablename,$MD5GZ,$MD5SRC,$prc)){
+		updatev2_progress($prc,"{updating} $tablename ($DOWNLOADED_SIZE) ($ROWS_TEXT {items})$increment_text");
+		if(!update_category("$URIBASE/$tablename.gz",$tablename,$MD5GZ,$MD5SRC,$prc,$increment_text)){
 			updatev2_progress($prc,"{update_failed} $tablename");
 			$LOCAL_ARRAY[$tablename]["SUCCESS"]=false;
 			$FAILED++;
@@ -931,6 +972,57 @@ function ufdbtables($nopid=false){
 		shell_exec("/etc/init.d/ufdbcat reload");
 		
 	}
+	
+	
+	updatev2_progress(96,"{verify}");
+	reset($MAIN_ARRAY);
+	while (list ($tablename, $MAIN) = each ($MAIN_ARRAY) ){
+
+		
+		
+		
+		$ROWS=$MAIN["ROWS"];
+		$ROWS_TEXT=FormatNumber($ROWS);
+		$TIME=$MAIN["TIME"];
+		$MD5SRC=$MAIN["MD5SRC"];
+		$MD5GZ=$MAIN["MD5GZ"];
+		$CurrentFile="/var/lib/ufdbartica/$tablename/domains.ufdb";
+		echo "$tablename\n";
+		$unix->events("Verify: $tablename [$MD5SRC]","/var/log/artica-ufdb.log",false,__FUNCTION__,__LINE__,__FILE__);
+		
+		
+		if(!is_file($CurrentFile)){
+			$unix->events("Verifiy: $tablename $CurrentFile no such file","/var/log/artica-ufdb.log",false,__FUNCTION__,__LINE__,__FILE__);
+			echo "$CurrentFile no such file\n";
+			$LOCAL_ARRAY[$tablename]["SUCCESS"]=false;
+			updatev2_progress(96,"$tablename {failed}");
+			continue;
+		}
+			
+		$md5db=md5_file($CurrentFile);
+		if($md5db<>$MD5SRC){
+			$unix->events("Verifiy: $tablename $CurrentFile MD5 differ $md5db<>$MD5SRC","/var/log/artica-ufdb.log",false,__FUNCTION__,__LINE__,__FILE__);
+			echo "$CurrentFile MD5 differ\n";
+			$LOCAL_ARRAY[$tablename]["SUCCESS"]=false;
+			updatev2_progress(96,"$tablename {failed}");
+			continue;
+		}
+		
+		$unix->events("Verifiy: $tablename success...","/var/log/artica-ufdb.log",false,__FUNCTION__,__LINE__,__FILE__);
+		$LOCAL_ARRAY[$tablename]["SUCCESS"]=true;
+		$LOCAL_ARRAY[$tablename]["MD5SRC"]=$md5db;
+		$LOCAL_ARRAY[$tablename]["SIZE"]=@filesize($CurrentFile);
+		$LOCAL_ARRAY[$tablename]["ROWS"]=$ROWS;
+		$LOCAL_ARRAY[$tablename]["TIME"]=$TIME;
+		$LOCAL_ARRAY[$tablename]["UPDATED"]=time();
+		
+		}
+		
+		
+		
+	
+	
+	
 		
 
 	@file_put_contents($CACHE_FILE, serialize($LOCAL_ARRAY));
@@ -1037,7 +1129,7 @@ function TranslateToMetaServer(){
 }
 
 
-function update_category_tlse($URI,$tablename,$MD5GZ,$MD5SRC,$prc){
+function update_category_tlse($URI,$tablename,$MD5GZ,$MD5SRC,$prc,$increment_text){
 	$GLOBALS["previousProgress"]=0;
 	$GLOBALS["CURRENT_DB"]=$tablename;
 	$GLOBALS["CURRENT_PRC"]=$prc;
@@ -1050,6 +1142,8 @@ function update_category_tlse($URI,$tablename,$MD5GZ,$MD5SRC,$prc){
 	$tmpdir=$unix->TEMP_DIR();
 	$tmpfile="$tmpdir/$tablename.gz";
 	$dbtemp="$tmpdir/$tablename.ufdb";
+	$GLOBALS["increment_text"]=$increment_text;
+	
 	
 	$finaldirectory="/var/lib/ftpunivtlse1fr/$tablename";
 	$finaldestination="$finaldirectory/domains.ufdb";
@@ -1115,7 +1209,7 @@ function update_category_tlse($URI,$tablename,$MD5GZ,$MD5SRC,$prc){
 	
 		}
 	
-	updatev2_progress($prc,"{installing} $tablename");
+	updatev2_progress($prc,"TLSE: {installing} $tablename$increment_text");
 	
 	echo "$dbtemp -> $finaldestination\n";
 	
@@ -1141,7 +1235,7 @@ function update_category_tlse($URI,$tablename,$MD5GZ,$MD5SRC,$prc){
 }
 
 
-function update_category($URI,$tablename,$MD5GZ,$MD5SRC,$prc){
+function update_category($URI,$tablename,$MD5GZ,$MD5SRC,$prc,$increment_text=null){
 	$GLOBALS["previousProgress"]=0;
 	$GLOBALS["CURRENT_DB"]=$tablename;
 	$GLOBALS["CURRENT_PRC"]=$prc;
@@ -1154,6 +1248,7 @@ function update_category($URI,$tablename,$MD5GZ,$MD5SRC,$prc){
 	$tmpdir=$unix->TEMP_DIR();
 	$tmpfile="$tmpdir/$tablename.gz";
 	$dbtemp="$tmpdir/$tablename.ufdb";
+	$GLOBALS["increment_text"]=$increment_text;
 	$finaldestination="/var/lib/ufdbartica/$tablename/domains.ufdb";
 	if(!is_dir(dirname("$finaldestination"))){@mkdir(dirname("$finaldestination"),0755,true);}
 	if(is_file($tmpfile)){@unlink($tmpfile);}
@@ -1167,9 +1262,10 @@ function update_category($URI,$tablename,$MD5GZ,$MD5SRC,$prc){
 	}
 	
 	
-	updatev2_progress($prc,"{downloading} $tablename");
+	updatev2_progress($prc,"{downloading} $tablename$increment_text");
 	if(!$curl->GetFile($tmpfile)){
 		if(is_file($tmpfile)){@unlink($tmpfile);}
+		$unix->events("Downloading $tablename.gz Failed: $curl->error","/var/log/artica-ufdb.log",false,__FUNCTION__,__LINE__,__FILE__);
 		echo "Downloading $tablename.gz Failed: $curl->error\n";
 		while (list ($a, $b) = each ($curl->errors) ){echo "Report: $b\n";}
 		squid_admin_mysql(1,"Unable to download blacklist $tablename.gz file $curl->error",@implode("\n", $curl->errors),__FUNCTION__,__LINE__);
@@ -1180,6 +1276,7 @@ function update_category($URI,$tablename,$MD5GZ,$MD5SRC,$prc){
 	$md5gz=md5_file($tmpfile);
 	if($md5gz<>$MD5GZ){
 		echo "Failed: Corrupted download $md5gz<>$MD5GZ\n";
+		$unix->events("Downloading $tablename.gz Failed: Corrupted download $md5gz<>$MD5GZ","/var/log/artica-ufdb.log",false,__FUNCTION__,__LINE__,__FILE__);
 		squid_admin_mysql(1,"Unable to update blacklist $tablename.gz MD5 differ","$md5gz<>$MD5GZ",__FUNCTION__,__LINE__);
 		if(is_file($tmpfile)){@unlink($tmpfile);}
 		return false;
@@ -1187,12 +1284,13 @@ function update_category($URI,$tablename,$MD5GZ,$MD5SRC,$prc){
 	
 	$GLOBALS["DOWNLOADED_SIZE"]=$GLOBALS["DOWNLOADED_SIZE"]+@filesize($tmpfile);
 	
-	updatev2_progress($prc,"{uncompress} $tablename");
+	updatev2_progress($prc,"{uncompress} $tablename$increment_text");
 	$unix->uncompress($tmpfile, $dbtemp);
 	if(is_file($tmpfile)){@unlink($tmpfile);}
 	$md5db=md5_file($dbtemp);
 	if($md5db<>$MD5SRC){
-		echo "Failed: Corrupted uncompress $md5gz<>$MD5GZ\n";
+		$unix->events("Downloading $tablename.gz Failed: Corrupted download $md5gz<>$MD5GZ","/var/log/artica-ufdb.log",false,__FUNCTION__,__LINE__,__FILE__);
+		echo "Failed: Corrupted uncompress $md5db<>$MD5GZ\n";
 		squid_admin_mysql(1,"Unable to uncompress blacklist $tablename.gz MD5 differ","$md5db<>$MD5SRC",__FUNCTION__,__LINE__);
 		if(is_file($dbtemp)){@unlink($dbtemp);}
 		return false;
@@ -1204,6 +1302,7 @@ function update_category($URI,$tablename,$MD5GZ,$MD5SRC,$prc){
 		if(is_file("$tmpdir/or-$finaldestination_name")){@unlink("$tmpdir/or-$finaldestination_name");}
 
 		if(!@copy($finaldestination,"$tmpdir/or-$finaldestination_name")){
+			$unix->events("Failed: Backup original $finaldestination_name","/var/log/artica-ufdb.log",false,__FUNCTION__,__LINE__,__FILE__);
 			echo "Failed: Backup original $finaldestination_name\n";
 			if(is_file("$tmpdir/or-$finaldestination_name")){@unlink("$tmpdir/or-$finaldestination_name");}
 			if(is_file($dbtemp)){@unlink($dbtemp);}
@@ -1214,7 +1313,7 @@ function update_category($URI,$tablename,$MD5GZ,$MD5SRC,$prc){
 		
 	}
 	
-	updatev2_progress($prc,"{installing} $tablename");
+	updatev2_progress($prc,"{installing} $tablename$increment_text");
 	if(!@copy($dbtemp,$finaldestination)){
 		echo "Failed: moved to original $finaldestination\n";
 		if(is_file("$tmpdir/or-$finaldestination_name")){
@@ -1245,7 +1344,7 @@ function download_progress( $download_size, $downloaded_size, $upload_size, $upl
 
 	if ( $progress > $GLOBALS["previousProgress"]){
 		if($progress<95){
-			updatev2_progress($GLOBALS["CURRENT_PRC"],"{downloading} {$GLOBALS["CURRENT_DB"]} {$progress}%");
+			updatev2_progress($GLOBALS["CURRENT_PRC"],"{downloading} {$GLOBALS["CURRENT_DB"]} {$progress}%{$GLOBALS["increment_text"]}");
 		}
 		$GLOBALS["previousProgress"]=$progress;
 			
@@ -1489,7 +1588,15 @@ function updatev2_progress($num,$text){
 	
 	
 	}
-	$text=$text. " ($function/$line)";
+	
+	$line=intval($line);
+	if($line>0){
+		$text=$text. " ($function/$line)";
+	}else{
+		$text=$text. " ($function)";
+	}
+	
+	
 	$array["POURC"]=$num;
 	$array["TEXT"]=$text." ".date("Y-m-d H:i:s");
 	
@@ -1754,7 +1861,8 @@ function updatev2_NAS(){
 	squid_admin_mysql(2, "New Artica Database statistics $LOCAL_VERSION updated took:$took","");
 	artica_update_event(2,"New Artica Database statistics $LOCAL_VERSION updated took:$took",null,__FILE__,__LINE__,"ufbd-artica");
 	updatev2_progress(100,"{done}");
-	$q->QUERY_SQL("TRUNCATE TABLE `catztemp`");
+	
+	if($q->TABLE_EXISTS("catztemp")){$q->QUERY_SQL("DROP TABLE `catztemp`");}
 	$nohup=$unix->find_program("nohup");
 	$php5=$unix->LOCATE_PHP5_BIN();
 	
@@ -1810,7 +1918,9 @@ function updatev2_manu(){
 	squid_admin_mysql(2, "New Artica Database statistics $LOCAL_VERSION updated took:$took","");
 	// ufdbguard_admin_events("New Artica Database statistics $LOCAL_VERSION updated took:$took.",__FUNCTION__,__FILE__,__LINE__,"ufbd-artica");
 	updatev2_progress(100,"{done}");
-	$q->QUERY_SQL("TRUNCATE TABLE `catztemp`");
+	if($q->TABLE_EXISTS("catztemp")){
+		$q->QUERY_SQL("DROP TABLE `catztemp`");
+	}
 	$nohup=$unix->find_program("nohup");
 	$php5=$unix->LOCATE_PHP5_BIN();
 
@@ -1945,15 +2055,29 @@ function updatev2(){
 	if($GLOBALS["BYCRON"]){$tlse_token==" --bycron --force";}
 	if($GLOBALS["FORCE"]){$tlse_force_token=" --force";}
 	
-	$EnableArticaMetaClient=intval($sock->GET_INFO("EnableArticaMetaClient"));
+	$php=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	$PrivoxyEnabled=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/PrivoxyEnabled"));
+	
+	if($PrivoxyEnabled==1){
+		@chmod("/usr/share/artica-postfix/bin/privoxy-blocklist.sh", 0755);
+		system("$nohup /usr/share/artica-postfix/bin/privoxy-blocklist.sh >/dev/null 2>&1 &");
+		
+	}
+	
+	system("$nohup $php /usr/share/artica-postfix/exec.infected.urls.php >/dev/null 2>&1 &");
+	
+	$EnableArticaMetaClient=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaClient"));
+	$EnableArticaMetaServer=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableArticaMetaServer"));
+	if($EnableArticaMetaServer==1){$EnableArticaMetaClient=0;}
+	
 	if($EnableArticaMetaClient==1){
 		updatev2_progress(10,"Using Meta console [".__LINE__."]");
 		return ufdbtables_artica_meta();
 	}
 	
 	
-	$php=$unix->LOCATE_PHP5_BIN();
-	$nohup=$unix->find_program("nohup");
+
 	
 	
 	updatev2_progress(10,"{checking} [".__LINE__."]");
@@ -1965,7 +2089,7 @@ function updatev2(){
 	ufdb_phistank();
 	TranslateToMetaServer();
 	
-	if(count($GLOBALS["DOWNLOADED_INSTALLED"])>0){
+	if($GLOBALS["DOWNLOADED_INSTALLED"]>0){
 		updatev2_progress(96,"{restarting_webfiltering_service} [".__LINE__."]");
 		squid_admin_mysql(2,"{$GLOBALS["DOWNLOADED_INSTALLED"]} updated blacklists databases [action=restart]", __FILE__,__LINE__);
 		system("/etc/init.d/ufdb restart --updater");
@@ -2154,9 +2278,11 @@ function ifMustBeExecuted2(){
 	$EnableWebProxyStatsAppliance=$sock->GET_INFO("EnableWebProxyStatsAppliance");
 	$CategoriesRepositoryEnable=$sock->GET_INFO("CategoriesRepositoryEnable");
 	$AsCategoriesAppliance=intval($sock->GET_INFO("AsCategoriesAppliance"));
-	
 	if(!is_numeric($CategoriesRepositoryEnable)){$CategoriesRepositoryEnable=0;}
 	if(!is_numeric($EnableWebProxyStatsAppliance)){$EnableWebProxyStatsAppliance=0;}
+	
+	
+	if(is_file("/etc/artica-postfix/STATS_APPLIANCE")){$AsCategoriesAppliance=1;}
 	
 	
 	if($GLOBALS["VERBOSE"]){echo "AsCategoriesAppliance.......: $AsCategoriesAppliance\n";}

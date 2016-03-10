@@ -27,7 +27,7 @@ function js(){
 	$tpl=new templates();
 	$title=$tpl->_ENGINE_parse_body("{file_descriptors}");
 	$page=CurrentPageName();
-	$html="YahooWin3('550','$page?popup=yes','$title');";
+	$html="YahooWin3('890','$page?popup=yes','$title');";
 	echo $html;	
 }
 
@@ -47,19 +47,20 @@ function popup(){
 	
 	
 	$html="
-	<div id='$t' class=explain>{file_descriptors_squid_explain}</div>
-	<table style='width:99%' class=form>
+	<div id='$t' class=explain style='font-size:18px'>{file_descriptors_squid_explain}</div>
+	<div style='width:98%' class=form>
+	<table style='width:100%'>
 		<tr>
-			<td class=legend style='font-size:16px'>{file_descriptors}:</td>
-			<td>". Field_text("max_filedesc",$squid->max_filedesc,"font-size:16px;width:95px")."</td>
+			<td class=legend style='font-size:20px'>{file_descriptors}:</td>
+			<td>". Field_text("max_filedesc",$squid->max_filedesc,"font-size:20px;width:110px")."</td>
 		</tr>
 		<tr>
-			<td class=legend style='font-size:16px'>{NumberOfMaximumFiles}:</td>
-			<td style='font-size:16px'>". Field_text("fs_filemax",$file_max,"font-size:16px;width:95px")."&nbsp;{files}</td>
+			<td class=legend style='font-size:20px'>{NumberOfMaximumFiles}:</td>
+			<td style='font-size:16px'>". Field_text("fs_filemax",$file_max,"font-size:20px;width:110px")."&nbsp;{files}</td>
 		</tr>	
 	
 	<tr>
-		<td align='right' colspan=2><hr>". button("{apply}", "SaveCSVGen$t()","18px")."</td>
+		<td align='right' colspan=2><hr>". button("{apply}", "SaveCSVGen$t()","28")."</td>
 	</tr>
 	</table>
 	
@@ -68,6 +69,7 @@ function popup(){
 		var tempvalue=obj.responseText;
 		if(tempvalue.length>3){alert(tempvalue);}
 		document.getElementById('$t').innerHTML='';
+		javascript:Loadjs('squid.compile.progress.php');
 		YahooWin3Hide();
 	}	
 	
@@ -93,7 +95,7 @@ function max_filedesc(){
 	$squid=new squidbee();
 	if($_POST["max_filedesc"]<1024){$_POST["max_filedesc"]=1024;}
 	$squid->max_filedesc=$_POST["max_filedesc"];
-	$squid->SaveToLdap();
+	$squid->SaveToLdap(true);
 	$sock=new sockets();
 	
 	$key=base64_encode("fs.file-max");

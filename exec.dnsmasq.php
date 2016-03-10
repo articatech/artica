@@ -242,7 +242,7 @@ function cachednshosts_records($g){
 	
 	@file_put_contents("/etc/dnsmasq.hash.domains",serialize($build_hosts_array));
 	$g=GetGoogleWebsitesList($g);
-	print_r($g);
+	
 	if(count($g)>0){@file_put_contents("/etc/dnsmasq.hosts.cmdline",@implode(" ", $g));}
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]}, return ". count($g)." host item(s)\n";}
 	return $g;
@@ -490,7 +490,7 @@ function build_progress($text,$pourc){
 }
 
 
-function start($aspid=false){
+function start($aspid=false,$restart=false){
 	$unix=new unix();
 	$sock=new sockets();
 	$Masterbin=$unix->find_program("dnsmasq");
@@ -517,6 +517,10 @@ function start($aspid=false){
 		}
 		@file_put_contents($pidfile, getmypid());
 	}
+	
+	if($restart){
+		stop(true);
+	}
 
 	$pid=PID_NUM();
 
@@ -541,10 +545,16 @@ function start($aspid=false){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} service disabled (see EnableDNSMASQ)\n";}
 		return false;
 	}
-
+	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Build.....\n";}
 	build(true);
+	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Starting service\n";}
+	
+	if($restart){
+		stop(true);
+	}
 	shell_exec("/etc/init.d/dnsmasq start");
-
+	return true;
+	
 }
 
 
@@ -734,6 +744,7 @@ function PID_NUM(){
 
 function restart() {
 	$unix=new unix();
+	$sock=new sockets();
 	$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
 	$pid=$unix->get_pid_from_file($pidfile);
 	if($unix->process_exists($pid,basename(__FILE__))){
@@ -742,11 +753,25 @@ function restart() {
 		return;
 	}
 	@file_put_contents($pidfile, getmypid());
-	build_progress("{stopping_service}",50);
-	stop(true);
-	build_progress("{starting_service}",90);
-	if(!start(true)){
-		build_progress("{starting_service} {failed}",110);
+	
+	$EnableDNSMASQ=intval($sock->GET_INFO("EnableDNSMASQ"));
+	
+	if($EnableDNSMASQ==1){
+		build_progress("{checking_service}",20);
+		InstallResolvConf();
+		
+	}else{
+		build_progress("{checking_service}",20);
+		RemoveResolvConf();
+		stop(true);
+		build_progress("{stopping_service} {success}",100);
+		return;
+	}
+	
+	
+	build_progress("{starting_service}",50);
+	if(!start(true,true)){
+		build_progress("{starting_service} {failed} - report false",110);
 		return;
 	}
 	build_progress("{starting_service} {restart}",100);
@@ -802,6 +827,7 @@ function build($aspid=false){
 
 
 	$php=$unix->LOCATE_PHP5_BIN();
+	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} patching local hosts..\n";}
 	shell_exec("$php /usr/share/artica-postfix/exec.virtuals-ip.php --hosts");
 	
 	@file_put_contents("/etc/dnsmasq.conf.empty","");
@@ -809,6 +835,7 @@ function build($aspid=false){
 	$DNsServers=GetDNSSservers();
 	
 	if($GLOBALS["MYSQL_ERROR_DNSMASQ"]){
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} MySQL error!\n";}
 		build_progress("{error}",110);
 		return;
 	}
@@ -829,6 +856,7 @@ function build($aspid=false){
 	$G[]="--domain-needed";
 	$G[]="--expand-hosts";
 	$G[]="--bogus-priv";
+	$G[]="--dns-forward-max={$cf->main_array["dns-forward-max"]}";
 	if($GetSpecificDnsServers<>null){ $G[]=$GetSpecificDnsServers; }
 	if($DNsServers<>null){ $G[]=$DNsServers; }
 	if($getdomains<>null){ $G[]=$getdomains; }
@@ -956,6 +984,31 @@ function varrun(){
 	echo "Starting......: ".date("H:i:s")." ResolvConfChecks()\n";
 	ResolvConfChecks();
 }
+
+function InstallResolvConf(){
+	
+	$f=explode("\n",@file_get_contents("/etc/resolv.conf"));
+	while (list ($index, $line) = each ($f) ){
+		$line=trim($line);
+		if($line==null){continue;}
+		if(preg_match("#^nameserver.+#",$line, $re)){continue;}
+		$X[]=$line;
+	}
+	
+	$X[]="nameserver\t127.0.0.1";
+	
+	@file_put_contents("/etc/resolv.conf", @implode("\n", $X));
+	
+}
+
+function RemoveResolvConf(){
+	$resolv=new resolv_conf();
+	$resolvConfBuild=$resolv->build();
+	echo "Starting......: ".date("H:i:s")." /etc/resolv.conf install new one...\n";
+	@file_put_contents("/etc/resolv.conf", $resolvConfBuild);
+	
+}
+
 
 function ResolvConfChecks(){
 	$unix=new unix();

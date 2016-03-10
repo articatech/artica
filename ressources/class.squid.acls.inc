@@ -18,6 +18,7 @@ class squid_acls{
 	private $EnableTransparent27=0;
 	private $SquidUrgency=0;
 	private $ActiveDirectoryEmergency=0;
+	private $EnableArticaHotSpot=0;
 
 	public function squid_acls(){
 		if(posix_getuid()==0){$this->ASROOT=true;}
@@ -30,6 +31,7 @@ class squid_acls{
 		$this->UseDynamicGroupsAcls=1;
 		$this->SquidUrgency=intval($sock->GET_INFO("SquidUrgency"));
 		$this->ActiveDirectoryEmergency=intval($sock->GET_INFO("ActiveDirectoryEmergency"));
+		$this->EnableArticaHotSpot=intval($sock->GET_INFO("EnableArticaHotSpot"));
 		
 		$this->EnableKerbAuth=$sock->GET_INFO("EnableKerbAuth");
 		if(!is_numeric($this->EnableKerbAuth)){$this->EnableKerbAuth=0;}
@@ -72,11 +74,17 @@ class squid_acls{
 	}
 
 	
-	public function Build_Acls($force=false){
+	public function Build_Acls($force=false,$AsMeta=false){
 		echo "Starting......: ".date("H:i:s")." [ACLS]: Building ACLS (patched on 2012-10-08)\n";
-		$this->Build_Acls_Groups($force);
+		$this->defaults_acls();
+		$this->Build_Acls_Groups($force,$AsMeta);
 		$this->Build_Acls_time($force);
-		$this->AllowSmartPhones();
+		if($this->EnableArticaHotSpot==1){
+			$this->hotspot_outgoing_tos();
+		}
+		if(!$AsMeta){
+			$this->AllowSmartPhones();
+		}
 	}
 	
 	private function isDynamicAcls(){
@@ -266,9 +274,14 @@ class squid_acls{
 		
 	}
 	
+	private function defaults_acls(){
+		
+		
+		
+	}
 	
 	
-	private function Build_Acls_Groups($force=false){
+	private function Build_Acls_Groups($force=false,$asMeta=false){
 		if(!$force){
 			if(isset($GLOBALS["BUILD_ACLS_EXECUTED"])){
 				$this->acls_array=$GLOBALS["BUILD_ACLS_EXECUTED"]["acls_array"];
@@ -307,12 +320,23 @@ class squid_acls{
 		$ARRAY_AUTH["ldap_auth"]=true;		
 		
 		$q=new mysql_squid_builder();
-		@mkdir("/etc/squid3/acls",0755,true);
+		$DirectorySuffix="acls";
+		$PrefixGroup="Group";
+		
+		
+		if($asMeta){
+			$q=new mysql();
+			$DirectorySuffix="acls-meta";
+			$PrefixGroup="MetGroup";
+		}
+		@mkdir("/etc/squid3/$DirectorySuffix",0755,true);
 		$sql="SELECT ID,GroupName,GroupType,params FROM webfilters_sqgroups WHERE enabled=1";
-		$results = $q->QUERY_SQL($sql);
+		$results = $q->QUERY_SQL($sql,"metaclient");
 		$ReturnFirstValue=false;
 		while ($ligne = mysql_fetch_assoc($results)) {
-			$acls_name="Group{$ligne["ID"]}";
+			$ItemsPrefix=null;
+			$ItemsSuffix=null;
+			$acls_name="{$PrefixGroup}{$ligne["ID"]}";
 			if($GLOBALS["VERBOSE"]){echo "#\n#\n";}
 			echo "Starting......: ".date("H:i:s")." [ACLS]: ACL Engine Group:[$this->instancetime] $acls_name `{$ligne["GroupName"]}` GroupType {$ligne["GroupType"]}\n";
 			
@@ -345,6 +369,22 @@ class squid_acls{
 				if($TEMPLATE<>null){$this->acls_array[]="deny_info $TEMPLATE $acls_name";}
 				continue;				
 			}
+			
+			if($ligne["GroupType"]=="proxy_auth_tagad"){
+				if($this->EnableKerbAuth==0){echo "Starting......: ".date("H:i:s")." [ACLS]: ACL Engine Group:[$this->instancetime] `{$ligne["GroupName"]}` GroupType {$ligne["GroupType"]} -> SKIP EnableKerbAuth = 0\n";continue;}
+				if($this->SquidUrgency==1){echo "Starting......: ".date("H:i:s")." [ACLS]: ACL Engine Group:[$this->instancetime] `{$ligne["GroupName"]}` GroupType {$ligne["GroupType"]} -> SKIP Emergency mdode !\n";continue;}
+				if($this->ActiveDirectoryEmergency==1){echo "Starting......: ".date("H:i:s")." [ACLS]: ACL Engine Group:[$this->instancetime] `{$ligne["GroupName"]}` GroupType {$ligne["GroupType"]} -> SKIP Emergency mdode !\n";continue;}
+				echo "Starting......: ".date("H:i:s")." [ACLS]: ACL Engine Group:[$this->instancetime] `{$ligne["GroupName"]}` - {$ligne["ID"]}:FIXED:proxy_auth_ads $acls_name is available\n";
+				$this->availableGroups[$ligne["ID"]]=true;
+				$this->acls_array[]="acl tag_{$acls_name} external ads_group TAG:". utf8_encode($ligne["GroupName"]);
+				$this->acls_array[]="http_access deny !tag_{$acls_name}";
+				$this->acls_array[]="acl {$acls_name} tag ". strtolower(utf8_encode($ligne["GroupName"]));
+				$TEMPLATE=$this->acl_tpl($ligne["ID"]);
+				if($TEMPLATE<>null){$this->acls_array[]="deny_info $TEMPLATE $acls_name";}
+				continue;
+			}			
+			
+			
 			
 			if($ligne["GroupType"]=="clt_conn_tag"){
 				$this->availableGroups[$ligne["ID"]]=true;
@@ -511,7 +551,26 @@ class squid_acls{
 				$TEMPLATE=$this->acl_tpl($ligne["ID"]);
 				if($TEMPLATE<>null){$this->acls_array[]="deny_info $TEMPLATE $acls_name";}
 				continue;
-			}	
+			}
+
+			if($ligne["GroupType"]=="tag_categories"){
+				if($CATEGORY_UNSET){
+					$this->acls_array[]="# Group:[$this->instancetime] Categories service is disabled, aborting [".__LINE__."]";
+					echo "Starting......: ".date("H:i:s")." [ACLS]: ACL Engine Group:[$this->instancetime] `{$ligne["GroupName"]}` - Categories service is disabled, aborting\n";
+					continue;
+				}
+				$AclsItemsCount=$this->buildItems($ligne["ID"],$ReturnFirstValue,$asMeta);
+				if($AclsItemsCount>0){
+					$this->availableGroups[$ligne["ID"]]=true;
+					$this->acls_array[]="acl $acls_name tag \"/etc/squid3/$DirectorySuffix/container_{$ligne["ID"]}.txt\" ";
+					$TEMPLATE=$this->acl_tpl($ligne["ID"]);
+					if($TEMPLATE<>null){$this->acls_array[]="deny_info $TEMPLATE $acls_name";}
+				}
+				continue;
+				
+			}
+			
+			
 			
 			if($ligne["GroupType"]=="Smartphones"){
 				$this->availableGroups[$ligne["ID"]]=true;
@@ -541,20 +600,12 @@ class squid_acls{
 		 }
 		 
 		 if($ligne["GroupType"]=="quota_size"){
-		 	if(!$GLOBALS["ArtcExtrnQuotaSizeScanner"]){
-		 		echo "Starting......: ".date("H:i:s")." [ACLS]: ACL Engine Group:[$this->instancetime] `{$ligne["GroupName"]}` - ArtcExtrnQuotaSizeScanner is disabled !!! Why ???\n";
-		 		continue;
+		 	if($this->is_ArtQuotaSize()){
+		 		$this->availableGroups[$ligne["ID"]]=true;
+		 		$this->acls_array[]="acl $acls_name external ArtQuotaSize {$ligne["ID"]}";
+		 		$TEMPLATE=$this->acl_tpl($ligne["ID"]);
+		 		if($TEMPLATE<>null){$this->acls_array[]="deny_info $TEMPLATE $acls_name";}
 		 	}
-		 
-		 	if(!isset($GLOBALS["LoadingExtrnQuotaSize"][$ligne["ID"]])){
-		 		echo "Starting......: ".date("H:i:s")." [ACLS]: ACL Engine Group:[$this->instancetime] `{$ligne["GroupName"]}` NOT AVAILABLE\n";
-		 		continue;
-		 	}
-		 
-		 	$this->availableGroups[$ligne["ID"]]=true;
-		 	$this->acls_array[]="acl $acls_name external ArtSize{$ligne["ID"]}";
-		 	$TEMPLATE=$this->acl_tpl($ligne["ID"]);
-		 	if($TEMPLATE<>null){$this->acls_array[]="deny_info $TEMPLATE $acls_name";}
 		 	continue;
 		 }		 
 			
@@ -579,13 +630,42 @@ class squid_acls{
 				$t->teamviewer_networks($ligne["ID"]);
 				$this->availableGroups[$ligne["ID"]]=true;
 				$this->acls_array[]="acl $acls_name dst \"/etc/squid3/acls/teamviewer-nets.acl\"";
+				continue;
 				
 			}
+			
+			if($ligne["GroupType"]=="whatsapp"){
+				$t=new products_ip_ranges();
+				$t->whatsapp_networks($ligne["ID"]);
+				$this->availableGroups[$ligne["ID"]]=true;
+				$this->acls_array[]="acl $acls_name dst \"/etc/squid3/acls/whatsapp-nets.acl\"";
+				continue;
+			
+			}			
+			
+			if($ligne["GroupType"]=="office365"){
+				$t=new products_ip_ranges();
+				$t->office365_networks($ligne["ID"]);
+				$this->availableGroups[$ligne["ID"]]=true;
+				$this->acls_array[]="acl $acls_name dst \"/etc/squid3/acls/office365-nets.acl\"";
+				continue;
+			
+			}			
+			
+			
+			
+			if($ligne["GroupType"]=="FTP"){
+				$this->acls_array[]="acl $acls_name proto FTP";
+				$this->availableGroups[$ligne["ID"]]=true;
+				continue;
+			}
+			
 			if($ligne["GroupType"]=="AntiTrack"){
 				$t=new products_ip_ranges();
 				$t->AntiTrack();
 				$this->availableGroups[$ligne["ID"]]=true;
 				$this->acls_array[]="acl $acls_name url_regex -i \"/etc/squid3/acls/AntiTrack.acl\"";
+				continue;
 			}
 			
 			
@@ -597,7 +677,15 @@ class squid_acls{
 				$t->skype_networks($ligne["ID"]);
 				$this->availableGroups[$ligne["ID"]]=true;
 				$this->acls_array[]="acl $acls_name dst \"/etc/squid3/acls/skype-nets.acl\"";
-			
+				continue;
+			}		
+
+			if($ligne["GroupType"]=="youtube"){
+				$t=new products_ip_ranges();
+				$t->youtube_networks($ligne["ID"]);
+				$this->availableGroups[$ligne["ID"]]=true;
+				$this->acls_array[]="acl $acls_name dst \"/etc/squid3/acls/youtube-nets.acl\"";
+				continue;
 			}			
 			
 			if($ligne["GroupType"]=="google"){
@@ -605,7 +693,15 @@ class squid_acls{
 				$t->google_networks($ligne["ID"]);
 				$this->availableGroups[$ligne["ID"]]=true;
 				$this->acls_array[]="acl $acls_name dst \"/etc/squid3/acls/google-nets.acl\"";
+				continue;
+			}
 			
+			if($ligne["GroupType"]=="dropbox"){
+				$t=new products_ip_ranges();
+				$t->dropbox_networks($ligne["ID"]);
+				$this->availableGroups[$ligne["ID"]]=true;
+				$this->acls_array[]="acl $acls_name dst \"/etc/squid3/acls/dropbox-nets.acl\"";
+				continue;
 			}
 
 			if($ligne["GroupType"]=="google_ssl"){
@@ -613,7 +709,7 @@ class squid_acls{
 				$t->google_networks($ligne["ID"]);
 				$this->availableGroups[$ligne["ID"]]=true;
 				$this->acls_array[]="acl $acls_name dst \"/etc/squid3/acls/google-ssl.acl\"";
-					
+				continue;	
 			}			
 			
 			
@@ -683,9 +779,15 @@ class squid_acls{
 			if($ligne["GroupType"]=="url_regex_extensions"){
 				$ligne["GroupType"]="url_regex -i";
 			}
+			
+			if($ligne["GroupType"]=="rep_header_filename"){
+				$ligne["GroupType"]="rep_header Content-Disposition -i";
+				$ItemsPrefix="attachment; filename=.*?";
+				$ItemsSuffix="(\"|$)";
+			}
 
 			
-			$AclsItemsCount=$this->buildItems($ligne["ID"],$ReturnFirstValue);
+			$AclsItemsCount=$this->buildItems($ligne["ID"],$ReturnFirstValue,$asMeta,$ItemsPrefix,$ItemsSuffix);
 			
 			if($ligne["GroupType"]=="all"){
 				$this->availableGroups[$ligne["ID"]]=true;
@@ -699,7 +801,7 @@ class squid_acls{
 			if($AclsItemsCount>0){
 				$this->availableGroups[$ligne["ID"]]=true;
 				echo "Starting......: ".date("H:i:s")." [ACLS]: ACL Engine Group: $acls_name is available\n";
-				$this->acls_array[]="acl $acls_name {$ligne["GroupType"]} \"/etc/squid3/acls/container_{$ligne["ID"]}.txt\" ";
+				$this->acls_array[]="acl $acls_name {$ligne["GroupType"]} \"/etc/squid3/$DirectorySuffix/container_{$ligne["ID"]}.txt\" ";
 				$TEMPLATE=$this->acl_tpl($ligne["ID"]);
 				if($TEMPLATE<>null){$this->acls_array[]="deny_info $TEMPLATE $acls_name";}
 				$GLOBALS["BUILD_ACLS_EXECUTED"]["acls_array"]=$this->acls_array;
@@ -715,19 +817,36 @@ class squid_acls{
 	}
 	
 
+	private function is_ArtQuotaSize(){
+		if(isset($GLOBALS["is_ArtQuotaSize"])){return $GLOBALS["is_ArtQuotaSize"];}
+		$q=new mysql_squid_builder();
+		$sql="SELECT webfilters_sqgroups.*,webfilters_sqacls.aclname
+			FROM webfilters_sqgroups, webfilters_sqacls, webfilters_sqacllinks
+			WHERE webfilters_sqacllinks.aclid = webfilters_sqacls.ID
+			AND webfilters_sqacllinks.gpid = webfilters_sqgroups.ID
+			AND webfilters_sqgroups.GroupType = 'quota_size'
+			AND webfilters_sqgroups.enabled =1
+			AND webfilters_sqacls.enabled =1";
+		$results=$q->QUERY_SQL($sql);
+		$GLOBALS["is_ArtQuotaSize"]=mysql_num_rows($results);
+	}
 
 	
 	private function acl_tpl($aclid){
 		
+		$q=new mysql_squid_builder();
+		if(!$q->FIELD_EXISTS("webfilters_sqgroups", "tplreset")){
+			$q->QUERY_SQL("ALTER TABLE `webfilters_sqgroups` ADD `tplreset` smallint(1) ,ADD INDEX ( `tplreset` ) ");
+		}
+	
 		
 		
 		if($GLOBALS["VERBOSE"]){echo "Group {$aclid} Checks acltpl...\n";}
-		$sql="SELECT acltpl FROM webfilters_sqgroups WHERE ID='$aclid'";
-		$q=new mysql_squid_builder();
+		$sql="SELECT acltpl,tplreset FROM webfilters_sqgroups WHERE ID='$aclid'";
 		$ligne=mysql_fetch_array($q->QUERY_SQL($sql));
-		if($ligne["acltpl"]==null){
-			if($GLOBALS["VERBOSE"]){echo "Group {$aclid} Checks acltpl == NULL...\n";}
-			return;}
+		
+		if(intval($ligne["tplreset"])==1){return "TCP_RESET";}
+		if($ligne["acltpl"]==null){if($GLOBALS["VERBOSE"]){echo "Group {$aclid} Checks acltpl == NULL...\n";}return null;}
 		
 
 		
@@ -903,10 +1022,13 @@ class squid_acls{
 	}
 	
 	
-	private function buildItems($gpid,$returnFirstValue=false){
+	private function buildItems($gpid,$returnFirstValue=false,$asMeta=false,$ItemsPrefix=null,$ItemsSuffix=null){
+		
 		$filename="/etc/squid3/acls/container_$gpid.txt";
+		if($asMeta){$filename="/etc/squid3/acls-meta/container_$gpid.txt";}
+		
 		@unlink($filename);
-		$f=$this->GetItems($gpid);
+		$f=$this->GetItems($gpid,null,$asMeta,$ItemsPrefix,$ItemsSuffix);
 		if($GLOBALS["VERBOSE"]){echo "Starting......: ".date("H:i:s")." [ACLS]: Group$gpid, ".count($f)." items\n";}
 		if($returnFirstValue){
 			if($GLOBALS["VERBOSE"]){echo "Starting......: ".date("H:i:s")." [ACLS]: Group$gpid, returnFirstValue = true return ".$f[0]." items\n";}
@@ -1060,6 +1182,7 @@ class squid_acls{
 		
 	}
 	
+	
 	public function clean_dstdomains($array=array()){
 		if(!is_array($array)){return array();}
 		if(count($array)==0){return array();}
@@ -1069,64 +1192,110 @@ class squid_acls{
 		$zMasterDomains=array();
 		$zsubDomains=array();
 		$TRI2=array();
+
 		while (list ($index, $domain) = each ($array) ){
+			$domain=strtolower($domain);
+			$CLEANEDDOMS[$domain]=$domain;
+		}
+		ksort($CLEANEDDOMS);
+		
+		
+		while (list ($index, $domain) = each ($CLEANEDDOMS) ){
 			$domain=trim(strtolower($domain));
 			if($domain==null){continue;}
 			$ORG_DOM=$domain;
-			$chapeau=false;
-			if(substr($domain, 0,1)=="^"){$domain=substr($domain,1,strlen($domain));$chapeau=true;}
+			$chapeau=0;
+			if(substr($domain, 0,1)=="^"){$domain=substr($domain,1,strlen($domain));$chapeau=1;}
 			$domain=$this->dstdomain_parse($domain);
 			if($domain==null){continue;}
 			
 			if(isset($zMasterDomains[$domain])){continue;}
 			if(isset($zsubDomains[$domain])){continue;}
 			$MASTERDOMAIN=$q->GetFamilySites($domain);
-			
 			if($GLOBALS["VERBOSE"]){echo "* * [clean_dstdomains] [\"{$ORG_DOM}\"]: BECOME:'$domain' MASTER:$MASTERDOMAIN; CHAP:\"$chapeau\"\n";}
 			
-			
 			if($MASTERDOMAIN==$domain){
-				if($chapeau){
-					$zMasterDomains[$domain]="$domain";
+				$MAIN_MASTER[$MASTERDOMAIN][$MASTERDOMAIN]=$chapeau;
+				continue;
+			}
+			
+			if(isset($MAIN_MASTER[$MASTERDOMAIN][$MASTERDOMAIN])){continue;}
+			$domain=str_replace(".$MASTERDOMAIN", "", $domain);
+			if($GLOBALS["VERBOSE"]){echo "* * [clean_dstdomains] [\"{$ORG_DOM}\"]:$domain (".__LINE__.")\n";}
+			
+			if(strpos($domain, ".")==0){
+				$suffix=$domain;
+				if(isset($MAIN_MASTER[$MASTERDOMAIN][$suffix])){continue;}
+				$MAIN_MASTER[$MASTERDOMAIN][$suffix]=$chapeau;
+				continue;
+			}
+			
+			if(strpos($domain, ".")>0){
+				$xzdom=explode(".",$domain);
+				$suffix=$xzdom[count($xzdom)-1];
+				if($GLOBALS["VERBOSE"]){echo "* * [clean_dstdomains] [\"{$ORG_DOM}\"]:$domain -> $suffix (".__LINE__.")\n";}
+				if(isset($MAIN_MASTER[$MASTERDOMAIN][$suffix])){continue;}
+				$MAIN_MASTER[$MASTERDOMAIN][$suffix]=$chapeau;
+				
+			}
+			
+			
+			
+			$domain=str_replace("$suffix", "", $domain);
+			$domain=str_replace("..", ".", $domain);
+			if(substr($domain, strlen($domain)-1,1)=="."){$domain=substr($domain, 0,strlen($domain)-1);}
+			if($GLOBALS["VERBOSE"]){echo "* * [clean_dstdomains] [\"{$ORG_DOM}\"]:$domain (".__LINE__.")\n";}
+			
+			if(strpos($domain, ".")==0){
+				$suffix2=$domain;
+				$chapeau=0;
+				if(isset($MAIN_MASTER[$MASTERDOMAIN][$suffix][$suffix2])){continue;}
+				$MAIN_MASTER[$MASTERDOMAIN][$suffix][$suffix2]=$chapeau;
+				if($GLOBALS["VERBOSE"]){echo "* * [clean_dstdomains] [\"{$ORG_DOM}\"]: [$MASTERDOMAIN][$suffix][$suffix2] (".__LINE__.")\n";}
+				continue;
+			}
+			
+		}
+			
+		while (list ($mainsite, $array) = each ($MAIN_MASTER) ){
+			while (list ($subsite, $array2) = each ($array) ){
+				if($subsite==$mainsite){
+					if($array2==0){$f[]=".$mainsite";continue;}
+					$f[]="$mainsite";
 					continue;
 				}
-				if(substr($domain, 0,1)<>"."){$zMasterDomains[$domain]=".{$domain}"; continue;}
-				$zMasterDomains[$domain]="{$domain}";
+				
+				if(is_array($array2)){
+					while (list ($subsite2, $array3) = each ($array2) ){
+						if(is_array($array3)){
+							while (list ($subsite3, $array4) = each ($array2) ){
+								if($array4==0){$f[]=".$subsite3.$subsite2.$subsite.$mainsite";continue;}
+								$f[]="$subsite3.$subsite2.$subsite.$mainsite";
+								continue;
+							}
+							continue;
+						}
+						
+						
+						
+						if($array3==0){$f[]=".$subsite2.$subsite.$mainsite";continue;}
+						$f[]="$subsite2.$subsite.$mainsite";
+						continue;
+						
+						
+					}
 				continue;
-			}
-			
-			if(isset($zMasterDomains[$domain])){continue;}
-			if(isset($zsubDomains[$domain])){continue;}
-			
-			if($chapeau){
-				$zsubDomains[$domain]="$domain";
+				}
+				
+				
+				if($array2==0){$f[]=".$subsite.$mainsite";continue;}
+				$f[]="$subsite.$mainsite";
 				continue;
-			}
-			if(substr($domain, 0,1)<>"."){
-				$zsubDomains[$domain]=".{$domain}"; 
-				continue;
+				
 			}
 			
-			$zsubDomains[$domain]=".{$domain}"; 
 			
-		}
-		
-		
-		if(count($zMasterDomains)>0){
-			while (list ($domain, $ligne) = each ($zMasterDomains) ){
-				if($domain==null){continue;}
-				if($GLOBALS["VERBOSE"]){echo "* * [clean_dstdomains] \"{$domain}\" ->\"$ligne\"\n";}
-				$f[]=$ligne;
-			}
-		}
 			
-		if(count($zsubDomains)>0){	
-			while (list ($domain, $ligne) = each ($zsubDomains) ){
-				$MASTERDOMAIN=$q->GetFamilySites($domain);
-				if(isset($zMasterDomains[$MASTERDOMAIN])){continue;}
-				if($GLOBALS["VERBOSE"]){echo "* * [clean_dstdomains] \"{$domain}\" ->\"$ligne\"\n";}
-				$f[]=$ligne;
-			}
 		}
 		
 		return $f;
@@ -1135,11 +1304,12 @@ class squid_acls{
 	}
 	
 	
-	private function GetItems_dstdomain($gpid){
+	private function GetItems_dstdomain($gpid,$asMeta=false){
 		$q=new mysql_squid_builder();
-		
+		if($asMeta){$q=new mysql();}
+		$array=array();
 		$sql="SELECT * FROM webfilters_sqitems WHERE enabled=1 AND gpid=$gpid";
-		$results = $q->QUERY_SQL($sql);
+		$results = $q->QUERY_SQL($sql,"metaclient");
 		while ($ligne = mysql_fetch_assoc($results)) {
 			$ligne["pattern"]=trim(strtolower($ligne["pattern"]));
 			$array[]=$ligne["pattern"];
@@ -1147,15 +1317,19 @@ class squid_acls{
 		}
 			
 		return $this->clean_dstdomains($array);
-		
-		
-		
 	}
 		
 	
-	public function GetItems($gpid,$required=null){
+	public function GetItems($gpid,$required=null,$asMeta=false,$ItemsPrefix=null,$ItemsSuffix=null){
 		$q=new mysql_squid_builder();
-		$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT GroupName,GroupType,enabled FROM webfilters_sqgroups WHERE ID='$gpid'"));
+		if($asMeta){$q=new mysql();}
+		$sql="SELECT GroupName,GroupType,enabled FROM webfilters_sqgroups WHERE ID='$gpid'";
+		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,"metaclient"));
+		
+		if(!$q->ok){
+			echo "Starting......: ".date("H:i:s")." [ACLS]: AsMeta: $asMeta ACL $q->mysql_error \n";
+			echo "Starting......: ".date("H:i:s")." [ACLS]: ACL $sql\n";
+		}
 		$GroupeType=$ligne["GroupType"];
 		
 		
@@ -1178,12 +1352,12 @@ class squid_acls{
 		$Ipclass=new IP();
 		
 		if($GroupeType=="dstdomain"){
-			return $this->GetItems_dstdomain($gpid);
+			return $this->GetItems_dstdomain($gpid,$asMeta);
 		}
 		
 		$already=array();
 		$MASTERDOMAINAL=array();
-		$results = $q->QUERY_SQL($sql);
+		$results = $q->QUERY_SQL($sql,"metaclient");
 		while ($ligne = mysql_fetch_assoc($results)) {
 			$ligne["pattern"]=trim($ligne["pattern"]);
 			if($ligne["pattern"]==null){continue;}
@@ -1280,7 +1454,7 @@ class squid_acls{
 				$ligne["pattern"]=$entries;
 			}	
 			if($GLOBALS["VERBOSE"]){echo "* * [$GroupeType] \"{$ligne["pattern"]}\"\n";}		
-			$f[]=$ligne["pattern"];
+			$f[]="{$ItemsPrefix}{$ligne["pattern"]}{$ItemsSuffix}";
 			$c++;
 		}
 		return $f;		
@@ -1477,6 +1651,34 @@ class squid_acls{
 		
 		
 	}
+	
+	
+	private function hotspot_outgoing_tos(){
+		$MAIN=array();
+		$q=new mysql_squid_builder();
+		$sql="SELECT ruleid,MasterValue FROM webauth_settings WHERE MasterKey='TOS_VALUE';";
+		$results=$q->QUERY_SQL($sql);
+		while ($ligne = mysql_fetch_assoc($results)) {
+			$MasterValue=intval($ligne["MasterValue"]);
+			$ruleid=$ligne["ruleid"];
+			if($MasterValue==0){continue;}
+			$MAIN[$ruleid]=$MasterValue;
+		}
+		if(count($MAIN)==0){return;}
+		$ayDscp = array(0 => '{default}',8 => '0x20',10 => '0x28',12 => '0x30',14 => '0x38',16 => '0x40',18 => '0x48',20 => '0x50',22 => '0x58',24 => '0x60',26 => '0x68',28 => '0x70',30 => '0x78',32 => '0x80',34 => '0x88',36 => '0x90',38 => '0x98',40 => '0xA0',46 => '0xB8',48 => '0xC0',56 => '0xE0');
+		while (list ($ruleid, $tos) = each ($MAIN)){
+			$acls_name="HotSpot{$ruleid}{$tos}";
+			$this->acls_array[]="acl $acls_name tag HotspotRule$ruleid";
+			$tosHex=$ayDscp[$tos];
+			$HTTP_ACCESS[]="tcp_outgoing_tos $tosHex $acls_name" ;
+		}
+		
+		while (list ($ruleid, $tos) = each ($HTTP_ACCESS)){
+			$this->acls_array[]=$tos;
+		}
+		
+	}
+	
 	
 	private function compilation_params(){
 		if(!$this->ASROOT){return;}

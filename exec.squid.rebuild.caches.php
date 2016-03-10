@@ -98,19 +98,17 @@ function cache_central_rebuild($ID){
 
 	
 	cache_central_rebuild_progress("{calculate_disk_space}",10);
-	$used=$unix->DIRSIZE_MB($cache_directory);
+	
 	$cache_partition=$unix->DIRPART_OF($cache_directory);
 	$cache_partition_free=$unix->DIRECTORY_FREEM($cache_directory);
-	$Required_operation=$used+$used;
-	$AfterOperation=$cache_partition_free-$Required_operation;
+	
+	
 	$next_cache_directory="$cache_directory-delete-".time();
 	$CAN_BE_MOVED=true;
 	
-	echo "Current size.........: {$used}M\n";
+	
 	echo "Partition............: $cache_partition\n";
 	echo "Partition Free.......: {$cache_partition_free}M\n";
-	echo "Free for operation...: {$Required_operation}M\n";
-	echo "Size after operation.: {$AfterOperation}M\n";
 	
 	cache_central_rebuild_progress("{removing_cache}",30);
 	shell_exec("$rm -rf $cache_directory/*");
@@ -368,9 +366,9 @@ function rebuildcaches(){
 		}
 		
 		$DISK_STATUS=$unix->DF_SATUS_K($cache_dir);
-		$DIRECTORY_SIZE=($unix->DIRSIZE_BYTES($cache_dir)/1024)/1024;
+		
 		$AIVA=$DISK_STATUS["AIVA"]*1024;
-		ouputz("Removing $cache_dir '$DIRECTORY_SIZE'M Available {$AIVA}M",__LINE__);
+		ouputz("Removing $cache_dir {$AIVA}M",__LINE__);
 		shell_exec("$rm -rf $cache_dir");
 		ouputz("re-create $cache_dir",__LINE__);
 		squid_admin_mysql(2, "Re-create $cache_dir", null,__FILE__,__LINE__);

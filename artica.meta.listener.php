@@ -92,11 +92,18 @@ function receive_ping(){
 	$ArticaMetaPooling=intval($sock->GET_INFO("ArticaMetaPooling"));
 	$ArticaMetaKillProcess=intval($sock->GET_INFO("ArticaMetaKillProcess"));
 	$ArticaLinkAutoconnect=intval($sock->GET_INFO("ArticaLinkAutoconnect"));
+	$ArticaMetaDumpSQLMD5=$sock->GET_INFO("ArticaMetaDumpSQLMD5");
+	
+	
+	
 	if($ArticaMetaPooling==0){$ArticaMetaPooling=15;}
 	if($ArticaMetaKillProcess==0){$ArticaMetaKillProcess=60;}
 	$array["ArticaMetaPooling"]=$ArticaMetaPooling;
 	$array["ArticaMetaKillProcess"]=$ArticaMetaKillProcess;
 	$array["ArticaLinkAutoconnect"]=$ArticaLinkAutoconnect;
+	if($ArticaMetaDumpSQLMD5<>null){
+		$array["ArticaMetaDumpSQLMD5"]=$ArticaMetaDumpSQLMD5;
+	}
 	$array["SYSTEM_SCHEDULES"]=null;
 	$array["SYSTEM_CLONE"]=null;
 	if($uuid<>null){
@@ -243,19 +250,7 @@ function berekley_db_create($db_path){
 
 
 function logsize($uuid,$file,$size){
-	$time=time();
-	$key=md5("$uuid$size$file$time");
-	$DatabasePath="/usr/share/artica-postfix/ressources/conf/meta/SIZES_". date("Ymdi").".db";
-	if(!berekley_db_create($DatabasePath)){
-		writelogs_meta("Fatal: Creating $DatabasePath",__FUNCTION__,__FILE__,__LINE__);
-		return;}
-	$db_con = @dba_open($DatabasePath, "c","db4");
-	$ARRAY["UUID"]=$uuid;
-	$ARRAY["SIZE"]=$size;
-	$ARRAY["FILE"]=$file;
-	$ARRAY["TIME"]=time();
-	dba_replace($key,base64_encode(serialize($ARRAY)),$db_con);
-	@dba_close($db_con);
+
 }
 
 
@@ -290,7 +285,8 @@ function receive_generic_file(){
 			if(file_exists( $target_file)){@unlink( $target_file);}
 			if( !move_uploaded_file($tmp_file, $target_file) ){
 				echo "$uuid: Error Unable to Move File : $target_file\n";
-				writelogs_meta("$uuid: Error Unable to Move File : $target_file",__FUNCTION__,__FILE__,__LINE__);
+				writelogs_meta("$uuid: Error Unable to Move File : $tmp_file",__FUNCTION__,__FILE__,__LINE__);
+				writelogs_meta("$uuid: Error Unable to Move File To: $target_file",__FUNCTION__,__FILE__,__LINE__);
 				return;
 				
 			}
@@ -566,6 +562,35 @@ function receive_generic_file(){
 			echo "\n<ARTICAMETA>OK</ARTICAMETA>\n";return;
 	}
 //******************************************************************************************************************
+	if($_POST["INTERFACE_CACHE"]=="SQUID_PERFS"){
+		$UploadedDir="{$GLOBALS["HOSTS_PATH"]}/uploaded/$uuid";
+		@mkdir($UploadedDir,0755,true);
+		if(!is_dir($UploadedDir)){return false;}
+		while (list ($key, $arrayF) = each ($_FILES) ){
+			$type_file = $arrayF['type'];
+			$name_file = $arrayF['name'];
+			$tmp_file  = $arrayF['tmp_name'];
+			$filesize  = $arrayF['size'];
+			logsize($uuid,$name_file,$filesize);
+			$t=time();
+			$target_file="$UploadedDir/INTERFACE_CACHE.gz";
+			if(file_exists( $target_file)){@unlink( $target_file);}
+			if( !move_uploaded_file($tmp_file, $target_file) ){
+				echo "$uuid: Error Unable to Move File : $target_file\n";
+				writelogs_meta("$uuid: Error Unable to Move File : $target_file",__FUNCTION__,__FILE__,__LINE__);
+				return;
+			}
+	
+			}
+			$sock->getFrameWork("artica.php?meta-metaclient-scan-upload-dirs=yes&uuid=$uuid");
+					echo "\n<ARTICAMETA>OK</ARTICAMETA>\n";return;
+	}
+	//******************************************************************************************************************
+	
+	
+		
+	
+	
 	if($_POST["PUSH_FILE_CMD"]=="EVENT_NOTIFY_MASTER"){
 		$UploadedDir="{$GLOBALS["HOSTS_PATH"]}/uploaded/$uuid/EVENT_NOTIFY_MASTER";
 		@mkdir($UploadedDir,0755,true);
@@ -891,7 +916,7 @@ function influx_client(){
 	}
 	
 	$sock=new sockets();
-	$sock->getFrameWork("influx.php?influx-client=yes");
+	$sock->getFrameWork("postgres.php?restart-progress=yes");
 	echo "\n<OK>OK</OK>";
 	
 	

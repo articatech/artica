@@ -68,6 +68,17 @@ function page(){
 	
 	if($MonitReportLoadVG15mnCycles==0){$MonitReportLoadVG15mnCycles=60;}
 	
+	$MonitMemPurgeCache=intval($sock->GET_INFO("MonitMemPurgeCache"));
+	$MonitMemPurgeCacheCycles=intval($sock->GET_INFO("MonitMemPurgeCacheCycles"));
+	$MonitMemPurgeCacheLevel=intval($sock->GET_INFO("MonitMemPurgeCacheLevel"));
+	$MonitMemPurgeCacheLevelCycles=intval($sock->GET_INFO("MonitMemPurgeCacheLevelCycles"));
+	if($MonitMemUsageCycles==0){$MonitMemUsageCycles=5;}
+	if($MonitMemPurgeCache==0){$MonitMemPurgeCache=70;}
+	if($MonitMemPurgeCacheCycles==0){$MonitMemPurgeCacheCycles=5;}
+	if($MonitMemPurgeCacheLevel==0){$MonitMemPurgeCacheLevel=3;}
+	if($MonitMemPurgeCacheLevelCycles==0){$MonitMemPurgeCacheLevelCycles=15;}
+	
+	$EnableDNSPerfs=intval($sock->GET_INFO("EnableDNSPerfs"));
 	
 	if($MonitCPUUsage>0){
 		if($MonitCPUUsage<50){
@@ -84,15 +95,36 @@ function page(){
 	if($MonitCPUUsageCycles==0){$MonitCPUUsageCycles=15;}
 	
 	
+	$FREE[1]="pagecache";
+	$FREE[2]="dentries & inodes";
+	$FREE[3]="{all}";
+	
 $html="<div style='font-size:30px;margin-bottom:20px'>{system_health_checking}: {APP_MONIT}</div>
 <div class=explain style='font-size:22px;margin-bottom:20px'>{system_health_checking_explain}</div>		
 <table style='width:100%'>
 <tr>
-	<td valign='top' style='width:350px'><div id='monit-status'></div></td>
+	<td valign='top' style='width:350px'><div id='health-monit-here'><div id='monit-status'></div></div></td>
 	<td valign='top'>
 		<div style='width:98%' class=form>
+		
+		
+		
+		
+		
 		<table style='width:100%'>
+			<tr style='height:90px'>
+				<td style='font-size:30px' colspan=3>{DNS_checking}:</td>
+			</tr>		
 			<tr>
+				<td style='font-size:22px;' class=legend>{check_dns_performance}:</td>
+				<td>". Field_checkbox_design("EnableDNSPerfs", 1,$EnableDNSPerfs)."</td>
+				<td>&nbsp;</td>
+			</tr>		
+		
+		
+		
+		<table style='width:100%'>
+			<tr style='height:90px'>
 				<td style='font-size:30px' colspan=3>{max_system_load}:</td>
 			</tr>
 			<tr>
@@ -100,23 +132,26 @@ $html="<div style='font-size:30px;margin-bottom:20px'>{system_health_checking}: 
 				<td>". Field_array_Hash($LOAD, "MonitReportLoadVG1mn",$MonitReportLoadVG1mn,"style:font-size:22px")."</td>
 				<td>". Field_array_Hash($MINUTES, "MonitReportLoadVG1mnCycles",$MonitReportLoadVG1mnCycles,"style:font-size:22px")."</td>
 			</tr>
+			<tr><td colspan=3>&nbsp;</td></tr>
 			<tr>
 				<td style='font-size:22px;' class=legend>{if_system_load_exceed}:(5 {minutes})</td>
 				<td>". Field_array_Hash($LOAD, "MonitReportLoadVG5mn",$MonitReportLoadVG5mn,"style:font-size:22px")."</td>
 				<td>". Field_array_Hash($MINUTES, "MonitReportLoadVG5mnCycles",$MonitReportLoadVG5mnCycles,"style:font-size:22px")."</td>
 			</tr>	
+				<tr><td colspan=3>&nbsp;</td></tr>		
 			<tr>
 				<td style='font-size:22px;' class=legend>{if_system_load_exceed}:(15 {minutes})</td>
 				<td>". Field_array_Hash($LOAD, "MonitReportLoadVG15mn",$MonitReportLoadVG15mn,"style:font-size:22px")."</td>
 				<td>". Field_array_Hash($MINUTES, "MonitReportLoadVG15mnCycles",$MonitReportLoadVG15mnCycles,"style:font-size:22px")."</td>
 			</tr>
+			<tr><td colspan=3>&nbsp;</td></tr>		
 		</table>
 	</div>
 	
 	
 		<div style='width:98%' class=form>
 		<table style='width:100%'>
-			<tr>
+			<tr style='height:90px'>
 				<td style='font-size:30px' colspan=3>CPU & {memory}:</td>
 			</tr>
 			<tr>
@@ -124,11 +159,24 @@ $html="<div style='font-size:30px;margin-bottom:20px'>{system_health_checking}: 
 				<td>". Field_array_Hash($CPU, "MonitCPUUsage",$MonitCPUUsage,"style:font-size:22px")."</td>
 				<td>". Field_array_Hash($MINUTES, "MonitCPUUsageCycles",$MonitCPUUsageCycles,"style:font-size:22px")."</td>
 			</tr>
+			<tr><td colspan=3>&nbsp;</td></tr>
 			<tr>
 				<td style='font-size:22px;' class=legend>{if_system_memory_exceed}:</td>
 				<td>". Field_array_Hash($CPU, "MonitMemUsage",$MonitMemUsage,"style:font-size:22px")."</td>
 				<td>". Field_array_Hash($MINUTES, "MonitMemUsageCycles",$MonitMemUsageCycles,"style:font-size:22px")."</td>
 			</tr>
+			<tr><td colspan=3>&nbsp;</td></tr>		
+						
+			<tr>
+				<td style='font-size:22px;' class=legend>{purge_kernel_memory_cache_when_exceed}:</td>
+				<td>". Field_array_Hash($CPU, "MonitMemPurgeCache",$MonitMemPurgeCache,"style:font-size:22px")."</td>
+				<td>". Field_array_Hash($MINUTES, "MonitMemPurgeCacheCycles",$MonitMemPurgeCacheCycles,"style:font-size:22px")."</td>
+			</tr>						
+			<tr>
+				<td style='font-size:22px;' class=legend>{purge}:</td>
+				<td>". Field_array_Hash($FREE, "MonitMemPurgeCacheLevel",$MonitMemPurgeCacheLevel,"style:font-size:22px")."</td>
+				<td>". Field_array_Hash($MINUTES, "MonitMemPurgeCacheLevelCycles",$MonitMemPurgeCacheLevelCycles,"style:font-size:22px")."</td>
+			</tr>						
 		</table>
 	</div>	
 	<div style='text-align:right;margin-top:20px'><hr>". button("{apply}", "Save$t()",30)."</div>
@@ -161,7 +209,19 @@ function Save$t(){
 	XHR.appendData('MonitCPUUsageCycles',document.getElementById('MonitCPUUsageCycles').value);
 
 	XHR.appendData('MonitMemUsage',document.getElementById('MonitMemUsage').value);
-	XHR.appendData('MonitMemUsageCycles',document.getElementById('MonitMemUsageCycles').value);	
+	XHR.appendData('MonitMemUsageCycles',document.getElementById('MonitMemUsageCycles').value);
+	XHR.appendData('MonitMemPurgeCacheLevel',document.getElementById('MonitMemPurgeCacheLevel').value);	
+	
+	XHR.appendData('MonitMemPurgeCache',document.getElementById('MonitMemPurgeCache').value);
+	XHR.appendData('MonitMemPurgeCacheCycles',document.getElementById('MonitMemPurgeCacheCycles').value);	
+	XHR.appendData('MonitMemPurgeCacheCycles',document.getElementById('MonitMemPurgeCacheCycles').value);
+	XHR.appendData('MonitMemPurgeCacheLevelCycles',document.getElementById('MonitMemPurgeCacheLevelCycles').value);
+	
+	if(document.getElementById('EnableDNSPerfs').checked){
+		XHR.appendData('EnableDNSPerfs',1);
+	}else{
+		XHR.appendData('EnableDNSPerfs',0);
+	}
 	
 	XHR.sendAndLoad('$page', 'POST',xSave$t);
 }

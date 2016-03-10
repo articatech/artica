@@ -43,7 +43,7 @@ public
     function  STATUS():string;
     procedure WRITE_CONFIG();
     procedure RELOAD();
-    procedure WritePhpConfig();
+
 
 END;
 
@@ -230,8 +230,6 @@ if SYS.PROCESS_EXIST(pid) then begin
 end;
     logs.DebugLogs('tocsi.START():: -> WRITE_APACHE_CONFIG() ');
     WRITE_APACHE_CONFIG();
-    logs.DebugLogs('tocsi.START():: -> WritePhpConfig() ');
-    WritePhpConfig();
     logs.DebugLogs('tocsi.START():: Write configs done..');
     logs.DebugLogs('tocsi.START():: exec() -> '+apachebinary_path+' -f /etc/artica-postfix/apache-ocsweb.conf');
 
@@ -553,12 +551,12 @@ l.add('<IfModule mod_perl.c>');
    SERVEUR_SQL_PORT:=SYS.MYSQL_INFOS('port');
 
 l.add('  PerlSetEnv OCS_MODPERL_VERSION 2');
-l.add('  PerlSetEnv OCS_DB_HOST '+SERVEUR_SQL);
-l.add('  PerlSetEnv OCS_DB_PORT '+SERVEUR_SQL_PORT);
+if length(SERVEUR_SQL)>0 then l.add('  PerlSetEnv OCS_DB_HOST '+SERVEUR_SQL);
+if length(SERVEUR_SQL_PORT)>0 then l.add('  PerlSetEnv OCS_DB_PORT '+SERVEUR_SQL_PORT);
 l.add('  PerlSetEnv OCS_DB_NAME ocsweb');
 l.add('  PerlSetEnv OCS_DB_LOCAL ocsweb');
-l.add('  PerlSetEnv OCS_DB_USER '+COMPTE_BASE);
-l.add('  PerlSetVar OCS_DB_PWD '+PSWD_BASE);
+if length(COMPTE_BASE)>0 then l.add('  PerlSetEnv OCS_DB_USER '+COMPTE_BASE);
+if length(PSWD_BASE)>0 then l.add('  PerlSetVar OCS_DB_PWD '+PSWD_BASE);
 l.add('  PerlSetEnv OCS_OPT_LOGPATH "/var/log/ocsinventory-server"');
 l.add('  PerlSetEnv OCS_OPT_DBI_PRINT_ERROR 1 ');
 l.add('  PerlSetEnv OCS_OPT_UNICODE_SUPPORT 1');
@@ -1035,21 +1033,7 @@ begin
 end;
 
 //##############################################################################
-procedure tocsi.WritePhpConfig();
-var
-   lighttpd:Tlighttpd;
-begin
-if not FileExists('/usr/local/apache-groupware/php5/lib/php.ini') then begin
-   logs.Debuglogs('OCS web Engine unable to stat /usr/local/apache-groupware/php5/lib/php.ini');
 
-end;
-forcedirectories('/usr/local/apache-groupware/php5/sessions');
-logs.OutputCmd('/bin/chmod 755 /usr/local/apache-groupware/php5/sessions');
-logs.OutputCmd('/bin/chown -R www-data:www-data /usr/local/apache-groupware/php5/sessions');
-lighttpd:=Tlighttpd.Create(SYS);
-lighttpd.LIGHTTPD_ADD_INCLUDE_PATH();
-end;
-//##############################################################################
 
 
 end.

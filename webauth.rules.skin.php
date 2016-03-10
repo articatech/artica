@@ -44,7 +44,7 @@ function Page(){
 		<td class=legend style='font-size:22px'>{font_family}:</td>
 		<td>	<textarea style='margin-top:5px;font-family:Courier New;
 font-weight:bold;width:99%;height:40px;border:5px solid #8E8E8E;
-overflow:auto;font-size:18px' id='FontFamily-$t'>$wifidog_templates->FontFamily</textarea></td>
+overflow:auto;font-size:18px !important' id='FontFamily-$t'>$wifidog_templates->FontFamily</textarea></td>
 	</tr>	
 	<tr>
 		<td class=legend style='font-size:22px'>{font_size}:</td>
@@ -100,7 +100,10 @@ overflow:auto;font-size:18px' id='FontFamily-$t'>$wifidog_templates->FontFamily<
 		<td class=legend style='font-size:22px'>{spacer} ({button}):</td>
 		<td style='font-size:22px'>". Field_ColorPicker("SpacerButton-$t",$wifidog_templates->SpacerButton,"font-size:22px;width:230px")."</td>
 	</tr>	
-	
+		<tr>
+		<td class=legend style='font-size:22px'>{font_color} ({inside_form}):</td>
+		<td>".Field_ColorPicker("FormFontColor-$t",$wifidog_templates->FormFontColor,"font-size:22px;width:230px")."</td>
+	</tr>
 	
 	
 	<tr>
@@ -166,6 +169,7 @@ overflow:auto;font-size:18px' id='TextErrorStyle-$t'>$wifidog_templates->TextErr
 		XHR.appendData('SubTitleFontSize',encodeURIComponent(document.getElementById('SubTitleFontSize-$t').value));
 		XHR.appendData('LinksColor',encodeURIComponent(document.getElementById('LinksColor-$t').value));
 		XHR.appendData('TextErrorStyle',encodeURIComponent(document.getElementById('TextErrorStyle-$t').value));
+		XHR.appendData('FormFontColor',encodeURIComponent(document.getElementById('FormFontColor-$t').value));
 		
 		
 		
@@ -192,5 +196,8 @@ function Save(){
 		$sock->SET_INFO($key, $value);
 		
 	}
+	
+	$sock=new sockets();
+	$sock->getFrameWork("hotspot.php?remove-cache=yes");
 	
 }

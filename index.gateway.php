@@ -35,7 +35,7 @@ if(isset($_GET["SaveDHCPSettings"])){dhcp_save();exit;}
 if(isset($_POST["EnableDHCPServer"])){dhcp_enable_save();exit;}
 if(isset($_GET["AsGatewayForm"])){echo gateway_page();exit;}
 if(isset($_GET["gayteway_enable"])){echo gateway_enable();exit;}
-if(isset($_GET["EnableArticaAsGateway"])){gateway_save();exit;}
+if(isset($_POST["EnableArticaAsGateway"])){gateway_save();exit;}
 if(isset($_GET["popup-network-masks"])){popup_networks_masks();exit;}
 if(isset($_GET["show-script"])){dhcp_scripts();exit;}
 if(isset($_POST["RestartDHCPService"])){RestartDHCPService();exit;}
@@ -378,45 +378,39 @@ function dhcp_form(){
 				<input type='hidden' id='EnableDHCPServer' value='$EnableDHCPServer' name='EnableDHCPServer'>
 				<table style='width:98%'>
 
-	<tr>
-		<td class=legend style='font-size:22px'>{deny_unkown_clients}:</td>
-		<td>". Field_checkbox_design("deny_unkown_clients", 1,$dhcp->deny_unkown_clients)."</td>
-		<td>&nbsp;</td>
-		<td>". help_icon('{deny_unkown_clients_explain}')."</td>
-	</tr>				
 				<tr>
-					<td class=legend style='font-size:22px'>{IncludeDHCPLdapDatabase}:</td>
+					<td class=legend style='font-size:22px'>". texttooltip("{deny_unkown_clients}","{deny_unkown_clients_explain}").":</td>
+					<td>". Field_checkbox_design("deny_unkown_clients", 1,$dhcp->deny_unkown_clients)."</td>
+					<td>&nbsp;</td>
+				</tr>				
+				<tr>
+					<td class=legend style='font-size:22px'>". texttooltip("{IncludeDHCPLdapDatabase}","{IncludeDHCPLdapDatabase_explain}").":</td>
 					<td>$IncludeDHCPLdapDatabase</td>
 					<td>&nbsp;</td>
-					<td>". help_icon('{IncludeDHCPLdapDatabase_explain}')."</td>
 				</tr>				
 				
 				<tr>
-					<td class=legend style='font-size:22px'>{EnableDHCPUseHostnameOnFixed}:</td>
+					<td class=legend style='font-size:22px'>".texttooltip("{EnableDHCPUseHostnameOnFixed}","{EnableDHCPUseHostnameOnFixed_explain}").":</td>
 					<td>$EnableDHCPUseHostnameOnFixed</td>
 					<td>&nbsp;</td>
-					<td>". help_icon('{EnableDHCPUseHostnameOnFixed_explain}')."</td>
 				</tr>
 				<tr>
-					<td class=legend style='font-size:22px'>{authoritative}:</td>
+					<td class=legend style='font-size:22px'>".texttooltip("{authoritative}","{authoritativeDHCP_explain}").":</td>
 					<td>$authoritative</td>
 					<td>&nbsp;</td>
-					<td>". help_icon('{authoritativeDHCP_explain}')."</td>
 				</tr>								
 				<tr>
-					<td class=legend style='font-size:22px'>{DHCPPing_check}:</td>
+					<td class=legend style='font-size:22px'>".texttooltip("{DHCPPing_check}","{DHCPPing_check_explain}").":</td>
 					<td>$ping_check</td>
 					<td>&nbsp;</td>
-					<td>". help_icon('{DHCPPing_check_explain}')."</td>
 				</tr>
 				<tr>
-					<td class=legend style='font-size:22px'>{get_lease_hostnames}:</td>
+					<td class=legend style='font-size:22px'>".texttooltip("{get_lease_hostnames}","{get_lease_hostnames_text}").":</td>
 					<td>$get_lease_hostnames</td>
 					<td>&nbsp;</td>
-					<td>". help_icon('{get_lease_hostnames_text}')."</td>
 				</tr>	
 <tr>
-	<td colspan=4>
+	<td colspan=3>
 				<div style='margin:10px;border:1px solid #CCCCCC;pading:10px'>
 				<table style='width:100%'>
 				<tr>
@@ -428,12 +422,10 @@ function dhcp_form(){
 					<td class=legend style='font-size:22px;font-weight:bold;width:622px'>{ipfrom}:</td>
 					<td>".field_ipv4('range1',$dhcp->range1,'font-size:22px;padding:3px;font-weight:bold')."&nbsp;</td>
 					<td>&nbsp;</td>
-					<td>&nbsp;</td>
 				</tr>
 				<tr>
 					<td class=legend style='font-size:22px;font-weight:bold'>{ipto}:</td>
 					<td>".field_ipv4('range2',$dhcp->range2,'font-size:22px;padding:3px;font-weight:bold')."&nbsp;</td>
-					<td>&nbsp;</td>
 					<td>&nbsp;</td>
 				</tr>
 				</table>
@@ -444,33 +436,33 @@ function dhcp_form(){
 				<tr>
 					<td class=legend style='font-size:22px'>{ddns_domainname}:</td>
 					<td>$dom</td>
-					<td>&nbsp;</td>
 					<td width=1% nowrap>". imgtootltip("plus-16.png",null,"Loadjs('domains.edit.domains.php?js-all-localdomains=yes')")."</td>
 				</tr>
 				<tr>
-					<td class=legend style='font-size:22px'>{max_lease_time}:</td>
+					<td class=legend style='font-size:22px'>".texttooltip("{max_lease_time}","{max_lease_time_text}").":</td>
 					<td style='font-size:16px'>".Field_text('max_lease_time',$dhcp->max_lease_time,'width:90px;font-size:22px;padding:3px')."&nbsp;{seconds}</td>
 					<td>&nbsp;</td>
-					<td >".help_icon('{max_lease_time_text}')."</td>
 				</tr>	
 				
 				<tr>
-					<td class=legend style='font-size:22px'>{wpad_label}:</td>
-					<td>".Field_text('local-pac-server',$dhcp->local_pac_server,'width:300px;font-size:22px;padding:3px',false)."</td>
+					<td class=legend style='font-size:22px'>".texttooltip("{wpad_label}","{wpad_label_text}").":</td>
+					<td>".Field_text('local-pac-server',$dhcp->local_pac_server,'width:500px;font-size:22px;padding:3px',false)."</td>
 					<td>&nbsp;</td>
-					<td>".help_icon('{wpad_label_text}')."</td>
-				</tr>			
+				</tr>		
+				<tr>
+					<td class=legend style='font-size:22px'>".texttooltip("{portal_page}","{portal_page_explain}").":</td>
+					<td>".Field_text('browser-portal-page',$dhcp->browser_portal_page ,'width:500px;font-size:22px;padding:3px',false)."</td>
+					<td>&nbsp;</td>
+				</tr>								
 				
 				<tr>
 					<td class=legend style='font-size:22px'>{subnet}:</td>
 					<td>".field_ipv4('subnet',$dhcp->subnet,"font-size:22px;padding:3px;font-weight:bold",false)."</td>
 					<td>&nbsp;</td>
-					<td>&nbsp;</td>
 				</tr>			
 				<tr>
 					<td class=legend style='font-size:22px'>{netmask}:</td>
 					<td>".field_ipv4('netmask',$dhcp->netmask,'font-size:22px;padding:3px;font-weight:bold')."&nbsp;</td>
-					<td>&nbsp;</td>
 					<td>&nbsp;</td>
 				</tr>
 				<tr>
@@ -482,36 +474,31 @@ function dhcp_form(){
 					<td class=legend style='font-size:22px'>{broadcast}:</td>
 					<td>".field_ipv4('broadcast_dhcp_main',$dhcp->broadcast,'font-size:22px;padding:3px')."&nbsp;</td>
 					<td>&nbsp;</td>
-					<td>&nbsp;</td>
 				</tr>						
 				<tr>
 					<td class=legend style='font-size:22px'>{DNSServer} 1:</td>
 					<td>".field_ipv4('DNS_1',$dhcp->DNS_1,'font-size:22px;padding:3px;font-weight:bold')."&nbsp;</td>
-					<td>&nbsp;</td>
 					<td>&nbsp;</td>
 				</tr>
 				<tr>
 					<td class=legend style='font-size:22px'>{DNSServer} 2:</td>
 					<td>".field_ipv4('DNS_2',$dhcp->DNS_2,'font-size:22px;padding:3px;font-weight:bold')."&nbsp;</td>
 					<td>&nbsp;</td>
-					<td>&nbsp;</td>
 				</tr>
 				<tr>
 					<td class=legend style='font-size:22px'>{wins_server}:</td>
 					<td>".field_ipv4('WINSDHCPSERV',$dhcp->WINS,'font-size:22px;padding:3px')."&nbsp;</td>
-					<td>&nbsp;</td>
 					<td>&nbsp;</td>
 				</tr>					
 				<tr>
 					<td class=legend style='font-size:22px'>{ntp_server} <span style='font-size:10px'>({optional})</span>:</td>
 					<td>".Field_text('ntp_server',$dhcp->ntp_server,'width:228px;font-size:22px;padding:3px')."&nbsp;</td>
 					<td>&nbsp;</td>
-					<td>&nbsp;</td>
 				</tr>
 		
 					
 				<tr>
-					<td colspan=4 align='right'><hr>
+					<td colspan=3 align='right'><hr>
 					". button("{apply}","SaveDHCPSettings()",40)."
 						
 					
@@ -547,6 +534,10 @@ var x_SaveDHCPSettings= function (obj) {
 		XHR.appendData('broadcast',document.getElementById('broadcast_dhcp_main').value);
 		XHR.appendData('WINS',document.getElementById('WINSDHCPSERV').value);
 		XHR.appendData('local-pac-server',document.getElementById('local-pac-server').value);
+		XHR.appendData('browser-portal-page',document.getElementById('browser-portal-page').value);
+		
+		
+		
 		XHR.appendData('EnableArticaAsDNSFirst',0);
 		
 		if(document.getElementById('do_no_verify_range')){
@@ -977,7 +968,7 @@ function dhcp_save(){
 	$dhcp->ping_check=$_GET["DHCPPing_check"];
 	$dhcp->authoritative=$_GET["DHCPauthoritative"];
 	$dhcp->local_pac_server=$_GET["local-pac-server"];
-	
+	$dhcp->browser_portal_page=$_GET["browser-portal-page"];
 	 
 	
 	$tpl=new templates();
@@ -1011,26 +1002,42 @@ function gateway_enable(){
 	if($DisableNetworksManagement==1){echo $ERROR_NO_PRIVS;return;}		
 	$EnableArticaAsGateway=$sock->GET_INFO("EnableArticaAsGateway");
 	
-	$enable=Paragraphe_switch_img('{ARTICA_AS_GATEWAY}','{ARTICA_AS_GATEWAY_EXPLAIN}','EnableArticaAsGateway',$EnableArticaAsGateway,null,410);
+	$enable=Paragraphe_switch_img('{ARTICA_AS_GATEWAY}','{ip_forward_text}',
+			'EnableArticaAsGateway',$EnableArticaAsGateway,null,850);
 	$tpl=new templates();
 	return $tpl->_ENGINE_parse_body($enable);		
 }
 function gateway_page(){
-	
+	$t=time();
 	$page=CurrentPageName();
 	$html="
-	<form name='ffm2'>
+<div style='width:98%' class=form>
 	<table style='width:100%'>
 	<tr>
 		<td valign='top'><div id='gayteway_enable'>" . gateway_enable()."</div></td>
 	</tr>
 	<tr>
 		<td valign='top' align='right'>
-		<hr>". button("{apply}", "ParseForm('ffm2','$page',true,false,false,'gayteway_enable','$page?gayteway_enable=yes');","16px")."
+		<hr>". button("{apply}", "Save$t()","30")."
 		</td>
 	</tr>
 	</table>
-	</form>
+	</div>
+	<script>
+var xSave$t= function (obj) {
+	var tempvalue=obj.responseText;
+	if(tempvalue.length>3){alert(tempvalue);}
+	YahooWinHide();
+	LoadAjaxRound('system-main-status','admin.dashboard.system.php');
+}			
+		
+		
+function Save$t(){
+	var XHR = new XHRConnection();
+	XHR.appendData('EnableArticaAsGateway',document.getElementById('EnableArticaAsGateway').value);
+	XHR.sendAndLoad('$page', 'POST',xSave$t);	
+}
+</script>
 	";
 	
 	$tpl=new templates();
@@ -1047,10 +1054,9 @@ function gateway_save(){
 	if($DisableNetworksManagement==1){echo $ERROR_NO_PRIVS;return;}		
 	
 	$sock=new sockets();
-	$sock->SET_INFO("EnableArticaAsGateway", $_GET["EnableArticaAsGateway"]);
-	if($_GET["EnableArticaAsGateway"]==1){$sock->getFrameWork("cmd.php?sysctl-setvalue=1&key=".base64_encode("net.ipv4.ip_forward"));}
-	$dhcp=new dhcpd();
-	$dhcp->Save();
+	$sock->SET_INFO("EnableArticaAsGateway", $_POST["EnableArticaAsGateway"]);
+	if($_POST["EnableArticaAsGateway"]==1){$sock->getFrameWork("cmd.php?sysctl-setvalue=1&key=".base64_encode("net.ipv4.ip_forward"));}
+	
 	
 }
 

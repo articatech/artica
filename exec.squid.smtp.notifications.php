@@ -167,8 +167,17 @@ function SendMessage($subject,$content,$UfdbguardSMTPNotifs){
 	build_progress(40,"{sending_message}");
 	if(!$mail->Send()){
 		build_progress(110,"{failed}");
-		return false;}
-		build_progress(100,"{success}");
+		$function=__FUNCTION__;
+		$line=__LINE__;
+		if(!function_exists("syslog")){return false;}
+		$file=basename(__FILE__);
+		$LOG_SEV=LOG_INFO;
+		openlog($file, LOG_PID , LOG_SYSLOG);
+		syslog($LOG_SEV, "**** FATAL SMTP FAILED *** [$function/$line] $mail->MyFile");
+		closelog();
+		return false;
+	}
+	build_progress(100,"{success}");
 	
 	
 }

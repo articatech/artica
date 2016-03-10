@@ -27,7 +27,9 @@ class squid_childs{
 		
 		$sql="SELECT ID  FROM proxy_ports WHERE Parent=1 AND SquidAsMasterLogChilds=0";
 		$results=$q->QUERY_SQL($sql,"artica_backup");
+		if(!$q->ok){return null;}
 		while ($ligne = mysql_fetch_assoc($results)) {
+			if(!isset($ligne["SquidAsMasterFollowxForward"])){$ligne["SquidAsMasterFollowxForward"]=0;}
 			$SquidAsMasterFollowxForward=intval($ligne["SquidAsMasterFollowxForward"]);
 			if($SquidAsMasterFollowxForward==0){
 				$tr[]="deny_log ChildsProxy{$ligne["ID"]}\n";
@@ -57,7 +59,7 @@ class squid_childs{
 		$sql="SELECT ID FROM proxy_ports WHERE enabled=1 AND WANPROXY=1";
 		$q=new mysql_squid_builder();
 		$results = $q->QUERY_SQL($sql);
-		if(!$q->ok){return;}
+		if(!$q->ok){return @implode("\n", $tr);}
 		
 		
 		while ($ligne = mysql_fetch_assoc($results)) {
@@ -65,7 +67,7 @@ class squid_childs{
 			$c++;
 		}
 		
-		if($c==0){return null;}
+		if($c==0){return @implode("\n", $tr);}
 		
 		return @implode("\n", $tr);
 		
@@ -80,8 +82,14 @@ class squid_childs{
 		
 		$ipClass=new IP();
 		$tr=array();
-		$sql="SELECT ID,port,SquidAsMasterFollowxForward FROM proxy_ports WHERE enabled=1 AND Parent=1";
 		$q=new mysql_squid_builder();
+		if(!$q->FIELD_EXISTS("proxy_ports", "SquidAsMasterFollowxForward")){
+			$q->QUERY_SQL("ALTER TABLE `proxy_ports` ADD `SquidAsMasterFollowxForward` smallint(1) NOT NULL DEFAULT '0'");
+			if(!$q->ok){echo $q->mysql_error."\n";}
+		}
+		
+		$sql="SELECT ID,port,SquidAsMasterFollowxForward FROM proxy_ports WHERE enabled=1 AND Parent=1";
+		
 		$results = $q->QUERY_SQL($sql);
 		if(!$q->ok){
 			echo $q->mysql_error."\n";
@@ -92,11 +100,12 @@ class squid_childs{
 		
 		
 		while ($ligne = mysql_fetch_assoc($results)) {
+			if(!isset($ligne["SquidAsMasterFollowxForward"])){$ligne["SquidAsMasterFollowxForward"]=0;}
 			$SquidAsMasterFollowxForward=intval($ligne["SquidAsMasterFollowxForward"]);
 			echo "Starting......: ".date("H:i:s")." [CHIL]: Port {$ligne["port"]}\n";
 			$this->FireWallScriptsIps[]="/sbin/iptables -I INPUT -p tcp -m tcp --dport {$ligne["port"]} $this->FireWallMARK -j DROP || true";
 			$this->FireWallScriptsIps[]="/sbin/iptables -I INPUT -m limit --limit 1/sec $this->FireWallMARK -j LOG --log-prefix \"FIREHOL:PROXY-Parentdeny:\" || true";
-			
+			$this->FireWallScriptsIps[]="/sbin/iptables -I INPUT -p tcp -s 127.0.0.1 -d 127.0.0.1 -j ACCEPT || true";
 			$tr[]=$this->build_clients($ligne["ID"],$ligne["port"]);
 			$tr[]="acl ParentPort{$ligne["ID"]} localport {$ligne["port"]}";
 			if($SquidAsMasterFollowxForward==1){
@@ -176,7 +185,9 @@ class squid_childs{
 		return @implode("\n", $tr);
 	}
 	
+	
 	private function build_clients($portid,$localport){
+		$MAIN=array();
 		$ipClass=new IP();
 		$tr=array();
 		$sql="SELECT portid,ipsrc FROM squid_balancers WHERE enabled=1 and portid=$portid";
@@ -188,6 +199,7 @@ class squid_childs{
 			if(trim($ligne["ipsrc"])==null){continue;}
 			if(!$ipClass->isIPAddressOrRange($ligne["ipsrc"])){continue;}
 			$tr[]="acl ChildsProxy{$portid} src {$ligne["ipsrc"]}\n";
+			$MAIN["ChildsProxy{$portid}"]=true;
 			
 			$this->FireWallScriptsIps[]="/sbin/iptables -I INPUT -p tcp -m tcp -s {$ligne["ipsrc"]} --dport $localport $this->FireWallMARK -j ACCEPT || true";
 			
@@ -195,6 +207,13 @@ class squid_childs{
 		
 		if(count($tr)==0){
 			$tr[]="acl ChildsProxy{$portid} localport $localport";
+			
+		}
+		
+		if(count($MAIN)>0){
+			while (list ($Group, $none) = each ($MAIN) ){
+				$tr[]="http_access allow $Group";
+			}
 			
 		}
 		
@@ -221,6 +240,7 @@ class squid_childs{
 		
 		
 		$results = $q->QUERY_SQL($sql);
+		if(!$q->ok){return null;}
 		if(mysql_num_rows($results)==0){return null;}
 		while ($ligne = mysql_fetch_assoc($results)) {
 			$conf[]="acl ParentPorts localport {$ligne["port"]}";

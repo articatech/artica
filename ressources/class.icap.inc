@@ -86,6 +86,7 @@ class icap{
 			if($re[2]==1){$this->IS_31=true;}
 			if($re[2]>=2){$this->IS_32=true;$this->IS_31=true;}
 			if($re[2]>=3){$this->IS_33=true;$this->IS_32=true;$this->IS_31=true;}
+			if($re[2]>=4){$this->IS_40=true;$this->IS_33=true;$this->IS_32=true;$this->IS_31=true;}
 			}
 		}
 		
@@ -311,8 +312,10 @@ class icap{
 					}
 				}
 				
-				if(count($GLOBALS["WHITELISTED_MIMETYPE"])>0){
-					$this->icap_lines[]="adaptation_access class_{$servicekey} deny StreamMimeWhite";
+				if(isset($GLOBALS["WHITELISTED_MIMETYPE"])){
+					if(count($GLOBALS["WHITELISTED_MIMETYPE"])>0){
+						$this->icap_lines[]="adaptation_access class_{$servicekey} deny StreamMimeWhite";
+					}
 				}
 			
 			}

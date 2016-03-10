@@ -38,6 +38,10 @@
 	if(isset($_POST["EnableSquidUrgencyPublic"])){EnableSquidUrgencyPublic();exit;}
 	if(isset($_GET["justbutton"])){justbutton_js();exit;}
 	if(isset($_GET["activedirectory"])){activedirectory_js();exit;}
+	if(isset($_GET["eCAPClamavEmergency"])){eCAPClamavEmergency_js();exit;}
+	if(isset($_GET["ParanoidBlockerEmergency"])){ParanoidBlockerEmergency_js();exit;}
+	
+	
 	
 	if(isset($_GET["ssl"])){ssl_js();exit;}
 	if(isset($_GET["popup-ssl"])){ssl_popup();exit;}
@@ -47,6 +51,9 @@
 	
 	if(isset($_GET["popup-justbutton"])){justbutton();exit;}
 	if(isset($_GET["popup-activedirectory"])){activedirectory();exit;}
+	if(isset($_GET["popup-eCAPClamavEmergency"])){eCAPClamavEmergency();exit;}
+	if(isset($_GET["popup-ParanoidBlockerEmergency"])){ParanoidBlockerEmergency();exit;}
+	
 	
 	js();
 
@@ -76,7 +83,7 @@ function justbutton_js(){
 	$title=$tpl->_ENGINE_parse_body("{urgency_mode}");
 	$page=CurrentPageName();
 	header("content-type: application/x-javascript");
-	echo "YahooWin3('700','$page?popup-justbutton=yes','$title');";
+	echo "YahooWin3Hide();YahooWin3('700','$page?popup-justbutton=yes','$title');";
 	
 }
 function activedirectory_js(){
@@ -84,8 +91,25 @@ function activedirectory_js(){
 	$title=$tpl->_ENGINE_parse_body("{activedirectory_emergency_mode}");
 	$page=CurrentPageName();
 	header("content-type: application/x-javascript");
-	echo "YahooWin3('700','$page?popup-activedirectory=yes','$title');";
+	echo "YahooWin3Hide();YahooWin3('700','$page?popup-activedirectory=yes','$title');";
 }
+
+function eCAPClamavEmergency_js(){
+	$tpl=new templates();
+	$title=$tpl->_ENGINE_parse_body("{eCAPClamav_emergency_mode}");
+	$page=CurrentPageName();
+	header("content-type: application/x-javascript");
+	echo "YahooWin3Hide();YahooWin3('700','$page?popup-eCAPClamavEmergency=yes','$title');";	
+	
+}
+function ParanoidBlockerEmergency_js(){
+	$tpl=new templates();
+	$title=$tpl->_ENGINE_parse_body("{paranoid_emergency_mode}");
+	$page=CurrentPageName();
+	header("content-type: application/x-javascript");
+	echo "YahooWin3Hide();YahooWin3('700','$page?popup-ParanoidBlockerEmergency=yes','$title');";
+}
+
 function ssl_js(){
 	$tpl=new templates();
 	$title=$tpl->_ENGINE_parse_body("{proxy_in_ssl_emergency_mode}");
@@ -98,7 +122,7 @@ function ufdb_js(){
 	$title=$tpl->_ENGINE_parse_body("{proxy_in_webfiltering_emergency_mode}");
 	$page=CurrentPageName();
 	header("content-type: application/x-javascript");
-	echo "YahooWin3('700','$page?popup-ufdb=yes','$title');";
+	echo "YahooWin3Hide();YahooWin3('700','$page?popup-ufdb=yes','$title');";
 }
 
 
@@ -116,13 +140,13 @@ function justbutton(){
 	if(!is_numeric($SquidUrgency)){$SquidUrgency=0;}
 	
 	if(!$user->AsSquidAdministrator){echo FATAL_ERROR_SHOW_128('{ERROR_NO_PRIVS}');return;}
-	if($SquidUrgency==1){
+	
 		echo $tpl->_ENGINE_parse_body("
 				<center style='margin:20px' id='SQUID_URGENCY_FORM_ADM'>
 				".button("{disable_emergency_mode}","Loadjs('squid.urgency.remove.progress.php')",32)."
 				</center>");
 				
-	}
+	
 	
 	
 	
@@ -142,6 +166,34 @@ function activedirectory(){
 	
 	
 }
+
+function eCAPClamavEmergency(){
+	$user=new usersMenus();
+	$tpl=new templates();
+	$page=CurrentPageName();
+	
+	if(!$user->AsSquidAdministrator){echo FATAL_ERROR_SHOW_128('{ERROR_NO_PRIVS}');return;}
+	echo $tpl->_ENGINE_parse_body("
+		<center style='margin:20px' id='SQUID_URGENCY_FORM_ADM'>
+		".button("{disable_emergency_mode}","Loadjs('squid.ecap.progress.php')",32)."
+	</center>");
+	
+}
+
+function ParanoidBlockerEmergency(){
+	$user=new usersMenus();
+	$tpl=new templates();
+	$page=CurrentPageName();
+	
+	if(!$user->AsSquidAdministrator){echo FATAL_ERROR_SHOW_128('{ERROR_NO_PRIVS}');return;}
+	echo $tpl->_ENGINE_parse_body("
+		<center style='margin:20px' id='SQUID_URGENCY_FORM_ADM'>
+		".button("{disable_emergency_mode}","Loadjs('squid.paranoid.emergency.progress.php')",32)."
+	</center>");	
+	
+}
+
+
 
 function ssl_popup(){
 	$user=new usersMenus();

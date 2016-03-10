@@ -35,7 +35,7 @@ function table(){
 	$page=CurrentPageName();
 	$tpl=new templates();	
 	$users=new usersMenus();
-	if(!$users->HTTRACK_INSTALLED){
+	if(!is_file("/usr/bin/httrack")){
 		echo $tpl->_ENGINE_parse_body(
 		"<center style='margin:90px'>
 				<table style='width:99%' class=form>
@@ -65,32 +65,40 @@ function table(){
 	$execute=$tpl->_ENGINE_parse_body("{execute}");
 	$events=$tpl->_ENGINE_parse_body("{events}");
 	$online_help=$tpl->_ENGINE_parse_body("{online_help}");
+	$apply=$tpl->javascript_parse_text("{compile_rules}");
+	$schedules=$tpl->javascript_parse_text("{schedules}");
 	
+	
+
+	
+	//{name: '<strong style=font-size:18px>$online_help</strong>', bclass: 'Help', onpress : ItemHelp$t},
 	
 	$buttons="
 	buttons : [
-	{name: '$new_entry', bclass: 'Add', onpress : ItemNew$t},
-	{name: '$execute', bclass: 'ReConf', onpress : ItemExec$t},
-	{name: '$events', bclass: 'Script', onpress : ItemEvents$t},
-	{name: '$online_help', bclass: 'Help', onpress : ItemHelp$t},
+	{name: '<strong style=font-size:18px>$new_entry</strong>', bclass: 'Add', onpress : ItemNew$t},
+	{name: '<strong style=font-size:18px>$execute</strong>', bclass: 'ReConf', onpress : ItemExec$t},
+	{name: '<strong style=font-size:18px>$events</strong>', bclass: 'Script', onpress : ItemEvents$t},
+	{name: '<strong style=font-size:18px>$schedules</strong>', bclass: 'clock', onpress : 	Schedules$t},
+	{name: '<strong style=font-size:18px>$apply</strong>', bclass: 'apply', onpress : Apply$t},
+	
 	
 	],	";
 	
 	
 	$html="
-	<table class='flexRT$t' style='display: none' id='flexRT$t' style='width:99%'></table>
+	<table class='HTTRACK_WEBSITES' style='display: none' id='HTTRACK_WEBSITES' style='width:99%'></table>
 <script>
 var mem$t='';
 $(document).ready(function(){
-$('#flexRT$t').flexigrid({
+$('#HTTRACK_WEBSITES').flexigrid({
 	url: '$page?items=yes&t=$t',
 	dataType: 'json',
 	colModel : [
-		{display: '$website', name : 'sitename', width :578, sortable : true, align: 'left'},
-		{display: '$size', name : 'size', width :110, sortable : true, align: 'center'},
-		{display: '$run', name : 'run', width :31, sortable : false, align: 'center'},
-		{display: '$enable', name : 'enabled', width :40, sortable : true, align: 'center'},
-		{display: '&nbsp;', name : 'delete', width :31, sortable : false, align: 'center'}
+		{display: '<span style=font-size:22px>$website</span>', name : 'sitename', width :600, sortable : true, align: 'left'},
+		{display: '<span style=font-size:22px>$size</span>', name : 'size', width :180, sortable : true, align: 'center'},
+		{display: '<span style=font-size:22px>$run</span>', name : 'run', width :120, sortable : false, align: 'center'},
+		{display: '<span style=font-size:22px>$enable</span>', name : 'enabled', width :120, sortable : true, align: 'center'},
+		{display: '&nbsp;', name : 'delete', width :120, sortable : false, align: 'center'}
 	],
 	$buttons
 
@@ -100,26 +108,30 @@ $('#flexRT$t').flexigrid({
 	sortname: 'sitename',
 	sortorder: 'asc',
 	usepager: true,
-	title: 'WebCopy',
+	title: '<span style=font-size:30px>WebCopy</span>',
 	useRp: true,
 	rp: 50,
 	showTableToggleBtn: false,
 	width: '99%',
-	height: $TB_HEIGHT,
+	height: 550,
 	singleSelect: true,
 	rpOptions: [10, 20, 30, 50,100,200,500]
 	
 	});   
 });
 function ItemShow$t(id){
-	YahooWin5('670','$page?item-id='+id+'&t=$t','WebCopy:'+id);
+	YahooWin5('890','$page?item-id='+id+'&t=$t','WebCopy:'+id);
 }
 
 function ItemEvents$t(){
-	Loadjs('squid.update.events.php?table=system_admin_events&category=webcopy');
+	GotoApacheWatchdog('exec.httptrack.php');
 }
 function ItemHelp$t(){
 	s_PopUpFull('http://mail-appliance.org/index.php?cID=263','1024','900');
+}
+
+function Schedules$t(){
+	GotoSystemSchedules(23);
 }
 
 var x_ItemDelete$t=function (obj) {
@@ -135,20 +147,25 @@ function ItemDelete$t(id){
     XHR.sendAndLoad('$page', 'POST',x_ItemDelete$t);	
 	}
 	
+function Apply$t(){
+	Loadjs('freewebs.HTTrack.progress.php');
+
+}
+	
 
 function ItemNew$t(){
 	title='$new_entry';
-	YahooWin5('670','$page?item-id=0&t=$t','WebCopy::'+title);
+	YahooWin5('890','$page?item-id=0&t=$t','WebCopy::'+title);
 }
 var x_ItemExec$t=function (obj) {
 	var results=obj.responseText;
 	if (results.length>3){alert(results);return;}
-	$('#flexRT$t').flexReload();
+	$('#HTTRACK_WEBSITES').flexReload();
 }
 var x_ItemExec2$t=function (obj) {
 	var results=obj.responseText;
 	if (results.length>3){alert(results);}
-	$('#flexRT$t').flexReload();
+	$('#HTTRACK_WEBSITES').flexReload();
 }
 var x_ItemSilent$t=function (obj) {
 	var results=obj.responseText;
@@ -201,14 +218,10 @@ $tpl=new templates();
 	if(isset($_POST["sortname"])){if($_POST["sortname"]<>null){$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";}}	
 	if(isset($_POST['page'])) {$page = $_POST['page'];}
 	
-
-	if($_POST["query"]<>null){
-		$_POST["query"]="*".$_POST["query"]."*";
-		$_POST["query"]=str_replace("**", "*", $_POST["query"]);
-		$_POST["query"]=str_replace("**", "*", $_POST["query"]);
-		$_POST["query"]=str_replace("*", "%", $_POST["query"]);
-		$search=$_POST["query"];
-		$searchstring="AND (`{$_POST["qtype"]}` LIKE '$search')";
+	$searchstring=string_to_flexquery();
+	
+	
+	if($searchstring<>null){
 		$sql="SELECT COUNT(*) as TCOUNT FROM `$table` WHERE 1 $FORCE_FILTER $searchstring";
 		$ligne=mysql_fetch_array($q->QUERY_SQL($sql,$database));
 		$total = $ligne["TCOUNT"];
@@ -244,21 +257,32 @@ $tpl=new templates();
 	while ($ligne = mysql_fetch_assoc($results)) {
 		$id=$ligne["ID"];
 		$articasrv=null;
-		$delete=imgsimple("delete-24.png",null,"ItemDelete$t('$id')");
+		$delete=imgsimple("delete-48.png",null,"ItemDelete$t('$id')");
 		if($ligne["depth"]==0){$ligne["depth"]=$tpl->_ENGINE_parse_body("{unlimited}");}
 		$ligne["maxsitesize"]=FormatBytes($ligne["maxsitesize"]);
 		$ligne["size"]=FormatBytes($ligne["size"]/1024);
+		$maxworkingdir=$ligne["maxworkingdir"];
 		$enabled=Field_checkbox("enable-$id", 1,$ligne["enabled"],"ItemEnable$t($id)");
-		$run=imgsimple("24-run.png",null,"ItemRun$t($id,'imgW-$id')",null,"imgW-$id");
+		$run=imgsimple("48-run.png",null,"ItemRun$t($id,'imgW-$id')",null,"imgW-$id");
+		$color="black";
+		
+		if(	$ligne["enabled"] ==0){
+			$color="#898989";
+			$run=null;
+		}
+		
 		
 	$data['rows'][] = array(
 		'id' => $id,
 		'cell' => array(
-		"<a href=\"javascript:blur();\" OnClick=\"javascript:ItemShow$t($id);\" style='font-size:16px;text-decoration:underline'>{$ligne["sitename"]}</a><div>{$ligne["workingdir"]} {$ligne["minrate"]}Kb/s MAX:{$ligne["maxsitesize"]}</div>",
-		"<span style='font-size:18px;'>{$ligne["size"]}</span>",
-		$run,	
-		$enabled,
-		$delete )
+		"<a href=\"javascript:blur();\" OnClick=\"javascript:ItemShow$t($id);\" 
+				style='font-size:22px;text-decoration:underline;color:$color'>{$ligne["sitename"]}</a>
+				<br><br><span style='font-size:18px;color:$color'>{$ligne["workingdir"]} ({$maxworkingdir}MB)</span>
+				<br><span style='font-size:18px;color:$color'>{$ligne["minrate"]}Kb/s MAX:{$ligne["maxsitesize"]}</span>",
+		"<span style='font-size:22px;color:$color'>{$ligne["size"]}</span>",
+		"<center style='margin-top:10px'>$run</center>",	
+		"<center style='margin-top:10px'>$enabled</center>",
+		"<center style='margin-top:10px'>$delete</center>" )
 		);
 	}
 	
@@ -276,7 +300,7 @@ function item_popup(){
 	if(!is_numeric($id)){$id=0;}
 	$t=$_GET["t"];
 	$bname="{add}";
-	$browse=button("{browse}","javascript:Loadjs('browse-disk.php?field=workingdir-$t&replace-start-root=0');");
+	$browse=button_browse("workingdir-$t");
 	$ERROR_VALUE_MISSING_PLEASE_FILL_THE_FORM=$tpl->javascript_parse_text("{ERROR_VALUE_MISSING_PLEASE_FILL_THE_FORM}");
 	
 	$q=new mysql();
@@ -289,6 +313,7 @@ function item_popup(){
 		$minrate=$ligne["minrate"];
 		$maxfilesize=$ligne["maxfilesize"];
 		$maxsitesize=$ligne["maxsitesize"];
+		$maxworkingdir=$ligne["maxworkingdir"];
 		$lang=$ligne["lang"];
 		$browse=null;
 	}
@@ -299,6 +324,7 @@ function item_popup(){
 	if(!is_numeric($minrate)){$minrate=512;}
 	if(!is_numeric($maxfilesize)){$maxfilesize=512;}
 	if(!is_numeric($maxsitesize)){$maxsitesize=5000;}
+	if(!is_numeric($maxworkingdir)){$maxworkingdir=20;}
 	
 
 
@@ -307,33 +333,39 @@ $html="
 <div style='width:98%' class=form>
 <table >
 <tr>	
-	<td class=legend style='font-size:14px' nowrap>{website}:</strong></td>
-	<td align=left>". Field_text("sitename-$t",$sitename,"width:280px;font-size:14px","script:FormCheck$t(event)")."</strong></td>
+	<td class=legend style='font-size:22px' nowrap>{website}:</strong></td>
+	<td align=left>". Field_text("sitename-$t",$sitename,"width:350px;font-size:22px","script:FormCheck$t(event)")."</strong></td>
 	<td width=1%>&nbsp;</td>
 <tr>
 <tr>	
-	<td class=legend style='font-size:14px' nowrap>{directory}:</strong></td>
-	<td align=left>". Field_text("workingdir-$t",$workingdir,"width:280px;font-size:14px","script:FormCheck$t(event)")."</strong></td>
+	<td class=legend style='font-size:22px' nowrap>{directory}:</strong></td>
+	<td align=left>". Field_text("workingdir-$t",$workingdir,"width:350px;font-size:22px","script:FormCheck$t(event)")."</strong></td>
 	<td width=1%>$browse</td>
 <tr>
 
 <tr>
-	<td class=legend style='font-size:14px' nowrap>{MaxRateBw}:</strong></td>
-	<td align=left style='font-size:14px'>". Field_text("minrate-$t",$minrate,"width:60px;font-size:14px","script:FormCheck$t(event)")."&nbsp;KB/s</strong></td>
+	<td class=legend style='font-size:22px' nowrap>{MaxRateBw}:</strong></td>
+	<td align=left style='font-size:22px'>". Field_text("minrate-$t",$minrate,"width:120px;font-size:22px","script:FormCheck$t(event)")."&nbsp;KB/s</strong></td>
 	<td>&nbsp;</td>
 </tr>
 <tr>
-	<td class=legend style='font-size:14px' nowrap>{maxfilesize}:</strong></td>
-	<td align=left style='font-size:14px'>". Field_text("maxfilesize-$t",$maxfilesize,"width:60px;font-size:14px","script:FormCheck$t(event)")."&nbsp;KB</strong></td>
+	<td class=legend style='font-size:22px' nowrap>{maxfilesize}:</strong></td>
+	<td align=left style='font-size:22px'>". Field_text("maxfilesize-$t",$maxfilesize,"width:120px;font-size:22px","script:FormCheck$t(event)")."&nbsp;KB</strong></td>
 	<td>&nbsp;</td>
 </tr>
 <tr>
-	<td class=legend style='font-size:14px' nowrap>{maxsitesize}:</strong></td>
-	<td align=left style='font-size:14px'>". Field_text("maxsitesize-$t",$maxsitesize,"width:60px;font-size:14px","script:FormCheck$t(event)")."&nbsp;KB</strong></td>
+	<td class=legend style='font-size:22px' nowrap>{max_size_download}:</strong></td>
+	<td align=left style='font-size:22px'>". Field_text("maxsitesize-$t",$maxsitesize,"width:120px;font-size:22px","script:FormCheck$t(event)")."&nbsp;KB</strong></td>
 	<td>&nbsp;</td>
 </tr>
+<tr>
+	<td class=legend style='font-size:22px' nowrap>{maxsitesize}:</strong></td>
+	<td align=left style='font-size:22px'>". Field_text("maxworkingdir-$t",$maxworkingdir,"width:120px;font-size:22px","script:FormCheck$t(event)")."&nbsp;MB</strong></td>
+	<td>&nbsp;</td>
+</tr>			
+
 <tr>	
-	<td colspan=3 align='right'><hr>". button("$bname","SaveForm$t();","18px")."</td>
+	<td colspan=3 align='right'><hr>". button("$bname","SaveForm$t();","30px")."</td>
 <tr>
 </table>
 </div>
@@ -348,7 +380,7 @@ $html="
 			var results=obj.responseText;
 			document.getElementById('anime-$t').innerHTML='';
 			if (results.length>3){alert(results);return;}
-			$('#flexRT$t').flexReload();
+			$('#HTTRACK_WEBSITES').flexReload();
 			ExecuteByClassName('SearchFunction');
 		}				
 		
@@ -368,6 +400,8 @@ $html="
 			XHR.appendData('minrate',document.getElementById('minrate-$t').value);
 			XHR.appendData('maxfilesize',document.getElementById('maxfilesize-$t').value);
 			XHR.appendData('maxsitesize',document.getElementById('maxsitesize-$t').value);
+			XHR.appendData('maxworkingdir',document.getElementById('maxworkingdir-$t').value);
+			
 			AnimateDiv('anime-$t');
 			XHR.sendAndLoad('$page', 'POST',x_SaveForm$t);
 		
@@ -398,20 +432,28 @@ function item_save(){
 	if(isset($parsed_url['port'])){$port=":{$parsed_url['port']}";}
 	$_POST["sitename"]="{$parsed_url["scheme"]}://{$parsed_url["host"]}$port";
 	if($ID==0){
-		$sql="INSERT IGNORE INTO httrack_sites (workingdir,sitename,minrate,maxfilesize,`maxsitesize`,enabled) 
+		$sql="INSERT IGNORE INTO httrack_sites (workingdir,sitename,minrate,maxfilesize,
+		`maxsitesize`,enabled,`maxworkingdir`) 
 		VALUES ('{$_POST["workingdir"]}','{$_POST["sitename"]}','{$_POST["minrate"]}','{$_POST["maxfilesize"]}',
-		'{$_POST["maxsitesize"]}',1)";
+		'{$_POST["maxsitesize"]}',1,'{$_POST["maxworkingdir"]}')";
 		
 		
 	}else{
 		$sql="UPDATE httrack_sites SET minrate='{$_POST["minrate"]}',maxfilesize='{$_POST["maxfilesize"]}',
-		maxsitesize='{$_POST["maxsitesize"]}',workingdir='{$_POST["workingdir"]}'
+		maxsitesize='{$_POST["maxsitesize"]}',workingdir='{$_POST["workingdir"]}',
+		`maxworkingdir`='{$_POST["maxworkingdir"]}'
 		WHERE ID='$ID'";
 		
 		
 	}
 
 	$q=new mysql();
+	if(!$q->FIELD_EXISTS("httrack_sites","maxworkingdir","artica_backup")){
+		$sql2="ALTER TABLE `httrack_sites` ADD `maxworkingdir`  BIGINT UNSIGNED NOT NULL DEFAULT '20' ,ADD INDEX ( `maxworkingdir` )";
+		$q->QUERY_SQL($sql2,"artica_backup");
+	}
+	
+	
 	$q->QUERY_SQL($sql,"artica_backup");
 	if(!$q->ok){echo trim("Mysql Error:".$q->mysql_error);}
 	

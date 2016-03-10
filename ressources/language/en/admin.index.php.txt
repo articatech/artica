@@ -16,16 +16,16 @@
 <graphs>Charts &amp; Statistics</graphs>
 <lines_number>Max lines</lines_number>
 <monitorix>Monitorix</monitorix>
-<mysql_not_root_configured>Error Mysql Access</mysql_not_root_configured>
+<mysql_not_root_configured>Error MySQL Access</mysql_not_root_configured>
 <mysql_not_root_configured_text>Artica report Access denied, you need to set the right account for mysql in order to get full artica features
-Go to Global settings/Mysql database to set this account</mysql_not_root_configured_text>
-<mysql_too_any_connections>Mysql server report there Too Many connections on Mysql server[br]you have to restart Mysql or to reboot your server</mysql_too_any_connections>
+Go to Global settings/MySQL database to set this account</mysql_not_root_configured_text>
+<mysql_too_any_connections>MySQL server report there Too Many connections on MySQL server[br]you have to restart MySQL or to reboot your server</mysql_too_any_connections>
 <notification>Error detected</notification>
 <postfix_mynet_not_conf>Postfix Networks</postfix_mynet_not_conf>
 <postfix_mynet_not_conf_text>You need to set your networks in order to make Postfix in real production..[br]
 Select in theleft pan Postfix/Postfix Network settings</postfix_mynet_not_conf_text>
 <service>Application name</service>
-<smtp_notification_not_saved>eMail notifications are not set</smtp_notification_not_saved>
+<smtp_notification_not_saved>EMail notifications are not set</smtp_notification_not_saved>
 <smtp_notification_not_saved_text>It is necessary for you to be informed if artica server failed or have successfully perform tasks.[br]
 Set notifications parameters in order to receive by mail all informations</smtp_notification_not_saved_text>
 <too_many_lines_exceed>Too many lines, exceed :</too_many_lines_exceed>

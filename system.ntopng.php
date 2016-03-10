@@ -69,7 +69,8 @@ function params(){
 	$tpl=new templates();
 	$t=time();
 	$arrayConf=unserialize(base64_decode($sock->GET_INFO("ntopng")));
-	
+	$EnableBandwidthd=intval($sock->GET_INFO("EnableBandwidthd"));
+	$BandwidthdInstalled=intval($sock->GET_INFO("BandwidthdInstalled"));
 	
 	$Enablentopng=$sock->GET_INFO("Enablentopng");
 	if(!is_numeric($Enablentopng)){$Enablentopng=0;}
@@ -107,6 +108,18 @@ function params(){
 	
 	$enable=Paragraphe_switch_img("{enable_ntopng}", "{enable_ntopng_text}","Enablentopng",
 			$Enablentopng,null,850);
+	
+	
+	$EnableBandwidthd_par=Paragraphe_switch_img("{EnableBandwidthd}", "{EnableBandwidthd_explain}","EnableBandwidthd",
+			$EnableBandwidthd,null,850);
+	
+	
+	if($BandwidthdInstalled==0){
+		$EnableBandwidthd_par=Paragraphe_switch_disable("{EnableBandwidthd}", "{EnableBandwidthd_explain}","EnableBandwidthd",
+				0,null,850);
+	}
+	
+	
 	$DisableBWMng=intval($sock->GET_INFO("DisableBWMng"));
 	
 	$INSTALLED=$sock->getFrameWork("system.php?ntopng-installed=yes");
@@ -119,6 +132,7 @@ function params(){
 	if($DisableBWMng==1){$xDisableBWMng=0;}
 	
 	$html="$error
+	$EnableBandwidthd_par
 	$enable 
 	<div style='margin-top:5px;width:100%;text-align:right'>$button</div>		
 	<br>".
@@ -150,6 +164,9 @@ var xSave$t= function (obj) {
 	function Save$t(){
 		var XHR = new XHRConnection();
 		if(document.getElementById('Enablentopng')){XHR.appendData('Enablentopng',document.getElementById('Enablentopng').value);}
+		if(document.getElementById('Enablentopng')){XHR.appendData('EnableBandwidthd',document.getElementById('EnableBandwidthd').value);}
+		
+		
 		XHR.appendData('ENABLE_LOGIN',document.getElementById('ENABLE_LOGIN').value);
 		XHR.appendData('MAX_SIZE',document.getElementById('MAX_SIZE').value);
 		XHR.appendData('HTTP_PORT',document.getElementById('HTTP_PORT').value);
@@ -174,6 +191,10 @@ function save(){
 		$sock->getFrameWork("system.php?ntopng-restart=yes");
 	}
 	
+	if(isset($_POST["EnableBandwidthd"])){
+		$sock->SET_INFO("EnableBandwidthd", $_POST["EnableBandwidthd"]);
+	}
+	
 
 	
 }
@@ -183,7 +204,8 @@ function status(){
 	$ini->loadString(base64_decode($sock->getFrameWork("system.php?ntopng-status=yes")));
 	$page=CurrentPageName();
 	$tpl=new templates();
-
+	
+	$serv[]=DAEMON_STATUS_ROUND("APP_BANDWIDTHD",$ini,null,0);
 	$serv[]=DAEMON_STATUS_ROUND("APP_NTOPNG",$ini,null,0);
 	$serv[]=DAEMON_STATUS_ROUND("APP_REDIS_SERVER",$ini,null,0);
 	$serv[]="<div style='text-align:right;margin-top:20px'>".imgtootltip("refresh-32.png","{refresh}","LoadAjax('APP_NTOPNG_STATUS','$page?status=yes',true);")."</div>";

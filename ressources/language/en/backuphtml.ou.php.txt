@@ -3,7 +3,7 @@
 <backup_disabled>Feature disabled</backup_disabled>
 <backup_disabled_text>Click on the red picture in order to enable this feature and make these rules active</backup_disabled_text>
 <backup_enabled>Running</backup_enabled>
-<backup_enabled_text>You can disable this feature by clicking on the green picture. This will be stopping backup your eMails to Mysql database</backup_enabled_text>
+<backup_enabled_text>You can disable this feature by clicking on the green picture. This will be stopping backup your eMails to MySQL database</backup_enabled_text>
 <from_match>Sender match</from_match>
 <from_text>caracter "*" is allowed.[br]
 You can set for example[br]

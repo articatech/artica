@@ -19,6 +19,8 @@ if(isset($_GET["stop-socket"])){backend_stop();exit;}
 if(isset($_GET["start-socket"])){backend_start();exit;}
 if(isset($_GET["copy-conf"])){copy_conf();exit;}
 if(isset($_GET["apply-conf"])){apply_conf();exit;}
+if(isset($_GET["restart"])){restart();exit;}
+if(isset($_GET["install-tgz"])){install_tgz();exit;}
 
 
 while (list ($num, $line) = each ($_GET)){$f[]="$num=$line";}
@@ -41,6 +43,45 @@ function service_cmds(){
 	$command=$_GET["service-cmds"];
 	$cmd="$nohup /etc/init.d/haproxy $command >/usr/share/artica-postfix/ressources/logs/web/haproxy.cmds 2>&1 &";
 	writelogs_framework($cmd,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
+}
+
+function install_tgz(){
+	$migration=null;
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/haproxy.install.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/haproxy.install.progress.txt";
+	@unlink($GLOBALS["CACHEFILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);
+	@chmod($GLOBALS["LOGSFILES"],0777);
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.haproxy.install.php --install {$_GET["key"]} {$_GET["OS"]} >{$GLOBALS["LOGSFILES"]} 2>&1 &";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
+
+}
+
+function restart(){
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/web/haproxy.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/web/haproxy.progress.txt";
+	
+	@unlink($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);$array["POURC"]=2;$array["TEXT"]="{please_wait}";@file_put_contents($GLOBALS["CACHEFILE"], serialize($array));
+
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["LOGSFILES"],0777);
+	$cmd=trim("$nohup $php5 /usr/share/artica-postfix/exec.haproxy.php --restart >{$GLOBALS["LOGSFILES"]} 2>&1 &");
+	writelogs_framework("$cmd",__FUNCTION__,__FILE__,__LINE__);
 	shell_exec($cmd);
 }
 

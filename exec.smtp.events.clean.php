@@ -9,7 +9,7 @@ include_once(dirname(__FILE__)."/framework/class.unix.inc");
 
 
 if(file_exists($pidefile)){
-	$currentpid=trim(file_get_contents($pidefile));
+	$currentpid=trim(@file_get_contents($pidefile));
 	echo date('Y-m-d H:i:s')." NewPID PID: $pid\n";
 	echo date('Y-m-d H:i:s')." Current PID: $currentpid\n";
 	if($currentpid<>$pid){

@@ -3,6 +3,7 @@
 
 class external_acl_squid_ldap{
 	public $Errors=array();
+	private $SquidAddkerAlernates=array();
 	
 	function external_acl_squid_ldap(){
 		
@@ -67,8 +68,9 @@ class external_acl_squid_ldap{
 		
 		$this->BuildDefault();
 		if($GLOBALS["KerbAuthInfos"]["RECURSIVE_GROUPS"]==1){
-			if($GLOBALS["DEBUG_GROUPS"] >0){  $this->WLOG("[GetGroupsFromMember]: RECURSIVE_GROUPS = 1");}
+			if($GLOBALS["VERBOSE"]){  echo "[GetGroupsFromMember]: -> ADLdap_getgroups () RECURSIVE_GROUPS = 1\n";}
 			$GLOBALS["MEMBERS_GROUPS"][$member]=$this->ADLdap_getgroups($member);
+			if($GLOBALS["VERBOSE"]){echo "[ADLdap_getgroups] RETURN ".count($GLOBALS["MEMBERS_GROUPS"][$member])." members\n";}
 			return $GLOBALS["MEMBERS_GROUPS"][$member];
 		}
 		
@@ -262,6 +264,7 @@ private function BuildDefault_ldap_server(){
 }
 
 private function WLOG($text=null){
+	if(isset($GLOBALS["VERBOSE"])){echo "$text\n";}
 	if(count($this->Errors)>500){$this->Errors=array();}
 	$trace=@debug_backtrace();
 	if(isset($trace[1])){$called=" called by ". basename($trace[1]["file"])." {$trace[1]["function"]}() line {$trace[1]["line"]}";}
@@ -284,6 +287,7 @@ public function ADLdap_getgroups($username){
 	$RETURN=array();
 
 	
+	
 	$this->ADLdap_init();
 	$options=$this->ADLdap_options();
 	try {
@@ -300,13 +304,81 @@ public function ADLdap_getgroups($username){
 			$this->WLOG($e);
 			return array();
 	}
-	$result=$adldap->user()->groups($username);
-	while (list ($num, $group) = each ($result) ){
-		$RETURN[$group]=true;
+	
+	if(preg_match("#^(.+?)\/(.+)#", $username,$re)){
+		$workgroup=trim(strtolower($re[1]));
+		$username=$re[2];
+		if(count($this->SquidAddkerAlernates)>0){
+			$result=$this->_ADLdap_getgroups($username,$workgroup);
+			if(count($result)>0){
+				while (list ($num, $group) = each ($result) ){
+					$RETURN[$group]=true;
+				}
+				return $RETURN;
+			}
+		}
+		
 	}
+	
+	$result=$this->_ADLdap_getgroups($username);
+	
+	if($GLOBALS["VERBOSE"]){echo @implode("\n", $GLOBALS["CLASS_ACTV"]);$GLOBALS["CLASS_ACTV"]=array();}
+	
+	if($GLOBALS["VERBOSE"]){echo "* * * * _ADLdap_getgroups($username) = ".count($result)." items * * * *\n";}
+	
+	
+	if(count($result)>0){
+		while (list ($num, $group) = each ($result) ){$RETURN[$group]=true;}
+		return $RETURN;
+	}
+	
+	if(count($RETURN)==0){
+		if(count($this->SquidAddkerAlernates)>0){
+			reset($this->SquidAddkerAlernates);
+			while (list ($workgroup, $group) = each ($this->SquidAddkerAlernates) ){
+				$result=$this->_ADLdap_getgroups($username,$workgroup);
+				if($GLOBALS["VERBOSE"]){echo "* * * * * $username,$workgroup * * * *\n";}
+				if($GLOBALS["VERBOSE"]){echo "* * * * * ". count($result)." items * * * *\n";}
+				if($GLOBALS["VERBOSE"]){echo @implode("\n", $GLOBALS["CLASS_ACTV"]);$GLOBALS["CLASS_ACTV"]=array();}
+				if(count($result)>0){
+					while (list ($num, $group) = each ($result) ){
+						$RETURN[$group]=true;
+					}
+				return $RETURN;}
+			}
+		}
+	}
+	
 	
 	return $RETURN;
 }
+
+private function _ADLdap_getgroups($username,$workgroup=null){
+	if($workgroup==null){
+		$options=$this->ADLdap_options();
+		
+	}else{
+		$options=$this->ADLdap_options_workgroup($workgroup);
+	}
+	
+	try {
+		$adldap = new adLDAP($options);
+	}
+	catch (adLDAPException $e) {
+		$this->WLOG($e);
+		return array();
+	}
+	
+	try {
+		$adldap->authenticate($options["ad_username"],$options["ad_password"]);}
+		catch (adLDAPException $e) {
+			$this->WLOG($e);
+			return array();
+		}
+		return $adldap->user()->groups($username);
+	
+}
+
 
 public function ADLdap_userinfos($username){
 	$RETURN=array();
@@ -341,6 +413,7 @@ private function ADLdap_init(){
 		ini_set('error_reporting', E_ALL);
 	}
 	
+	$this->SquidAddkerAlernates=unserialize(@file_get_contents("/etc/artica-postfix/settings/Daemons/SquidAddkerAlernates"));
 	if(class_exists("adLDAP")){return;}
 	$lib=dirname(__FILE__)."/externals/adLDAP/adLDAP.php";
 	if(!is_file($lib)){return array();}
@@ -355,10 +428,11 @@ private function ADLdap_options(){
 	$GLOBALS["SUFFIX"]=$array["LDAP_SUFFIX"];
 	$recursive=false;
 	if($GLOBALS["KerbAuthInfos"]["RECURSIVE_GROUPS"]==1){
-		if($GLOBALS["VERBOSE"]){echo "RECURSIVE_GROUPS = TRUE\n";}
+		if($GLOBALS["VERBOSE"]){echo "ADLdap_options:: RECURSIVE_GROUPS = TRUE\n";}
 		$recursive=true;
 	}
 	
+	if($GLOBALS["VERBOSE"]){echo "ADLdap_options:: SERVER = {$array["LDAP_SERVER"]}\n";}
 	
 	
 	$options=array(
@@ -367,6 +441,38 @@ private function ADLdap_options(){
 			'ad_password'=>$array["WINDOWS_SERVER_PASS"],
 			'recursive_groups'=>$recursive,
 			'domain_controllers'=>array($array["LDAP_SERVER"]),
+			'account_suffix'=>"@{$array["WINDOWS_DNS_SUFFIX"]}");
+	
+	return $options;
+	
+}
+
+private function ADLdap_options_workgroup($workgroup){
+	$recursive=false;
+	if($GLOBALS["KerbAuthInfos"]["RECURSIVE_GROUPS"]==1){
+		if($GLOBALS["VERBOSE"]){echo "$workgroup: RECURSIVE_GROUPS = TRUE\n";}
+		$recursive=true;
+	}
+	
+	$array=$GLOBALS["KerbAuthInfos"];
+	$Main=$this->SquidAddkerAlernates[$workgroup];
+	
+	if($Main["LDAP_DN"]==null){$Main["LDAP_DN"]=$array["WINDOWS_SERVER_ADMIN"];}
+	if($Main["LDAP_PASSWORD"]==null){$Main["LDAP_PASSWORD"]=$array["WINDOWS_SERVER_PASS"];}
+	
+	if(strpos($Main["LDAP_DN"], "@")>0){
+		$xplode=explode("@",$Main["LDAP_DN"]);
+		$Main["LDAP_DN"]=$xplode[0];
+		$array["WINDOWS_DNS_SUFFIX"]=$xplode[1];
+	}
+	
+	if($GLOBALS["VERBOSE"]){echo "ADLdap_options_workgroup:: SERVER = {$Main["LDAP_SERVER"]}\n";}
+	$options=array(
+			'base_dn'=>$Main["LDAP_SUFFIX"],
+			'ad_username'=>$Main["LDAP_DN"],
+			'ad_password'=>$Main["LDAP_PASSWORD"],
+			'recursive_groups'=>$recursive,
+			'domain_controllers'=>array($Main["LDAP_SERVER"]),
 			'account_suffix'=>"@{$array["WINDOWS_DNS_SUFFIX"]}");
 	
 	return $options;

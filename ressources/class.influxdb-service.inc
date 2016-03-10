@@ -1,7 +1,7 @@
 <?php
 
 function influx_db_service(){
-	$INITD_PATH="/etc/init.d/influx-db";
+	$INITD_PATH="/etc/init.d/artica-postgres";
 	$unix=new unix();
 	$php=$unix->LOCATE_PHP5_BIN();	
 	$cat=$unix->find_program("cat");
@@ -196,7 +196,7 @@ function influx_db_service(){
 	$f[]="        fi";
 	$f[]="";
 	$f[]="        log_success_msg \"Reconfiguring parameters\"";
-	$f[]="		  $php /usr/share/artica-postfix/exec.influxdb.php --config >/dev/null 2>&1";
+	$f[]="		  $php /usr/share/artica-postfix/exec.influxdb.php --config || true";
 	$f[]="        log_info_msg \"Starting the process...\"";
 	//$f[]="        log_info_msg \" \$nohup \$daemon -pidfile \$pidfile -config \$config \$INFLUXD_OPTS >>\$STDOUT 2>>\$STDERR &\"";
 	$f[]="        \$nohup \$daemon -pidfile \$pidfile -config \$config \$INFLUXD_OPTS >>\$STDOUT 2>>\$STDERR &";

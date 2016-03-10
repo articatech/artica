@@ -75,7 +75,7 @@ function tabs(){
 	
 	$compilefile="ressources/logs/squid.compilation.params";
 	if(!is_file($compilefile)){$sock->getFrameWork("squid.php?compil-params=yes");}
-	$COMPILATION_PARAMS=unserialize(base64_decode(file_get_contents($compilefile)));
+	$COMPILATION_PARAMS=unserialize(base64_decode(@file_get_contents($compilefile)));
 	
 	$DisableSSLStandardPort=$sock->GET_INFO("DisableSSLStandardPort");
 	if(!is_numeric($DisableSSLStandardPort)){$DisableSSLStandardPort=1;}

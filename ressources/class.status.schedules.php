@@ -34,20 +34,9 @@ if($NTPDClientEnabled==1){
 		shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} $BASEDIR/exec.syslog-engine.php --load-stats >/dev/null 2>&1 &");
 	}
 	
-	// ****************************************************************************************
-	$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("/etc/artica-postfix/pids/exec.philesight.php.scan_directories.time");
-	if($time_file>60){
-		shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} $BASEDIR/exec.philesight.php --directories >/dev/null 2>&1 &");
-	}
-	// ****************************************************************************************
+
 	
-	$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("/etc/artica-postfix/pids/exec.seeker.php.xtart.time");
-	events("seeker: {$time_file}mn/30mn");
-	$GLOBALS["CLASS_UNIX"]->events("seeker: {$time_file}mn/30mn (/etc/artica-postfix/pids/exec.seeker.php.xtart.time)","/var/log/seeker.log",false,__FUNCTION__,__LINE__,basename(__FILE__));
-	if($time_file>5){
-		events("************ Executing seeker... ************");
-		shell_exec2("{$GLOBALS["nohup"]} {$GLOBALS["NICE"]} {$GLOBALS["PHP5"]} $BASEDIR/exec.seeker.php >/dev/null 2>&1 &");
-	}
+
 
 	$time_file=$GLOBALS["CLASS_UNIX"]->file_time_min("/etc/artica-postfix/croned.1/cron.notifs.php.time");
 	if($time_file>5){

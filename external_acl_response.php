@@ -63,7 +63,7 @@ while (!feof(STDIN)) {
 	$ARRAY["path"]=$MAIN_WEB["path"];
 	$ARRAY["query"]=$MAIN_WEB["query"];
 
-	if($ARRAY["path"]=="/exec.squidguard.php"){fwrite(STDOUT, "ERR\n");continue;}
+	if($ARRAY["path"]=="/ufdbguardd.php"){fwrite(STDOUT, "ERR\n");continue;}
 	
 	SEND_LOGS($ARRAY);
 

@@ -20,8 +20,8 @@
 	if(isset($_GET["service-cmds-peform"])){service_cmds_perform();exit;}
 	if(isset($_GET["compile-rules-js"])){compile_rules_js();exit;}
 	if(isset($_GET["compile-rules-perform"])){	compile_rules_perform();exit;}
-	if(isset($_POST["enable-mimedefang"])){enable_mimedefang();exit;}
-	if(isset($_POST["disable-mimedefang"])){disable_mimedefang();exit;}
+	if(isset($_POST["MimeDefangEnabled"])){enable_mimedefang();exit;}
+	
 	
 	js();
 	
@@ -112,37 +112,63 @@ function popup(){
 	$sock=new sockets();
 
 
-	
+	$MimeDefangVersion=$sock->GET_INFO("MimeDefangVersion");
 	$enable_amavisdeamon_ask=$tpl->javascript_parse_text("{enable_mimedefang_ask}");		
 	$disable_amavisdeamon_ask=$tpl->javascript_parse_text("{disable_mimedefang_ask}");	
 	$MimeDefangEnabled=trim($sock->GET_INFO("MimeDefangEnabled",true));	
-	if(!is_numeric($MimeDefangEnabled)){$MimeDefangEnabled=0;}
-
-	if($MimeDefangEnabled==0){
-		$EnableDaemonP=Paragraphe32("disabled", "mimedefang_is_currently_disabled_text", "EnablePopupMimeDefang()", "warning32.png");
-	}else{
-		$EnableDaemonP=Paragraphe32("enabled", "mimedefang_is_currently_enabled_text", "DisablePopupMimeDefang()", 
-		"ok32.png");
-	}
+	$MimeDefangArchiver=intval($sock->GET_INFO("MimeDefangArchiver",true));
+	$MimeDefangClamav=intval($sock->GET_INFO("MimeDefangClamav"));
+	$MimeDefangDisclaimer=intval($sock->GET_INFO("MimeDefangDisclaimer"));
+	$MimeDefangSpamAssassin=intval($sock->GET_INFO("MimeDefangSpamAssassin"));
+	$MimeDefangAutoWhiteList=intval($sock->GET_INFO("MimeDefangAutoWhiteList"));
+	$MimeDefangFilterExtensions=intval($sock->GET_INFO("MimeDefangFilterExtensions"));
+	$MimeDefangAutoCompress=intval($sock->GET_INFO("MimeDefangAutoCompress"));
 	
+	if(!is_numeric($MimeDefangEnabled)){$MimeDefangEnabled=0;}
+	
+	$EnableMimeDefang=Paragraphe_switch_img("{enable_disable_this_service}", "{MIMEDEFANG_DEF}<br>{APP_VALVUAD_TEXT}","MimeDefangEnabled",$MimeDefangEnabled,null,990);
 	$TOTAL_MEMORY_MB=$sock->getFrameWork("system.php?TOTAL_MEMORY_MB=yes");
 	if($TOTAL_MEMORY_MB<1500){
-		
 		$p=FATAL_ERROR_SHOW_128("{NO_ENOUGH_MEMORY_FOR_THIS_SECTION}<br><strong style='font-size:18px'>{require}:1500MB</strong>",false,true);
-		
+		$MimeDefangEnabled=0;
 		$EnableDaemonP=null;
-	}	
+		
+		$EnableMimeDefang=Paragraphe_switch_disable("{enable_disable_this_service}", "{MIMEDEFANG_DEF}","MimeDefangEnabled",$MimeDefangEnabled,null,990);
+	}
+
+	if($MimeDefangEnabled==0){
+		$backupemail_behavior=Paragraphe_switch_disable("{backupemail_behavior}", "{enable_APP_MAILARCHIVER_text}<br>{mimedefang_is_currently_disabled_text}","MimeDefangArchiver",$MimeDefangArchiver,null,990);
+		$clamav_behavior=Paragraphe_switch_disable("{enable_antivirus}", "{ACTIVATE_ANTIVIRUS_SERVICE_TEXT}","MimeDefangClamav",$MimeDefangClamav,null,990);
+		$disclaimer=Paragraphe_switch_disable("{enable_disclaimer}", "{disclaimer_text}","MimeDefangDisclaimer",$MimeDefangDisclaimer,null,990);
+		$enableSpamassassin=Paragraphe_switch_disable("{enable_spamasssin}", "{enable_spamasssin_text}","MimeDefangSpamAssassin",$MimeDefangSpamAssassin,null,990);
+		$AutoWhiteList=Paragraphe_switch_disable("{smtp_AutoWhiteList}", "{smtp_AutoWhiteList_text}","MimeDefangAutoWhiteList",$MimeDefangAutoWhiteList,null,990);
+		$extensions=Paragraphe_switch_disable("{title_mime}", "{mimedefang_attachments_text}","MimeDefangFilterExtensions",$MimeDefangFilterExtensions,null,990);
+		$autcompress=Paragraphe_switch_disable("{automated_compression}", "{auto-compress_text}","MimeDefangAutoCompress",$MimeDefangAutoCompress,null,990);
+		
+		
+	}else{
+		
+		$clamav_behavior=Paragraphe_switch_img("{enable_antivirus}", "{ACTIVATE_ANTIVIRUS_SERVICE_TEXT}","MimeDefangClamav",$MimeDefangClamav,null,990);
+		$enableSpamassassin=Paragraphe_switch_img("{enable_spamasssin}", "{enable_spamasssin_text}","MimeDefangSpamAssassin",$MimeDefangSpamAssassin,null,990);
+		$backupemail_behavior=Paragraphe_switch_img("{backupemail_behavior}", "{enable_APP_MAILARCHIVER_text}","MimeDefangArchiver",$MimeDefangArchiver,null,990);
+		$disclaimer=Paragraphe_switch_img("{enable_disclaimer}", "{disclaimer_text}<br>{disclaimer_explain}","MimeDefangDisclaimer",$MimeDefangDisclaimer,null,990);
+		$AutoWhiteList=Paragraphe_switch_img("{smtp_AutoWhiteList}", "{smtp_AutoWhiteList_text}","MimeDefangAutoWhiteList",$MimeDefangAutoWhiteList,null,990);
+		$extensions=Paragraphe_switch_img("{title_mime}", "{mimedefang_attachments_text}","MimeDefangFilterExtensions",$MimeDefangFilterExtensions,null,990);
+		$autcompress=Paragraphe_switch_img("{automated_compression}", "{auto-compress_text}","MimeDefangAutoCompress",$MimeDefangAutoCompress,null,990);
+	}
+	
+	
 	
 	
 	$tr[]=$EnableDaemonP;
-	$tr[]=Paragraphe32("service_options", "service_options_text", "Loadjs('mimedefang.service.php')", "32-parameters.png");
-	$tr[]=Paragraphe32("reload_service", "reload_service_text", "MimeDefangCompileRules()", "service-restart-32.png");
-	$tr[]=Paragraphe32("online_help", "online_help", "s_PopUpFull('http://www.mail-appliance.org/index.php?cID=305','1024','900');", "help_bg32.png");
+	//$tr[]=Paragraphe32("service_options", "service_options_text", "Loadjs('mimedefang.service.php')", "32-parameters.png",500);
+	
+	//$tr[]=Paragraphe32("online_help", "online_help", "s_PopUpFull('http://www.mail-appliance.org/index.php?cID=305','1024','900');", "help_bg32.png",500);
 	
 	
-	http://www.mail-appliance.org/index.php?cID=305&
 	
-	$table=CompileTr2($tr,"form");
+	
+	$table=CompileTr2($tr);
 		
 	
 	
@@ -151,42 +177,54 @@ function popup(){
 		<td width=1% valign='top'>
 			<div id='status-$t'></div>
 		</td>
-		<td valign='top'>
-			<div style='font-size:18px;margin:bottom:10px;text-align:right'>{APP_MIMEDEFANG}</div>
-			<div style='font-size:13px' class=explain>{MIMEDEFANG_DEF}</div>
+		<td valign='top' style='padding-left:15px'>
+			<div style='font-size:40px;margin:bottom:40px;text-align:right'>{APP_MIMEDEFANG} v$MimeDefangVersion <span style='font-size:18px'>(". texttooltip("{reload_service}","{reload_service_text}","MimeDefangCompileRules()").")</span></div>
 			$p
+			<div style='width:98%' class=form>
+			$EnableMimeDefang
+			</div>
+			<div style='width:98%' class=form>
+			$enableSpamassassin
+			$AutoWhiteList
+			$clamav_behavior
+			$extensions
+			$backupemail_behavior
+			$disclaimer
+			$autcompress
+			
+			<div style='margin:20px;text-align:right'>". button("{apply}", "Save$t()",40)."</div>
+			</div>
+			
 			<div id='explain-$t'>$table</div>
 		</td>
 	</tr>
 	</table>
 	<script>
 	
+	function MimeDefangCompileRules(){
+		Loadjs('mimedefang.compile.php');
+	}
+	
 	var x_Enablemimedefang= function (obj) {
 		var tempvalue=obj.responseText;
 		if(tempvalue.length>3){alert(tempvalue);}	
-		RefreshTab('main_config_mimedefang');
-	}	
-	
-		function EnablePopupMimeDefang(){
-			if(confirm('$enable_amavisdeamon_ask')){
-				var XHR = new XHRConnection();
-				XHR.appendData('enable-mimedefang','yes');
-				AnimateDiv('explain-$t');
-				XHR.sendAndLoad('$page', 'POST',x_Enablemimedefang);
-			}
-		}
+		MimeDefangCompileRules();
+	}		
+	function Save$t(){
+		var XHR = new XHRConnection();
+		XHR.appendData('MimeDefangEnabled',document.getElementById('MimeDefangEnabled').value);
+		XHR.appendData('MimeDefangClamav',document.getElementById('MimeDefangClamav').value);
+		XHR.appendData('MimeDefangArchiver',document.getElementById('MimeDefangArchiver').value);
+		XHR.appendData('MimeDefangDisclaimer',document.getElementById('MimeDefangDisclaimer').value);
+		XHR.appendData('MimeDefangSpamAssassin',document.getElementById('MimeDefangSpamAssassin').value);
+		XHR.appendData('MimeDefangAutoWhiteList',document.getElementById('MimeDefangAutoWhiteList').value);
+		XHR.appendData('MimeDefangFilterExtensions',document.getElementById('MimeDefangFilterExtensions').value);
+		XHR.appendData('MimeDefangAutoCompress',document.getElementById('MimeDefangAutoCompress').value);
 		
-		function DisablePopupMimeDefang(){
-			if(confirm('$disable_amavisdeamon_ask')){
-				var XHR = new XHRConnection();
-				XHR.appendData('disable-mimedefang','yes');
-				AnimateDiv('explain-$t');
-				XHR.sendAndLoad('$page', 'POST',x_Enablemimedefang);
-			}
-		}
+		XHR.sendAndLoad('$page', 'POST',x_Enablemimedefang);
+	}
 	
-	
-	
+
 		LoadAjax('status-$t','$page?status=yes&t=$t');
 		
 		
@@ -268,18 +306,6 @@ function status(){
 	$html="<table style='width:99%' class=form>
 	<tr>
 	<td>$APP_MIMEDEFANG$APP_MIMEDEFANGX
-		<center style='margin-top:10px;margin-bottom:10px;width:95%' class=form>
-		<table style='width:70%'>
-		<tbody>
-		<tr>
-			<td width=10% align='center;'>". imgtootltip("32-stop.png","{stop}","Loadjs('$page?service-cmds=stop')")."</td>
-			<td width=10% align='center'>". imgtootltip("restart-32.png","{stop} & {start}","Loadjs('$page?service-cmds=restart')")."</td>
-			<td width=10% align='center'>". imgtootltip("32-run.png","{start}","Loadjs('$page?service-cmds=start')")."</td>
-		</tr>
-		</tbody>
-		</table>
-		</center>	
-	
 	</td>
 	</tr>
 	</table>
@@ -304,66 +330,52 @@ function tabs(){
 	
 	
 	$array["popup"]='{status}';
-	$array["disclaimers"]='{disclaimers}';
-	$array["autocompress"]='{automated_compression}';
-	$array["filehosting"]='{mimedefang_filehosting}';
-	$array["events"]='{events}';
+	$array["service_options"]='{service_options}';
+	//$array["autocompress"]='{automated_compression}';
+	//$array["filehosting"]='{mimedefang_filehosting}';
+	
 	
 	while (list ($num, $ligne) = each ($array) ){
 		if($num=="events"){
-			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"postfix.events.new.php?mimedefang-filter=yes&noform=yes\"><span style='font-size:14px'>$ligne</span></a></li>\n");
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"postfix.events.new.php?mimedefang-filter=yes&noform=yes\"><span style='font-size:22px'>$ligne</span></a></li>\n");
 			continue;
 		}
 		
 	if($num=="disclaimers"){
-			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"mimedefang.disclaimers.php\"><span style='font-size:14px'>$ligne</span></a></li>\n");
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"mimedefang.disclaimers.php\"><span style='font-size:22px'>$ligne</span></a></li>\n");
 			continue;
 		}		
 	if($num=="autocompress"){
-			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"mimedefang.autocompress.php\"><span style='font-size:14px'>$ligne</span></a></li>\n");
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"mimedefang.autocompress.php\"><span style='font-size:22px'>$ligne</span></a></li>\n");
 			continue;
 		}
 
 	if($num=="filehosting"){
-			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"mimedefang.filehosting.php\"><span style='font-size:14px'>$ligne</span></a></li>\n");
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"mimedefang.filehosting.php\"><span style='font-size:22px'>$ligne</span></a></li>\n");
 			continue;
-		}			
+		}	
+
+		if($num=="service_options"){
+			$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"mimedefang.service.php\"><span style='font-size:26px'>$ligne</span></a></li>\n");
+			continue;
+		}		
 		
-		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&section=$num&$ajaxpop\"><span style='font-size:14px'>$ligne</span></a></li>\n");
+		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&section=$num&$ajaxpop\"><span style='font-size:26px'>$ligne</span></a></li>\n");
 	}
-	
-	
-	$width="750px";
-	$height="600px";
-	$width="100%";$height="100%";
-	
-	echo "
-	<div id=main_config_mimedefang style='width:{$width};height:{$height};overflow:auto'>
-		<ul>". implode("\n",$html)."</ul>
-	</div>
-		<script>
-				$(document).ready(function(){
-					$('#main_config_mimedefang').tabs();
-			
-			
-			});
-		</script>";		
+
+	echo build_artica_tabs($html, "main_config_mimedefang",1490);
+		
 
 	
 }
 function enable_mimedefang(){
 	$sock=new sockets();
-	$sock->SET_INFO("MimeDefangEnabled", 1);
-	$sock->getFrameWork("mimedefang.php?restart=yes");
-	$sock->getFrameWork("mimedefang.php?postfix-milter=yes");
-	$sock->getFrameWork("cmd.php?artica-filter-reload=yes");	
-}
-function disable_mimedefang(){
-	$sock=new sockets();
-	$sock->SET_INFO("MimeDefangEnabled", 0);
-	$sock->getFrameWork("mimedefang.php?restart=yes");
-	$sock->getFrameWork("mimedefang.php?postfix-milter=yes");
-	$sock->getFrameWork("cmd.php?artica-filter-reload=yes");		
-}
 	
+	while (list ($key, $val) = each ($_POST) ){
+		$sock->SET_INFO("$key", $val);
+		
+	}
+	
+}
+
 ?>	

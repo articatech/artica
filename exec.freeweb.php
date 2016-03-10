@@ -110,6 +110,7 @@ if($argv[1]=="--remove-disabled"){remove_disabled();die();exit;}
 if($argv[1]=="--ttl"){echo "TTL: ".TTL_Apache()."Mn\n";die();exit;}
 if($argv[1]=="--restart-maintenance"){RestartApacheMaintenance();exit;}
 if($argv[1]=="--check"){TestingApacheConfigurationFile();exit;}
+if($argv[1]=="--restart-progress"){restart_progress();exit;}
 
 
 	
@@ -185,7 +186,13 @@ function build_progress($text,$pourc){
 	@chmod($GLOBALS["PROGRESS_FILE"],0755);
 
 }
+function build_progress_restart($text,$pourc){
+	$array["POURC"]=$pourc;
+	$array["TEXT"]=$text;
+	@file_put_contents("/usr/share/artica-postfix/ressources/logs/freeweb.progress", serialize($array));
+	@chmod("/usr/share/artica-postfix/ressources/logs/freeweb.progress",0755);
 
+}
 
 function help(){
 	echo @implode(" ", $argv)."\n";
@@ -247,6 +254,8 @@ function reconfigure_all_websites(){
 function sync_squid(){
 	$unix=new unix();
 	$php=$unix->LOCATE_PHP5_BIN();
+	$free=new freeweb();
+	$free->SpecificsChowns();
 	system("$php /usr/share/artica-postfix/exec.squid.global.access.php --freewebs");
 }
 
@@ -771,6 +780,11 @@ function startApache($withoutkill=false,$aspid=false){
 		if($EnableFreeWeb==0){StopApache();return;}
 		return;
 	}	
+	
+	$sysctl=$unix->find_program("sysctl");
+	shell_exec("$sysctl -w kernel.msgmni=1024 >/dev/null 2>&1");
+	shell_exec("$sysctl -w \"kernel.sem=250 256000 32 1024\" >/dev/null 2>&1");
+	shell_exec("$sysctl -p >/dev/null 2>&1");
 	
 	if($EnableFreeWeb==0){echo "Starting......: ".date("H:i:s")." [INIT]: Apache Disabled ( see EnableFreeWeb($EnableFreeWeb)/SquidAllow80Port($SquidAllow80Port)/EnableIntelCeleron($EnableIntelCeleron)/SquidPerformance($SquidPerformance) tokens )\n";return;}
 	echo "Starting......: ".date("H:i:s")." [INIT]: Apache {$GLOBALS["startApacheCount"]} time(s)\n";
@@ -2078,7 +2092,7 @@ function CheckHttpdConf(){
 	
 	
 	
-	$APACHE_MODULES_PATH=$users->APACHE_MODULES_PATH;	
+	$APACHE_MODULES_PATH=$unix->APACHE_MODULES_PATH();	
 	
 	$toremove[]="mod-status.init";
 	$toremove[]="status.conf";
@@ -2108,7 +2122,8 @@ function CheckHttpdConf(){
 	$toremove[]="php5-fpm.conf";
 	$toremove[]="bw.load";
 	$toremove[]="status_module.load";
-
+	$toremove[]="autoindex.load";
+	$toremove[]="ldap.load";
 	
 
 	
@@ -2199,7 +2214,12 @@ function CheckHttpdConf(){
 	$conf[]="</IfModule>";
 	
 
-	
+	if(is_file("/usr/lib/apache2/modules/mod_cband.so")){
+		$conf[]="<IfModule mod_cband.c>";
+		$conf[]="\tCBandScoreFlushPeriod 1";
+		$conf[]="\tCBandRandomPulse On";
+		$conf[]="</IfModule>";
+	}
 	
 	
 	$conf[]="";
@@ -2406,9 +2426,11 @@ function CheckHttpdConf(){
 	
 	
 	//$dir_master=$unix->getmodpathfromconf();
-	if(is_file('/usr/lib/apache2/modules/libphp5.so')){
-		$httpd[]="LoadModule php5_module /usr/lib/apache2/modules/libphp5.so";
-	}
+	
+
+	
+	
+
 	
 	if(is_file('/usr/lib/apache2/modules/mod_kav64.so')){
 		$sock=new sockets();
@@ -2423,6 +2445,7 @@ function CheckHttpdConf(){
 	if(is_file("$DAEMON_PATH/security.conf")){
 		$httpd[]="Include $DAEMON_PATH/security.conf";	
 	}
+
 	
 	
 	$httpd[]="Include $DAEMON_PATH/mods-enabled/*.load";
@@ -2533,7 +2556,7 @@ function CheckHttpdConf(){
 	//PHP5 MODULE
 	
 	//if(is_file("$APACHE_MODULES_PATH/mod_php5.so")){$httpd[]="LoadModule php5_module $APACHE_MODULES_PATH/mod_php5.so";}
-	if(is_file("$APACHE_MODULES_PATH/mod_ldap.so")){$httpd[]="LoadModule ldap_module $APACHE_MODULES_PATH/mod_ldap.so";}
+	//if(is_file("$APACHE_MODULES_PATH/mod_ldap.so")){$httpd[]="LoadModule ldap_module $APACHE_MODULES_PATH/mod_ldap.so";}
 	
 	
 	
@@ -2633,7 +2656,9 @@ function CheckHttpdConf(){
 	$array["fastcgi_module"]="mod_fastcgi.so";
 	$array["deflate_module"]="mod_deflate.so";
 	$array["headers_module"]="mod_headers.so";
-
+	$array["cband_module"]="mod_cband.so";
+	
+	
 	
 	if(is_file("$APACHE_MODULES_PATH/mod_rpaf-2.0.so")){
 		$net=new networking();
@@ -2719,6 +2744,17 @@ function CheckHttpdConf(){
 	@unlink("$DAEMON_PATH/mods-enabled/dav_fs_module.load");
 	@unlink("$DAEMON_PATH/mods-enabled/pagespeed.load");
 	@unlink("$DAEMON_PATH/mods-enabled/rpaf.load");
+	@unlink("$DAEMON_PATH/mods-enabled/alias.load");
+	@unlink("$DAEMON_PATH/mods-enabled/auth_basic.load");
+	@unlink("$DAEMON_PATH/mods-enabled/dir.load");
+	@unlink("$DAEMON_PATH/mods-enabled/deflate.load");
+	@unlink("$DAEMON_PATH/mods-enabled/negotiation.load");
+	@unlink("$DAEMON_PATH/mods-enabled/authn_file.load");
+	@unlink("$DAEMON_PATH/mods-enabled/authz_host.load");
+	@unlink("$DAEMON_PATH/mods-enabled/setenvif.load");
+	@unlink("$DAEMON_PATH/mods-enabled/ssl.load");
+	@unlink("$DAEMON_PATH/mods-enabled/ldap.load");
+	@unlink("$DAEMON_PATH/mods-enabled/authnz_ldap.load");
 	
 	$sock=new sockets();
 	$FreeWebsDisableMOdQOS=$sock->GET_INFO("FreeWebsDisableMOdQOS");
@@ -2817,6 +2853,9 @@ if($FreeWebsEnableModEvasive==1){
 		}
 	}
 	
+
+
+	
 	echo "Starting......: ".date("H:i:s")." [INIT]: Apache terminated... next process\n";
 	
 }	
@@ -2827,7 +2866,7 @@ function mod_security(){
 	$httpdconf=$GLOBALS["CLASS_UNIX"]->LOCATE_APACHE_CONF_PATH();
 	$d_path=$GLOBALS["CLASS_UNIX"]->APACHE_DIR_SITES_ENABLED();
 	$DAEMON_PATH=$GLOBALS["CLASS_UNIX"]->getmodpathfromconf($httpdconf);
-	$APACHE_MODULES_PATH=$users->APACHE_MODULES_PATH;
+	$APACHE_MODULES_PATH=$GLOBALS["CLASS_UNIX"]->APACHE_MODULES_PATH();
 	
 	@unlink("$DAEMON_PATH/mods-enabled/mod_security.load");
 	
@@ -2951,10 +2990,13 @@ function apache_permissions(){
 	$f[]="/var/cache/apache2/mod_pagespeed";
 	$f[]="/etc/apache2/logs";
 	$f[]="/var/lib/apache2/fastcgi";
+	$f[]="/var/run/apache2";
 	$f[]="/var/www";
 	while (list ($index, $dir) = each ($f)){
 		echo "Starting......: ".date("H:i:s")." [INIT]: apache2 apply permissions on `$dir`\n";
 		if(!is_dir($dir)){@mkdir($dir,0755,true);}
+		@chown($dir,$APACHE_SRC_ACCOUNT);
+		@chgrp($dir, $APACHE_SRC_GROUP);
 		$unix->chown_func($APACHE_SRC_ACCOUNT,$APACHE_SRC_GROUP,"$dir/*");
 		$unix->chmod_func(0755, $dir);
 	}
@@ -3017,15 +3059,25 @@ function CheckLibraries(){
 	if(!isset($GLOBALS["ECHO_BIN"])){$GLOBALS["ECHO_BIN"]=$GLOBALS["CLASS_UNIX"]->find_program("echo");}
 	if(!isset($GLOBALS["MD5SUM_BIN"])){$GLOBALS["MD5SUM_BIN"]=$GLOBALS["CLASS_UNIX"]->find_program("md5sum");}
 	if(!isset($GLOBALS["CUT_BIN"])){$GLOBALS["CUT_BIN"]=$GLOBALS["CLASS_UNIX"]->find_program("cut");}
-	 
-	if($GLOBALS["CLASS_LDAP"]->ldapFailed){
-		echo "$prefixOutput [".__LINE__."] OpenLDAP system not ready...\n";
-		die();
+	
+	$EnableOpenLDAP=1;
+	if(is_file("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP")){
+		$EnableOpenLDAP=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableOpenLDAP"));
 	}
+
+	
+	 if($EnableOpenLDAP==1){
+		if($GLOBALS["CLASS_LDAP"]->ldapFailed){
+			echo "$prefixOutput [".__LINE__."] OpenLDAP system not ready...\n";
+			build_progress("OpenLDAP system not ready", 110);
+			die();
+		}
+	 }
 	
 	$q=new mysql();
 	if(!$q->TestingConnection()){
 		echo "$prefixOutput [".__LINE__."] MySQL system not ready...\n";
+		build_progress("MySQL system not ready", 110);
 		die();	
 	}
 	
@@ -3383,9 +3435,8 @@ function buildHost($uid=null,$hostname,$ssl=null,$d_path=null,$Params=array()){
 			$conf[]="\t\tDirectoryIndex $DirectoryIndex";
 	   		$conf[]="\t\tOptions{$Indexes}{$FollowSymLinks}{$SymLinksIfOwnerMatch} MultiViews$OptionExecCGI";
 	   		if($IndexIgnores<>null){$conf[]=$IndexIgnores;}
-		   	$conf[]="\t\tAllowOverride All";
 		   	if($WebDav<>null){$conf[]=$WebDav;}
-			if($AllowOverride<>null){$conf[]=$AllowOverride;}
+			if($AllowOverride<>null){$conf[]=$AllowOverride;}else{$conf[]="\t\tAllowOverride AuthConfig FileInfo";}
 			$conf[]="\t\tOrder allow,deny";
 			if($allowFrom<>null){$conf[]=$allowFrom;}
 		}else{
@@ -3450,10 +3501,9 @@ function buildHost($uid=null,$hostname,$ssl=null,$d_path=null,$Params=array()){
 	
 	if(!is_dir("/var/log/apache2/$hostname")){@mkdir("/var/log/apache2/$hostname",0755,true);}
 	if($ScriptAliases<>null){$conf[]=$ScriptAliases;}
-	$conf[]="\tLogFormat \"%h %l %u %t \\\"%r\\\" %>s %b \\\"%{Referer}i\\\" \\\"%{User-Agent}i\\\" %V\" combinedv";
-	$conf[]="\tCustomLog /var/log/apache2/$hostname/access.log combinedv";
+	$conf[]="\tLogFormat \"%h %{X-Forwarded-For}i %l %u %t \\\"%r\\\" %>s %b \\\"%{Referer}i\\\" \\\"%{User-Agent}i\\\" %V\" combinedv";
 	$conf[]="\tCustomLog /var/log/apache2/common-access.log combinedv";
-	$conf[]="\tErrorLog /var/log/apache2/$hostname/error.log";
+	$conf[]="\tErrorLog /var/log/apache2/error.log";
 	$conf[]="\tLogLevel warn";
 	$conf[]="</VirtualHost>";
 	$conf[]="";
@@ -3528,7 +3578,7 @@ function buildHost($uid=null,$hostname,$ssl=null,$d_path=null,$Params=array()){
 	
 	if(is_file("/etc/php5/apache2/php.ini")){
 		$timephpini=$unix->file_time_min("/etc/php5/apache2/php.ini");
-		if($timephpini>60){shell_exec("/usr/share/artica-postfix/bin/artica-install --php-ini >/dev/null 2>&1");}
+		if($timephpini>60){shell_exec("$php /usr/share/artica-postfix/exec.php.ini.php");}
 	}
 	
 	build_progress("Building $hostname {apply_permissions} - $freeweb->groupware -", 34);
@@ -5271,6 +5321,30 @@ function ZarafaWebAccessInFrontEnd($DAEMON_PATH){
 	@file_put_contents("/etc/apache2/sites-enabled/000-default", @implode("\n", $f));	
 	
 	
+	
+}
+
+
+function restart_progress(){
+	
+	$sock=new sockets();
+	$EnableFreeWeb=$sock->GET_INFO("EnableFreeWeb");
+	
+	build_progress_restart("EnableFreeWeb: $EnableFreeWeb",20);
+	if($EnableFreeWeb==0){
+		build_progress_restart("{stopping_service}",80);
+		system("/etc/init.d/apache2 stop");
+		build_progress_restart("{restarting_service}",90);
+		system("/etc/init.d/artica-status restart --force");
+		build_progress_restart("{restarting_service} {done}",100);
+		return;
+	}
+	
+	build_progress_restart("{restarting_service}",80);
+	system("/etc/init.d/apache2 restart");
+	build_progress_restart("{restarting_service}",90);
+	system("/etc/init.d/artica-status restart --force");
+	build_progress_restart("{restarting_service} {done}",100);
 	
 }
 

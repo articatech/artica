@@ -218,18 +218,18 @@ function table(){
 	
 		$dir_size=273;
 		$partition_size=125;
-		$hd_size=125;
+		$hd_size=148;
 		if(isset($_GET["bypopup"])){
 			$dir_size=111;
 			$partition_size=83;
-			$hd_size=83;
+			$hd_size=148;
 		}
 		
 		
 		$buttons="
 		buttons : [
-			{name: '$new_directory', bclass: 'add', onpress : AddShared$t},
-			{name: '$rescan', bclass: 'Reconf', onpress : Refresh$t},
+			{name: '<strong style=font-size:18px>$new_directory</strong>', bclass: 'add', onpress : AddShared$t},
+			{name: '<strong style=font-size:18px>$rescan</strong>', bclass: 'Reconf', onpress : Refresh$t},
 		],";
 		
 		$html="
@@ -241,12 +241,12 @@ function table(){
 		url: '$page?getlist=yes&dev={$_GET["dev"]}',
 		dataType: 'json',
 		colModel : [
-		{display: '$date', name : 'lastscan', width :155, sortable : true, align: 'left'},
-		{display: '$directory', name : 'directory', width :$dir_size, sortable : true, align: 'left'},
-		{display: '$partition', name : 'partition', width :$partition_size, sortable : true, align: 'left'},
-		{display: '$hard_drive', name : 'hd', width : $hd_size, sortable : true, align: 'left'},
-		{display: '$used', name : 'USED', width : 85, sortable : true, align: 'right'},
-		{display: '$free', name : 'FREEMB', width : 85, sortable : true, align: 'right'},
+		{display: '<span style=font-size:18px>$date</span>', name : 'lastscan', width :260, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$directory</span>', name : 'directory', width :$dir_size, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$partition</span>', name : 'partition', width :$partition_size, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$hard_drive</span>', name : 'hd', width : $hd_size, sortable : true, align: 'left'},
+		{display: '<span style=font-size:18px>$used</span>', name : 'USED', width : $hd_size, sortable : true, align: 'right'},
+		{display: '<span style=font-size:18px>$free</span>', name : 'FREEMB', width : $hd_size, sortable : true, align: 'right'},
 		{display: '&nbsp;', name : 'icon', width : 56, sortable : false, align: 'center'},
 		{display: '&nbsp;', name : 'delete', width : 56, sortable : false, align: 'center'},
 		],
@@ -260,12 +260,12 @@ function table(){
 		sortname: 'FREEMB',
 		sortorder: 'asc',
 		usepager: true,
-		title: '<span style=font-size:18px>$title</span>',
+		title: '<span style=font-size:30px>$title</span>',
 		useRp: false,
 		rp: 50,
 		showTableToggleBtn: false,
 		width: '99%',
-		height: 450,
+		height: 550,
 		singleSelect: true,
 		rpOptions: [10, 20, 30, 50,100,200]
 	
@@ -291,7 +291,7 @@ function table_list(){
 	$MyPage=CurrentPageName();
 	$q=new mysql();
 	
-	$fontsize="16px";
+	$fontsize="22px";
 	$cs=0;
 	$page=1;
 	
@@ -397,8 +397,8 @@ function table_list(){
 						"<span style='font-size:$fontsize;color:$color'>$jslink{$hd}</a></span>",
 						"<span style='font-size:$fontsize;color:$color'>$jslink{$USED}%</a></span>",
 						"<span style='font-size:$fontsize;color:$color'>$jslink{$FREEMB}</a></span>",
-						"<span style='font-size:$fontsize;color:$color'>$icon</a></span>",
-						"<span style='font-size:$fontsize;color:$color'>$delete</a></span>",
+						"<center style='font-size:$fontsize;color:$color'>$icon</a></center>",
+						"<center style='font-size:$fontsize;color:$color'>$delete</a></center>",
 						 )
 		);
 	

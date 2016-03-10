@@ -25,7 +25,7 @@ function exec_nice(){
 	if(is_file("/etc/artica-postfix/settings/Daemons/cgroupsEnabled")){$cgroupsEnabled=trim(intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/cgroupsEnabled")));}
 	
 	if(is_file("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron")){
-		$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+		$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 		if($GLOBALS["VERBOSE"]){echo "exec_nice/exec_nice: EnableIntelCeleron=$EnableIntelCeleron\n";}
 		if($EnableIntelCeleron==1){$cgroupsEnabled=1;}
 	}

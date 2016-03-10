@@ -94,7 +94,16 @@ var id='';
 	if(document.getElementById('TABLE_BROWSE_ACL_GROUPS_ID')){ 
 		$('#'+document.getElementById('TABLE_BROWSE_ACL_GROUPS_ID').value).flexReload();
 	}
-
+	
+	if(document.getElementById('TABLE_ITEMS_LIST_ACLS')){ 
+		$('#'+document.getElementById('TABLE_ITEMS_LIST_ACLS').value).flexReload();
+	}
+	if(document.getElementById('META_PROXY_ACLS_GROUPS')){ 
+		$('#'+document.getElementById('META_PROXY_ACLS_GROUPS').value).flexReload();
+	}
+	if(document.getElementById('META_PROXY_ACLS_GROUPS')){ 
+		$('#'+document.getElementById('META_PROXY_ACLS_GROUPS').value).flexReload();
+	}
 }
 
 
@@ -2633,6 +2642,7 @@ function LayersTabsAllAfter(){
 	if(document.getElementById('MAIN_PAGE_ORGANIZATION_LIST')){ $('#'+document.getElementById('MAIN_PAGE_ORGANIZATION_LIST').value).flexReload();}
 	if(document.getElementById('TABLE_SEARCH_USERS')){ $('#'+document.getElementById('TABLE_SEARCH_USERS').value).flexReload();}
 	if(document.getElementById('system-main-status')){ LoadAjaxRound('system-main-status','admin.dashboard.system.php');}
+	if(document.getElementById('thisIsThePostfixDashBoard')){LoadAjaxRound('messaging-dashboard','admin.dashboard.postfix.php');}
 
 
 }	

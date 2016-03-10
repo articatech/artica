@@ -193,6 +193,7 @@ class mysql_multi{
 	}
 
 	private function TABLES_STATUS_CORRUPTED($database){
+		$ARRAY=array();
 		$sql="show TABLE STATUS";
 		$results=$this->QUERY_SQL($sql,$database);
 		while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){

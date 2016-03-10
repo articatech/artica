@@ -82,6 +82,12 @@ function start($aspid=false){
 	$echo=$unix->find_program("echo");
 	$nohup=$unix->find_program("nohup");
 	$tail=$unix->find_program("tail");
+	
+	if(!is_file("/usr/sbin/postfix-logger")){
+		@copy("$tail", "/usr/sbin/postfix-logger");
+		
+	}
+	@chmod("/usr/sbin/postfix-logger",0755);
 	$maillog_path=$sock->GET_INFO("maillog_path");
 	
 	if(strlen($maillog_path)==0){
@@ -98,7 +104,7 @@ function start($aspid=false){
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} tail....: $tail\n";}
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} mail.log: $maillog_path\n";}
 	
-	$cmd="$tail -f -n 0 $maillog_path|$php5 /usr/share/artica-postfix/exec.maillog.php >>/var/log/artica-postfix/postfix-logger-start.log 2>&1 &"; 
+	$cmd="/usr/sbin/postfix-logger --follow=name --retry --max-unchanged-stats=50 -n 0 $maillog_path|$php5 /usr/share/artica-postfix/exec.maillog.php >/dev/null 2>&1 &"; 
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} service\n";}
 	shell_exec($cmd);
 	
@@ -195,7 +201,7 @@ function stop($aspid=false){
 	if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} mail.log: $maillog_path\n";}
 	if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} find ghost processes\n";}
 	for($i=0;$i<10;$i++){
-		$pid=$unix->PIDOF_PATTERN("$tail -f -n 0 $maillog_path");
+		$pid=PID_NUM();
 		if(!$unix->process_exists($pid)){break;}
 		if($GLOBALS["OUTPUT"]){echo "Stopping......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Kill ghost $pid process\n";}
 		unix_system_kill_force($pid);
@@ -204,12 +210,15 @@ function stop($aspid=false){
 
 function PID_NUM(){
 	
-$unix=new unix();
-if(is_file('/etc/artica-postfix/exec.maillog.php.pid')){
-   $pid=$unix->get_pid_from_file('/etc/artica-postfix/exec.maillog.php.pid');
-   if($unix->process_exists($pid)){return $pid;}
-}
-return $unix->PIDOF_PATTERN("/usr/share/artica-postfix/exec.maillog.php");
+	$unix=new unix();
+	if(is_file('/etc/artica-postfix/exec.maillog.php.pid')){
+	   $pid=$unix->get_pid_from_file('/etc/artica-postfix/exec.maillog.php.pid');
+	   if($unix->process_exists($pid)){return $pid;}
+	}
+	$pid=$unix->PIDOF("/usr/sbin/postfix-logger");
+	if($unix->process_exists($pid)){return $pid;}
+
+	return $unix->PIDOF_PATTERN("/usr/share/artica-postfix/exec.maillog.php");
 	
 }
 ?>

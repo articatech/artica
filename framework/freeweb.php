@@ -28,6 +28,7 @@ if(isset($_GET["remove-disabled"])){remove_disabled();exit;}
 if(isset($_GET["status"])){freewebs_status();exit;}
 if(isset($_GET["reconfigure-updateutility"])){updateutility();exit;}
 if(isset($_GET["reconfigure-wpad"])){wpad();exit;}
+if(isset($_GET["restart-progress"])){restart_progress();exit;}
 
 
 
@@ -53,6 +54,25 @@ function force_resolv(){
 	shell_exec($cmd);		
 	
 }
+
+function restart_progress(){
+	$GLOBALS["PROGRESS_FILE"]="/usr/share/artica-postfix/ressources/logs/freeweb.progress";
+	$GLOBALS["LOG_FILE"]="/usr/share/artica-postfix/ressources/logs/web/freeweb.progress.txt";
+	@unlink($GLOBALS["PROGRESS_FILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["PROGRESS_FILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["PROGRESS_FILE"],0777);$array["POURC"]=2;$array["TEXT"]="{please_wait}";@file_put_contents($GLOBALS["CACHEFILE"], serialize($array));
+	@chmod($GLOBALS["LOGSFILES"],0777);
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.freeweb.php --restart-progress >{$GLOBALS["LOG_FILE"]} 2>&1 &";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);	
+	
+}
+
 function reconfigure_webapp(){
 	$unix=new unix();
 	$php=$unix->LOCATE_PHP5_BIN();

@@ -126,10 +126,6 @@ function settings(){
 	
 	$html="
 	<div id='spamass_spf_config'>
-	
-	
-	<div>$global_enable</div>
-	<HR>
 	<div class=explain style='font-size:18px'>{SPAMASS_SCORES_EXPLAIN}</div>
 	<table style='width:100%'>
 	<tr>
@@ -220,8 +216,7 @@ function settings(){
 	
 	function saveSpamAssassinSPF(){
 
-	var XHR = new XHRConnection();
-		XHR.appendData('EnableSPF',document.getElementById('EnableSPF').value);
+		var XHR = new XHRConnection();
 		XHR.appendData('SPF_PASS_1',document.getElementById('SPF_PASS_1').value);
 		XHR.appendData('SPF_PASS_2',document.getElementById('SPF_PASS_2').value);
 		XHR.appendData('SPF_PASS_3',document.getElementById('SPF_PASS_3').value);

@@ -7,17 +7,17 @@
 	include_once('ressources/class.main_cf.inc');
 	include_once('ressources/class.maincf.multi.inc');
 	
-	if(isset($_GET["hostname"])){if(trim($_GET["hostname"])==null){unset($_GET["hostname"]);}}
+	if(!isset($_REQUEST["ou"])){$_REQUEST["ou"]="master";}
 	
-	if(!isset($_GET["hostname"])){
-		if($user->AsPostfixAdministrator==false){header('location:users.index.php');exit();}
-	}else{
-		if(!PostFixMultiVerifyRights()){
-			$tpl=new templates();
-			echo "alert('". $tpl->javascript_parse_text("{$_GET["hostname"]}::{ERROR_NO_PRIVS}")."');";
-			die();exit();
-		}
+	if(isset($_GET["hostname"])){if(trim($_GET["hostname"])==null){unset($_GET["hostname"]);}}
+	if(!isset($_GET["hostname"])){$_GET["hostname"]="master";}
+	
+	if(!PostFixMultiVerifyRights()){
+		$tpl=new templates();
+		echo "alert('". $tpl->javascript_parse_text("{$_GET["hostname"]}::{ERROR_NO_PRIVS}")."');";
+		die();exit();
 	}
+	
 	
 	if(isset($_GET["tabs"])){tabs();exit;}
 	if(isset($_GET["params"])){id_sender();exit;}
@@ -28,7 +28,7 @@
 	
 	
 	
-js();
+tabs();
 
 
 function js(){
@@ -44,25 +44,22 @@ function js(){
 
 function tabs(){
 	$array["params"]="{parameters}";
-	$array["templates"]="{templates}";
-	
 	$page=CurrentPageName();
 	$tpl=new templates();
 	if(!isset($_GET["hostname"])){$_GET["hostname"]="master";}
 
 	while (list ($num, $ligne) = each ($array) ){
-		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&hostname={$_GET["hostname"]}\"><span>$ligne</span></a></li>\n");
+		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&hostname={$_GET["hostname"]}\"><span style='font-size:20px'>$ligne</span></a></li>\n");
+	}
+	
+	$main=new bounces_templates();
+	while (list ($num, $ligne) = each ($main->templates_array) ){
+		$html[]= $tpl->_ENGINE_parse_body("<li><a href=\"$page?postfix-notifs-template=$num&hostname={$_GET["hostname"]}\"><span style='font-size:20px'>{template}:{{$num}}</span></a></li>\n");
 	}
 	
 	
-	echo "
-	<div id=main_config_postfix_notifs style='width:100%;height:580px;overflow:auto'>
-		<ul>". implode("\n",$html)."</ul>
-	</div>
-		<script>
-		  $(document).ready(function() {
-			$(\"#main_config_postfix_notifs\").tabs();});
-		</script>";		
+	echo build_artica_tabs($html, "main_config_postfix_notifs",1490);
+
 	
 }
 
@@ -104,86 +101,85 @@ function id_sender(){
 		$notify_class_protocol=$notify_class["notify_class_protocol"];
 	
 	
-	$html="<div class=explain>{POSTFIX_SMTP_NOTIFICATIONS_TEXT}</div>
-	<div id='ffm1notif'>
-	<table style='width:99%' class=form>	
+	$html="
+	
+	<div id='ffm1notif' style='width:99%' class=form>
+	<table style='width:100%'>	
+	<tr><td colspan=2 style='font-size:30px;padding-bottom:30px'>{POSTFIX_SMTP_NOTIFICATIONS_TEXT}</td></tr>
 	<tr>
-		<td class=legend nowrap>{double_bounce_sender}:</td>
-		<td>" . Field_text('double_bounce_sender',$double_bounce_sender,'font-size:13px;padding:3px;width:160px')."</td>
-		<td>". help_icon("{double_bounce_sender_text}")."</td>
+		<td class=legend style='font-size:24px' nowrap>". texttooltip("{double_bounce_sender}","{double_bounce_sender_text}").":</td>
+		<td>" . Field_text('double_bounce_sender',$double_bounce_sender,'font-size:24px;width:450px')."</td>
+		
 	</tr>
 	<tr>
-		<td class=legend nowrap nowrap>{address_verify_sender}:</td>
-		<td>" . Field_text('address_verify_sender',$address_verify_sender,'font-size:13px;padding:3px;width:160px')."</td>
-		<td>". help_icon("{address_verify_sender_text}")."</td>
+		<td class=legend nowrap nowrap style='font-size:24px'>". texttooltip("{address_verify_sender}","{address_verify_sender_text}").":</td>
+		<td>" . Field_text('address_verify_sender',$address_verify_sender,'font-size:24px;width:450px')."</td>
+		
 	</tr>
 	<tr>
-		<td class=legend nowrap>{2bounce_notice_recipient}:</td>
-		<td>" . Field_text('2bounce_notice_recipient',$twobounce_notice_recipient,'font-size:13px;padding:width:160px')."</td>
-		<td>". help_icon("{2bounce_notice_recipient_text}")."</td>
+		<td class=legend style='font-size:24px' nowrap>". texttooltip("{2bounce_notice_recipient}","{2bounce_notice_recipient_text}").":</td>
+		<td>" . Field_text('2bounce_notice_recipient',$twobounce_notice_recipient,'font-size:24px;width:450px')."</td>
+		
 	</tr>
 	
 	<tr>
-		<td class=legend nowrap>{error_notice_recipient}:</td>
-		<td>" . Field_text('error_notice_recipient',$error_notice_recipient,'font-size:13px;padding:width:160px')."</td>
-		<td>". help_icon("{error_notice_recipient_text}")."</td>
+		<td class=legend style='font-size:24px' nowrap>". texttooltip("{error_notice_recipient}","{error_notice_recipient_text}").":</td>
+		<td>" . Field_text('error_notice_recipient',$error_notice_recipient,'font-size:24px;width:450px')."</td>
+		
 	</tr>
 	
 	<tr>
-		<td class=legend nowrap>{delay_notice_recipient}:</td>
-		<td>" . Field_text('delay_notice_recipient',$delay_notice_recipient,'font-size:13px;padding:width:160px')."</td>
-		<td>". help_icon("{delay_notice_recipient_text}")."</td>
+		<td class=legend style='font-size:24px' nowrap>". texttooltip("{delay_notice_recipient}","{delay_notice_recipient_text}").":</td>
+		<td>" . Field_text('delay_notice_recipient',$delay_notice_recipient,'font-size:24px;width:450px')."</td>
+		
 	</tr>
 	
 	<tr>
-		<td class=legend nowrap>{empty_address_recipient}:</td>
-		<td>" . Field_text('empty_address_recipient',$empty_address_recipient,'font-size:13px;padding:width:160px')."</td>
-		<td>". help_icon("{empty_address_recipient_text}")."</td>
-	</tr>
-	<tr>
-		<td class=legend nowrap>{empty_address_recipient}:</td>
-		<td>" . Field_text('empty_address_recipient',$empty_address_recipient,'font-size:13px;padding:width:160px')."</td>
-		<td>". help_icon("{empty_address_recipient_text}")."</td>
+		<td class=legend style='font-size:24px' nowrap>". texttooltip("{empty_address_recipient}","{empty_address_recipient_text}").":</td>
+		<td>" . Field_text('empty_address_recipient',$empty_address_recipient,'font-size:24px;width:450px')."</td>
+		
 	</tr>
 	</table>
-<div style='font-size:16px;margin:10px'>{notify_class}</div>
-<table style='width:99%' class=form>	
+	</div>
+<div id='ffm1notif' style='width:99%' class=form>
+<table style='width:100%'>	
+	</tr>
+				<tr><td colspan=2 style='font-size:30px;padding-bottom:30px'>{notify_class}</td></tr>
+	<tr>
+		<td class=legend style='font-size:24px' nowrap>". texttooltip("{notify_class_bounce}","{notify_class_bounce_text}").":</td>
+		<td>" . Field_checkbox_design('notify_class_bounce',1,$notify_class_bounce)."</td>
+		
+	</tr>	
+	<tr>
+		<td class=legend style='font-size:24px' nowrap>". texttooltip("{notify_class_2bounce}","{notify_class_2bounce_text}").":</td>
+		<td>" . Field_checkbox_design('notify_class_2bounce',1,$notify_class_2bounce)."</td>
+		
 	</tr>
 	<tr>
-		<td class=legend nowrap>{notify_class_bounce}:</td>
-		<td>" . Field_checkbox('notify_class_bounce',1,$notify_class_bounce)."</td>
-		<td>". help_icon("{notify_class_bounce_text}")."</td>
+		<td class=legend style='font-size:24px' nowrap>". texttooltip("{notify_class_delay}","{notify_class_delay_text}").":</td>
+		<td>" . Field_checkbox_design('notify_class_delay',1,$notify_class_delay)."</td>
+		
 	</tr>	
 	<tr>
-		<td class=legend nowrap>{notify_class_2bounce}:</td>
-		<td>" . Field_checkbox('notify_class_2bounce',1,$notify_class_2bounce)."</td>
-		<td>". help_icon("{notify_class_2bounce_text}")."</td>
-	</tr>
-	<tr>
-		<td class=legend nowrap>{notify_class_delay}:</td>
-		<td>" . Field_checkbox('notify_class_delay',1,$notify_class_delay)."</td>
-		<td>". help_icon("{notify_class_delay_text}")."</td>
+		<td class=legend style='font-size:24px' nowrap>". texttooltip("{notify_class_policy}","{notify_class_policy_text}").":</td>
+		<td>" . Field_checkbox_design('notify_class_policy',1,$notify_class_policy)."</td>
+		
 	</tr>	
 	<tr>
-		<td class=legend nowrap>{notify_class_policy}:</td>
-		<td>" . Field_checkbox('notify_class_policy',1,$notify_class_policy)."</td>
-		<td>". help_icon("{notify_class_policy_text}")."</td>
-	</tr>	
-	<tr>
-		<td class=legend nowrap>{notify_class_protocol}:</td>
-		<td>" . Field_checkbox('notify_class_protocol',1,$notify_class_protocol)."</td>
-		<td>". help_icon("{notify_class_protocol_text}")."</td>
+		<td class=legend style='font-size:24px' nowrap>". texttooltip("{notify_class_protocol}","{notify_class_protocol_text}").":</td>
+		<td>" . Field_checkbox_design('notify_class_protocol',1,$notify_class_protocol)."</td>
+		
 	</tr>	
 	
 	<tr>
-		<td class=legend nowrap>{notify_class_resource}:</td>
-		<td>" . Field_checkbox('notify_class_resource',1,$notify_class_resource)."</td>
-		<td>". help_icon("{notify_class_resource_text}")."</td>
+		<td class=legend style='font-size:24px' nowrap>". texttooltip("{notify_class_resource}","{notify_class_resource_text}").":</td>
+		<td>" . Field_checkbox_design('notify_class_resource',1,$notify_class_resource)."</td>
+		
 	</tr>
 	<tr>
-		<td class=legend nowrap>{notify_class_software}:</td>
-		<td>" . Field_checkbox('notify_class_software',1,$notify_class_software)."</td>
-		<td>". help_icon("{notify_class_software_text}")."</td>
+		<td class=legend style='font-size:24px' nowrap>". texttooltip("{notify_class_software}","{notify_class_software_text}").":</td>
+		<td>" . Field_checkbox_design('notify_class_software',1,$notify_class_software)."</td>
+		
 	</tr>
 	
 
@@ -191,7 +187,7 @@ function id_sender(){
 	<tr>
 		<td colspan=3 align='right'>
 		<hr>
-		". button("{apply}","SavePostfixNotificationsForm()")."
+		". button("{apply}","SavePostfixNotificationsForm()",44)."
 		</td>
 	</tr>		
 </table>	
@@ -202,6 +198,7 @@ function id_sender(){
 		var results=trim(obj.responseText);
 		if(results.length>0){alert(results);}
 		RefreshTab('main_config_postfix_notifs');
+		Loadjs('postfix.notifs.progress.php');
 	}	
 	
 	function SavePostfixNotificationsForm(){
@@ -221,7 +218,6 @@ function id_sender(){
 		if(document.getElementById('notify_class_bounce').checked){XHR.appendData('notify_class_bounce','1');}else{XHR.appendData('notify_class_bounce','0');}
 		if(document.getElementById('notify_class_protocol').checked){XHR.appendData('notify_class_protocol','1');}else{XHR.appendData('notify_class_protocol','0');}
 	
-		document.getElementById('ffm1notif').innerHTML='<div style=\"width:100%\"><center style=\"margin:20px;padding:20px\"><img src=\"img/wait_verybig.gif\"></center></div>';
 		XHR.sendAndLoad('$page', 'GET',x_SavePostfixNotificationsForm);
 	}
 		
@@ -273,10 +269,7 @@ function SaveParams(){
 		$notif["notify_class_bounce"]=$_GET["notify_class_bounce"];
 		$notif["notify_class_protocol"]=$_GET["notify_class_protocol"];
 		$main->SET_BIGDATA("notify_class",base64_encode(serialize($notif)));
-			
-	
-	$sock=new sockets();
-	$sock->getFrameWork("cmd.php?postfix-notifs=yes&hostname={$_GET["hostname"]}");
+		
 }
 
 function templates_postfix_form(){
@@ -285,6 +278,7 @@ function templates_postfix_form(){
 	$page=CurrentPageName();
 	$mainTPL=new bounces_templates();
 	$main=new maincf_multi($_GET["hostname"]);
+	$t=time();
 	
 	$array=unserialize(base64_decode($main->GET_BIGDATA($template)));
 	if(!is_array($array)){
@@ -292,56 +286,56 @@ function templates_postfix_form(){
 	}
 	$html="
 		<div id='ffm1notif2'>
-		<div class=explain>{{$template}}</div>
+		<div style='font-size:30px;margin-bottom:30px'>{{$template}}</div>
 		<table style='width:99%' class=form>
 		<tr>
-			<td class=legend>Charset:</td>
-			<td>" . Field_text('Charset',$array["Charset"],'width:90px;font-size:13px;padding:3px')."</td>
+			<td class=legend style='font-size:22px;'>Charset:</td>
+			<td>" . Field_text("Charset-$t",$array["Charset"],'width:450px;font-size:22px;padding:3px')."</td>
 		</tr>
 		<tr>
-			<td class=legend>{mail_from}:</td>
-			<td>" . Field_text('From',$array["From"],'width:200px;font-size:13px;padding:3px')."</td>
+			<td class=legend style='font-size:22px;'>{mail_from}:</td>
+			<td>" . Field_text("From-$t",$array["From"],'width:450px;font-size:22px;padding:3px')."</td>
 		</tr>
 		<tr>
-			<td class=legend>{subject}:</td>
-			<td>" . Field_text('Subject',$array["Subject"],'width:290px;font-size:13px;padding:3px')."</td>
+			<td class=legend style='font-size:22px;'>{subject}:</td>
+			<td>" . Field_text("Subject-$t",$array["Subject"],'width:450px;font-size:22px;padding:3px')."</td>
 		</tr>	
 		<tr>
-			<td class=legend>Postmaster-Subject:</td>
-			<td>" . Field_text('Postmaster-Subject',$array["Postmaster-Subject"],'width:290px;font-size:13px;padding:3px')."</td>
+			<td class=legend style='font-size:22px;'>Postmaster-Subject:</td>
+			<td>" . Field_text("Postmaster-Subject-$t",$array["Postmaster-Subject"],'width:450px;font-size:22px;padding:3px')."</td>
 		</tr>	
 		<tr>
 			<td valign='top' colspan=2 align='right'>
-			". button("{apply}","SavePostfixNotifTemplateForm()")."
+			". button("{apply}","SavePostfixNotifTemplateForm$t()",40)."
 			</td>
 			
 		</tr>	
 		<tr>
-			<td valign='top' colspan=2><textarea id='template-Body' style=';font-size:13px;padding:3px;width:100%;border:1px dotted #CCCCCC;height:200px;margin:4px;padding:4px'>{$array["Body"]}</textarea></td>
+			<td valign='top' colspan=2>
+				<textarea id='template-Body-$t' style=';font-size:22px !important;padding:3px;width:100%;border:1px dotted #CCCCCC;height:400px;font-family:Courier New;margin:4px;padding:4px'>{$array["Body"]}</textarea></td>
 		</tr>
 			
 		</table>
 
 	<script>
 	
-	var x_SavePostfixNotifTemplateForm= function (obj) {
+	var x_SavePostfixNotifTemplateForm$t= function (obj) {
 		var results=trim(obj.responseText);
 		if(results.length>0){alert(results);}
-		YahooWin4Hide();
 		RefreshTab('main_config_postfix_notifs');
+		Loadjs('postfix.notifs.progress.php');
 	}	
 	
-	function SavePostfixNotifTemplateForm(){
+	function SavePostfixNotifTemplateForm$t(){
 		var XHR = new XHRConnection();
-		XHR.appendData('Charset',document.getElementById('Charset').value);
-		XHR.appendData('From',document.getElementById('From').value);
-		XHR.appendData('Subject',document.getElementById('Subject').value);
-		XHR.appendData('Postmaster-Subject',document.getElementById('Postmaster-Subject').value);
-		XHR.appendData('Body',document.getElementById('template-Body').value);
+		XHR.appendData('Charset',encodeURIComponent(document.getElementById('Charset-$t').value));
+		XHR.appendData('From',encodeURIComponent(document.getElementById('From-$t').value));
+		XHR.appendData('Subject',encodeURIComponent(document.getElementById('Subject-$t').value));
+		XHR.appendData('Postmaster-Subject',encodeURIComponent(document.getElementById('Postmaster-Subject-$t').value));
+		XHR.appendData('Body',encodeURIComponent(document.getElementById('template-Body-$t').value));
 		XHR.appendData('hostname','{$_GET["hostname"]}');
 		XHR.appendData('template_save','$template');		
-		document.getElementById('ffm1notif2').innerHTML='<div style=\"width:100%\"><center style=\"margin:20px;padding:20px\"><img src=\"img/wait_verybig.gif\"></center></div>';
-		XHR.sendAndLoad('$page', 'POST',x_SavePostfixNotifTemplateForm);
+		XHR.sendAndLoad('$page', 'POST',x_SavePostfixNotifTemplateForm$t);
 	}
 		
 	
@@ -355,11 +349,15 @@ function templates_postfix_form(){
 }
 
 function templates_postfix_save(){
+	
+	while (list ($num, $ligne) = each ($_POST) ){
+		$_POST[$num]=url_decode_special_tool($ligne);
+	}
+	
 	$template=$_POST["template_save"];
 	$main=new maincf_multi($_POST["hostname"]);
 	$main->SET_BIGDATA($template,base64_encode(serialize($_POST)));
-	$sock=new sockets();
-	$sock->getFrameWork("cmd.php?postfix-notifs=yes&hostname={$_GET["hostname"]}");
+
 	
 }
 

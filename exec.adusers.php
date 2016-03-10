@@ -35,7 +35,7 @@ function impcomputers(){
 	
 	$unix=new unix();
 	$pidfile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".pid";
-	$timefile="/etc/artica-postfix/pids/".basename(__FILE__).".".__FUNCTION__.".time";
+	$timefile="/etc/artica-postfix/pids/exec.adusers.php.impcomputers.time";
 	$pid=@file_get_contents($pidfile);
 	if($unix->process_exists($pid,__FILE__)){return;}
 	

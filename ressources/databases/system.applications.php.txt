@@ -15,7 +15,7 @@ This package convert artica to a full SMTP security server using Kaspersky Anti-
 [li][b]artica-postfix-mailbox[/b][br]
 This package convert artica to be a mailbox IMAP/POP3 server using cyrus-imap
 [li][b]artica-postfix-webmail[/b][br]
-This package add a webmail module in artica using RoundCube eMail and Mysql.
+This package add a webmail module in artica using RoundCube eMail and MySQL.
 [/ul]
 
 There is an order to install these packages, for example, if you want to install a full mail server (mailbox and webmail) you must install in this direction : [br]

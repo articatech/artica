@@ -201,6 +201,7 @@ function popup(){
 	$error=$tpl->javascript_parse_text("{error}");
 	$sitename=$tpl->javascript_parse_text("{sitename}");
 	$autorefresh=$tpl->javascript_parse_text("{autorefresh}");
+	$hostnames=$tpl->javascript_parse_text("{hostnames}");
 	
 	$all=$tpl->javascript_parse_text("{all}");
 	$button3="{name: '<strong id=container-log-$t>$rotate_logs</stong>', bclass: 'Reload', onpress : SquidRotate$t},";
@@ -214,6 +215,7 @@ function popup(){
 	<table class='SQUID_ACCESS_LOGS_RT' style='display: none' id='SQUID_ACCESS_LOGS_RT' style='width:99%'></table>
 	<input type='hidden' id='refreshenabled$t' value='0'>
 	<input type='hidden' id='categoriesenabled$t' value='0'>
+	<input type='hidden' id='hostnamesenabled$t' value='0'>
 	
 	<input type='hidden' id='refresh$t' value='0'>
 	</div>
@@ -238,6 +240,7 @@ function popup(){
 			buttons : [
 				{name: '<strong style=font-size:18px id=SQUIDLOGS_REFRESH_LABEL>$autorefresh OFF</strong>', bclass: 'Reload', onpress : AutoRefresh$t},
 				{name: '<strong style=font-size:18px id=SQUIDLOGS_CATEGORIES_LABEL>$categories OFF</strong>', bclass: 'Reload', onpress : Categories$t},
+				{name: '<strong style=font-size:18px id=SQUIDLOGS_HOSTNAMES_LABEL>$hostnames OFF</strong>', bclass: 'Reload', onpress : HostNamesEnabled$t},
 			],
 				
 	
@@ -302,14 +305,47 @@ function Categories$t(){
 	if( enabled ==0){
 		document.getElementById('categoriesenabled$t').value=1;
 		document.getElementById('SQUIDLOGS_CATEGORIES_LABEL').innerHTML='$categories ON';
-		$('#SQUID_ACCESS_LOGS_RT').flexOptions({url: '$page?events-list=yes&minsize={$_GET["minsize"]}&SearchString={$_GET["SearchString"]}&categories-scan=yes'}).flexReload();
+		MakeQueries$t();
 		}
 	if( enabled ==1){
 		document.getElementById('categoriesenabled$t').value=0;
 		document.getElementById('SQUIDLOGS_CATEGORIES_LABEL').innerHTML='$categories OFF';
-		$('#SQUID_ACCESS_LOGS_RT').flexOptions({url: '$page?events-list=yes&minsize={$_GET["minsize"]}&SearchString={$_GET["SearchString"]}'}).flexReload();
+		MakeQueries$t();
 	}
 }
+function HostNamesEnabled$t(){
+	var enabled=parseInt(document.getElementById('hostnamesenabled$t').value);
+	if( enabled ==0){
+		document.getElementById('hostnamesenabled$t').value=1;
+		document.getElementById('SQUIDLOGS_HOSTNAMES_LABEL').innerHTML='$hostnames ON';
+		MakeQueries$t();
+		}
+	if( enabled ==1){
+		document.getElementById('hostnamesenabled$t').value=0;
+		document.getElementById('SQUIDLOGS_HOSTNAMES_LABEL').innerHTML='$hostnames OFF';
+		MakeQueries$t();
+	}
+}
+
+function MakeQueries$t(){
+
+	var baseuri='$page?events-list=yes&minsize={$_GET["minsize"]}&SearchString={$_GET["SearchString"]}';
+
+	var enabled=parseInt(document.getElementById('hostnamesenabled$t').value);
+	if( enabled ==1){
+		baseuri=baseuri+'&fqdn=yes';
+	}
+	enabled=parseInt(document.getElementById('categoriesenabled$t').value);
+	if( enabled ==1){
+		baseuri=baseuri+'&categories-scan=yes';
+	}
+	
+	$('#SQUID_ACCESS_LOGS_RT').flexOptions({url: baseuri}).flexReload();
+}
+
+
+
+
 StartLogsSquidTable$t();
 setTimeout('AutoRefreshAction$t()',1000);
 </script>";
@@ -319,6 +355,7 @@ echo $html;
 function events_list(){
 	$sock=new sockets();
 	$catz=new mysql_catz();
+	$IPClass=new IP();
 	
 	$sock->getFrameWork("squid.php?access-real=yes&rp={$_POST["rp"]}&query=".urlencode($_POST["query"])."&SearchString={$_GET["SearchString"]}");
 	$filename="/usr/share/artica-postfix/ressources/logs/access.log.tmp";
@@ -366,11 +403,11 @@ function events_list(){
 		if($zCode[1]>399){$color="#D0080A";}
 		if($zCode[1]==307){$color="#F59C44";}
 		
-		if(($PROTO=="GET") or ($PROTO=="POST")){
-			if(preg_match("#TCP_REDIRECT#", $zCode[0])){
-				$color="#A01E1E";
-			}
-		}
+		
+		if(preg_match("#TCP_REDIRECT#", $zCode[0])){$color="#A01E1E";}
+		if(preg_match("#TCP_DENIED#", $zCode[0])){$color="#D0080A";}
+		
+		
 		
 		$URL=$TR[6];
 		$SOURCE_URL=$URL;
@@ -448,6 +485,15 @@ function events_list(){
 		$TR[6]=$URL;
 		
 		$link="<a href=\"$GET_URL\" target=_new><img src='img/icon-link.png'></a>";
+		
+		
+		if(isset($_GET["fqdn"])){
+			if($IPClass->isIPAddress($ip)){
+				if(!isset($RESOLV[$ip])){$RESOLV[$ip]=gethostbyaddr($ip);}
+				$ip=$RESOLV[$ip];
+			}
+			
+		}
 		
 		
 		

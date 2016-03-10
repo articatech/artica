@@ -677,6 +677,8 @@ function items(){
 	$AVAILABLE_MACROS["office365"]=true;
 	$AVAILABLE_MACROS["skype"]=true;
 	$AVAILABLE_MACROS["dropbox"]=true;
+	$AVAILABLE_MACROS["whatsapp"]=true;
+	
 	
 	
 	while ($ligne = mysql_fetch_assoc($results)) {

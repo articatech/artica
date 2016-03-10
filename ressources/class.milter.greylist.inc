@@ -428,11 +428,15 @@ private function isaregex($pattern){
 
 private function acl_from_emailToPattern($from){
 	$IP=new IP();
+	
+	$from=str_replace("<", "", $from);
+	$from=str_replace(">", "", $from);
+	
 	if(strpos($from, ",")>0){
 		$tbl=explode(",",$from);
 		$from=$tbl[0];
 	}
-	
+	$from=str_replace("'","",$from);
 	if(!preg_match("#(.*?)@(.+)#", $from,$re)){ $re[1]=".*?"; $re[2]=$from; }
 	$prefix_email=$re[1];
 	$suffix_email=$re[2];
@@ -462,6 +466,10 @@ private function acl_from_emailToPattern($from){
 
 
 function BuildConfig(){
+	$sock=new sockets();
+	$MimeDefangEnabled=intval($sock->GET_INFO('MimeDefangEnabled'));
+	$MimeDefangAutoWhiteList=intval($sock->GET_INFO("MimeDefangAutoWhiteList"));
+	if($MimeDefangEnabled==0){$MimeDefangAutoWhiteList=0;}
 			if($this->hostname==null){$this->hostname="master";}
 			if(preg_match('#([0-9]+)#',$this->main_array["greylist"],$re)){$this->main_array["greylist"]=$re[1];}
 			if(preg_match('#([0-9]+)#',$this->main_array["timeout"],$re)){$this->main_array["timeout"]=$re[1];}
@@ -488,10 +496,45 @@ function BuildConfig(){
 			if(!isset($this->dnsrbl)){$this->dnsrbl=null;}
 			
 			$c=0;
-			
-			
-			
-			
+			if($MimeDefangAutoWhiteList==1){
+				$sql="SELECT *  FROM autowhite";
+				$q=new mysql();
+				$results = $q->QUERY_SQL($sql,"artica_backup");
+				while($ligne=mysql_fetch_array($results,MYSQL_ASSOC)){
+					$ligne["mailfrom"]=str_replace("<", "", $ligne["mailfrom"]);
+					$ligne["mailfrom"]=str_replace(">", "", $ligne["mailfrom"]);
+					
+					$ligne["mailto"]=str_replace("<", "", $ligne["mailto"]);
+					$ligne["mailto"]=str_replace(">", "", $ligne["mailto"]);
+					
+					if(trim($ligne["mailfrom"])==null){continue;}
+					if(trim($ligne["mailto"])==null){continue;}
+					
+					if(strpos($ligne["mailto"], "@")==0){
+						$ligne["mailto"]=str_replace(".", "\.", $ligne["mailto"]);
+						$ligne["mailto"]="/.*@{$ligne["mailto"]}/";
+					}
+					
+					if(strpos($ligne["mailfrom"], "@")==0){
+						$ligne["mailfrom"]=str_replace(".", "\.", $ligne["mailfrom"]);
+						$ligne["mailfrom"]="/.*@{$ligne["mailfrom"]}/";
+					}				
+					
+					if(trim($ligne["mailfrom"])=="*"){
+						if(trim($ligne["mailto"])=="*"){continue;}
+						$this->acl[]="acl whitelist rcpt {$ligne["mailto"]}";
+						continue;
+					}
+					if(trim($ligne["mailto"])=="*"){
+						if(trim($ligne["mailfrom"])=="*"){continue;}
+						$this->acl[]="acl whitelist from {$ligne["mailfrom"]}";
+						continue;
+					}
+					
+					$this->acl[]="acl whitelist from {$ligne["mailfrom"]} rcpt {$ligne["mailto"]}";
+				}
+				
+			}
 			
 			
 			$sql="SELECT *  FROM contacts_whitelist where `enabled`=1";
@@ -527,6 +570,13 @@ function BuildConfig(){
 				$ligne["description"]=trim($ligne["description"]);
 				$ligne["description"]=str_replace("\n", " ", $ligne["description"]);
 				$ligne["description"]=str_replace("\r", "", $ligne["description"]);
+				if($ligne["method"]=="blacklist"){
+					if($ligne["type"]=="addr"){continue;}
+					if($ligne["type"]=="domain"){continue;}
+					if($ligne["type"]=="from"){continue;}
+				}
+				
+				
 				$c++;
 				
 				
@@ -589,6 +639,7 @@ function BuildConfig(){
 					if($ligne["type"]=="rcpt"){
 						if(strpos($ligne["pattern"], "@")==0){
 							$TransformtoRcpt=str_replace(".", "\.", $ligne["pattern"]);
+							$TransformtoRcpt=str_replace("'", "", $TransformtoRcpt);
 							$MAIN_ACLS[$ligne["method"]][]="acl {$ligne["method"]} rcpt /.*@$TransformtoRcpt/ #ID:{$ligne["ID"]} Transformed from wrong rcpt {$ligne["pattern"]}";
 							continue;
 						}
@@ -597,6 +648,16 @@ function BuildConfig(){
 					if($ligne["type"]=="body"){
 						$MAIN_ACLS[$ligne["method"]][]="dacl {$ligne["method"]} body /{$ligne["pattern"]}/ #ID:{$ligne["ID"]}";
 						continue;
+					}
+					
+					
+					if($ligne["type"]=="from"){
+						if(strpos(" {$ligne["pattern"]}", "*")==0){
+							$ligne["pattern"]="*{$ligne["pattern"]}";
+							$ligne["pattern"]=str_replace("'", "", $ligne["pattern"]);
+						}
+						
+						
 					}
 					
 						
@@ -1066,47 +1127,22 @@ function DefaultAcls(){
 	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"10.0.0.0/8","DESC"=>"local network");
 	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"192.168.0.0/24","DESC"=>"local network");  
 	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"192.0.1.0/24","DESC"=>"local network");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"12.5.136.141/32   ","DESC"=>"Southwest Airlines (unique sender)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"12.5.136.142/32   ","DESC"=>"Southwest Airlines");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"12.5.136.143/32   ","DESC"=>"Southwest Airlines");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"12.5.136.144/32   ","DESC"=>"Southwest Airlines");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"12.107.209.244/32 ","DESC"=>"kernel.org (unique sender)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"12.107.209.250/32 ","DESC"=>"sourceware.org (unique sender)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"63.82.37.110/32   ","DESC"=>"SLmail");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"64.7.153.18/32    ","DESC"=>"sentex.ca (common pool)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"64.12.136.0/24    ","DESC"=>"AOL (common pool)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"64.12.137.0/24    ","DESC"=>"AOL");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"64.12.138.0/24    ","DESC"=>"AOL");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"64.124.204.39     ","DESC"=>"moveon.org (unique sender)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"64.125.132.254/32 ","DESC"=>"collab.net (unique sender)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.94.237.16/28   ","DESC"=>"Yahoo Groups servers (common pool)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.94.237.32/28   ","DESC"=>"Yahoo Groups servers (common pool)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.94.237.48/30   ","DESC"=>"Yahoo Groups servers (common pool)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.100.210.82/32  ","DESC"=>"Groupwise?");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.135.192.0/19   ","DESC"=>"Ebay");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.162.216.166/32 ","DESC"=>"Groupwise?");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.206.22.82/32   ","DESC"=>"Plexor");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.206.22.83/32   ","DESC"=>"Plexor");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.206.22.84/32   ","DESC"=>"Plexor");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.206.22.85/32   ","DESC"=>"Plexor");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.218.66.0/23    ","DESC"=>"Yahoo Groups servers (common pool)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.218.67.0/23    ","DESC"=>"Yahoo Groups servers (common pool)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.218.68.0/23    ","DESC"=>"Yahoo Groups servers (common pool)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.27.51.218/32   ","DESC"=>"ljbtc.com (Groupwise)");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"64.12.136.0/24","DESC"=>"AOL (common pool)");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"64.12.137.0/24","DESC"=>"AOL");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"64.12.138.0/24","DESC"=>"AOL");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"64.124.204.39","DESC"=>"moveon.org (unique sender)");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.94.237.16/28","DESC"=>"Yahoo Groups servers (common pool)");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.94.237.32/28","DESC"=>"Yahoo Groups servers (common pool)");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.94.237.48/30","DESC"=>"Yahoo Groups servers (common pool)");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.135.192.0/19","DESC"=>"Ebay");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.218.66.0/23","DESC"=>"Yahoo Groups servers (common pool)");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.218.67.0/23","DESC"=>"Yahoo Groups servers (common pool)");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"66.218.68.0/23","DESC"=>"Yahoo Groups servers (common pool)");
 	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"152.163.225.0/24  ","DESC"=>"AOL");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"194.245.101.88/32 ","DESC"=>"Joker.com");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"195.235.39.19/32  ","DESC"=>"Tid InfoMail Exchanger v2.20");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"195.46.220.208/32 ","DESC"=>"mgn.net");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"195.46.220.209/32 ","DESC"=>"mgn.net");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"195.46.220.210/32 ","DESC"=>"mgn.net");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"195.46.220.211/32 ","DESC"=>"mgn.net");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"195.46.220.221/32 ","DESC"=>"mgn.net");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"195.46.220.222/32 ","DESC"=>"mgn.net");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"195.238.2.0/24    ","DESC"=>"skynet.be (wierd retry pattern)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"195.238.3.0/24    ","DESC"=>"skynet.be");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"204.107.120.10/32 ","DESC"=>"Ameritrade (no retry)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"205.188.0.0/16    ","DESC"=>"AOL");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"205.206.231.0/24  ","DESC"=>"SecurityFocus.com (unique sender)");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"195.238.2.0/24","DESC"=>"skynet.be (wierd retry pattern)");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"195.238.3.0/24","DESC"=>"skynet.be");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"205.188.0.0/16","DESC"=>"AOL");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"205.206.231.0/24","DESC"=>"SecurityFocus.com (unique sender)");
 	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"207.115.63.0/24   ","DESC"=>"Prodigy - retries continually");
 	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"207.171.168.0/24  ","DESC"=>"Amazon.com");
 	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"207.171.180.0/24  ","DESC"=>"Amazon.com");
@@ -1114,9 +1150,9 @@ function DefaultAcls(){
 	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"207.171.188.0/24  ","DESC"=>"Amazon.com");
 	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"207.171.190.0/24  ","DESC"=>"Amazon.com");
 	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"211.29.132.0/24   ","DESC"=>"optusnet.com.au (wierd retry pattern)");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"213.136.52.31/32  ","DESC"=>"Mysql.com (unique sender)");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"213.136.52.31  ","DESC"=>"Mysql.com (unique sender)");
 	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"216.33.244.0/24   ","DESC"=>"Ebay");
-	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"217.158.50.178/32 ","DESC"=>"AXKit mailing list (unique sender)");
+	$acl[]=array("METHOD"=>"whitelist","TYPE"=>"addr","pattern"=>"217.158.50.178","DESC"=>"AXKit mailing list (unique sender)");
 
 	
 	$prefix="INSERT INTO `miltergreylist_acls` (`instance`,`method`,`type`,`pattern`,`description`) VALUES ";

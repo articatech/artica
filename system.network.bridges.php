@@ -162,6 +162,11 @@ function network_bridge_save(){
 		if(!$q->ok){echo "ALTER TABLE DenyDHCP failed\n$q->mysql_error\n";return;}
 	}	
 	
+	if(!$q->FIELD_EXISTS("pnic_bridges", "DenyCountries", "artica_backup")){
+		$q->QUERY_SQL("ALTER TABLE pnic_bridges ADD DenyCountries smallint(1) DEFAULT 0","artica_backup");
+		if(!$q->ok){echo "ALTER TABLE DenyCountries failed\n$q->mysql_error\n";return;}
+	}	
+	
 	$zMD5=md5($nic_from.$nic_to);
 	if($ID==0){$sql="INSERT INTO pnic_bridges (zMD5,nic_from,nic_to,enabled,STP,DenyDHCP,masquerading,masquerading_invert) 
 	VALUES ('$zMD5','$nic_from','$nic_to','{$_POST["enabled"]}','{$_POST["STP"]}','{$_POST["DenyDHCP"]}','{$_POST["masquerading"]}','{$_POST["masquerading_invert"]}')";}
@@ -170,7 +175,8 @@ function network_bridge_save(){
 	`STP`='{$_POST["STP"]}',
 	`DenyDHCP` ='{$_POST["DenyDHCP"]}',
 	`masquerading` ='{$_POST["masquerading"]}',
-	`masquerading_invert` ='{$_POST["masquerading_invert"]}'
+	`masquerading_invert` ='{$_POST["masquerading_invert"]}',
+	`DenyCountries`='{$_POST["DenyCountries"]}'
 	WHERE ID=$ID";}
 	$q->QUERY_SQL($sql,"artica_backup");
 	if(!$q->ok){echo $q->mysql_error;}
@@ -211,6 +217,8 @@ function network_bridge_popup(){
 	$page=CurrentPageName();
 	$tpl=new templates();
 	$ID=$_GET["ID"];
+	$sock=new sockets();
+	$EnableIpBlocks=intval($sock->GET_INFO("EnableIpBlocks"));
 	if(!is_numeric($ID)){$ID=0;}
 	$q=new mysql();
 	$ligne=mysql_fetch_array($q->QUERY_SQL("SELECT * FROM pnic_bridges WHERE ID='$ID'","artica_backup"));
@@ -236,6 +244,7 @@ function network_bridge_popup(){
 	if(!is_numeric($ligne["DenyDHCP"])){$ligne["DenyDHCP"]=1;}
 	if(!is_numeric($ligne["masquerading"])){$ligne["masquerading"]=0;}
 	if(!is_numeric($ligne["masquerading_invert"])){$ligne["masquerading_invert"]=0;}
+	if(!is_numeric($ligne["DenyCountries"])){$ligne["DenyCountries"]=0;}
 	
 	
 	
@@ -262,6 +271,10 @@ function network_bridge_popup(){
 		<td class=legend style='font-size:18px' nowrap>{deny_dhcp_requests}:</td>
 		<td>". Field_checkbox_design("DenyDHCP-$t", 1,$ligne["DenyDHCP"])."</td>
 	</tr>	
+	<tr>
+		<td class=legend style='font-size:18px' nowrap>{enable_ipblocks}:</td>
+		<td>". Field_checkbox_design("DenyCountries-$t", 1,$ligne["DenyCountries"])."</td>
+	</tr>				
 	<tr>
 		<td class=legend style='font-size:18px' nowrap>{masquerading}:</td>
 		<td>". Field_checkbox_design("masquerading-$t", 1,$ligne["masquerading"],"masqueradingCheck()")."</td>
@@ -311,6 +324,9 @@ function masquerading_invertcheck(){
 		document.getElementById('masquerading-$t').checked=false;
 	}
 }
+
+
+
 </script>	
 ";
 	
@@ -537,6 +553,7 @@ function rules_list(){
 	$ERROR_NO_PRIVS=$tpl->javascript_parse_text("{ERROR_NO_PRIVS}");
 	$DisableNetworksManagement=$sock->GET_INFO("DisableNetworksManagement");
 	if($DisableNetworksManagement==null){$DisableNetworksManagement=0;}
+	$EnableIpBlocks=intval($sock->GET_INFO("EnableIpBlocks"));
 	
 	if(isset($_POST["sortname"])){
 		if($_POST["sortname"]<>null){
@@ -617,7 +634,7 @@ function rules_list(){
 		$nic_from=$ligne["nic_from"];
 		$nic_to=$ligne["nic_to"];
 		$masquerading=null;
-		
+		$DenyCountries=null;
 		if($ligne["DenyDHCP"]==1){
 			$deny_dhcp_requeststxt=$deny_dhcp_requests;
 		}
@@ -627,7 +644,13 @@ function rules_list(){
 		}
 		if($ligne["masquerading_invert"]==1){
 			$masquerading=$tpl->javascript_parse_text(", {masquerading_invert}");
-		}		
+		}	
+
+		if($EnableIpBlocks==1){
+			if($ligne["DenyCountries"]==1){
+				$DenyCountries=$tpl->javascript_parse_text(", {enable_ipblocks}");
+			}
+		}
 		
 		$nic=new system_nic($nic_from);
 		$b0=$BEHA2[$nic->firewall_behavior]."/".$BEHA[$nic->firewall_policy];

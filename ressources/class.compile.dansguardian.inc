@@ -19,7 +19,6 @@ class compile_dansguardian{
 		
 	}
 	
-	
 	function build(){
 		if($GLOBALS["VERBOSE"]){echo "Starting......: ".date("H:i:s")." DansGuardian ->compile_default()\n";}
 		$this->compile_default();

@@ -32,6 +32,7 @@ echo $tpl->web_page;
 
 
 function maillog(){
+	include_once(dirname(__FILE__)."/ressources/class.status.logs.inc");
 $user=new usersMenus();
 $tpl=new Templates();
 if($user->AsPostfixAdministrator==false){echo DIV_SHADOW($tpl->_ENGINE_parse_body('{no privileges}'));exit;}

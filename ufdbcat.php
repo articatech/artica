@@ -108,9 +108,16 @@ function page(){
 	$page=CurrentPageName();
 	$users=new usersMenus();
 	$sock=new sockets();	
+	
+	if(!$users->CORP_LICENSE){
+		
+		$error="<p class=text-error style='font-size:18px'>{APP_UFDBCAT_LICENSE_EXPLAIN}</p>";
+	}
+	
 	$html="
 	<div style='font-size:42px;margin-bottom:20px'>{APP_UFDBCAT}</div>
 	<div style='font-size:18px;margin-bottom:20px' class=explain>{APP_UFDBCAT_EXPLAIN}</div>
+	$error
 	<div style='width:98%' class=form>
 		<table style='width:100%'>		
 			<tr>
@@ -284,7 +291,7 @@ function parameters_client(){
 	$ufdbCatInterface=$sock->GET_INFO("ufdbCatInterface");
 	$EnableLocalUfdbCatService=intval($sock->GET_INFO("EnableLocalUfdbCatService"));
 	$SquidPerformance=intval($sock->GET_INFO("SquidPerformance"));
-	$EnableIntelCeleron=intval(file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
+	$EnableIntelCeleron=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableIntelCeleron"));
 	
 	if($SquidPerformance==0){
 		if($EnableLocalUfdbCatService==0){
@@ -362,7 +369,7 @@ function parameters_client(){
 		<script>
 var xSave$t=function (obj) {
 	RefreshTab('main_ufdbguard_config');
-	Loadjs('squid.reconfigure.simple.php');
+	Loadjs('ufdbcat.restart.progress.php');
 }
 	
 function Save$t(){

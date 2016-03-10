@@ -34,74 +34,7 @@ class squid_access_manager{
 	}
 	
 	
-	private function Paranoid(){
-		if($this->SquidUrgency==1){
-			$f[]="# Paranoid: Emergency mode!!";
-			return @implode("\n", $f);
-			return;
-		}
-		$UfdbEnableParanoidMode=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/UfdbEnableParanoidMode"));
-		if($UfdbEnableParanoidMode==0){
-			$f[]="# Paranoid: UfdbEnableParanoidMode = 0";
-			return @implode("\n", $f);
-			
-		}
-		
-		$sock=new sockets();
-		if($sock->EnableUfdbGuard()==0){
-			$f[]="# Paranoid: EnableUfdbGuard = 0";
-			return @implode("\n", $f);
-		}
-		
-		$ipClass= new IP();
-		$q=new mysql_squid_builder();
-		$ARRAY=array();
-		$results=$q->QUERY_SQL("SELECT pattern, object FROM webfilters_paranoid");
-		
-		while ($ligne = mysql_fetch_assoc($results)) {
-			$ARRAY[$ligne["object"]][$ligne["pattern"]]=true;
-			
-		}
-		$src=array();
-		$dstdomain=array();
-		
-		
-		if(isset($ARRAY["src"])){
-			while (list ($pattern, $xtrace) = each ($ARRAY["src"]) ){
-				if(!$ipClass->isValid($pattern)){continue;}
-				$src[]="acl ParanoidSRC src $pattern";
-				
-			}
-			
-		}
-		if(isset($ARRAY["dstdomain"])){
-			while (list ($pattern, $xtrace) = each ($ARRAY["dstdomain"]) ){
-				$dstdomain[]="acl ParanoidDOM dstdomain $pattern";
-				
-			}
-				
-		}
-		
-		$f=array();
-		$f[]="# Paranoid: src ".count($src)." domains ".count($dstdomain);
-		
-		if(count($src)>0){
-			$f[]=@implode("\n", $src);
-			$f[]="http_access deny ParanoidSRC";
-			$f[]="deny_info ERR_PARANOID ParanoidSRC";
-			
-		}
-		
-		if(count($dstdomain)>0){
-			$f[]=@implode("\n", $dstdomain);
-			$f[]="http_access deny ParanoidDOM";
-			$f[]="deny_info ERR_PARANOID ParanoidDOM";
-				
-		}
-		
-		if(count($f)>0){return @implode("\n", $f);}
-		
-	}
+	
 	
 	
 	function deny_global(){
@@ -112,7 +45,6 @@ class squid_access_manager{
 		}
 		$q=new mysql_squid_builder();
 		$this->acl_extensions();
-		$f[]=$this->Paranoid();
 		$head1=null;
 		$sql="SELECT *  FROM `global_whitelist` WHERE enabled=1 and deny_global=1";
 		$results = $q->QUERY_SQL($sql);
@@ -301,6 +233,16 @@ class squid_access_manager{
 	
 		if(class_exists("squid_acls_groups")){
 			$acls=new squid_acls_groups();
+			
+			$acls_allow=$acls->buildacls_bytype("url_rewrite_access_allow");
+			$conf[]=@implode("\n", $acls->buildacls_bytype_logs);
+			if(count($acls_allow)>0){
+				while (list ($index, $line) = each ($acls_deny) ){
+					$conf[]="url_rewrite_access allow $line";
+				}
+			}
+			
+			
 			$acls_deny=$acls->buildacls_bytype("url_rewrite_access_deny");
 			$conf[]=@implode("\n", $acls->buildacls_bytype_logs);
 			if(count($acls_deny)>0){
@@ -308,6 +250,8 @@ class squid_access_manager{
 					$conf[]="url_rewrite_access deny $line";
 				}
 			}
+			
+
 			
 
 		}

@@ -4,7 +4,7 @@ include_once(dirname(__FILE__)."/frame.class.inc");
 include_once(dirname(__FILE__)."/class.unix.inc");
 
 if(isset($_GET["remove-site"])){remove_website();exit;}
-
+if(isset($_GET["access-errors"])){events_errors();exit;}
 if(isset($_GET["checking-service"])){checking_service();exit;}
 if(isset($_GET["enable-service"])){enable_service();exit;}
 if(isset($_GET["execute-wizard"])){execute_wizard();exit;}
@@ -31,7 +31,7 @@ if(isset($_GET["clean-websites"])){clean_websites();exit;}
 if(isset($_GET["backup"])){backup();exit;}
 if(isset($_GET["restore"])){restore();exit;}
 if(isset($_GET["build-main"])){build_main();exit;}
-
+if(isset($_GET["restart-progress"])){restart_progress();exit;}
 
 
 
@@ -70,6 +70,23 @@ function build_main(){
 	$php5=$unix->LOCATE_PHP5_BIN();
 	$nohup=$unix->find_program("nohup");
 	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.nginx.php --main >/dev/null 2>&1 &";
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
+}
+
+function restart_progress(){
+	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/nginx.restart.progress";
+	$GLOBALS["LOGSFILES"]="/usr/share/artica-postfix/ressources/logs/nginx.restart.progress.txt";
+	@unlink($GLOBALS["CACHEFILE"]);
+	@unlink($GLOBALS["LOGSFILES"]);
+	@touch($GLOBALS["CACHEFILE"]);
+	@touch($GLOBALS["LOGSFILES"]);
+	@chmod($GLOBALS["CACHEFILE"],0777);
+	@chmod($GLOBALS["LOGSFILES"],0777);
+	$unix=new unix();
+	$php5=$unix->LOCATE_PHP5_BIN();
+	$nohup=$unix->find_program("nohup");
+	$cmd="$nohup $php5 /usr/share/artica-postfix/exec.nginx.php --restart-build >{$GLOBALS["LOGSFILES"]} 2>&1 &";
 	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
 	shell_exec($cmd);
 }
@@ -145,6 +162,57 @@ function enable_service(){
 	
 }
 
+
+//
+
+function events_errors(){
+	$pattern=trim(base64_decode($_GET["access-query"]));
+	if($pattern=="yes"){$pattern=null;}
+	$pattern=str_replace("  "," ",$pattern);
+	$pattern=str_replace(" ","\s+",$pattern);
+	$pattern=str_replace(".","\.",$pattern);
+	$pattern=str_replace("*",".+?",$pattern);
+	$pattern=str_replace("/","\/",$pattern);
+	$syslogpath=$_GET["syslog-path"];
+	$maxrows=0;
+	$syslogpath="/var/log/nginx/error.log";
+	$size=@filesize($syslogpath);
+	if($size==0){@unlink($syslogpath);}
+	$output="/usr/share/artica-postfix/ressources/logs/web/nginx.query.errors";
+	$unix=new unix();
+	
+	if(!is_file($syslogpath)){
+		if(is_file("/var/log/apache2/access-common.log")){
+			$syslogpath="/var/log/apache2/access-common.log";
+		}
+	}
+	
+	$grepbin=$unix->find_program("grep");
+	$tail = $unix->find_program("tail");
+	if($tail==null){return;}
+	
+	writelogs_framework("Pattern \"$pattern\"" ,__FUNCTION__,__FILE__,__LINE__);
+	if(isset($_GET["rp"])){$maxrows=$_GET["rp"];}
+	if($maxrows==0){$maxrows=500;}
+	
+	
+	if(strlen($pattern)>1){
+		$grep="$grepbin -i -E '$pattern' $syslogpath";
+	}
+		
+	if($grep<>null){
+		$cmd="$grep|$tail -n $maxrows >$output 2>&1";
+	}else{
+		$cmd="$tail -n $maxrows $syslogpath >$output 2>&1";
+	}
+	
+	writelogs_framework($cmd ,__FUNCTION__,__FILE__,__LINE__);
+	shell_exec($cmd);
+	@chmod($output, 0755);
+	
+	
+}
+
 function events_all(){
 	$pattern=trim(base64_decode($_GET["access-query"]));
 	if($pattern=="yes"){$pattern=null;}
@@ -155,9 +223,18 @@ function events_all(){
 	$pattern=str_replace("/","\/",$pattern);
 	$syslogpath=$_GET["syslog-path"];
 	$maxrows=0;
-	$syslogpath="/var/log/apache2/access-common.log";
+	$syslogpath="/var/log/apache2/common-access.log";
+	$size=@filesize($syslogpath);
+	if($size==0){@unlink($syslogpath);}
 	$output="/usr/share/artica-postfix/ressources/logs/web/nginx.query";
 	$unix=new unix();
+	
+	if(!is_file($syslogpath)){
+		if(is_file("/var/log/apache2/access-common.log")){
+			$syslogpath="/var/log/apache2/access-common.log";
+		}
+	}
+	
 	$grepbin=$unix->find_program("grep");
 	$tail = $unix->find_program("tail");
 	if($tail==null){return;}

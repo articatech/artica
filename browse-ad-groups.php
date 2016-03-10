@@ -362,13 +362,8 @@ echo $html;
 }
 
 function items_users(){
-	$search=$_POST["query"];
-	$search="*$search*";
-	$search=str_replace("**", "*", $search);
-	$search=str_replace("**", "*", $search);	
-	$search=str_replace("*", ".*?", $search);
+	$search=string_to_flexquery();
 	$ad=new external_ad_search();
-	
 	$hash=$ad->DNinfos($_GET["DN"]);
 	
 	if($GLOBALS["VERBOSE"]){
@@ -390,6 +385,10 @@ function items_users(){
 		$dn=$hash[0]["member"][$i];
 		
 		$hash2=$ad->DNinfos($dn);
+		if(!isset($hash2[0])){
+			if($GLOBALS["VERBOSE"]){echo "<strong style='color:#d32d2d'>DNinfos($dn) Failed</strong><br>\n";}
+			continue;
+		}
 		$sn=$hash2[0]["sn"][0];
 		$displayname=$hash2[0]["displayname"][0];
 		$samaccountname=$hash2[0]["displayname"][0];

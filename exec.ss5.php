@@ -30,6 +30,8 @@ if($argv[1]=="--stop"){$GLOBALS["OUTPUT"]=true;stop();die();}
 if($argv[1]=="--start"){$GLOBALS["OUTPUT"]=true;start();die();}
 if($argv[1]=="--restart"){$GLOBALS["OUTPUT"]=true;restart();die();}
 
+
+
 function build_progress($text,$pourc){
 	if(!$GLOBALS["PROGRESS"]){return;}
 	$GLOBALS["CACHEFILE"]="/usr/share/artica-postfix/ressources/logs/web/ss5.progress";
@@ -95,8 +97,8 @@ function start($aspid=false){
 		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Service already started $pid since {$timepid}Mn...\n";}
 		return;
 	}
-	$EnableSS5=intval($sock->GET_INFO("EnableSS5"));
 	
+	$EnableSS5=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/EnableSS5"));
 	
 
 	if($EnableSS5==0){
@@ -109,9 +111,15 @@ function start($aspid=false){
 	$echo=$unix->find_program("echo");
 	$nohup=$unix->find_program("nohup");
 
+	$SS5_SOCKS_IPADDR="0.0.0.0";
 	
-	while (list ($Interface, $ligne) = each ($TRA) ){$TR[]=$Interface; }
-	
+	$SS5_SOCKS_PORT=intval(@file_get_contents("/etc/artica-postfix/settings/Daemons/SS5_SOCKS_PORT"));
+	$SS5_SOCKS_INTERFACE=@file_get_contents("/etc/artica-postfix/settings/Daemons/SS5_SOCKS_INTERFACE");
+	if($SS5_SOCKS_INTERFACE<>null){
+		$NETWORK_ALL_INTERFACES=$unix->NETWORK_ALL_INTERFACES();
+		$SS5_SOCKS_IPADDR=$NETWORK_ALL_INTERFACES[$SS5_SOCKS_INTERFACE]["IPADDR"];
+	}
+	if($SS5_SOCKS_IPADDR==null){$SS5_SOCKS_IPADDR="0.0.0.0";}
 	$f[]="/var/run/ss5";
 	$f[]="/var/log/ss5";
 	
@@ -121,11 +129,50 @@ function start($aspid=false){
 		@chgrp($directory,"squid");
 		
 	}
-	build_progress("{starting_service}",60);
 	
-	$cmd="$Masterbin -s -t -u squid -p /var/run/ss5/ss5.pid >/dev/null 2>&1 &";
+	@mkdir("/usr/lib/ss5",0755,true);
+	@mkdir("/var/lib/ss5",0755,true);
+	
+	$LIBS[]="mod_authentication.so";
+	$LIBS[]="mod_authorization.so";
+	$LIBS[]="mod_balance.so";
+	$LIBS[]="mod_bandwidth.so";
+	$LIBS[]="mod_dump.so";
+	$LIBS[]="mod_filter.so";
+	$LIBS[]="mod_log.so";
+	$LIBS[]="mod_proxy.so";  
+	$LIBS[]="mod_socks4.so";  
+	$LIBS[]="mod_socks5.so";  
+	$LIBS[]="mod_statistics.so";
+	$ln=$unix->find_program("ln");
+	while (list ($index, $file) = each ($LIBS) ){
+		if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} checking /var/lib/ss5/$file\n";} 
+		if(!is_file("/usr/lib/ss5/$file")){
+			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} $file (not installed)\n";}
+			if(!is_file("/var/lib/ss5/ss5/$file")){
+				if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} /var/lib/ss5/ss5/$file (not installed) - FAILED\n";}
+				return false;
+			}
+			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} $ln -sf /var/lib/ss5/ss5/$file /var/lib/ss5/$file\n";}
+			shell_exec("$ln -sf /var/lib/ss5/ss5/$file /usr/lib/ss5/$file");
+			if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} $file ( install success)\n";}
+			
+		}
+	
+	}
+	
+	if(!is_file("/var/run/ss5/ss5.pid")){
+		@touch("/var/run/ss5/ss5.pid");
+		@chmod("/var/run/ss5/ss5.pid",0755);
+		@chown("/var/run/ss5/ss5.pid","squid");
+	}
+	
+	
+	build_progress("{starting_service}",60);
+	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} Listen $SS5_SOCKS_IPADDR:$SS5_SOCKS_PORT\n";}
+	$cmd="$Masterbin -b $SS5_SOCKS_IPADDR:$SS5_SOCKS_PORT -t -u squid -p /var/run/ss5/ss5.pid >/dev/null 2>&1 &";
 	if($GLOBALS["OUTPUT"]){echo "Starting......: ".date("H:i:s")." [INIT]: {$GLOBALS["TITLENAME"]} service\n";}
-	shell_exec($cmd);
+	system("SS5_SOCKS_USER=squid SS5_CONFIG_FILE=/etc/ss5.conf SS5_LOG_FILE=/var/log/ss5/ss5.log $cmd");
 	
 	
 	
@@ -151,6 +198,9 @@ function start($aspid=false){
 
 
 }
+
+
+
 
 function stop($aspid=false){
 	$unix=new unix();
@@ -217,6 +267,8 @@ function stop($aspid=false){
 function PID_NUM(){
 	
 	$unix=new unix();
+	$pid=$unix->get_pid_from_file("/var/run/ss5/ss5.pid");
+	if($unix->process_exists($pid)){return $pid;}
 	$Masterbin=$unix->find_program("ss5");
 	return $unix->PIDOF($Masterbin);
 	
@@ -224,6 +276,14 @@ function PID_NUM(){
 
 function buildconfig(){
 	$f[]="#";
+	//
+	
+	//$f[]="set SS5_DEBUG";
+	//$f[]="set SS5_VERBOSE";
+	$f[]="set SS5_AUTHCACHEAGE 600";
+	$f[]="set SS5_AUTHOCACHEAGE 600";
+	$f[]="set SS5_SRV";
+	$f[]="set SS5_CONSOLE";
 	$f[]="# SECTION       <VARIABLES AND FLAGS>";
 	$f[]="# \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\";
 	$f[]="#";
@@ -262,6 +322,7 @@ function buildconfig(){
 	$f[]="#       SS5_SYSLOG_FACILITY		->   set syslog facility";
 	$f[]="#       SS5_SYSLOG_LEVEL		->   set syslog level";
 	$f[]="#";
+	
 	$f[]="# ///////////////////////////////////////////////////////////////////////////////////";
 	$f[]="";
 	$f[]="#";
@@ -309,7 +370,7 @@ function buildconfig(){
 	$f[]="# ///////////////////////////////////////////////////////////////////////////////////";
 	$f[]="#       SHost           SPort           Authentication";
 	$f[]="#";
-	$f[]="#auth    0.0.0.0/0               -               -";
+	$f[]="auth    0.0.0.0/0               -               -";
 	$f[]="";
 	$f[]="";
 	$f[]="#";
@@ -425,7 +486,37 @@ function buildconfig(){
 	$f[]="# /////////////////////////////////////////////////////////////////////////////////////////////////";
 	$f[]="#      Auth	SHost		SPort	DHost		DPort	Fixup	Group	Band	ExpDate";
 	$f[]="#";
-	$f[]="#permit -	0.0.0.0/0	-	0.0.0.0/0	-	-	-	-	-	";
+	$q=new mysql_squid_builder();
+	$sql="SELECT * FROM ss5_fw  WHERE 1 enabled=1 ORDER BY zorder";
+	$results = $q->QUERY_SQL($sql);
+	if(mysql_num_rows($results)==0){
+		$f[]="permit -	0.0.0.0/0	-	0.0.0.0/0	-	-	-	-	-	";
+	}
+	
+	$allow_type[1]="permit";
+	$allow_type[0]="deny";
+	
+	while ($ligne = mysql_fetch_assoc($results)) {
+		
+		if($ligne["src_host"]==null){$ligne["src_host"]="0.0.0.0/0";}
+		if($ligne["dst_host"]==null){$ligne["dst_host"]="0.0.0.0/0";}
+		if($ligne["src_host"]=="0.0.0.0"){$ligne["src_host"]="0.0.0.0/0";}
+		if($ligne["dst_host"]=="0.0.0.0"){$ligne["dst_host"]="0.0.0.0/0";}
+
+		if($ligne["src_port"]==0){$ligne["src_port"]="-";}
+		if($ligne["dst_port"]==0){$ligne["dst_port"]="-";}
+		if($ligne["mode"]==0){$ligne["bandwitdh"]=0;}
+		
+		if($ligne["fixup"]==null){$ligne["fixup"]="-";}
+		
+		if($ligne["bandwitdh"]==0){$ligne["bandwitdh"]="-";}
+		if($ligne["expdate"]==null){$ligne["expdate"]="-";}
+		
+		if(!preg_match("#[0-9]+-[0-9]+-[0-9]+#",$ligne["expdate"])){$ligne["expdate"]="-";}
+		
+		$permit=$allow_type[$ligne["mode"]];
+		$f[]="$permit\t-\t{$ligne["src_host"]}\t{$ligne["src_port"]}\t{$ligne["dst_host"]}\t{$ligne["dst_port"]}\t{$ligne["fixup"]}\t{$ligne["bandwitdh"]}\t{$ligne["expdate"]}";
+	}	
 	$f[]="";
 	$f[]="";
 	$f[]="";
@@ -548,7 +639,80 @@ function buildconfig(){
 	
 	@file_put_contents("/etc/ss5.conf", @implode("\n", $f));
 	@chown("/etc/ss5.conf","squid");
+	buildinit();
 }
+function buildinit(){
+	$unix=new unix();
+	$php=$unix->LOCATE_PHP5_BIN();
+	$INITD_PATH="/etc/init.d/ss5";
+	$php5script=basename(__FILE__);
+	$daemonbinLog="SS5 Socks Proxy";
 
+	$SS5_SOCKS_PORT=@file_get_contents("/etc/artica-postfix/settings/Daemons/SS5_SOCKS_PORT");
+	$SS5_SOCKS_INTERFACE=@file_get_contents("/etc/artica-postfix/settings/Daemons/SS5_SOCKS_INTERFACE");
+	
+
+	$f[]="#!/bin/sh";
+	$f[]="### BEGIN INIT INFO";
+	$f[]="# Provides:         ss5";
+	$f[]="# Required-Start:    \$local_fs \$syslog";
+	$f[]="# Required-Stop:     \$local_fs \$syslog";
+	$f[]="# Should-Start:";
+	$f[]="# Should-Stop:";
+	$f[]="# Default-Start:     2 3 4 5";
+	$f[]="# Default-Stop:      0 1 6";
+	$f[]="# Short-Description: $daemonbinLog";
+	$f[]="# chkconfig: - 80 75";
+	$f[]="# description: $daemonbinLog";
+	$f[]="### END INIT INFO";
+
+	
+	
+	
+	$f[]="case \"\$1\" in";
+	$f[]=" start)";
+
+	$f[]="    $php /usr/share/artica-postfix/$php5script --start \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  stop)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --stop \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" restart)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --restart \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reconfigure)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]=" reload)";
+	$f[]="    $php /usr/share/artica-postfix/$php5script --reload \$2 \$3";
+	$f[]="    ;;";
+	$f[]="";
+	$f[]="  *)";
+	$f[]="    echo \"Usage: \$0 {start|stop|restart|reconfigure|reload} (+ '--verbose' for more infos)\"";
+	$f[]="    exit 1";
+	$f[]="    ;;";
+	$f[]="esac";
+	$f[]="exit 0\n";
+
+
+	echo "$daemonbinLog: [INFO] Writing $INITD_PATH with new config\n";
+	@unlink($INITD_PATH);
+	@file_put_contents($INITD_PATH, @implode("\n", $f));
+	@chmod($INITD_PATH,0755);
+
+	if(is_file('/usr/sbin/update-rc.d')){
+		shell_exec("/usr/sbin/update-rc.d -f " .basename($INITD_PATH)." defaults >/dev/null 2>&1");
+	}
+
+	if(is_file('/sbin/chkconfig')){
+		shell_exec("/sbin/chkconfig --add " .basename($INITD_PATH)." >/dev/null 2>&1");
+		shell_exec("/sbin/chkconfig --level 345 " .basename($INITD_PATH)." on >/dev/null 2>&1");
+	}
+
+}
 
 ?>

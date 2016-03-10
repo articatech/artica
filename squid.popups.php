@@ -1055,7 +1055,7 @@ function dns_popup(){
 		$html[]=$tpl->_ENGINE_parse_body("<li><a href=\"$page?$num=yes&t=$t\"><span style='font-size:22px'>$ligne</span></a></li>\n");
 	}
 	
-	echo build_artica_tabs($html, "main_config_squiddns$t");
+	echo build_artica_tabs($html, "main_config_squiddns$t",1490);
 		
 }
 

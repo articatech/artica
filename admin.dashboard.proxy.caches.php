@@ -11,9 +11,9 @@ include_once(dirname(__FILE__).'/ressources/class.stats-appliance.inc');
 include_once(dirname(__FILE__).'/ressources/class.templates.inc');
 include_once(dirname(__FILE__).'/ressources/class.os.system.tools.inc');
 
-
+if(isset($_GET["caches-full-remove-js"])){remove_notif_caches_full_js();exit;}
 if(isset($_GET["gengraph"])){gengraph();exit;}
-
+if(isset($_POST["caches-full-remove"])){remove_notif_caches_full();exit;}
 page();
 
 
@@ -64,6 +64,8 @@ function page(){
 		return;
 	
 	}
+	
+	$CACHES_AVG=round(@file_get_contents("{$GLOBALS["BASEDIR"]}/CACHES_AVG"),1);
 
 	$cachefile="/usr/share/artica-postfix/ressources/logs/web/squid_get_cache_infos.db";
 	$MAIN_CACHES=unserialize(@file_get_contents($cachefile));
@@ -110,6 +112,22 @@ function page(){
 		$color="#898989";
 		$curs6=null;
 		$error="<p class=text-error style='font-size:18px'>{welcome_new_cache_wizard_license}</p>";
+	}
+	
+	$SquidCacheFullHideWarn=intval($sock->GET_INFO("SquidCacheFullHideWarn"));
+	
+	if($SquidCacheFullHideWarn==0){
+	if($CACHES_AVG>85){
+			$error=$error."
+
+			<p class=text-error style='font-size:18px'>{caches_are_full_explain}
+			<br><br>
+					&laquo;&nbsp;<a href=\"javascript:Loadjs('$page?caches-full-remove-js=yes');\"
+					style='font-size:18px;text-decoration:underline;color:#B94A48;font-weight:bold'>{hide_info_def}</a>&nbsp;&raquo;
+					
+			</p>";
+			
+		}
 	}
 	
 	if($COUNT_DE_CACHES>0){
@@ -199,10 +217,6 @@ function page(){
 		</td>
 		<td valign='top' style='width:99%'>
 		<table style='width:100%'>
-		<tr>
-		<td valign='top' style='font-size:18px' class=legend>{size_on_disk}:</td>
-		<td valign='top' style='font-size:18px;font-weight:bold'>$FULL_SIZE</td>
-		</tr>
 		<tr>
 		<td valign='top' style='font-size:18px' class=legend>{used}:</td>
 		<td valign='top' style='font-size:18px;font-weight:bold'>$CURRENT_TEXT</td>
@@ -302,10 +316,6 @@ function page(){
 			<td valign='top' style='width:99%'>
 				<table style='width:100%'>$enabled_text
 					<tr>
-						<td valign='top' style='font-size:18px' class=legend>{size_on_disk}:</td>
-						<td valign='top' style='font-size:18px;font-weight:bold'>$FULL_SIZE</td>
-					</tr>
-					<tr>
 						<td valign='top' style='font-size:18px' class=legend>{used}:</td>
 						<td valign='top' style='font-size:18px;font-weight:bold'>$CURRENT_TEXT</td>
 					</tr>					
@@ -336,6 +346,37 @@ function page(){
 	<script>".@implode("\n", $js)."</script>";
 	
 	
+	
+	
+}
+
+function remove_notif_caches_full(){
+	
+	$sock=new sockets();
+	$sock->SET_INFO("SquidCacheFullHideWarn", 1);
+	
+}
+
+function remove_notif_caches_full_js(){
+	header("content-type: application/x-javascript");
+	$t=time();
+	$page=CurrentPageName();
+	$tpl=new templates();
+	$hide_info_def=$tpl->javascript_parse_text("{hide_info_def}");
+	echo "
+var xSave$t= function (obj) {
+	var res=obj.responseText;
+	if (res.length>3){alert(res);return;}
+	LoadAjaxRound('proxy-store-caches','admin.dashboard.proxy.caches.php');
+}
+function Save$t(zmd5){
+	if(!confirm('$hide_info_def ?')){return;}
+	var XHR = new XHRConnection();
+	XHR.appendData('caches-full-remove', 'yes');
+	XHR.sendAndLoad('$page', 'POST',xSave$t);
+}
+Save$t();
+";
 	
 	
 }

@@ -1,4 +1,5 @@
 <?php
+ini_set('memory_limit','1000M');
 header("Pragma: no-cache");
 header("Expires: 0");
 header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
@@ -67,10 +68,8 @@ function requeteur_popup(){
 	$Maxlines[150]=150;
 	$Maxlines[200]=200;
 	
-	$q=new influx();
-	$date_start=date("Y-m-d",intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/DATE_START")));
-	$date_end=date("Y-m-d",intval(@file_get_contents("{$GLOBALS["BASEDIR"]}/DATE_END")));
-	$Selectore="mindate:$date_start;maxdate:$date_end";
+	$q=new postgres_sql();
+	$Selectore=$q->fieldSelectore();
 	
 	
 	
@@ -174,10 +173,10 @@ function query_js(){
 	$size=$tpl->_ENGINE_parse_body("{size}");
 	$TB_WIDTH=570;
 	
-	$from=strtotime("-1 hour");
+	$from=date("H:i:00",strtotime("-2 hour"));
 	
 	
-	$title=$tpl->javascript_parse_text("{last_requests} {since}:".date("H:i:s",$from));
+	$title=$tpl->javascript_parse_text("{last_requests} {since}:$from");
 	
 	$t=time();
 	
@@ -190,8 +189,8 @@ $(document).ready(function(){
 	dataType: 'json',
 	colModel : [
 	{display: '$time', name : 'MAC', width : 147, sortable : true, align: 'left'},
-	{display: '$website', name : 'SITE', width : 303, sortable : true, align: 'left'},
-	{display: '$category', name : 'SITE', width : 199, sortable : true, align: 'left'},
+	{display: '$website', name : 'familysite', width : 303, sortable : true, align: 'left'},
+	{display: '$category', name : 'category', width : 199, sortable : true, align: 'left'},
 	{display: '$ComputerMacAddress', name : 'MAC', width : 147, sortable : true, align: 'left'},
 	{display: '$ipaddr', name : 'MAC', width : 147, sortable : true, align: 'left'},
 	{display: '$member', name : 'uid', width : 169, sortable : true, align: 'left'},
@@ -199,7 +198,7 @@ $(document).ready(function(){
 	{display: '$size', name : 'size', width : 127, sortable : false, align: 'right'},
 	],
 	searchitems : [
-	{display: '$website', name : 'SITE'},
+	{display: '$website', name : 'familysite'},
 	{display: '$ComputerMacAddress', name : 'MAC'},
 	{display: '$ipaddr', name : 'IPADDR'},
 	{display: '$member', name : 'USERID'},
@@ -231,138 +230,109 @@ function RefreshNodesSquidTbl(){
 }
 
 function list1(){
-	$page=CurrentPageName();
+	$page=1;
 	$tpl=new templates();
 	$influx=new influx();
-	$q=new mysql_squid_builder();
+	$q=new postgres_sql();
 	$USER_FIELD=$_GET["user"];
 	$search=$_GET["search"];
 	if($search==null){$search="*";}
-	
-	$from=strtotime("{$_GET["date1"]} {$_GET["time1"]}");
-	
-	if(!isset($_GET["date1"])){
-		$from=strtotime("-1 hour");
-	}
-	
-	if(isset($_POST["qtype"])){
-		if($_POST["query"]<>null){
-			$search=str_replace("*", ".*", $_POST["query"]);
-			$search_query="AND {$_POST["qtype"]} =~ /$search/";
-		}
-		
-	}
-	
-	$to=strtotime("{$_GET["date2"]} {$_GET["time2"]}");
-	$md5_table=md5("$from$to$USER_FIELD");
-	$_SESSION["SQUID_STATS_MEMBER_SEARCH"]=$search;
-	
-	$Maxlines=$_GET["Maxlines"];
-	$_SESSION["SQUID_STATS_MAX_LINES"]=$Maxlines;
-	
-	
-	
-	
-
-	if($search<>"*"){
-		//$search_query="AND (SITE =~ /$search/ or $USER_FIELD =~ /$search/)";
-	}
-	
-	$totext="and time < {$to}s";
-	
+	$table="access_log";
 	if(!isset($_POST["rp"])){$_POST["rp"]=100;}
-	if($from==$to){
-		$totext=null;
+	$from=date("Y-m-d H:i:s",strtotime("-2 hour"));
+	if(isset($_POST["sortname"])){if($_POST["sortname"]<>null){$ORDER="ORDER BY {$_POST["sortname"]} {$_POST["sortorder"]}";}}
+	
+	if($GLOBALS["VERBOSE"]){echo "string_to_flexPostGresquery\n";}
+	$searchstring=string_to_flexPostGresquery();
+	$searchstringORG=$searchstring;
+	
+	if($searchstring<>null){
+		$sql="SELECT COUNT(*) as tcount FROM $table WHERE $searchstring";
+		if($GLOBALS["VERBOSE"]){echo "$sql\n";}
+		$ligne=@pg_fetch_assoc($q->QUERY_SQL($sql));
+		if(!$q->ok){
+			json_error_show($q->mysql_error);
+		}
+		$total = $ligne["tcount"];
+	
+	}else{
+		$sql="SELECT COUNT(*) as tcount FROM $table";
+		if($GLOBALS["VERBOSE"]){echo "$sql\n";}
+		$ligne=@pg_fetch_assoc($q->QUERY_SQL($sql));
+		$total = $ligne["tcount"];
+		if(!$q->ok){
+		json_error_show($q->mysql_error);
+		}
+		if($GLOBALS["VERBOSE"]){echo "COUNT: $total\n";}
 	}
-	$totext=null;
-	$sql="SELECT * from access_log WHERE time > {$from}s $totext $search_query ORDER BY ASC LIMIT {$_POST["rp"]}";
-
-	$main=$influx->QUERY_SQL($sql);
+	
+	
+	if (isset($_POST['rp'])) {$rp = $_POST['rp'];}
+	$pageStart = ($page-1)*$rp;
+	if(is_numeric($rp)){$limitSql = "LIMIT $rp OFFSET $pageStart ";}
+	if($searchstring<>null){$searchstring=" AND $searchstring";}
+	$sql="SELECT *  FROM access_log WHERE zdate > '$from' $searchstring $ORDER $limitSql";
+	if($GLOBALS["VERBOSE"]){echo "$sql\n";}
 	$data = array();
-	$data['page'] = 1;
-	$data['total'] = 0;
+	$data['page'] = $page;
+	$data['total'] = $total;
 	$data['rows'] = array();
+	
+	
+	$results=$q->QUERY_SQL($sql);
+	
+	if(!$q->ok){
+		json_error_show($q->mysql_error);
+	}
+	
+	
+	$SumoF=@pg_num_rows($results);
+	
+	if($SumoF==0){
+		json_error_show("no data $sql");
+	}
+	
 	$c=0;
 	$fontsize="18px";
 	$color=null;
 	
-	
+	$curday=date("Y-m-d");
 	$ipClass=new IP();
 	
-	foreach ($main as $row) {
-		$USER=trim($row->USERID);
-		if($row->SIZE==0){continue;}
+	while ($ligne = pg_fetch_assoc($results)) {
+		$USER=trim($ligne["userid"]);
+		$size=intval($ligne["size"]);
 		
-		$time=date("H:i:00",InfluxToTime($row->time));
 		
-		$CURTIME=strtotime($time);
-		$CATEGORY=$row->CATEGORY;
-		$SITE=$row->SITE;
-		$RQS=$row->RQS;
+		if($size==0){continue;}
+		
+		$time=$ligne["zdate"];
+		
+		
+		$CATEGORY=$ligne["category"];
+		$SITE=$ligne["familysite"];
+		$RQS=$ligne["rqs"];
 		$MAC_link=null;
-		$MAC=$row->MAC;
-		$IPADDR=$row->IPADDR;
-		$USER=trim($row->USERID);
-		$SIZE=$row->SIZE;
-		$MD5=md5("$time$MAC$IPADDR$USER$SITE");
-		if(!isset($MAIN[$CURTIME][$MD5])){
-			$MAIN[$CURTIME][$MD5]["TIME"]=$time;
-			$MAIN[$CURTIME][$MD5]["RQS"]=$RQS;
-			$MAIN[$CURTIME][$MD5]["MAC"]=$MAC;
-			$MAIN[$CURTIME][$MD5]["IPADDR"]=$IPADDR;
-			$MAIN[$CURTIME][$MD5]["USER"]=$USER;
-			$MAIN[$CURTIME][$MD5]["SIZE"]=$SIZE;
-			$MAIN[$CURTIME][$MD5]["SITE"]=$SITE;
-			$MAIN[$CURTIME][$MD5]["CATEGORY"]=$CATEGORY;
-		}else{
-			$MAIN[$CURTIME][$MD5]["RQS"]=$MAIN[$MD5]["RQS"]+$RQS;
-			$MAIN[$CURTIME][$MD5]["SIZE"]=$MAIN[$MD5]["SIZE"]+$SIZE;
-			$MAIN[$CURTIME][$MD5]["CATEGORY"]=$CATEGORY;
-		}
-		
-		
-	}	
-	
-	krsort($MAIN);
-	while (list ($curtime, $array0) = each ($MAIN) ){
-	while (list ($MDKey, $array) = each ($array0) ){	
-		$USER=trim($array["USER"]);
-		
-		if($color==null){$color="#F2F0F1";}else{$color=null;}
-		$time=$array["TIME"];
-		$RQS=$array["RQS"];
-		$MAC_link=null;
-		$SIZE=$array["SIZE"];
-		if($SIZE>1024){
-			$size=FormatBytes($SIZE/1024);
-		}else{
-			$size="{$SIZE} Bytes";
-		}
-		$MAC=$array["MAC"];
-		$IPADDR=$array["IPADDR"];
-		$CATEGORY=$array["CATEGORY"];
-		$SITE=$array["SITE"];
+		$MAC=$ligne["mac"];
+		$IPADDR=$ligne["ipaddr"];
+		$size=FormatBytes($size/1024);
 		$RQS=FormatNumber($RQS);
-		
-		$c++;
-
 		
 		if($ipClass->IsvalidMAC($MAC)){
 			$MAC_link="<a href=\"javascript:blur();\"
 			OnClick=\"javascript:Loadjs('squid.nodes.php?node-infos-js=yes&MAC=".urlencode($MAC)."');\"
-			style='font-size:$fontsize;text-decoration:underline'>		
-			";
-			
+					style='font-size:$fontsize;text-decoration:underline'>
+					";
+				
 		}
 		
+		$time=str_replace($curday, "", $time);
 		
 		if($ipClass->isValid($SITE)){
 			
 			$SITE="<a href=\"https://db-ip.com/$SITE\" style='text-decoration:underline;color:black' target=_new>$SITE</a>";
-		}
+			}
 		
-		
-		if($c>$_POST["rp"]){break;}
 		
 		$data['rows'][] = array(
 				'id' => $c,
@@ -375,18 +345,15 @@ function list1(){
 						"<span style='font-size:$fontsize'>{$USER}</a></span>",
 						"<span style='font-size:$fontsize'>{$RQS}</a></span>",
 						"<span style='font-size:$fontsize'>{$size}</a></span>",
-						
-						)
+		
+				)
 		);
 		
-
-		
-	}
 	}
 
 	
 
-	$data['total'] = $c;
+	
 	echo json_encode($data);
 	return;
 }
